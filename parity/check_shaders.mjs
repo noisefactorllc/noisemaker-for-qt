@@ -14,7 +14,17 @@
 // Unlike check_definitions.mjs, there is no carry-forward state to preserve here — the shader
 // converter is a pure function of the reference tree (copy bytes, transform nothing), so seeding
 // the temp dir with the committed content first would be pointless; an empty dir is a strictly
-// stronger check (it also proves the converter creates every directory from scratch).
+// stronger check (it also proves the converter creates every directory from scratch). This also
+// means, unlike check_definitions.mjs, a pure reference-side deletion is NOT a blind spot here:
+// nothing pre-seeds `tmp`, so a file the reference no longer produces simply never appears in
+// `generated`, and the existing "STALE in repo" branch below catches it directly.
+//
+// Extension set: `.frag` (both `.glsl`-derived AND the native stage-named fragment half of a
+// vert+frag pair) and `.vert` (the vertex half of that pair) — fix round 1 widened this from
+// `.frag`-only after the converter above was extended to also mirror the 16 already-GL-stage-named
+// files in 8 effect dirs (deposit/render vertex+fragment program pairs for the point/mesh
+// rendering pipeline). Walking both extensions here, on BOTH the committed and regenerated sides,
+// is required for the diff to see them at all.
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,12 +47,20 @@ try {
     for (const e of readdirSync(d)) {
       const p = join(d, e)
       if (statSync(p).isDirectory()) walk(p, base, out)
-      else if (e.endsWith('.frag')) out.push(relative(base, p))
+      else if (e.endsWith('.frag') || e.endsWith('.vert')) out.push(relative(base, p))
     }
     return out
   }
   const committed = new Set(walk(SHADERS_DIR, SHADERS_DIR))
   const generated = new Set(walk(tmp, tmp))
+
+  // Adjacent hardening (fix round 1): an empty tree on both sides would otherwise print a vacuous
+  // "SHADERS: 0/0 byte-identical" and exit 0 — a silent false pass if NM_REFERENCE_ROOT or
+  // SHADERS_DIR is misconfigured badly enough that neither side finds anything.
+  if (committed.size === 0 && generated.size === 0) {
+    console.error('SHADERS: 0/0 — empty tree on both sides; refusing a vacuous pass (check NM_REFERENCE_ROOT and SHADERS_DIR)')
+    process.exit(3)
+  }
 
   const drift = []
   for (const rel of [...new Set([...committed, ...generated])].sort()) {
