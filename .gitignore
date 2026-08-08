@@ -1,0 +1,5 @@
+qt/build/
+parity/out/
+parity/.venv/
+tools/node_modules/
+.DS_Store
