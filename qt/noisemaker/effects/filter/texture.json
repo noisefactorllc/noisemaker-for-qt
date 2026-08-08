@@ -1,0 +1,89 @@
+{
+  "name": "Texture",
+  "namespace": "filter",
+  "func": "texture",
+  "starter": false,
+  "tags": [
+    "noise"
+  ],
+  "description": "Procedural surface and material texture overlay",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 3,
+      "define": "MODE",
+      "choices": {
+        "canvas": 0,
+        "crosshatch": 1,
+        "halftone": 2,
+        "paper": 3,
+        "stucco": 4,
+        "regular": 5,
+        "soft": 6,
+        "sprinkles": 7,
+        "clumped": 8,
+        "contrasty": 9,
+        "enlarged": 10,
+        "stippled": 11,
+        "horizontal": 12,
+        "vertical": 13,
+        "speckle": 14
+      }
+    },
+    "alpha": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "alpha",
+      "min": 0,
+      "max": 1
+    },
+    "scale": {
+      "type": "float",
+      "default": 1,
+      "uniform": "scale",
+      "min": 0.1,
+      "max": 10
+    },
+    "intensity": {
+      "type": "float",
+      "default": 40,
+      "uniform": "intensity",
+      "min": 0,
+      "max": 100
+    },
+    "contrast": {
+      "type": "float",
+      "default": 50,
+      "uniform": "contrast",
+      "min": 0,
+      "max": 100
+    },
+    "mono": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "mono"
+    }
+  },
+  "passes": [
+    {
+      "name": "main",
+      "program": "texture",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "uniforms": {
+        "alpha": "alpha",
+        "scale": "scale",
+        "intensity": "intensity",
+        "contrast": "contrast",
+        "mono": "mono"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {},
+  "defaultProgram": "search filter, synth\n\nsolid(color: #d1d1d1)\n  .texture(alpha: 0.75)\n  .write(o0)"
+}

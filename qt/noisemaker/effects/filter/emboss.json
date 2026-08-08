@@ -1,0 +1,63 @@
+{
+  "name": "Emboss",
+  "namespace": "filter",
+  "func": "emboss",
+  "starter": false,
+  "tags": [
+    "edges"
+  ],
+  "description": "Emboss relief with color convolution or opt-in gray directional edge tracing",
+  "paramAliases": {},
+  "globals": {
+    "style": {
+      "type": "int",
+      "default": 0,
+      "define": "STYLE",
+      "choices": {
+        "color": 0,
+        "gray": 1
+      }
+    },
+    "amount": {
+      "type": "float",
+      "default": 1,
+      "uniform": "amount",
+      "min": 0.1,
+      "max": 5
+    },
+    "angle": {
+      "type": "float",
+      "default": 135,
+      "uniform": "angle",
+      "min": -360,
+      "max": 360
+    },
+    "height": {
+      "type": "float",
+      "default": 1,
+      "uniform": "height",
+      "min": 1,
+      "max": 10
+    },
+    "colorAmount": {
+      "type": "float",
+      "default": 100,
+      "uniform": "colorAmount",
+      "min": 0,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "emboss",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}

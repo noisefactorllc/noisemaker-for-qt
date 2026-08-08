@@ -1,9 +1,9 @@
 {
-  "name": "noisemaker-for-godot-tools",
+  "name": "noisemaker-for-qt-tools",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Offline tooling for Noisemaker for Godot. These scripts import the unchanged JS Noisemaker reference compiler (shaders/src/index.js) to (a) export GOLDEN render-graph JSON from DSL (export-graph.mjs) and (b) regenerate effect-definition JSON (convert-definitions.mjs). No build step is required; the reference is plain browser-compatible ESM run under Node only for tooling. Set NM_REFERENCE_ROOT to a checkout of the Noisemaker reference repo — this repo does NOT assume a sibling checkout.",
+  "description": "Offline tooling for Noisemaker for Qt. These scripts import the unchanged JS Noisemaker reference compiler (shaders/src/index.js) to (a) export GOLDEN render-graph JSON from DSL (export-graph.mjs) and (b) regenerate effect-definition JSON (convert-definitions.mjs). No build step is required; the reference is plain browser-compatible ESM run under Node only for tooling. Set NM_REFERENCE_ROOT to a checkout of the Noisemaker reference repo — this repo does NOT assume a sibling checkout.",
   "scripts": {
     "export-graph": "node export-graph.mjs",
     "convert-definitions": "node convert-definitions.mjs"
