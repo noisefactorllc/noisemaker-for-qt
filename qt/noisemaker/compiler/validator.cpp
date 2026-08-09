@@ -702,9 +702,19 @@ QJsonValue Validator::make3dRef(const QJsonValue& nVal, const QString& defaultKi
 QJsonValue Validator::compileStmt(const QJsonObject& stmt) {
     const QString t = stmt.value(QStringLiteral("type")).toString();
     // UnsupportedDsl fail-loud points 1-2 of 9 (see validator.h / file
-    // header): control flow is fully INTERPRETED at runtime by the
-    // reference (a live `fn(state)` closure decides which branch runs
-    // each frame); this AOT frontend has no interpreter to defer to.
+    // header). NOT "the reference interprets control flow live every
+    // frame" -- verified otherwise (task T7 docs pass): the reference's
+    // OWN validator (validator.js compileStmt) CAN build a Branch plan
+    // node whose `cond` is a `{fn:(state)=>...}` closure (reference/02
+    // SS4.3), but nothing downstream ever calls it -- expander.js only
+    // ever iterates `plan.chain` (line ~155) and has no `Branch`/`Break`/
+    // `Continue`/`Return` handling at all; a full-file grep of
+    // shaders/src/runtime/*.js for `.fn(` (i.e. any call site that would
+    // invoke such a closure) finds none. Branch is therefore inert in the
+    // reference's own render path -- this AOT frontend's fail-loud stance
+    // here matches the sibling ports' contract at this exact point
+    // (validator.h), not a live per-frame mechanism it is declining to
+    // replicate.
     if (t == NodeKind::IfStmt) {
         throw UnsupportedDsl(QStringLiteral(
             "if/elif/else branches are not implemented in the first-cut DSL frontend (reference/02 SS4.1)."));
@@ -1355,8 +1365,12 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
         args.insert(argKey, node.toObject().value(QStringLiteral("value")).toDouble() != 0.0);
         return;
     }
-    // UnsupportedDsl 3/9: `(state) => ...` boolean automation has no
-    // interpreter to defer to in this AOT frontend.
+    // UnsupportedDsl 3/9: `(state) => ...` compiles to a `{fn}` closure in
+    // the reference validator, same dead end as Branch above -- nothing
+    // downstream ever calls it (verified: no `.fn(` call site anywhere in
+    // shaders/src/runtime/*.js). Not a live interpreter this AOT frontend
+    // is declining to replicate; fails loud here to match the sibling
+    // ports' contract at this point instead.
     if (t == NodeKind::Func) {
         throw UnsupportedDsl(QStringLiteral(
             "Func boolean params ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS6.5)."));

@@ -1,12 +1,17 @@
-# Render Graph JSON Schema (the GDScript runtime ↔ producer contract)
+# Render Graph JSON Schema (the nm::Backend ↔ producer contract)
 
-This is the **normalized** graph format that both producers emit and the `nm_backend.gd`
-RenderingDevice executor consumes. It is the reference `compileGraph` output (`reference/03`,
-`reference/04`) with Maps serialized as objects and a few convenience fields added so the runtime
-never has to re-derive them from program-id string encodings.
+This is the **normalized** graph format that both producers emit and `nm::Backend`
+(`qt/noisemaker/runtime/backend.h`), a `QOpenGL*` executor, consumes. It is the reference
+`compileGraph` output (`reference/03`, `reference/04`) with Maps serialized as objects and a few
+convenience fields added so the runtime never has to re-derive them from program-id string
+encodings.
 
-In-engine, this is the value returned by `Orchestrator.new(EffectRegistry.new()).build_graph(source)`
-(a GDScript `Dictionary`); the offline exporter writes the same shape as JSON.
+In this port, the live shape comes from `nm::compileGraph(source)` / `nm::compileGraphJson(source,
+registry)` (`qt/noisemaker/compiler/dsl_compiler.h`) — a C++ port of the reference `compileGraph`
+that runs lex→parse→validate→expand→allocateResources→normalize entirely in this port's own
+frontend, returning an `nm::Graph` (or its JSON form) rather than a scripting-language dictionary;
+the offline oracle exporter (`tools/export-graph.mjs`) writes the same shape as JSON straight from
+the unmodified reference.
 
 ```jsonc
 {
@@ -96,9 +101,11 @@ for screenDivide, always `max(1, …)`).
 ## texId conventions
 
 - `global_<name>` — a global surface. User surfaces `o0..o7` (and `geo*`/`vol*`) are double-buffered
-  (a `RDTexture` read/write pair, swapped within and across frames) and excluded from `textures{}`.
-  Chain-scoped state textures (`global_<name>_chain_N`) DO carry a `TextureSpec`.
-- `phys_N` — a pooled physical slot (from the `compiler/graph/resources.gd` liveness allocator).
+  (a real GL texture/FBO read/write pair — `nm::GpuSurface`, `qt/noisemaker/runtime/surface.h` —
+  swapped within and across frames) and excluded from `textures{}`. Chain-scoped state textures
+  (`global_<name>_chain_N`) DO carry a `TextureSpec`.
+- `phys_N` — a pooled physical slot (from the `nm::allocateResources` liveness allocator,
+  `qt/noisemaker/compiler/resources.h`).
 - everything else (e.g. `node_0_out`) — a virtual pooled texId mapped via `allocations` to a `phys_N`.
 
 ## Qt consumer
@@ -119,10 +126,12 @@ for screenDivide, always `max(1, …)`).
 
 ## Producers
 
-- **Live (production):** the GDScript `Orchestrator` (`compiler/graph/orchestrator.gd`) emits this
-  shape via `_normalize_graph()` after running lex→parse→validate→expand→allocate_resources in-engine.
+- **Live (production):** `nm::compileGraph()` / `nm::compileGraphJson()`
+  (`qt/noisemaker/compiler/dsl_compiler.cpp`) — a C++ port of the reference `compiler.js`
+  `compileGraph()` fused with `export-graph.mjs`'s own `normalizeGraph()`, running
+  lex→parse→validate→expand→allocateResources→normalize entirely in this port's own frontend.
 - **Golden (parity only):** `tools/export-graph.mjs` runs the unchanged reference `compileGraph`, then
   the same `normalizeGraph` (Maps→objects, adds `passType/namespace/func/progName/program/defines`).
 
-Both produce byte-identical normalized JSON for the same DSL (modulo `compiledAt`), which is the
-in-engine compiler's parity test — `parity/check_graph.mjs` (158/158).
+Both produce byte-identical normalized JSON for the same DSL (modulo `compiledAt`) — exactly what
+`parity/check_graph.mjs` verifies over the full fixture corpus.

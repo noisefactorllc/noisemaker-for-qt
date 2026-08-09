@@ -2,7 +2,7 @@
 """Compare two PNGs for the Noisemaker for Qt parity harness.
 
 Loads a GOLDEN reference PNG (from parity/export-and-render.mjs) and a CANDIDATE
-PNG (from the Unity NMParityRunner), computes max-abs-diff and a simple global
+PNG (from nm-render), computes max-abs-diff and a simple global
 SSIM, and fails if either exceeds a per-program tolerance. Mirrors the style and
 tolerance conventions of the reference image_regression.py (argparse CLI, numpy,
 PIL, max-abs-diff gate) and emits a small JSON report.
@@ -69,7 +69,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("golden", type=Path, help="Reference golden PNG")
-    parser.add_argument("candidate", type=Path, help="Unity-rendered candidate PNG")
+    parser.add_argument("candidate", type=Path, help="nm-render candidate PNG")
     parser.add_argument("--name", default=None, help="Program name for the report")
     # Default 2/255 mirrors a tight cross-backend tolerance; loosen per-program
     # for stochastic/feedback effects via --tolerance.
