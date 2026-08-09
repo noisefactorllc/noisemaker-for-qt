@@ -1,0 +1,8 @@
+solid
+gradient
+noise
+adjust
+blur
+bloom
+blendMode
+palette
