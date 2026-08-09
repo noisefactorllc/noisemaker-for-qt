@@ -2,6 +2,7 @@
 
 #include <QJsonObject>
 #include <QOpenGLFunctions_4_1_Core>
+#include <QVector>
 
 #include <algorithm>
 #include <cmath>
@@ -9,7 +10,21 @@
 
 namespace nm {
 
-int resolveDimension(const QJsonValue& spec, int screenSize) {
+namespace {
+
+// True iff `obj[key]` is present AND not JSON null/undefined -- the exact
+// shape of the reference's `??` (nullish coalescing) test.
+bool jsonHasLiveValue(const QJsonObject& obj, const QString& key) {
+    if (!obj.contains(key)) {
+        return false;
+    }
+    const QJsonValue v = obj.value(key);
+    return !v.isNull() && !v.isUndefined();
+}
+
+} // namespace
+
+int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& mergedUniforms) {
     if (spec.isDouble()) {
         return std::max(1, static_cast<int>(std::floor(spec.toDouble())));
     }
@@ -40,42 +55,43 @@ int resolveDimension(const QJsonValue& spec, int screenSize) {
             const bool hasMultiply = obj.contains(QStringLiteral("multiply"));
             const bool hasPower = obj.contains(QStringLiteral("power"));
             const bool hasTransform = hasMultiply || hasPower;
-            // No live pass-uniform context is wired up in T3 (see this
-            // function's header doc) -- `uniforms[spec.param]` is always
-            // treated as absent, so `value` starts at paramDefault exactly
-            // as the reference does when the named uniform is undefined.
-            double value = obj.contains(QStringLiteral("paramDefault"))
-                ? obj.value(QStringLiteral("paramDefault")).toDouble()
-                : 64.0;
+            const QString paramKey = obj.value(QStringLiteral("param")).toString();
+            // reference pipeline.js:1211 `uniforms[spec.param] ?? paramDefault`.
+            const bool paramPresent = jsonHasLiveValue(mergedUniforms, paramKey);
+            double value = paramPresent
+                ? mergedUniforms.value(paramKey).toDouble()
+                : (obj.contains(QStringLiteral("paramDefault"))
+                       ? obj.value(QStringLiteral("paramDefault")).toDouble()
+                       : 64.0);
             if (hasMultiply) {
                 value *= obj.value(QStringLiteral("multiply")).toDouble();
             }
             if (hasPower) {
                 value = std::pow(value, obj.value(QStringLiteral("power")).toDouble());
             }
-            if (hasTransform && obj.contains(QStringLiteral("default"))) {
+            // reference: "If we have a transform AND the param wasn't found
+            // in uniforms AND a 'default' is specified, use 'default' as
+            // the final computed value" -- gated on absence, not on the
+            // paramDefault fallback numerically coinciding with anything.
+            if (hasTransform && !paramPresent && obj.contains(QStringLiteral("default"))) {
                 value = obj.value(QStringLiteral("default")).toDouble();
             }
             return std::max(1, static_cast<int>(std::floor(value)));
         }
 
         if (obj.contains(QStringLiteral("screenDivide"))) {
-            // FIX ROUND 1 disclosure: same simplification as the `param`
-            // branch above, previously undisclosed here. Reference
-            // (pipeline.js:1244-1247): `divisor = uniforms[spec.screenDivide]
-            // ?? spec.default ?? 1`. No live pass-uniform context is wired
-            // up in T3 (see this function's header doc), so
-            // `uniforms[spec.screenDivide]` is always treated as absent and
-            // this resolves straight to `spec.default ?? 1`, matching the
-            // reference only when the named uniform is in fact undefined.
-            // `safeDivisor` below is a defensive addition beyond the
-            // reference: JS division by 0 yields Infinity (safely
-            // Math.round/Math.max'd to Infinity), but casting an infinite
-            // double to `int` in C++ is undefined behavior, so a divisor of
-            // exactly 0 is treated as 1 instead of reproducing that UB.
-            const double divisor = obj.contains(QStringLiteral("default"))
-                ? obj.value(QStringLiteral("default")).toDouble()
-                : 1.0;
+            // reference pipeline.js:1244-1247:
+            // `divisor = uniforms[spec.screenDivide] ?? spec.default ?? 1`.
+            const QString divideKey = obj.value(QStringLiteral("screenDivide")).toString();
+            const bool divideKeyPresent = jsonHasLiveValue(mergedUniforms, divideKey);
+            const double divisor = divideKeyPresent
+                ? mergedUniforms.value(divideKey).toDouble()
+                : (obj.contains(QStringLiteral("default")) ? obj.value(QStringLiteral("default")).toDouble() : 1.0);
+            // `safeDivisor` is a defensive addition beyond the reference:
+            // JS division by 0 yields Infinity (safely Math.round/Math.max'd
+            // to Infinity), but casting an infinite double to `int` in C++
+            // is undefined behavior, so a divisor of exactly 0 is treated
+            // as 1 instead of reproducing that UB.
             const double safeDivisor = (divisor != 0.0) ? divisor : 1.0;
             return std::max(1, static_cast<int>(std::round(screenSize / safeDivisor)));
         }
@@ -185,22 +201,16 @@ GpuSurface SurfaceCache::createSurface(int width, int height, const QString& for
     return surface;
 }
 
-GpuSurface& SurfaceCache::get(const Graph& graph, const QString& texId, QSize screenSize) {
-    auto it = m_surfaces.find(texId);
-    if (it != m_surfaces.end()) {
-        return it.value();
-    }
+SurfaceCache::ResolvedSpec SurfaceCache::resolveSpec(const Graph& graph, const QString& specTexId, QSize screenSize,
+                                                       const QJsonObject& mergedUniforms) const {
+    ResolvedSpec resolved{screenSize.width(), screenSize.height(), QStringLiteral("rgba16f")};
 
-    int width = screenSize.width();
-    int height = screenSize.height();
-    QString format = QStringLiteral("rgba16f");
-
-    const auto specIt = graph.textures.find(texId);
+    const auto specIt = graph.textures.find(specTexId);
     if (specIt != graph.textures.end()) {
-        width = resolveDimension(specIt->width, screenSize.width());
-        height = resolveDimension(specIt->height, screenSize.height());
+        resolved.width = resolveDimension(specIt->width, screenSize.width(), mergedUniforms);
+        resolved.height = resolveDimension(specIt->height, screenSize.height(), mergedUniforms);
         if (!specIt->format.isEmpty()) {
-            format = specIt->format;
+            resolved.format = specIt->format;
         }
     }
     // else: no explicit TextureSpec. Every non-global virtual texId used by
@@ -208,8 +218,81 @@ GpuSurface& SurfaceCache::get(const Graph& graph, const QString& texId, QSize sc
     // real exported graphs -- see task report); this branch is therefore
     // only reachable for `global_*` surfaces, which default to
     // screen-sized rgba16f exactly like reference/04 §8 "Display surfaces".
+    return resolved;
+}
 
-    return *m_surfaces.insert(texId, createSurface(width, height, format));
+GpuSurface& SurfaceCache::getOrCreate(const QString& cacheKey, const ResolvedSpec& spec) {
+    auto it = m_surfaces.find(cacheKey);
+    if (it != m_surfaces.end()) {
+        return it.value();
+    }
+    return *m_surfaces.insert(cacheKey, createSurface(spec.width, spec.height, spec.format));
+}
+
+GpuSurface& SurfaceCache::get(const Graph& graph, const QString& texId, QSize screenSize,
+                               const QJsonObject& mergedUniforms) {
+    auto it = m_surfaces.find(texId);
+    if (it != m_surfaces.end()) {
+        return it.value();
+    }
+    return getOrCreate(texId, resolveSpec(graph, texId, screenSize, mergedUniforms));
+}
+
+GpuSurface& SurfaceCache::getAliased(const QString& physicalKey, const Graph& graph, const QString& specTexId,
+                                      QSize screenSize, const QJsonObject& mergedUniforms) {
+    auto it = m_surfaces.find(physicalKey);
+    if (it != m_surfaces.end()) {
+        return it.value();
+    }
+    return getOrCreate(physicalKey, resolveSpec(graph, specTexId, screenSize, mergedUniforms));
+}
+
+unsigned int SurfaceCache::mrtFramebuffer(const QMap<int, unsigned int>& attachments) {
+    QString key;
+    for (auto it = attachments.begin(); it != attachments.end(); ++it) {
+        key += QString::number(it.key()) + QLatin1Char(':') + QString::number(it.value()) + QLatin1Char(',');
+    }
+    const auto cached = m_mrtFbos.constFind(key);
+    if (cached != m_mrtFbos.constEnd()) {
+        return cached.value();
+    }
+
+    unsigned int fbo = 0;
+    m_gl->glGenFramebuffers(1, &fbo);
+    m_gl->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    int maxLocation = 0;
+    for (auto it = attachments.begin(); it != attachments.end(); ++it) {
+        m_gl->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(it.key()),
+                                      GL_TEXTURE_2D, it.value(), 0);
+        maxLocation = std::max(maxLocation, it.key());
+    }
+
+    // reference createMRTFBO / webgl2.js executePass: glDrawBuffers must
+    // list every attachment location the shader's `layout(location=N) out`
+    // declarations use, GL_NONE for any gap so unused locations don't
+    // silently receive writes from a differently-shaped program sharing
+    // the same cache_key space (not currently possible here since the key
+    // is exact, but matches the reference's own explicit-array approach).
+    QVector<GLenum> drawBuffers(maxLocation + 1, GL_NONE);
+    for (auto it = attachments.begin(); it != attachments.end(); ++it) {
+        drawBuffers[it.key()] = GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(it.key());
+    }
+    m_gl->glDrawBuffers(drawBuffers.size(), drawBuffers.constData());
+
+    const GLenum status = m_gl->glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        m_gl->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        m_gl->glDeleteFramebuffers(1, &fbo);
+        throw std::runtime_error(
+            QStringLiteral("nm::SurfaceCache: incomplete MRT framebuffer (status 0x%1)")
+                .arg(static_cast<uint>(status), 0, 16)
+                .toStdString());
+    }
+    m_gl->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    m_mrtFbos.insert(key, fbo);
+    return fbo;
 }
 
 bool SurfaceCache::contains(const QString& texId) const {
@@ -243,6 +326,11 @@ void SurfaceCache::releaseAll() {
         m_gl->glDeleteTextures(1, &it->texture);
     }
     m_surfaces.clear();
+    for (auto it = m_mrtFbos.begin(); it != m_mrtFbos.end(); ++it) {
+        unsigned int fbo = it.value();
+        m_gl->glDeleteFramebuffers(1, &fbo);
+    }
+    m_mrtFbos.clear();
     if (m_defaultTexture != 0) {
         m_gl->glDeleteTextures(1, &m_defaultTexture);
         m_defaultTexture = 0;

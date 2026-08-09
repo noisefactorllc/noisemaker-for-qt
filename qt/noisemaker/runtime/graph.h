@@ -54,7 +54,10 @@ struct Pass {
     QJsonObject inputs;      // samplerName -> texId
     QJsonObject outputs;     // outName -> texId
     QJsonObject uniforms;    // name -> literal value
-    QJsonValue repeat;       // int | uniform-name string | undefined; T3 does not loop passes
+    QJsonValue repeat;       // int | uniform-name string | undefined
+    QJsonValue drawBuffers;  // int | undefined; >1 signals MRT alongside outputs.size()>1
+    QJsonValue count;        // int | "input"/"auto"/"screen" string | undefined (agent vertex count)
+    QJsonValue blend;        // bool | [srcFactor, dstFactor] string pair | undefined
 };
 
 // The compiled render graph consumed by nm::Backend:

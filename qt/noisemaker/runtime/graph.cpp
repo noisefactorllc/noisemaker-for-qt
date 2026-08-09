@@ -78,6 +78,9 @@ Pass parsePass(const QJsonValue& value, int index) {
     pass.outputs = obj.value(QStringLiteral("outputs")).toObject();
     pass.uniforms = obj.value(QStringLiteral("uniforms")).toObject();
     pass.repeat = obj.value(QStringLiteral("repeat"));
+    pass.drawBuffers = obj.value(QStringLiteral("drawBuffers"));
+    pass.count = obj.value(QStringLiteral("count"));
+    pass.blend = obj.value(QStringLiteral("blend"));
     return pass;
 }
 
