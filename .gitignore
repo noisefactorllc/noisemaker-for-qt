@@ -1,5 +1,6 @@
 qt/build/
 qt/build-compiler/
+examples/viewer/build/
 parity/out/
 parity/.venv/
 tools/node_modules/

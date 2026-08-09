@@ -1,0 +1,40 @@
+# noisemaker-qt-config.cmake.in — minimal package config (T7).
+#
+# Consumed via `find_package(noisemaker-qt CONFIG)`. Defines an IMPORTED
+# static-library target (noisemaker-qt::noisemaker-qt) whose public include
+# roots and Qt6 link deps mirror the in-tree `noisemaker-qt` target exactly
+# (qt/CMakeLists.txt), plus NOISEMAKER_QT_DATA_ROOT — the installed
+# shaders/effects tree nm::Backend::setup() / nm::EffectRegistry need as
+# `dataRoot` at runtime (never compiled in; see docs/GRAPH-JSON-SCHEMA.md
+# "Qt consumer").
+#
+# The at-sign-wrapped tokens below (e.g. CMAKE_INSTALL_LIBDIR) are
+# substituted by configure_file's AT_ONLY mode at BUILD time
+# (qt/CMakeLists.txt), using this build's own GNUInstallDirs / platform
+# library naming. Dollar-brace references resolve later, when a CONSUMER's
+# find_package includes this already-substituted file — relocatable, since
+# the install prefix is derived from THIS file's own location
+# (<prefix>/lib/cmake/noisemaker-qt), never a baked build-tree path. (Not
+# written with literal @-pairs here in the comment itself: configure_file
+# substitutes those on sight, even inside comments.)
+cmake_minimum_required(VERSION 3.20)
+
+include(CMakeFindDependencyMacro)
+find_dependency(Qt6 COMPONENTS Core Gui OpenGL)
+
+get_filename_component(_noisemaker_qt_prefix "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+
+if(NOT TARGET noisemaker-qt::noisemaker-qt)
+    add_library(noisemaker-qt::noisemaker-qt STATIC IMPORTED)
+    set_target_properties(noisemaker-qt::noisemaker-qt PROPERTIES
+        IMPORTED_LOCATION "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_LIBDIR@/@CMAKE_STATIC_LIBRARY_PREFIX@noisemaker-qt@CMAKE_STATIC_LIBRARY_SUFFIX@"
+        INTERFACE_INCLUDE_DIRECTORIES "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_INCLUDEDIR@/noisemaker-qt;${_noisemaker_qt_prefix}/@CMAKE_INSTALL_INCLUDEDIR@/noisemaker-qt/noisemaker"
+        INTERFACE_LINK_LIBRARIES "Qt6::Core;Qt6::Gui;Qt6::OpenGL"
+        INTERFACE_COMPILE_FEATURES cxx_std_17
+    )
+endif()
+
+set(NOISEMAKER_QT_DATA_ROOT "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_DATADIR@/noisemaker-qt/noisemaker")
+unset(_noisemaker_qt_prefix)
+
+set(noisemaker-qt_FOUND TRUE)
