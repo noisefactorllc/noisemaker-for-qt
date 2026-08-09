@@ -784,6 +784,24 @@ int Backend::resolvePointCount(const Graph& graph, const Pass& pass) {
 }
 
 void Backend::executePass(const Graph& graph, const Pass& pass) {
+    // PORTING-GUIDE.md rule 4 "Fail loud, never approximate": drawMode
+    // "triangles" (mesh rendering -- render/meshRender.json is the one
+    // corpus user) is real, reachable DSL surface with no implementation
+    // here. Left unguarded, it would silently fall through to the
+    // fullscreen-triangle default below and mis-render (a mesh shader
+    // expects per-vertex mesh attributes, not a fullscreen sweep) instead
+    // of failing where the gap actually is. `points`/`billboards` are
+    // implemented (isAgentDrawMode); absent/empty is the ordinary
+    // fullscreen-effect case; anything else -- "triangles" today, whatever
+    // comes next -- is unsupported and must say so.
+    if (!pass.drawMode.isEmpty() && !isAgentDrawMode(pass.drawMode)) {
+        throw std::runtime_error(QStringLiteral("nm::Backend: pass '%1' has unsupported drawMode '%2' "
+                                                  "(only \"points\"/\"billboards\" agent draws and the "
+                                                  "fullscreen-triangle default are implemented)")
+                                      .arg(pass.id, pass.drawMode)
+                                      .toStdString());
+    }
+
     const CompiledProgram& program = programFor(pass);
     m_gl->glUseProgram(program.handle);
 

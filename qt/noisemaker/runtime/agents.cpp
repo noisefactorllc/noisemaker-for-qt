@@ -12,10 +12,6 @@ int agentVertexCount(const QString& drawMode, int agentCount) {
     return drawMode == QStringLiteral("billboards") ? agentCount * 6 : agentCount;
 }
 
-QString agentPrimitiveMode(const QString& drawMode) {
-    return drawMode == QStringLiteral("billboards") ? QStringLiteral("triangles") : QStringLiteral("points");
-}
-
 QStringList agentStateSamplerPriority() {
     return {QStringLiteral("xyzTex"), QStringLiteral("stateTex1"), QStringLiteral("inputTex")};
 }

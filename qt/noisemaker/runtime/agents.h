@@ -17,11 +17,6 @@ bool isAgentDrawMode(const QString& drawMode);
 // webgl2.js executePass: "Billboard mode: 6 vertices per particle").
 int agentVertexCount(const QString& drawMode, int agentCount);
 
-// GL primitive mode name for an agent pass -- callers map this to the
-// actual GLenum (GL_POINTS / GL_TRIANGLES); kept as a string here so this
-// header stays GL-header-free like graph.h/surface.h.
-QString agentPrimitiveMode(const QString& drawMode);
-
 // Sampler names tried, in priority order, when resolving a `count:"input"`
 // agent pass's live agent count from its own state-texture dimensions
 // (reference webgl2.js executePass points/billboards branch: prefers
