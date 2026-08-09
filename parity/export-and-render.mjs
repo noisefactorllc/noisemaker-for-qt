@@ -439,21 +439,46 @@ async function main () {
 
     if (opts.runSeconds === 0) {
       // ROOT-CAUSE FIX (round 3, task-T5 physarum agent-state parity
-      // investigation): demo/shaders/index.html's renderSingleFrameIfPaused()
-      // fires on every UI control-panel onControlChange event, which fire in
-      // an indeterminate, racy COUNT (directly measured: 1, 26, 27, 28
-      // across otherwise-identical runs) while the controls panel rebuilds
-      // after a DSL swap -- each firing is a real `pipeline.render()` call
-      // that silently advances every stateful surface BEFORE the "official"
-      // 8-frame protocol below starts. For a many-parameter graph
-      // (physarumNoSense: ~20 uniform-bound controls across pointsEmit +
-      // physarum + pointsRender) this bakes dozens of uncounted, harness-
-      // timing-dependent extra simulation steps into the captured golden --
-      // not reference-engine chaos, not a downstream-port bug, a genuine
-      // race in THIS file's own capture protocol. `resize()` does not clear
-      // it (`createSurfaces()` short-circuits when dimensions are already
+      // investigation; mechanism corrected round 4 -- see below): the demo's
+      // CanvasRenderer runs an always-on requestAnimationFrame loop
+      // (shaders/src/renderer/canvas.js _renderLoop/start()/stop()), gated
+      // ONLY on `this._isRunning` -- NOT on compile state. `compile()` (the
+      // DSL-swap path this harness drives via the run button) sets
+      // `pipeline.isCompiling = true` before recompiling and clears it when
+      // `compilePrograms()` finishes, but never calls `stop()` in the normal
+      // (non-context-loss) path -- `start()` is only reached conditionally,
+      // deep in a context-loss-recovery branch. So the loop, once started at
+      // page boot, keeps firing every animation frame straight through a DSL
+      // swap: `pipeline.render()` (shaders/src/runtime/pipeline.js:1285)
+      // itself checks `isCompiling` and no-ops WHILE the graph is actually
+      // compiling, but the instant that flag clears, the still-running,
+      // never-stopped loop's very next tick -- and every tick after it --
+      // is a REAL render() call, completely independent of anything UI-
+      // related. It keeps free-running on wall-clock time until this
+      // script's own `__noisemakerSetPaused(true)` call (below) actually
+      // executes in the page and reaches `renderer.stop()`, which is subject
+      // to real Playwright/CDP round-trip latency from when Node issues it
+      // to when the page-side JS runs -- an inherently load-dependent
+      // window, exactly matching the observed spread (1, 26, 27, 28 extra
+      // renders measured across otherwise-identical runs; a fixed, graph-
+      // structure-driven count would not vary like that). The reference's
+      // own deterministic tests sidestep this entirely by construction --
+      // e.g. shaders/tests/test_spawnpoint_wgsl_vertical_mirror.mjs creates
+      // a CanvasRenderer and drives it purely via direct `renderer.render(t)`
+      // calls, and never calls `renderer.start()` at all, so the RAF loop
+      // never exists to race against. (Round 3 originally attributed this to
+      // demo/shaders/index.html's onControlChange-driven
+      // renderSingleFrameIfPaused(); that call site is real but is gated on
+      // `isPaused`, which doesn't explain the timing here -- corrected after
+      // re-review traced the actual mechanism to the RAF loop above.) Not
+      // reference-engine chaos, not a downstream-port bug -- a genuine race
+      // in THIS file's own capture protocol. `resize()` does not clear it
+      // (`createSurfaces()` short-circuits when dimensions are already
       // correct; confirmed empirically, including forcing a real 1x1->size
-      // dimension churn to defeat that short-circuit).
+      // dimension churn to defeat that short-circuit) -- the fix has to
+      // reach past whatever caused the extra renders and re-establish a
+      // known-clean state directly, which is what it does below regardless
+      // of the exact upstream cause.
       //
       // Fix: exploit init.frag's OWN existing respawn contract directly --
       // `needsRespawn = resetState || (pPos.w < 0.5) || (time<0.01 &&
@@ -476,6 +501,29 @@ async function main () {
         const backend = p?.backend
         const gl = backend?.gl
         if (!p || !gl) return { error: 'no pipeline/gl' }
+        // NOTE (round 4 re-review): this predicate is a deliberate SUPERSET
+        // of the reference's own canonical isStateSurface/_is_state_surface
+        // (pipeline.js swapBuffers() / the godot and Qt ports' matching
+        // heuristics), which this harness fix does not need to match
+        // exactly -- the two extra patterns (`/state/i` beyond the reference's
+        // exact xyz/vel/rgba/trail family, and `/_pheromone_/`/`/_trail_/`
+        // as substring matches rather than the reference's stricter suffix/
+        // regex forms) intentionally clear MORE surfaces than the reference
+        // would classify as "state," which is safe and correct for this
+        // fix's actual job (force a full, clean sim reset before the 8-frame
+        // protocol -- clearing a non-state surface here is a harmless no-op
+        // for anything downstream, since nothing else in this file reads a
+        // surface's PRE-reset content). It would NOT be safe to reuse this
+        // broadened predicate anywhere that needs to match the reference's
+        // real ping-pong/state semantics exactly (e.g. a backend's own
+        // hazard-surface classification) -- and if a future surface ever
+        // matches this predicate WITHOUT having an init-shader "alive/dead"
+        // respawn contract like this graph family's `pPos.w < 0.5` (some
+        // other effect's own state convention, or a surface this predicate
+        // over-matches by name alone), clearing it to (0,0,0,0) here would
+        // just leave it zeroed with no shader-side respawn to repopulate it
+        // -- worth a second look before extending this fix to a new fixture
+        // family, not assumed to generalize for free.
         const isStateSurface = (name) =>
           name === 'xyz' || name === 'vel' || name === 'rgba' || name === 'trail' ||
           name.endsWith('_xyz') || name.endsWith('_vel') || name.endsWith('_rgba') || name.endsWith('_trail') ||
