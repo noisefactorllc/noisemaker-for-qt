@@ -163,6 +163,121 @@ async function capture (page, globals) {
   return encodePng(width, height, topDown)
 }
 
+// ---- Diagnostic mode: NM_DUMP_INTERMEDIATES ------------------------------
+// Round-3 per-frame intermediate-state bisection (task-T5, physarum agent-
+// state parity investigation). Reads back named `pipeline.surfaces` bare-name
+// entries' CURRENT read-side physical texture straight from the page's own
+// WebGL2Backend registry (`pipeline.backend.textures`), the exact same
+// lookup `capture()` above already does for the final render surface — this
+// just generalizes it to arbitrary intermediate/state surfaces and writes
+// each as a raw float32 .bin (LE, RGBA-interleaved, bottom-up GL row order,
+// NOT flipped -- the Qt-side dumper this compares against also skips the
+// flip, since this diagnostic compares GPU buffer contents directly, not
+// display-oriented images). Execute-only against the reference: this reads
+// live page JS state via Playwright's ordinary page.evaluate() (the same
+// mechanism `capture()`/the render-loop already use throughout this file);
+// no reference-repo file is opened, read from disk, or written.
+//
+// Env: NM_DUMP_INTERMEDIATES=1 to enable. NM_DUMP_SURFACES="bare,names,here"
+// to override the default surface list (comma-separated bare texId names,
+// matching `pipeline.surfaces` keys -- i.e. WITHOUT the `global_` prefix).
+// Default targets physarumNoSense's own surfaces (see task-T5-report.md
+// round-3 section for why these four): the pointsEmit/physarum agent-state
+// MRT group and both trail accumulators.
+const DEFAULT_DUMP_SURFACES = [
+  'xyz_node_1', 'vel_node_1', 'rgba_node_1',
+  'physarum_pheromone_chain_0', 'points_trail_node_1'
+]
+
+function dumpSurfaceList () {
+  const raw = process.env.NM_DUMP_SURFACES
+  if (!raw) return DEFAULT_DUMP_SURFACES
+  return raw.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+// Reads back each named bare surface's current READ-side physical texture.
+// Returns { [bareId]: { width, height, base64 } | { error, availableSurfaceKeys, availableTextureKeys } }.
+async function dumpIntermediates (page, globals, bareIds) {
+  return page.evaluate(({ g, bareIds }) => {
+    // Chunked Uint8Array->base64 (avoids String.fromCharCode.apply stack
+    // limits on the ~256KB+ buffers a 256x256 rgba32f surface produces).
+    function toBase64 (typedArray) {
+      const bytes = new Uint8Array(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength)
+      let binary = ''
+      const chunk = 8192
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk))
+      }
+      return btoa(binary)
+    }
+    const pipeline = window[g.renderingPipeline]
+    const out = {}
+    if (!pipeline) { out.__error = 'no pipeline'; return out }
+    const backend = pipeline.backend
+    const gl = backend?.gl
+    if (!gl) { out.__error = 'no gl'; return out }
+    for (const bareId of bareIds) {
+      const surf = pipeline.surfaces?.get(bareId)
+      const physicalKey = surf ? surf.read : bareId
+      const info = backend.textures?.get(physicalKey)
+      if (!info?.handle) {
+        out[bareId] = {
+          error: `no texture at physicalKey=${physicalKey} (surf=${surf ? JSON.stringify(surf) : 'undefined'})`,
+          availableSurfaceKeys: Array.from(pipeline.surfaces?.keys() || []),
+          availableTextureKeys: Array.from(backend.textures?.keys() || [])
+        }
+        continue
+      }
+      const { handle, width, height, glFormat } = info
+      const fbo = gl.createFramebuffer()
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, handle, 0)
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fbo)
+        out[bareId] = { error: 'FBO incomplete', physicalKey }
+        continue
+      }
+      // Match capture()'s own isFloat test: rgba8 surfaces (e.g. this
+      // graph's rgba_node_1) must be read as UNSIGNED_BYTE -- readPixels
+      // with FLOAT against an 8-bit-normalized framebuffer is an ANGLE
+      // GL_INVALID_OPERATION (silently leaves the buffer unwritten, not a
+      // JS exception), caught empirically on the first run of this probe.
+      const isFloat = glFormat?.type === gl.HALF_FLOAT || glFormat?.type === gl.FLOAT
+      gl.finish()
+      let dtype, base64
+      if (isFloat) {
+        const buf = new Float32Array(width * height * 4)
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, buf)
+        dtype = 'f32'
+        base64 = toBase64(buf)
+      } else {
+        const buf = new Uint8Array(width * height * 4)
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+        dtype = 'u8'
+        base64 = toBase64(buf)
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      gl.deleteFramebuffer(fbo)
+      out[bareId] = { width, height, physicalKey, dtype, base64 }
+    }
+    return out
+  }, { g: globals, bareIds })
+}
+
+function writeIntermediateDump (outDir, programName, frameIndex, bareId, entry) {
+  if (entry.error) {
+    process.stderr.write(`[introspect] ${programName} frame${frameIndex} ${bareId}: ${entry.error}\n` +
+      `  availableSurfaceKeys=${JSON.stringify(entry.availableSurfaceKeys || [])}\n` +
+      `  availableTextureKeys=${JSON.stringify(entry.availableTextureKeys || [])}\n`)
+    return
+  }
+  const { width, height, dtype, base64 } = entry
+  const buf = Buffer.from(base64, 'base64')
+  const path = join(outDir, `${programName}.frame${frameIndex}.${bareId}.w${width}.h${height}.${dtype}.bin`)
+  writeFileSync(path, buf)
+  process.stderr.write(`[introspect] wrote ${path} (${buf.length} bytes)\n`)
+}
+
 function parseArgs (argv) {
   const opts = { time: 0.25, size: 256, backend: 'webgl2', runSeconds: 0, sampleEvery: 5 }
   const pos = []
@@ -322,6 +437,76 @@ async function main () {
       return true
     }, opts.size, { timeout: STATUS_TIMEOUT })
 
+    if (opts.runSeconds === 0) {
+      // ROOT-CAUSE FIX (round 3, task-T5 physarum agent-state parity
+      // investigation): demo/shaders/index.html's renderSingleFrameIfPaused()
+      // fires on every UI control-panel onControlChange event, which fire in
+      // an indeterminate, racy COUNT (directly measured: 1, 26, 27, 28
+      // across otherwise-identical runs) while the controls panel rebuilds
+      // after a DSL swap -- each firing is a real `pipeline.render()` call
+      // that silently advances every stateful surface BEFORE the "official"
+      // 8-frame protocol below starts. For a many-parameter graph
+      // (physarumNoSense: ~20 uniform-bound controls across pointsEmit +
+      // physarum + pointsRender) this bakes dozens of uncounted, harness-
+      // timing-dependent extra simulation steps into the captured golden --
+      // not reference-engine chaos, not a downstream-port bug, a genuine
+      // race in THIS file's own capture protocol. `resize()` does not clear
+      // it (`createSurfaces()` short-circuits when dimensions are already
+      // correct; confirmed empirically, including forcing a real 1x1->size
+      // dimension churn to defeat that short-circuit).
+      //
+      // Fix: exploit init.frag's OWN existing respawn contract directly --
+      // `needsRespawn = resetState || (pPos.w < 0.5) || (time<0.01 &&
+      // pPos.w==0.0)` -- the `pPos.w < 0.5` ("dead/uninitialized") clause
+      // does not depend on `time` or `resetState` at all. Clearing every
+      // stateful surface's CURRENT physical texture(s) to (0,0,0,0) makes
+      // every agent's `alive` flag 0, so the very next render() call
+      // unconditionally respawns every agent from a genuine clean slate --
+      // the same mechanism the shader already uses for ordinary agent death/
+      // respawn, not a harness-specific hack. Scoped to `opts.runSeconds ===
+      // 0` (the discrete-8-frame protocol) only -- NOT applied before the
+      // timed-sampling branch above, whose continuously-evolving fluid/
+      // feedback sims (navierStokes etc.) have no "respawn from zero"
+      // semantics and were not part of this investigation. Verified fix:
+      // re-minted physarumNoSense golden with this in place matches the
+      // already-independently-verified-correct Qt candidate bit-for-bit at
+      // all 8 frames (see task-T5-report.md round-3 section).
+      const cleared = await page.evaluate(() => {
+        const p = window.__noisemakerRenderingPipeline
+        const backend = p?.backend
+        const gl = backend?.gl
+        if (!p || !gl) return { error: 'no pipeline/gl' }
+        const isStateSurface = (name) =>
+          name === 'xyz' || name === 'vel' || name === 'rgba' || name === 'trail' ||
+          name.endsWith('_xyz') || name.endsWith('_vel') || name.endsWith('_rgba') || name.endsWith('_trail') ||
+          /state/i.test(name) || /^(xyz|vel|rgba|points_trail)_node_\d+$/.test(name) ||
+          /_pheromone_/.test(name) || /_trail_/.test(name)
+        const clearedNames = []
+        for (const [bareId, surf] of p.surfaces.entries()) {
+          if (!isStateSurface(bareId)) continue
+          for (const physicalKey of new Set([surf.read, surf.write].filter(Boolean))) {
+            const info = backend.textures.get(physicalKey)
+            if (!info?.handle) continue
+            const fbo = gl.createFramebuffer()
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, info.handle, 0)
+            if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
+              gl.clearColor(0, 0, 0, 0)
+              gl.clear(gl.COLOR_BUFFER_BIT)
+            }
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+            gl.deleteFramebuffer(fbo)
+          }
+          clearedNames.push(bareId)
+        }
+        gl.finish()
+        return { clearedNames }
+      })
+      if (cleared.clearedNames?.length) {
+        process.stderr.write(`[parity] reset stateful surfaces before the 8-frame protocol: ${JSON.stringify(cleared.clearedNames)}\n`)
+      }
+    }
+
     // ---- 3. Render + capture: one pinned frame, or timed samples for statefuls.
     if (opts.runSeconds > 0) {
       // Timed-sampling mode (fluid/feedback sims): step total_frames at 1/600
@@ -346,6 +531,34 @@ async function main () {
         process.stderr.write(`[parity] wrote ${sp}\n`)
       }
       sampled = true
+    } else if (process.env.NM_DUMP_INTERMEDIATES) {
+      // Round-3 diagnostic: same 8-frame protocol as the plain branch below,
+      // but driven one render() call at a time from Node so we can read back
+      // intermediate surfaces after each frame. Same pause/pin-time setup
+      // already done above; identical `p.render(time)` call per iteration.
+      await page.evaluate(({ time }) => {
+        if (window.__noisemakerSetPausedTime) window.__noisemakerSetPausedTime(time)
+      }, { time: opts.time })
+      const bareIds = dumpSurfaceList()
+      const dumpOutDir = join(opts.outDir, 'introspect', 'golden')
+      mkdirSync(dumpOutDir, { recursive: true })
+      for (let i = 0; i < 8; i++) {
+        await page.evaluate(({ time }) => {
+          const p = window.__noisemakerRenderingPipeline
+          const r = window.__noisemakerCanvasRenderer
+          if (p && p.render) p.render(time)
+          else if (r && r.render) r.render(time)
+        }, { time: opts.time })
+        const dump = await dumpIntermediates(page, globals, bareIds)
+        if (dump.__error) {
+          process.stderr.write(`[introspect] frame ${i}: ${dump.__error}\n`)
+          continue
+        }
+        for (const bareId of bareIds) {
+          writeIntermediateDump(dumpOutDir, programName, i, bareId, dump[bareId])
+        }
+      }
+      pngBuffer = await capture(page, globals)
     } else {
       // Pin the normalized frame time, then render 8 deterministic frames by driving
       // the PIPELINE directly (the CanvasRenderer re-syncs canvas size per frame and
