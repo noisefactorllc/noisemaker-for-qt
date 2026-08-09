@@ -9,7 +9,9 @@
 
 #include <memory>
 
+#include "agents.h"
 #include "graph.h"
+#include "pingpong.h"
 #include "surface.h"
 
 class QOpenGLContext;
@@ -18,13 +20,15 @@ class QOpenGLFunctions_4_1_Core;
 
 namespace nm {
 
-// QOpenGL executor for graphs whose passes are all `passType:"effect"`
-// (fullscreen-triangle draws) or `passType:"blit"` — the T3 scope. Mirrors
-// reference WebGL2 backend semantics (ARCHITECTURE.md "Runtime model"
-// table; reference/05-webgl2-backend.md). MRT, points/billboards, feedback
-// ping-pong, `repeat` looping, and UBOs are explicitly NOT implemented here
-// — see the T5 task brief, which extends this class without changing this
-// public API.
+// QOpenGL executor for the full render-graph runtime model
+// (ARCHITECTURE.md "Runtime model" table; reference/05-webgl2-backend.md):
+// fullscreen-triangle effect passes, `passType:"blit"`, MRT, agent points/
+// billboards, feedback ping-pong (the family hazard rule, pingpong.h),
+// `repeat: N` intra-frame loops, and the one std140 UBO effect
+// (`synth/remap`). The public API is unchanged from T3/T4 — callers drive
+// settle/timed-sample semantics externally by calling render(t) repeatedly
+// (see nm-render `--frames` / `--samples`); this class does not decide how
+// many frames a graph needs on its own.
 class Backend {
 public:
     Backend();
@@ -59,16 +63,30 @@ private:
         unsigned int handle = 0;
         QHash<QString, int> uniformLocations;          // GLint
         QHash<QString, unsigned int> uniformTypes;     // GLenum
+        // synth/remap's std140 UBO (ARCHITECTURE.md "Uniforms"; detected
+        // generically -- see programFor()). Every other program in the
+        // corpus has hasUbo == false and the three fields below stay zero.
+        bool hasUbo = false;
+        unsigned int uboBuffer = 0;
+        int uboBlockSize = 0;
     };
 
     void createFullscreenVao();
+    void createEmptyVao();
     const CompiledProgram& programFor(const Pass& pass);
     QByteArray loadEffectSource(const Pass& pass) const;
+    QByteArray loadVertexSource(const Pass& pass) const;
     void executePass(const Graph& graph, const Pass& pass);
     void bindTextures(const Graph& graph, const CompiledProgram& program, const Pass& pass);
     void bindUniforms(const CompiledProgram& program, const Pass& pass);
+    void bindUniformBlock(const CompiledProgram& program, const Pass& pass);
     void setUniformValue(int location, unsigned int glType, const QJsonValue& value);
     QJsonObject engineUniforms() const;
+    int resolveRepeatCount(const Pass& pass) const;
+    int resolvePointCount(const Graph& graph, const Pass& pass);
+    GpuSurface& resolveInputSurface(const Graph& graph, const QString& texId);
+    GpuSurface& resolveOutputSurface(const Graph& graph, const QString& texId);
+    QJsonObject loadEffectUniformLayout(const QString& ns, const QString& func);
 
     QOpenGLContext* m_context = nullptr;
     QOpenGLContext* m_ownedContext = nullptr;
@@ -79,12 +97,17 @@ private:
     QSize m_size;
     unsigned int m_fullscreenVao = 0;
     unsigned int m_fullscreenVbo = 0;
+    unsigned int m_emptyVao = 0; // no attributes/buffer; agent passes draw by gl_VertexID alone
     int m_maxTextureUnits = 16; // GL-guaranteed minimum; refined in setup() via GL_MAX_TEXTURE_IMAGE_UNITS
 
     QHash<QString, CompiledProgram> m_programs; // cache key -> compiled program
     std::unique_ptr<SurfaceCache> m_surfaces;   // texId -> GpuSurface registry
     QString m_currentRenderSurface;             // last graph.renderSurface seen by render()
     double m_time = 0.0;
+
+    PingPongState m_pingpong;                     // cross-frame ping-pong bookkeeping (pingpong.h)
+    QJsonObject m_mergedUniforms;                  // this render()'s graph-wide uniform merge
+    QHash<QString, QJsonObject> m_uniformLayoutCache; // "ns/func" -> effect JSON's uniformLayout ({} if none)
 };
 
 } // namespace nm
