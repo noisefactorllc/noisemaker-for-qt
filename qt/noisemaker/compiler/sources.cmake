@@ -9,4 +9,7 @@ set(NM_COMPILER_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/diagnostics.cpp
     ${CMAKE_CURRENT_LIST_DIR}/lexer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/parser.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/enums.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/effect_registry.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/validator.cpp
 )
