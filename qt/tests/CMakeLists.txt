@@ -52,3 +52,21 @@ set_tests_properties(test_validator PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_
 # its dump_validate.cpp candidate binary) exist -- see task report.
 add_executable(registry_dump registry_dump.cpp)
 target_link_libraries(registry_dump PRIVATE noisemaker-qt Qt6::Core)
+
+# T10 (expander): same plain-executable convention.
+add_executable(test_expander test_expander.cpp)
+target_link_libraries(test_expander PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_expander COMMAND test_expander)
+set_tests_properties(test_expander PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+
+add_executable(test_resources test_resources.cpp)
+target_link_libraries(test_resources PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_resources COMMAND test_resources)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_expand.mjs. See expand_dump.cpp header for why this is a
+# standalone binary rather than an nm-render flag (no --dump-expand slot
+# was pre-declared in flag_hooks.h at T3; mirrors registry_dump.cpp's own
+# precedent exactly).
+add_executable(expand_dump expand_dump.cpp)
+target_link_libraries(expand_dump PRIVATE noisemaker-qt Qt6::Core)

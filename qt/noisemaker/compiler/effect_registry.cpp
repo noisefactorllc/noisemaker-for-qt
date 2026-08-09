@@ -213,6 +213,11 @@ void EffectRegistry::registerEffect(const QByteArray& rawJson) {
 
     const QString opName = ns.isEmpty() ? func : (ns + QLatin1Char('.') + func);
 
+    // T10: keep the raw bytes addressable by opName so the Expander can
+    // recover pass-level `inputs`/`outputs` key order directly from source
+    // text (see effect_registry.h's rawJson() doc comment).
+    rawJson_.insert(opName, rawJson);
+
     const QJsonObject globals = def.value(QStringLiteral("globals")).toObject();
     QStringList orderedKeys = objectKeyOrder(QString::fromUtf8(rawJson), QStringLiteral("globals"));
     if (orderedKeys.size() != globals.size()) {

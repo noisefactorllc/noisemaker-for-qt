@@ -12,4 +12,8 @@ set(NM_COMPILER_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/enums.cpp
     ${CMAKE_CURRENT_LIST_DIR}/effect_registry.cpp
     ${CMAKE_CURRENT_LIST_DIR}/validator.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/dim.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/resources.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/expander.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/dsl_compiler.cpp
 )

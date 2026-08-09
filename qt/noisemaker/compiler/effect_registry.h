@@ -51,6 +51,7 @@
 // the Validator, matching T8's own no-global-state precedent). loadAll()
 // is idempotent-by-construction (call it once per instance).
 
+#include <QByteArray>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMap>
@@ -178,6 +179,18 @@ public:
     // populates and exposes this table).
     const QJsonObject& defineMap() const { return defineMap_; }
 
+    // Raw file bytes for the effect registered under "<ns>.<func>" (T10 /
+    // Expander concern). QJsonObject does NOT preserve source key order
+    // (see objectKeyOrder()'s header comment in effect_registry.cpp); the
+    // Expander needs the TRUE declaration order of a specific pass's
+    // `inputs`/`outputs` keys to reproduce resources.js's `phys_N`
+    // allocation exactly (reference/04 §1.3 -- order-sensitive, and this
+    // catalog has real, non-alphabetical multi-output passes, e.g.
+    // points/physarum.json's `{outXYZ,outVel,outRGBA}`). Returns an empty
+    // QByteArray if `opName` was never registered. Purely additive to T9's
+    // surface -- does not change any existing method's behavior.
+    QByteArray rawJson(const QString& opName) const { return rawJson_.value(opName); }
+
     // {ops, enums, paramAliases, effectAliases, effectKeys} -- the exact
     // surface parity/check_registry.mjs diffs against tools/dump-
     // registry.mjs's oracle output. Optional/absent fields are omitted
@@ -199,6 +212,7 @@ private:
     QMap<QString, QJsonObject> paramAliases_; // "<ns>.<func>" -> {old:new}, non-empty only
     QMap<QString, QString> effectAliases_;    // "<ns>.<func>" -> replacement name
     QJsonObject defineMap_;                   // "<ns>.<func>" -> {globalKey: DEFINE_NAME}
+    QMap<QString, QByteArray> rawJson_;        // "<ns>.<func>" -> raw file bytes (T10)
     Enums enums_;
 };
 
