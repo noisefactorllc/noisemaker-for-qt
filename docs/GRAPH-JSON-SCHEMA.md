@@ -108,9 +108,11 @@ for screenDivide, always `max(1, …)`).
 - **Formats:** `rgba16f`/`rgba16float` → `GL_RGBA16F`. `rgba32f` → `GL_RGBA32F`. `rgba8`/`rgba8unorm`
   → `GL_RGBA8`. All targets are **linear, never sRGB**; readback is quantized `round(v*255)` to
   8-bit (see ARCHITECTURE.md "Coordinates & color").
-- **texId → FBO attachment:** each texId resolves to a `QOpenGLFramebufferObject` color attachment
-  (double-buffered for `global_o0..o7` state/display surfaces); `phys_N` pooled slots share
-  attachments per the graph's `allocations` map.
+- **texId → FBO attachment:** each texId resolves to its own real GL texture + single-attachment
+  FBO (double-buffered for `global_o0..o7` state/display surfaces). `allocations` (texId → `phys_N`)
+  is compiler-only liveness-allocator bookkeeping, kept for traceability only: neither the reference
+  runtime (`pipeline.js` creates one texture per `graph.textures` entry, keyed by the virtual texId
+  itself) nor `nm::Backend` consumes it for physical aliasing.
 - **defines → injected header:** `pass.defines` are prepended as `#define KEY VALUE` lines above
   the byte-identical reference GLSL source at load time (see PORTING-GUIDE.md "Shader assembly
   contract").

@@ -79,6 +79,7 @@ private:
     QSize m_size;
     unsigned int m_fullscreenVao = 0;
     unsigned int m_fullscreenVbo = 0;
+    int m_maxTextureUnits = 16; // GL-guaranteed minimum; refined in setup() via GL_MAX_TEXTURE_IMAGE_UNITS
 
     QHash<QString, CompiledProgram> m_programs; // cache key -> compiled program
     std::unique_ptr<SurfaceCache> m_surfaces;   // texId -> GpuSurface registry

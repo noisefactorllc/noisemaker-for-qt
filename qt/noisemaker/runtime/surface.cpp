@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace nm {
 
@@ -59,6 +60,19 @@ int resolveDimension(const QJsonValue& spec, int screenSize) {
         }
 
         if (obj.contains(QStringLiteral("screenDivide"))) {
+            // FIX ROUND 1 disclosure: same simplification as the `param`
+            // branch above, previously undisclosed here. Reference
+            // (pipeline.js:1244-1247): `divisor = uniforms[spec.screenDivide]
+            // ?? spec.default ?? 1`. No live pass-uniform context is wired
+            // up in T3 (see this function's header doc), so
+            // `uniforms[spec.screenDivide]` is always treated as absent and
+            // this resolves straight to `spec.default ?? 1`, matching the
+            // reference only when the named uniform is in fact undefined.
+            // `safeDivisor` below is a defensive addition beyond the
+            // reference: JS division by 0 yields Infinity (safely
+            // Math.round/Math.max'd to Infinity), but casting an infinite
+            // double to `int` in C++ is undefined behavior, so a divisor of
+            // exactly 0 is treated as 1 instead of reproducing that UB.
             const double divisor = obj.contains(QStringLiteral("default"))
                 ? obj.value(QStringLiteral("default")).toDouble()
                 : 1.0;
@@ -134,6 +148,24 @@ GpuSurface SurfaceCache::createSurface(int width, int height, const QString& for
     m_gl->glGenFramebuffers(1, &fbo);
     m_gl->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     m_gl->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+
+    // reference/05-webgl2-backend.md §10.1 createFBO requires checking
+    // FRAMEBUFFER_COMPLETE after attachment; a silently incomplete FBO
+    // would make every subsequent draw into it a no-op (or driver-defined
+    // garbage) instead of a loud, diagnosable failure.
+    const GLenum fboStatus = m_gl->glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (fboStatus != GL_FRAMEBUFFER_COMPLETE) {
+        m_gl->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        m_gl->glDeleteFramebuffers(1, &fbo);
+        m_gl->glDeleteTextures(1, &texture);
+        throw std::runtime_error(
+            QStringLiteral("nm::SurfaceCache: incomplete framebuffer (status 0x%1) for a %2x%3 '%4' surface")
+                .arg(static_cast<uint>(fboStatus), 0, 16)
+                .arg(width)
+                .arg(height)
+                .arg(format)
+                .toStdString());
+    }
 
     // Clear to transparent black once at creation time only (reference
     // createTexture: "if spec.usage includes 'render', clear to

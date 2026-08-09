@@ -145,6 +145,10 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
         throw std::runtime_error("nm::Backend::setup: failed to resolve OpenGL 4.1 core functions");
     }
 
+    GLint maxTextureUnits = m_maxTextureUnits;
+    m_gl->glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
+    m_maxTextureUnits = maxTextureUnits;
+
     m_surfaces = std::make_unique<SurfaceCache>(m_gl);
     createFullscreenVao();
 }
@@ -284,17 +288,39 @@ const Backend::CompiledProgram& Backend::programFor(const Pass& pass) {
 }
 
 QJsonObject Backend::engineUniforms() const {
-    // Exact set per the T3 brief and reference/04 §10.1 updateGlobalUniforms:
-    // time, resolution, tileOffset, fullResolution, aspectRatio, renderScale.
-    // (deltaTime/frame/aspect/audio/midi are pipeline bookkeeping or
-    // external-input state not read by any fullscreen-effect-pass shader in
-    // this corpus and are out of T3 scope.)
+    // reference/04 §10.1 updateGlobalUniforms (shaders/src/runtime/pipeline.js
+    // ~L1385-1427): `aspect` and `aspectRatio` are BOTH set, to the SAME
+    // value, every frame — `g.aspect = g.aspectRatio = aspectValue` (or
+    // `= fullAspect` under tile-region export, which T3 does not implement;
+    // `_tileOffset`/`_fullResolution` are always null in our scope, so the
+    // two branches collapse to the same `width/height` formula here).
+    // FIX ROUND 1: `aspect` was missing entirely. Nine fullscreen-pass
+    // fragment shaders in this corpus declare `uniform float aspect;`
+    // (distinct from `aspectRatio`; verified via `grep -rl "uniform float
+    // aspect;" qt/noisemaker/shaders/effects/`: synth/mandala, synth/osc2d,
+    // synth/pattern, synth/perlin, synth/polygon (shape.frag),
+    // synth/sacredGeometry, filter/repeat, filter/scale, filter/scroll —
+    // plus render/meshRender/render.vert, out of T3's fullscreen-pass
+    // scope). Leaving it unbound means GL's uniform default (0.0) reaches
+    // those shaders instead of the real aspect ratio: `st.x *= aspect`
+    // silently zeroes a coordinate (mandala: stripe/garbage output),
+    // `st.x /= aspect` divides by zero (repeat/scale/scroll: Inf/NaN into
+    // the rgba16f intermediate, then undefined behavior on the final
+    // float->uint8 readback cast). See task report "Fix round 1" for the
+    // before/after verification.
+    //
+    // Full engine-uniform set: time, resolution, tileOffset, fullResolution,
+    // aspect, aspectRatio, renderScale. (deltaTime/frame/audio/midi are
+    // pipeline bookkeeping or external-input state not read by any
+    // fullscreen-effect-pass shader in this corpus and remain out of T3
+    // scope.)
     QJsonObject globals;
     globals.insert(QStringLiteral("time"), m_time);
     globals.insert(QStringLiteral("resolution"), QJsonArray{m_size.width(), m_size.height()});
     globals.insert(QStringLiteral("tileOffset"), QJsonArray{0, 0});
     globals.insert(QStringLiteral("fullResolution"), QJsonArray{m_size.width(), m_size.height()});
     const double aspect = m_size.height() != 0 ? double(m_size.width()) / double(m_size.height()) : 1.0;
+    globals.insert(QStringLiteral("aspect"), aspect);
     globals.insert(QStringLiteral("aspectRatio"), aspect);
     globals.insert(QStringLiteral("renderScale"), 1.0);
     return globals;
@@ -397,9 +423,28 @@ void Backend::bindUniforms(const CompiledProgram& program, const Pass& pass) {
 
 void Backend::bindTextures(const Graph& graph, const CompiledProgram& program, const Pass& pass) {
     int unit = 0;
+    // Iterated in QJsonObject's own (sorted-by-key) order rather than the
+    // graph JSON's original textual/insertion order (see shader_assembly.h
+    // and graph.h's notes on this Qt build's QJsonObject behavior). This is
+    // deliberate, not an oversight: texture-unit *numbers* are an
+    // implementation detail — each sampler uniform is told its own assigned
+    // unit explicitly below (`glUniform1i(loc, unit)`), so any consistent
+    // permutation of which samplerName gets unit 0 vs. unit 1 etc. produces
+    // the same final bindings and identical rendered output.
     for (auto it = pass.inputs.begin(); it != pass.inputs.end(); ++it) {
         const QString samplerName = it.key();
         const QString texId = it.value().toString();
+
+        if (unit >= m_maxTextureUnits) {
+            // reference/05 §8.3 bindTextures / webgl2.js ~L1364-1370:
+            // ERR_TOO_MANY_TEXTURES.
+            throw std::runtime_error(QStringLiteral(
+                "nm::Backend: pass '%1' binds more textures than the GL implementation "
+                "supports (limit %2)")
+                                          .arg(pass.id)
+                                          .arg(m_maxTextureUnits)
+                                          .toStdString());
+        }
 
         GLuint handle = 0;
         if (!texId.isEmpty() && texId != QStringLiteral("none")) {
