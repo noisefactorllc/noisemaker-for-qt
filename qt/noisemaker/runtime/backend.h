@@ -58,6 +58,31 @@ public:
     // if no graph has been rendered yet / the surface was never written.
     QImage readSurface() const;
 
+    // Deletes every GL object this Backend owns (SurfaceCache textures/
+    // FBOs, compiled programs + their UBOs, the fullscreen/empty VAOs/VBO)
+    // and leaves the object in the same state as a freshly-default-
+    // constructed one w.r.t. every field it touches (m_gl null, m_surfaces
+    // null, m_programs empty, VAO/VBO ids zeroed) — safe to call setup()
+    // on again, or to simply let the Backend be destroyed afterward.
+    //
+    // Idempotent: guards on `m_gl` at entry and nulls it at exit, so a
+    // second call is a no-op. Requires the CALLER to already have a valid
+    // context current (unlike the owned-context destructor path, this
+    // function never calls makeCurrent()/doneCurrent() itself — it doesn't
+    // know which surface to bind, and for an externally-owned context that
+    // is the caller's responsibility, not this Backend's).
+    //
+    // Exists specifically for hosts embedding Backend against a context
+    // THEY own and control the lifetime of (e.g. a QOpenGLWidget) — setup()
+    // never asserts sole ownership of that context, but until this
+    // function existed there was no way for such a host to free this
+    // Backend's GPU resources before the context itself went away (the
+    // destructor only does real GL cleanup on the OWNED-context path; see
+    // backend.cpp). Host contract: call this while the doomed context is
+    // still current and valid — e.g. connected to
+    // QOpenGLContext::aboutToBeDestroyed() — not after.
+    void releaseGl();
+
 private:
     struct CompiledProgram {
         unsigned int handle = 0;

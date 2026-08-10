@@ -44,6 +44,23 @@ protected:
 private:
     void checkGlErrors(const char* where);
 
+    // Connected (in initializeGL()) to THIS call's context's own
+    // QOpenGLContext::aboutToBeDestroyed() -- the canonical Qt pattern for
+    // freeing GL resources tied to a context Qt is about to tear down out
+    // from under this widget (reparent / screen / GPU change), while that
+    // context is still valid enough to make current. Releases the CURRENT
+    // m_backend's GPU objects via nm::Backend::releaseGl() (fix round 2:
+    // without this, every re-entry leaked the outgoing Backend's entire
+    // GPU resource set, since nm::Backend's own destructor only does real
+    // GL cleanup for a context IT owns, never for an externally-owned one
+    // like this widget's). Fires before the NEXT initializeGL() call that
+    // the context recreation triggers. No explicit disconnect needed: the
+    // connection's sender (the old QOpenGLContext) is itself destroyed as
+    // part of the same teardown, which Qt disconnects automatically; each
+    // initializeGL() call connects fresh to that call's (different)
+    // context object.
+    void cleanupGl();
+
     nm::EffectRegistry m_registry;
     nm::Graph m_graph;
 

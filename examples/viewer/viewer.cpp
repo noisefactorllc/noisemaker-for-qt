@@ -213,6 +213,16 @@ void Viewer::checkGlErrors(const char* where) {
     }
 }
 
+void Viewer::cleanupGl() {
+    std::fprintf(stderr,
+                  "viewer: context aboutToBeDestroyed -- releasing this Backend's GL resources "
+                  "before teardown\n");
+    if (!m_backend) return; // nothing set up yet on this context (e.g. a prior initializeGL() failed)
+    makeCurrent();          // the dying context is still valid here -- see initializeGL()'s comment
+    m_backend->releaseGl();
+    doneCurrent();
+}
+
 void Viewer::initializeGL() {
     // Re-entry guard (coordinator review finding): Qt re-invokes
     // initializeGL() whenever the widget's underlying context is recreated
@@ -236,6 +246,21 @@ void Viewer::initializeGL() {
                       m_initializeCount + 1);
     }
     ++m_initializeCount;
+
+    // Fix round 2: the re-entry guard above stops setup() from ever being
+    // called twice on one Backend, but it does NOT by itself free the
+    // OUTGOING Backend's GPU objects -- nm::Backend::~Backend() only does
+    // real GL cleanup for a context it OWNS (nm-render's offscreen mode);
+    // for this widget's externally-owned context, the destructor is
+    // intentionally no-GL (deleting someone else's context is not this
+    // class's place), so without explicit action every re-entry leaked the
+    // previous Backend's entire GPU resource set. The canonical Qt fix:
+    // connect to THIS (about-to-become-outgoing) context's own
+    // aboutToBeDestroyed() signal, which fires while the context is still
+    // valid -- i.e. before Qt actually tears it down and before the next
+    // initializeGL() call -- and release the (still-current) Backend's GL
+    // objects right there. See cleanupGl().
+    connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, &Viewer::cleanupGl);
 
     const QString dataRoot = resolveDataRoot();
     if (!QDir(dataRoot).exists(QStringLiteral("effects")) || !QDir(dataRoot).exists(QStringLiteral("shaders"))) {

@@ -99,27 +99,60 @@ float jsonArrayComponent(const QJsonArray& arr, int index, float fallback) {
 
 Backend::Backend() = default;
 
+// See backend.h for the full contract (idempotent; caller must already have
+// a valid context current). Extracted from the destructor's owned-context
+// branch (T7 fix round 2) so an external-context host (examples/viewer) can
+// run the exact same GPU cleanup while ITS context is still alive, instead
+// of only on Backend destruction with a context Backend itself owns.
+void Backend::releaseGl() {
+    if (!m_gl) return; // nothing set up, or already released
+
+    if (m_surfaces) {
+        m_surfaces->releaseAll();
+        m_surfaces.reset();
+    }
+    for (auto it = m_programs.begin(); it != m_programs.end(); ++it) {
+        if (it->hasUbo) {
+            m_gl->glDeleteBuffers(1, &it->uboBuffer);
+        }
+        m_gl->glDeleteProgram(it->handle);
+    }
+    m_programs.clear();
+    if (m_fullscreenVao) {
+        m_gl->glDeleteVertexArrays(1, &m_fullscreenVao);
+        m_fullscreenVao = 0;
+    }
+    if (m_fullscreenVbo) {
+        m_gl->glDeleteBuffers(1, &m_fullscreenVbo);
+        m_fullscreenVbo = 0;
+    }
+    if (m_emptyVao) {
+        m_gl->glDeleteVertexArrays(1, &m_emptyVao);
+        m_emptyVao = 0;
+    }
+
+    delete m_gl;
+    m_gl = nullptr;
+}
+
 Backend::~Backend() {
+    // Owned-context path (nm-render's offscreen mode): behavior here is
+    // PARITY-CRITICAL and unchanged from before releaseGl() existed --
+    // same makeCurrent/cleanup/doneCurrent sequence, same GL calls, same
+    // order. releaseGl() now does the actual deletion (previously inlined
+    // here) and, as one of its own postconditions, deletes and nulls
+    // `m_gl` itself; the unconditional `delete m_gl` below is consequently
+    // a safe no-op for this path (delete-on-nullptr), not a double-delete.
+    //
+    // External-context path (examples/viewer and similar hosts): stays
+    // NO-GL here, exactly as before -- `m_ownedContext` is null so the
+    // branch below never runs. A host that wants its GPU objects freed
+    // before the (externally-owned) context goes away must call
+    // releaseGl() itself while that context is still current -- see
+    // Viewer's QOpenGLContext::aboutToBeDestroyed hook.
     if (m_ownedContext && m_gl) {
         if (m_ownedContext->makeCurrent(m_ownedSurface)) {
-            if (m_surfaces) {
-                m_surfaces->releaseAll();
-            }
-            for (auto it = m_programs.begin(); it != m_programs.end(); ++it) {
-                if (it->hasUbo) {
-                    m_gl->glDeleteBuffers(1, &it->uboBuffer);
-                }
-                m_gl->glDeleteProgram(it->handle);
-            }
-            if (m_fullscreenVao) {
-                m_gl->glDeleteVertexArrays(1, &m_fullscreenVao);
-            }
-            if (m_fullscreenVbo) {
-                m_gl->glDeleteBuffers(1, &m_fullscreenVbo);
-            }
-            if (m_emptyVao) {
-                m_gl->glDeleteVertexArrays(1, &m_emptyVao);
-            }
+            releaseGl();
             m_ownedContext->doneCurrent();
         }
     }
