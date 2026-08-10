@@ -1,6 +1,7 @@
 #include "shader_assembly.h"
 
 #include <QRegularExpression>
+#include <QSet>
 
 #include <cmath>
 
@@ -11,6 +12,60 @@ namespace {
 bool containsWholeWord(const QString& source, const QString& word) {
     const QRegularExpression re(QStringLiteral("\\b%1\\b").arg(QRegularExpression::escape(word)));
     return re.match(source).hasMatch();
+}
+
+// Boolean-CONTEXT define detection (T6 cross-track bug: curl/curlSeeded).
+// `curl.frag` declares `#ifndef RIDGES / #define RIDGES true / #endif` as
+// its in-shader default, then uses `if (RIDGES)` as a genuine bool
+// condition -- but the compiled graph's `defines` value for RIDGES arrives
+// as the JSON NUMBER 1/0 (QJsonValue::Double), not a JSON boolean. Desktop
+// GLSL 330 core is strict about bool-vs-int in a condition ("Condition must
+// be of type bool" on `if (1)`) where GLSL ES 3.00 / WebGL2-ANGLE tolerates
+// it. Mirrors the TouchDesigner port's proven fix for the exact same class
+// (`td/noisemaker/runtime/td_backend.py` `_bool_define_keys`/`_truthy`,
+// noisemaker-for-touchdesigner) -- deliberately only the narrower of TD's
+// two detectors (the `#define K true|false` source-declared fallback), not
+// TD's additional bare-`if (K)`-without-a-fallback heuristic: scoping this
+// fix to keys the SHADER ITSELF already declares as boolean keeps the
+// blast radius to exactly the curl-class bug, not a blanket "any define
+// used in an `if` is a bool" inference that could reinterpret a genuinely
+// numeric define elsewhere in the corpus.
+//
+// Matches a bare `#define K true` / `#define K false` line anywhere in the
+// source (the `#ifndef K`/`#endif` wrapper around it, if present, isn't
+// part of the match -- TD's own regex doesn't require it either, and it
+// isn't needed: the injected `#define K <value>` line above always wins
+// over the in-shader fallback via the `#ifndef` guard regardless of
+// whether this detector's regex also matched that guard syntax).
+QSet<QString> boolDefineKeys(const QString& source) {
+    static const QRegularExpression re(QStringLiteral("#define\\s+(\\w+)\\s+(?:true|false)\\b"));
+    QSet<QString> keys;
+    QRegularExpressionMatchIterator it = re.globalMatch(source);
+    while (it.hasNext()) {
+        keys.insert(it.next().captured(1));
+    }
+    return keys;
+}
+
+// JS/Python-style truthiness for a QJsonValue, used only for keys
+// `boolDefineKeys()` has identified as boolean-context: a nonzero number,
+// `true`, or a non-empty/non-"0"/non-"false"/non-"none" string is truthy.
+// Matches TD's `_truthy()` exactly (case-insensitive string comparison
+// against the same four literals).
+bool isTruthy(const QJsonValue& value) {
+    switch (value.type()) {
+    case QJsonValue::Bool:
+        return value.toBool();
+    case QJsonValue::Double:
+        return value.toDouble() != 0.0;
+    case QJsonValue::String: {
+        const QString s = value.toString().trimmed().toLower();
+        return s != QStringLiteral("0") && s != QStringLiteral("false") && !s.isEmpty()
+            && s != QStringLiteral("none");
+    }
+    default:
+        return false;
+    }
 }
 
 // IEEE-754 binary32 -> binary16, round-to-nearest-even, and the exact
@@ -127,8 +182,12 @@ QByteArray assembleShader(const QString& source, const QJsonObject& defines, boo
     QString injected = QStringLiteral(
         "#version 330 core\nprecision highp float;\nprecision highp int;\n");
 
+    const QSet<QString> boolKeys = boolDefineKeys(source);
     for (auto it = defines.begin(); it != defines.end(); ++it) {
-        injected += QStringLiteral("#define %1 %2\n").arg(it.key(), formatDefineValue(it.value()));
+        const QString formatted = boolKeys.contains(it.key())
+            ? (isTruthy(it.value()) ? QStringLiteral("true") : QStringLiteral("false"))
+            : formatDefineValue(it.value());
+        injected += QStringLiteral("#define %1 %2\n").arg(it.key(), formatted);
     }
 
     if (needsPackPolyfill) {

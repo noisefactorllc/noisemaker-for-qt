@@ -30,7 +30,21 @@ bool shaderNeedsPackHalfPolyfill(const QString& source);
 //
 // `defines` values are formatted the way the reference formats them:
 // booleans as bare `true`/`false` literals, integer-valued numbers as bare
-// integers.
+// integers -- EXCEPT for a key the shader source itself declares as
+// boolean-context via an in-shader `#define K true|false` fallback (e.g.
+// `curl.frag`'s `#ifndef RIDGES / #define RIDGES true / #endif` guarding
+// `if (RIDGES)`): the compiled graph's define value for such a key can
+// arrive as a JSON NUMBER (1/0) rather than a JSON boolean, and desktop
+// GLSL 330 core rejects a non-bool `if` condition ("Condition must be of
+// type bool") where GLSL ES 3.00/WebGL2-ANGLE tolerates it. For keys this
+// source-scan identifies, the value is serialized by JS/Python-style
+// truthiness (nonzero/true -> `true`, else `false`) regardless of its JSON
+// type. Mirrors the TouchDesigner port's `_bool_define_keys`/`_truthy`
+// fix for the identical bug class (T6 cross-track discovery); deliberately
+// only TD's narrower detector (the in-shader `#define K true|false`
+// fallback), not TD's additional bare-`if (K)` heuristic, to keep this
+// fix's blast radius scoped to keys the shader itself already treats as
+// boolean.
 //
 // NOTE on define order: Qt's QJsonObject does not preserve insertion/parse
 // order — it always iterates keys in sorted order regardless of how the

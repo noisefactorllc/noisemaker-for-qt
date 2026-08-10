@@ -140,6 +140,98 @@ int main() {
               "shaderNeedsPackHalfPolyfill does not false-positive on a longer identifier");
     }
 
+    // 6) RIDGES-style boolean-CONTEXT define: a source that declares its own
+    //    `#ifndef K` + `#define K true|false` fallback must serialize K as a
+    //    bare true/false literal even when the incoming JSON value is a
+    //    NUMBER (1/0), not a JSON boolean -- the actual curl.frag bug this
+    //    fix addresses (T6's triage: the compiled graph's RIDGES define
+    //    arrives as QJsonValue::Double, not Bool, and desktop GLSL 330 core
+    //    rejects `if (1)` -- "Condition must be of type bool" -- where GLSL
+    //    ES/ANGLE tolerates it). Mirrors the TouchDesigner port's
+    //    `_bool_define_keys`/`_truthy` precedent (td_backend.py).
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "#ifndef RIDGES\n"
+            "#define RIDGES true\n"
+            "#endif\n"
+            "void main() { if (RIDGES) {} }\n");
+
+        QJsonObject numericTrue;
+        numericTrue.insert(QStringLiteral("RIDGES"), 1);
+        const QString textNumericTrue = QString::fromUtf8(nm::assembleShader(source, numericTrue, false));
+        check(textNumericTrue.contains(QStringLiteral("#define RIDGES true")),
+              "numeric 1 for a source-declared bool-fallback key emits bare 'true'");
+        check(!textNumericTrue.contains(QStringLiteral("#define RIDGES 1")),
+              "numeric 1 for a source-declared bool-fallback key does NOT emit the raw integer");
+
+        QJsonObject numericFalse;
+        numericFalse.insert(QStringLiteral("RIDGES"), 0);
+        const QString textNumericFalse = QString::fromUtf8(nm::assembleShader(source, numericFalse, false));
+        check(textNumericFalse.contains(QStringLiteral("#define RIDGES false")),
+              "numeric 0 for a source-declared bool-fallback key emits bare 'false'");
+        check(!textNumericFalse.contains(QStringLiteral("#define RIDGES 0")),
+              "numeric 0 for a source-declared bool-fallback key does NOT emit the raw integer");
+
+        QJsonObject jsonTrue;
+        jsonTrue.insert(QStringLiteral("RIDGES"), true);
+        const QString textJsonTrue = QString::fromUtf8(nm::assembleShader(source, jsonTrue, false));
+        check(textJsonTrue.contains(QStringLiteral("#define RIDGES true")),
+              "genuine JSON true for a source-declared bool-fallback key still emits bare 'true'");
+
+        QJsonObject jsonFalse;
+        jsonFalse.insert(QStringLiteral("RIDGES"), false);
+        const QString textJsonFalse = QString::fromUtf8(nm::assembleShader(source, jsonFalse, false));
+        check(textJsonFalse.contains(QStringLiteral("#define RIDGES false")),
+              "genuine JSON false for a source-declared bool-fallback key still emits bare 'false'");
+    }
+
+    // 7) A numeric define (NOISE_TYPE 10) in the same source as a bool-
+    //    fallback-declared key (RIDGES) is unaffected -- the bool detection
+    //    is scoped per-key to the source's own declared key set, not a
+    //    blanket "any define near a #define true/false pattern" heuristic.
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "#ifndef RIDGES\n"
+            "#define RIDGES true\n"
+            "#endif\n"
+            "void main() { if (RIDGES) {} }\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("RIDGES"), 1);
+        defines.insert(QStringLiteral("NOISE_TYPE"), 10);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define NOISE_TYPE 10")),
+              "NOISE_TYPE (a numeric define) alongside a bool-fallback key in the same source stays a bare integer, unchanged");
+        check(text.contains(QStringLiteral("#define RIDGES true")),
+              "RIDGES (numeric 1, source-declared bool fallback) still converts to bare 'true' in the same pass");
+    }
+
+    // 8) A source WITHOUT any `#define K true|false` fallback pattern at all
+    //    leaves EVERY define's serialization exactly as formatDefineValue()
+    //    already produced it -- a genuine JSON boolean still serializes as
+    //    true/false (pre-existing behavior, reconfirmed here alongside an
+    //    unrelated define) and, critically, a flag-shaped numeric value
+    //    (0/1) is NOT reinterpreted as a bool just because it happens to be
+    //    0 or 1 -- the detection is anchored to the source's own declared
+    //    key set, never inferred from a value's shape.
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "uniform float scaleX;\n"
+            "void main() { if (OUTPUT_MODE == 1) {} }\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("OUTPUT_MODE"), 1); // flag-shaped (0/1) but genuinely numeric
+        defines.insert(QStringLiteral("RIDGES"), true);   // genuine JSON bool, unrelated to source text
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define OUTPUT_MODE 1")),
+              "a flag-shaped numeric define (0/1) is NOT reinterpreted as bool without a source-declared fallback for that key");
+        check(text.contains(QStringLiteral("#define RIDGES true")),
+              "a genuine JSON boolean define still serializes as true/false even with no source fallback pattern (pre-existing, unaffected behavior)");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_shader_assembly)\n");
         return 0;
