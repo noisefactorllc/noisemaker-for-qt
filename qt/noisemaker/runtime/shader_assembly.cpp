@@ -3,6 +3,7 @@
 #include <QRegularExpression>
 #include <QSet>
 
+#include <algorithm>
 #include <cmath>
 
 namespace nm {
@@ -31,16 +32,69 @@ bool containsWholeWord(const QString& source, const QString& word) {
 // used in an `if` is a bool" inference that could reinterpret a genuinely
 // numeric define elsewhere in the corpus.
 //
+// Strips `//` and `/* */` GLSL comments for SCANNING purposes only -- never
+// applied to the text that actually gets assembled into shader output,
+// which keeps comments verbatim (only `boolDefineKeys()` below consumes
+// this). Each comment span is replaced by a single space (matching the
+// GLSL preprocessor's own "a comment is equivalent to whitespace" rule),
+// with embedded newlines inside a block comment preserved so any future
+// line-oriented scan over this text isn't thrown off. A minimal, correct
+// state machine -- not a regex -- because a regex-based comment stripper is
+// exactly the kind of thing that's easy to get subtly wrong around nested
+// `/`/`*` sequences and unterminated comments; this walks the text once,
+// character by character, with no backtracking.
+//
+// Hardening beyond the TouchDesigner precedent this function's caller
+// otherwise mirrors: TD's own `_BOOL_DEFINE_RE`/`_BOOL_IF_RE` scan the raw
+// (comment-including) shader text, so a `#define K true` sitting inside a
+// `/* */` or `//` comment in a TD-side shader would ALSO misclassify K as
+// boolean-context there. Re-review here found and fixed that gap rather
+// than inheriting it (dormant in this corpus today -- curl.frag's is the
+// only live, uncommented hit anywhere) -- worth flagging back to the
+// family as a possible backport, not assumed to already be fixed upstream.
+QString stripCommentsForScan(const QString& source) {
+    QString out;
+    out.reserve(source.size());
+    const int n = source.size();
+    int i = 0;
+    while (i < n) {
+        const QChar c = source.at(i);
+        if (c == QLatin1Char('/') && i + 1 < n && source.at(i + 1) == QLatin1Char('/')) {
+            i += 2;
+            while (i < n && source.at(i) != QLatin1Char('\n')) {
+                ++i;
+            }
+            out += QLatin1Char(' ');
+        } else if (c == QLatin1Char('/') && i + 1 < n && source.at(i + 1) == QLatin1Char('*')) {
+            i += 2;
+            while (i + 1 < n && !(source.at(i) == QLatin1Char('*') && source.at(i + 1) == QLatin1Char('/'))) {
+                if (source.at(i) == QLatin1Char('\n')) {
+                    out += QLatin1Char('\n');
+                }
+                ++i;
+            }
+            i = std::min(i + 2, n); // skip the closing `*/` (or clamp at EOF if unterminated)
+            out += QLatin1Char(' ');
+        } else {
+            out += c;
+            ++i;
+        }
+    }
+    return out;
+}
+
 // Matches a bare `#define K true` / `#define K false` line anywhere in the
-// source (the `#ifndef K`/`#endif` wrapper around it, if present, isn't
-// part of the match -- TD's own regex doesn't require it either, and it
-// isn't needed: the injected `#define K <value>` line above always wins
-// over the in-shader fallback via the `#ifndef` guard regardless of
-// whether this detector's regex also matched that guard syntax).
+// COMMENT-STRIPPED source (the `#ifndef K`/`#endif` wrapper around it, if
+// present, isn't part of the match -- TD's own regex doesn't require it
+// either, and it isn't needed: the injected `#define K <value>` line above
+// always wins over the in-shader fallback via the `#ifndef` guard
+// regardless of whether this detector's regex also matched that guard
+// syntax).
 QSet<QString> boolDefineKeys(const QString& source) {
     static const QRegularExpression re(QStringLiteral("#define\\s+(\\w+)\\s+(?:true|false)\\b"));
+    const QString scanText = stripCommentsForScan(source);
     QSet<QString> keys;
-    QRegularExpressionMatchIterator it = re.globalMatch(source);
+    QRegularExpressionMatchIterator it = re.globalMatch(scanText);
     while (it.hasNext()) {
         keys.insert(it.next().captured(1));
     }

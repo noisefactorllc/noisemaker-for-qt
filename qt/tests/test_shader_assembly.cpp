@@ -232,6 +232,91 @@ int main() {
               "a genuine JSON boolean define still serializes as true/false even with no source fallback pattern (pre-existing, unaffected behavior)");
     }
 
+    // 9) Comment-awareness: a `#define K true` pattern inside a BLOCK
+    //    comment must not classify K as boolean-context. Re-review found
+    //    the naive regex scan is comment-blind (matches inside `/* */` and
+    //    `//` alike) -- dormant in the shipped corpus today (curl.frag's is
+    //    the only live hit anywhere), but a real correctness gap: a shader
+    //    with a genuinely-numeric K and a stale/commented-out
+    //    `#define K true` note would have its numeric define wrongly
+    //    coerced to a bool literal. K here has a REAL, live, uncommented
+    //    numeric fallback (`#define K 5`) -- only the boolean-looking text
+    //    is inside the comment.
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "/* legacy note: used to be #define K true, now K is a real count */\n"
+            "#ifndef K\n"
+            "#define K 5\n"
+            "#endif\n"
+            "void main() { int n = K; }\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("K"), 7);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define K 7")),
+              "a #define K true|false pattern inside a block comment does NOT classify K as boolean-context");
+        // Isolate the INJECTED defines block (everything before the
+        // original source body reappears) for the negative check -- the
+        // comment's own text legitimately, correctly still contains the
+        // literal substring "#define K true" verbatim in the body (comments
+        // are NOT altered in the assembled output, only the scan input is
+        // comment-stripped), so checking the whole `text` here would be
+        // testing the wrong thing.
+        const int bodyStart = text.indexOf(QStringLiteral("/* legacy note"));
+        check(bodyStart > 0, "the original source body (with its comment intact) is present in the output");
+        const QString injectedHeader = text.left(bodyStart);
+        check(!injectedHeader.contains(QStringLiteral("#define K true"))
+                  && !injectedHeader.contains(QStringLiteral("#define K false")),
+              "the INJECTED define line for K is not a bool literal (block-commented pattern ignored)");
+        check(text.contains(QStringLiteral("/* legacy note: used to be #define K true, now K is a real count */")),
+              "the comment itself is preserved verbatim in the assembled output (only the SCAN is comment-aware)");
+    }
+
+    // 10) Same for a LINE comment (`//`).
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "// old approach: #define K true\n"
+            "#ifndef K\n"
+            "#define K 5\n"
+            "#endif\n"
+            "void main() { int n = K; }\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("K"), 7);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define K 7")),
+              "a #define K true|false pattern inside a line comment does NOT classify K as boolean-context");
+        const int bodyStart = text.indexOf(QStringLiteral("// old approach"));
+        check(bodyStart > 0, "the original source body (with its comment intact) is present in the output");
+        const QString injectedHeader = text.left(bodyStart);
+        check(!injectedHeader.contains(QStringLiteral("#define K true"))
+                  && !injectedHeader.contains(QStringLiteral("#define K false")),
+              "the INJECTED define line for K is not a bool literal (line-commented pattern ignored)");
+        check(text.contains(QStringLiteral("// old approach: #define K true")),
+              "the comment itself is preserved verbatim in the assembled output (only the SCAN is comment-aware)");
+    }
+
+    // 11) Regression: the real curl.frag-shaped fallback (live, uncommented
+    //     #ifndef/#define/#endif) is still detected after comment-stripping
+    //     is added to the scan -- comment-awareness must not blind the scan
+    //     to genuine, uncommented fallback declarations.
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "#ifndef RIDGES\n"
+            "#define RIDGES true\n"
+            "#endif\n"
+            "void main() { if (RIDGES) {} }\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("RIDGES"), 1);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define RIDGES true")),
+              "the real curl.frag-shaped live fallback is still detected after comment-stripping");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_shader_assembly)\n");
         return 0;
