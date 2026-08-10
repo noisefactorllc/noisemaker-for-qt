@@ -89,9 +89,12 @@ examples/viewer/build2/viewer --selfcheck
 
 ## Status, parity, and coverage
 
-Tracked in **[STATUS.md](STATUS.md)** — the single source of truth for parity/coverage numbers.
-This README deliberately does not duplicate them: they move as the corpus-wide sweep runs, and
-STATUS.md is where they get their final numbers once it finishes.
+**210 effect definitions, 311/311 shaders byte-identical, 6/6 compiler oracle gates at 345/345,
+and a corpus-wide pixel sweep at 289 PASS / 45 NEAR / 1 CHAOS / 0 FAIL of 335** — crystallized
+from a from-scratch rebuild and full re-verification. Full detail (the coverage table by
+namespace, every NEAR mechanism with its evidence, the CHAOS entry's isolation evidence, timed and
+live-DSL results, and known limits) is tracked in **[STATUS.md](STATUS.md)**, the single source of
+truth; this README does not duplicate it further.
 
 ## Architecture
 
