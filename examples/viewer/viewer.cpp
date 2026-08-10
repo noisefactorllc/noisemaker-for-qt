@@ -214,6 +214,29 @@ void Viewer::checkGlErrors(const char* where) {
 }
 
 void Viewer::initializeGL() {
+    // Re-entry guard (coordinator review finding): Qt re-invokes
+    // initializeGL() whenever the widget's underlying context is recreated
+    // -- reparenting into a window on a different screen/GPU, a display
+    // reconfiguration, etc. -- not just once at startup.
+    // nm::Backend::setup() is NOT reentrant-safe on an already-set-up
+    // instance (qt/noisemaker/runtime/backend.cpp unconditionally
+    // allocates a fresh QOpenGLFunctions_4_1_Core and re-derives GL state
+    // against whatever context happens to be current, with no guard --
+    // renderer-track-owned, not this task's to change). The fix that stays
+    // within this example's own ownership: never call setup() twice on the
+    // same Backend. m_backend is destroyed and reconstructed from scratch
+    // on EVERY call to this function (first call included), so there is
+    // never a second setup() call on one instance, by construction.
+    m_ready = false; // defensively false for the duration of the rebuild below
+    if (m_initializeCount > 0) {
+        std::fprintf(stderr,
+                      "viewer: initializeGL() invoked again (call #%d) -- Qt recreated this "
+                      "widget's GL context (reparent / screen / GPU change); recreating "
+                      "nm::Backend fresh rather than reusing the old instance\n",
+                      m_initializeCount + 1);
+    }
+    ++m_initializeCount;
+
     const QString dataRoot = resolveDataRoot();
     if (!QDir(dataRoot).exists(QStringLiteral("effects")) || !QDir(dataRoot).exists(QStringLiteral("shaders"))) {
         std::fprintf(stderr,
@@ -226,13 +249,19 @@ void Viewer::initializeGL() {
         m_registry.loadAll(dataRoot);
         m_graph = nm::compileGraph(QString::fromUtf8(kHeroSource), m_registry);
 
+        // A brand-new instance every time (see the re-entry-guard comment
+        // above) -- constructing it here, still before the old one (if
+        // any) is destroyed by this assignment, is safe: Backend's
+        // constructor touches no GL state, only setup() does.
+        m_backend = std::make_unique<nm::Backend>();
+
         // Drive the WIDGET's own already-current context — Qt makes it
         // current before calling initializeGL() — not an offscreen-owned
         // one; that's nm::Backend's OTHER supported mode (the nullptr path
         // nm-render's main.cpp uses). This is the brief's literal ask:
         // "QOpenGLWidget subclass driving nm::Backend with the widget's
         // context."
-        m_backend.setup(context(), dataRoot, size());
+        m_backend->setup(context(), dataRoot, size());
     } catch (const std::exception& e) {
         std::fprintf(stderr, "viewer: initialization failed: %s\n", e.what());
         return; // m_ready stays false; paintGL() below no-ops rather than
@@ -249,7 +278,7 @@ void Viewer::paintGL() {
     if (!m_ready) return;
 
     const double t = std::fmod(m_clock.elapsed() / 1000.0 / kLoopSeconds, 1.0);
-    m_backend.render(m_graph, t);
+    m_backend->render(m_graph, t);
     checkGlErrors("render");
 
     // nm::Backend renders into ITS OWN offscreen FBOs/textures (one per
@@ -263,7 +292,7 @@ void Viewer::paintGL() {
     // only — qt/noisemaker/runtime/backend.h, renderer-track-owned, not
     // this task's to extend) — an acceptable trade for "the smallest
     // honest demonstration" at this resolution.
-    const QImage frame = m_backend.readSurface();
+    const QImage frame = m_backend->readSurface();
     checkGlErrors("readSurface");
 
     QPainter painter(this);

@@ -65,7 +65,7 @@ With no installed `noisemaker-qt` package on `CMAKE_PREFIX_PATH`, this builds ag
 `qt/` tree directly (`add_subdirectory`):
 
 ```sh
-cmake -B examples/viewer/build -S examples/viewer -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
+cmake -B examples/viewer/build -S examples/viewer -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
 cmake --build examples/viewer/build
 examples/viewer/build/viewer              # opens a window with a live animated render
 examples/viewer/build/viewer --selfcheck  # headless-friendly: renders ~3s, screenshots to
@@ -81,7 +81,7 @@ one prefix.
 
 ```sh
 cmake --install qt/build --prefix /path/to/some/prefix
-cmake -B examples/viewer/build2 -S examples/viewer \
+cmake -B examples/viewer/build2 -S examples/viewer -G Ninja \
   -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/qt;/path/to/some/prefix"
 cmake --build examples/viewer/build2
 examples/viewer/build2/viewer --selfcheck

@@ -19,6 +19,8 @@
 #include <QOpenGLWidget>
 #include <QTimer>
 
+#include <memory>
+
 class Viewer : public QOpenGLWidget {
     Q_OBJECT
 public:
@@ -44,8 +46,19 @@ private:
 
     nm::EffectRegistry m_registry;
     nm::Graph m_graph;
-    nm::Backend m_backend;
+
+    // Owned via unique_ptr (not a value member) so initializeGL() can
+    // destroy-and-recreate it wholesale on every call, including re-entry
+    // (Qt re-invokes initializeGL() on reparent / screen-or-GPU change;
+    // nm::Backend::setup() is NOT reentrant-safe on an already-set-up
+    // instance -- see initializeGL()'s comment). nm::Backend is also
+    // neither copyable nor movable (backend.h deletes the copy ops and its
+    // user-declared destructor suppresses the implicit move ops), so a
+    // fresh heap instance is the only way to get a clean one without
+    // touching nm::Backend itself (runtime/, not this task's to edit).
+    std::unique_ptr<nm::Backend> m_backend;
     bool m_ready = false;
+    int m_initializeCount = 0; // >0 on the 2nd+ call to initializeGL() -- re-entry detection only
 
     QElapsedTimer m_clock;   // wall clock -> normalized loop time (paintGL)
     QTimer m_timer;          // ~60fps repaint driver
