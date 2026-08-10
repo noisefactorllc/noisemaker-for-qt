@@ -857,25 +857,62 @@ void Backend::executePass(const Graph& graph, const Pass& pass) {
     int viewportHeight = 0;
 
     if (isMrt) {
-        // MRT: "outputs" keys are the shader's fragment OUT-variable names
-        // (docs/GRAPH-JSON-SCHEMA.md), not attachment indices -- each
-        // corpus MRT shader assigns its own `layout(location=N)` per out
-        // variable, so the attachment index is queried from the linked
-        // program by name (glGetFragDataLocation) rather than assumed from
-        // JSON key iteration order (reference/05 MRT semantics; webgl2.js
+        // MRT: "outputs" keys are USUALLY the shader's fragment OUT-variable
+        // names (docs/GRAPH-JSON-SCHEMA.md) -- each corpus MRT shader
+        // assigns its own `layout(location=N)` per out variable, so the
+        // attachment index is queried from the linked program by name
+        // (glGetFragDataLocation) rather than assumed from JSON key
+        // iteration order (reference/05 MRT semantics; webgl2.js
         // executePass resolves this per-output too, just via its own
-        // resolvedOutputIds bookkeeping).
+        // resolvedOutputIds bookkeeping -- notably NOT via a GL name
+        // lookup at all: the reference has no `gl.getFragDataLocation`
+        // equivalent in its MRT path, it assigns attachments purely by
+        // `Object.keys(outputs)` iteration position, trusting the
+        // compiler's own key order to match each shader's declared
+        // `layout(location=N)` order. This port instead resolves by NAME,
+        // which sidesteps needing to preserve JSON key order at all
+        // (QJsonObject doesn't -- see graph.h's note) PROVIDED the graph
+        // key always equals the GLSL variable name.
+        //
+        // FIX (final fix wave, item 2/3 investigation): that proviso holds
+        // for every points/agent-family MRT shader in the corpus
+        // (outXYZ/outVel/outRGBA/outData/outState1-3 -- graph key ==
+        // GLSL name, verified corpus-wide), but NOT for the render3d
+        // family: every synth3d `precompute.frag` and every
+        // render3d/renderCubemap3d/renderLit3d/renderCubemapSurface.frag
+        // declares its primary output as `layout(location=0) out vec4
+        // fragColor;`, while the compiled graph's key for that exact slot
+        // is `"color"` (matching the single-output branch's own "prefer
+        // the color key" convention below, and docs/GRAPH-JSON-SCHEMA.md's
+        // own outputs example, which lists "color" and "fragColor" as
+        // separate possible names without noting they're the same role
+        // under different effect families). A name-based lookup for
+        // "color" against a program that only declares "fragColor" returns
+        // -1, silently dropping that attachment -- found by direct GPU-
+        // state readback: `node_0_volumeCache` (the actual density field)
+        // stayed all-zero while the sibling `geoOut` attachment (whose key
+        // DOES match its GLSL name) populated correctly, and every
+        // downstream synth3d/render3d/renderCubemap3d fixture rendered
+        // degenerate output as a result -- not a boolean-define bug, a
+        // separate, pre-existing MRT name-resolution gap this investigation
+        // surfaced. Fixed with a narrow, corpus-verified fallback rather
+        // than switching to positional resolution (which would require
+        // preserving true JSON key order through QJsonObject, a much
+        // larger change for a corpus where exactly one alias pair exists).
         QMap<int, unsigned int> attachments;
         bool haveViewport = false;
         for (auto it = pass.outputs.begin(); it != pass.outputs.end(); ++it) {
             const QString texId = it.value().toString();
             GpuSurface& surface = resolveOutputSurface(graph, texId);
-            const GLint location = m_gl->glGetFragDataLocation(program.handle, it.key().toUtf8().constData());
+            GLint location = m_gl->glGetFragDataLocation(program.handle, it.key().toUtf8().constData());
+            if (location < 0 && it.key() == QStringLiteral("color")) {
+                location = m_gl->glGetFragDataLocation(program.handle, "fragColor");
+            }
             const unsigned int textureHandle = surface.texture;
             const int surfaceWidth = surface.width;
             const int surfaceHeight = surface.height;
             if (location < 0) {
-                continue; // shader doesn't declare this out variable; not hit by any corpus program
+                continue; // shader doesn't declare this out variable under either name
             }
             attachments.insert(location, textureHandle);
             if (!haveViewport) {
