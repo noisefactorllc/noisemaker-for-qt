@@ -1,167 +1,183 @@
-# The Chaos Gate — why chaotic agent flows aren't bit-parity on this port
+# The Chaos Gate — this port's own finding, and how it resolved
 
-**TL;DR.** The one **structurally**-divergent class on this port is **chaotic agent flows**
-(`points/flow`, and the north-star `target.dsl` that feeds it into navierStokes). Those render
-correctly, deterministically, and stay bounded — but
-they're a *different instance* of the chaos, not a pixel match (full-chain SSIM 0.5–0.73 over the
-30 s / 5 s sampling). The cause is a **single `pow`**: a spec-legal ~1-ULP rounding difference in
-Godot's shader-compiler that a chaotic feedback loop amplifies into a different particle field.
-This is not a port bug — the shader is byte-identical to the Unity/HLSL port, which gets the
-same target byte-identical. It is the engine's transcendental codegen, which is not reachable from
-the addon, shader, driver, or environment.
-
-This is the project's existing **"continuous solvers diverge cross-backend"** principle (already
-documented for `reactionDiffusion`, see `reference/08-math-primitives-parity.md`) confirmed for the
-chaotic *agent flow*, now pinned to one operation.
-
-(There is also a *second, much milder* class — ~18 effects — that drifts a handful of LSB on <0.03 %
-of pixels at NEAREST-resampling / discontinuity / discrete-selection boundaries and is SSIM-gated in
-`parity/sweep.sh`; it is **not** structural chaos. See "Scope" below. Everything outside these two
-classes is `max-diff 0`.)
+**TL;DR.** This document inherited the godot port's own chaos-gate writeup
+verbatim during scaffolding; it never described this port's actual
+situation and is rewritten here to. The short version: this port had
+**exactly one** fixture ever classified CHAOS (`filter/convolutionFeedback`),
+its classification was investigated rather than accepted, and the
+investigation found it was **not** inherent reference-engine chaos at all —
+it was the same golden-minting-harness race `task-T5-report.md` (round 3)
+already root-caused and fixed for agent-state surfaces, just not yet
+extended to cover the render/display surface convolutionFeedback's own
+feedback loop reads back. Once fixed, the fixture's golden became bit-exact
+reproducible and its remaining candidate-vs-golden gap collapsed to an
+ordinary sparse boundary tie. **This corpus currently has zero CHAOS
+entries.** Godot's/TouchDesigner's own inherited chaos mechanisms
+(transcendental-rounding-amplified-by-a-discontinuity, e.g. godot's
+`points/flow` `oklab_l`/`pow` finding — real, well-evidenced, documented in
+their own repos) are a genuine, recognized class this port isn't claiming
+can't happen; it simply hasn't survived investigation for anything found
+here yet.
 
 ---
 
-## Cause — one transcendental, rounded differently (and legally)
+## Round 1 — the original classification (task-T6-report.md)
 
-The agent flow (`shaders/effects/points/flow/agent.glsl`) steers each agent by the **OKLab
-lightness** of the field sampled at the agent's position:
+`filter/convolutionFeedback` (a sharpen → blur → feedback-blend loop) was
+classified CHAOS after a strict-tolerance sweep failed it badly at default
+params (`sharpenAmount=2.5`): **99.97% of pixels differed** (65307/65536),
+98.46% by more than 2/255, mean-abs-diff=10.7 — a whole-image divergence,
+categorically different from the ~40 `tol_for()` NEAR entries (all <1.2% of
+pixels, most under 0.05%). An ablation (`intensity:0`, feedback loop
+neutralized) minted and rendered bit-exact-class (max-diff=1, ssim=1.00000),
+proving the sharpen/blur/composite plumbing itself was correct — the
+divergence was specifically the feedback amplification. This matched the
+*general mechanism class* the godot port's own (inherited, unmodified at the
+time) chaos-gate write-up described for agent flows, so it was filed the
+same way: excluded from strict grading via `sweep.sh`'s `is_chaos()`, not
+graded pixel-for-pixel at all.
 
-```glsl
-inputLuma  = oklab_l(texel.rgb);                  // texel = field at the agent's position
-indexValue = mix(0.5, inputLuma, inputWeight*.01);
-finalAngle = indexValue * TAU * kink + rotRand * TAU;
-newPos     = fract(pos + vec2(sin(finalAngle), cos(finalAngle)) * stride);
+This was reasonable triage under the evidence available at the time, and
+explicitly flagged as unresolved rather than silently accepted:
+`task-T6-report.md`'s own Concerns section lists it as a fixture that
+"needs a compiler-track or renderer-track follow-up."
+
+## Round 2 — the CHAOS classification was itself a harness bug
+
+Re-investigating for this rewrite, rather than transcribing round 1's
+conclusion: the *first* question a "chaos" verdict deserves, per this
+family's own established method (`task-T5-report.md` round 2/3), is whether
+the reference's own golden is even reproducible run-to-run. It hadn't been
+checked for this fixture specifically. It should have been:
+
+```
+golden run1 vs run2 (same DSL, back-to-back mints): max-abs-diff=175,
+mean-abs-diff=38.9, 65535/65536 pixels differ. bit-exact? False.
 ```
 
-`oklab_l` calls `pow(x, 2.4)` (sRGB→linear) and `pow(x, 1.0/3.0)` (cube root). **A non-integer power
-is not multiplication** — you can't multiply a value "2.4 times." It's a transcendental, lowered by
-the hardware to `exp2(y · log2(x))`. The GLSL ES and Metal specifications **do not require**
-`pow`/`exp2`/`log2` to be correctly rounded; they permit a few ULP of error. So two conformant
-compilers may each emit a perfectly legal `pow` that disagree in the last bit.
+**The reference's own golden could not reproduce itself.** That is a much
+more specific, more actionable signal than "chaos" — it points at the
+*minting harness*, not at inherent floating-point non-determinism in the
+reference engine or an unavoidable cross-GPU rounding gap in the port.
 
-That is exactly what happens. Godot lowers the shader `GLSL → SPIR-V (glslang) → MSL
-(spirv-cross / native-Metal RD)`. The reference golden is `GLSL-ES → MSL` via ANGLE (WebGL2). These
-two `pow` lowerings differ by ~1 ULP (~`1e-8`). Demonstration of the magnitude (two spec-legal
-float32 lowerings of the same `pow`):
+`task-T5-report.md`'s round 3 already root-caused and fixed exactly this
+class of symptom for a different fixture (`physarum`/`physarumNoSense`):
+`CanvasRenderer`'s always-on `requestAnimationFrame` loop free-runs on
+wall-clock time through DSL-compile and the harness's own async
+pause-and-settle setup (a real Playwright/CDP round-trip latency window,
+not a fixed delay), silently advancing any surface the graph reads back
+frame-to-frame before the "official" 8-frame protocol ever starts. The
+round-3 fix clears every surface `export-and-render.mjs` classifies as
+"stateful" to a known value immediately before that protocol — but its
+`isStateSurface` predicate only covered the `xyz`/`vel`/`rgba`/`trail`
+agent-state family, because that was the only family the physarum
+investigation had exercised.
+
+`convolutionFeedback`'s own compiled graph shows exactly the same shape of
+hazard, on a surface that family never covered:
 
 ```
-pow(0.42, 2.4):  correctly-rounded 0.124680422   vs   exp2/log2-in-f32 0.124680430   → ~1 ULP
+node_1_pass_0 cfSharpen   in={inputTex: global_o0}         out={fragColor: node_1__cfSharpened}
+node_1_pass_1 cfBlur      in={inputTex: node_1__cfSharpened} out={fragColor: node_1__cfBlurred}
+node_1_pass_2 cfBlend     in={inputTex: node_0_out, feedbackTex: node_1__cfBlurred} out={fragColor: node_1_out}
+node_2_write_blit         in={src: node_1_out}              out={color: global_o0}
 ```
 
-Confirmed to be **toolchain, not driver**: identical result on **both** Godot RenderingDevice
-backends — `--rendering-driver vulkan` (MoltenVK) **and** `--rendering-driver metal` (native
-Metal 4.0). The difference is baked in at glslang/spirv-cross, upstream of the driver.
+`cfSharpen` reads `global_o0` back as its own input; the final blit writes
+`global_o0`. That is a genuine frame-to-frame feedback surface — it is just
+a **render/display** surface (`o0`), not an **agent-state** surface, so the
+round-3 predicate's `xyz`/`vel`/`rgba`/`trail`/`state`/`pheromone` name
+patterns never matched it, and the RAF-loop race was free to silently
+advance `o0` an indeterminate number of times before every mint, exactly
+like it used to for physarum before that fix — producing a different
+"pre-advanced" starting frame on every mint, which cascades through 8
+frames of sharpen/blur/feedback amplification into a **whole different
+image** each time. The 99.97%-pixels-differ, mean=10.7 signature round 1
+attributed to "expansive feedback amplifying chaos" was real, but the thing
+being amplified was harness jitter, not floating-point noise.
 
-## Effect — a chaotic loop amplifies 1 ULP into a different world
+**Fix**: `export-and-render.mjs`'s `isStateSurface` predicate now also
+matches `o0`-`o7` (render/display surfaces), so they get the same
+pre-protocol reset as agent-state surfaces. Verified directly:
 
-The flow is a textbook chaotic dynamical system. Every frame, for all `stateSize²` (e.g. 1024² ≈
-1 M) agents:
+```
+golden run1 vs run2, WITH the o0-o7 reset: max-abs-diff=0, mean=0.0.
+bit-exact? True.
+```
 
-> position → **sample the field** → **oklab** → turn → step → **`fract()` wrap** → repeat
+With a stable golden, `convolutionFeedback` was re-graded against the
+existing (already-correct, never-broken) candidate:
 
-The ~1-ULP oklab delta is amplified **×(TAU·kink ≈ 34)** into the steering angle, then forced through
-**two discontinuities** each frame:
+```
+[FAIL@strict] convolutionFeedback: max-abs-diff=9.000 mean-abs-diff=0.0013
+ssim=1.00000 (tol=2.001, ssim_min=0.98) -- 232/65536 px differ (0.35%),
+only 6 px with diff>=5.
+```
 
-1. **`fract()` position wrap** — discontinuous at integers; a sub-ULP nudge can flip an agent from
-   one edge of the field to the other.
-2. **integer-texel `texelFetch`** of the field at `ivec2(pos * texSize)` — near a texel boundary, a
-   sub-ULP nudge changes *which texel* is read, flipping the agent's next turn.
+Sparse, small, high-SSIM — the same shape as this file's other cross-GPU
+rounding-tie entries (see `parity/sweep.sh` `tol_for()`), not a whole-image
+divergence. Reclassified out of `is_chaos()` into an ordinary `tol_for()`
+NEAR entry (`9.001 0.999`); the isolation ablation now lives as a real,
+committed fixture (`parity/programs/convolutionFeedbackNoFeedback.dsl`,
+`intensity:0`) instead of the "scratch DSL" round 1 used, so this evidence
+is reproducible by anyone, not just re-derivable from a session transcript.
 
-Over ~300 frames the divergence snowballs from `1e-8` to a visibly different agent field. The
-particle output `o0` reaches **SSIM ≈ 0.88** (raw points) / **0.94** (after `blur`). The target then
-feeds `o0` into a chaotic navierStokes solver, which amplifies it to the **full-chain 0.5–0.73**.
+## What this means going forward
 
-It is a *different instance of the same chaos* — the literal Lorenz "a butterfly's wingbeat" problem:
-perturb a chaotic sim in the 9th decimal and you get a different-but-equally-valid outcome. Same
-algorithm, same palette, same dynamics, same *kind* of structure; different exact pixels.
-
-## Evidence — the divergence is pinned to that one `pow`
-
-A reproducible isolation chain (DSLs in `parity/corpus/programs/` and `parity/programs/`, harness in `parity/`):
-
-| Test DSL                | What it isolates                                                              | Result                |
-| ----------------------- | ----------------------------------------------------------------------------- | --------------------- |
-| `agentsSpawn.dsl`       | spawn + point/billboard rasterization + additive deposit + diffuse + blend (no flow → bit-exact integer-hash spawn positions) | **BIT-EXACT, max-diff 0** |
-| `navTargetParams.dsl`   | navierStokes at the target's exact params (speed 145 / iter 40 / bSpline4x4), static input | **6/6, ssim 0.9996**  |
-| `agentsNoOklab.dsl`     | the flow with `inputWeight:0` — oklab dropped from the trajectory (constant `indexValue`), `sin`/`cos`/`fract`/everything else intact | **BIT-EXACT, max-diff 0** |
-| `agentsPoints.dsl`      | the flow with oklab active (`inputWeight:100`)                                 | **ssim 0.88**         |
-
-The *only* difference between the last two rows is whether oklab's `pow` touches the steering math.
-That pins the entire divergence to that one transcendental.
-
-**Ruled out** as the cause — every one produced *byte-identical* output to baseline, so none of them
-is the mechanism:
-
-- `precise` qualifier, both *outside* and *inside* `oklab_l` (kills any fused-multiply-add /
-  reassociation in the matrix math — it's not the arithmetic, it's the transcendental)
-- explicit `sin`/`cos` argument reduction to `[0,TAU)`
-- rewriting `pow(x,y)` as `exp2(y*log2(x))`
-- `MVK_CONFIG_FAST_MATH_ENABLED=0`
-- both RenderingDevice drivers (MoltenVK and native Metal)
-
-## Scope — one structurally-divergent class
-
-**Structurally divergent (the chaos gate):** chaotic agent flows only (`points/flow`; the
-`target.dsl` north-star through it).
-
-**A second, milder class** (~18 effects, SSIM-gated with documented per-program tolerances in
-`parity/sweep.sh`): NEAREST coord-resampling tie-breaks (`rotate`/`uvRemap`/`distortion`),
-`step()`/contrast convolutions over noise (`shadow`/`edge`/`newton`), AA derivative taps
-(`pinch`/`crt`), discrete argmin/threshold selection (`oilPaint`'s 8-sector Kuwahara pick,
-`hatch`'s coloredPencil stroke-mask step, `reliefPlaster`), and nonlinear amplification of the usual
-sub-LSB residual (`chrome`'s sine tone curve) drift a handful of LSB on <0.03 % of pixels — faithful
-ports where cross-device fp rounding lands on the far side of a boundary (or, for the discrete-
-selection cases, flips which of several candidates a `<`/argmin picks). Not structural chaos; a
-frozen frame still tracks the golden.
-
-**Everything else is `max-diff 0`** (verified): the navierStokes solver in isolation, the entire
-deposit / diffuse / blend path, agent spawn, and all non-chaotic stateful sims at their stable regimes.
-
-**The target is stable, not broken.** Blown-out (pure-white) pixels hold at ~0.5–1 % of the frame,
-in line with the golden's ~0–0.8 %; mean brightness stays bounded and oscillates with the loop
-rather than climbing. The over-deposit / white-out that an unfixed Metal build would show is
-prevented by two fixes ported from the Unity/HLSL port (commit abb9578):
-
-- **density-cull precision** — `fract(particleID·GR)` loses float32 precision at ~1 M agents
-  (step ~0.06 near 6.5e5 → quantizes to ~16 buckets → Metal over-deposits ~8× vs ANGLE). A hi/lo
-  split keeps the products small so `fract` stays exact (`render/points*/deposit.vert.glsl`).
-- **nav input clamp to [0,1]** — bounds the HDR particle-field surface this pipeline hands
-  navierStokes, so dye injection can't saturate (`synth/navierStokes/nsSplat.glsl`, `ns.glsl`).
-
-## Why three.js / babylon / hlsl match but Godot can't
-
-- **three.js, babylon** get this exact target *byte-identical* — because they **are** WebGL2/ANGLE,
-  the same compiler as the golden, so their `pow` produces the same bits.
-- **The Unity/HLSL port** matched on Unity/Metal — its HLSL→Metal `pow` happens to align with ANGLE's.
-  Its `Flow.hlsl` oklab is byte-identical to this port's, and its *only* fixes for this target were
-  the frac-cull + nav-clamp above (which this port also applies).
-- **Godot** is the outlier: its GLSL→SPIR-V→Metal `pow` rounds that one bit its own (legal) way.
-
-## What would close it (engine-level — out of port scope)
-
-The fix is not in the addon, the shader, the driver, or the environment. It would require either:
-
-- a glslang / spirv-cross `pow` lowering that matches Metal's native `metal::pow`, or
-- forcing precise transcendentals in Godot's Metal shader compile (MTLCompileOptions precision).
-
-Until then, chaotic agent flows are **SSIM-divergent by design**, in the same documented class as
-`reactionDiffusion` — faithful, stable, and correct, but a different instance of the chaos.
+- **Zero CHAOS entries in this corpus today.** `reactionDiffusion` and
+  `agentsPoints` — godot's other two inherited CHAOS entries — were already
+  confirmed bit-exact PASSES on this backend in round 1 (never carried an
+  entry here); `convolutionFeedback` — the one entry this port ever added —
+  is now a NEAR pass. Copying a sibling port's CHAOS set wholesale would
+  have been wrong for all three.
+- **A "chaos" verdict on this port's own future findings should start with
+  a golden-reproducibility check**, not end there. `synth3d/flythrough3d`'s
+  own `tol_for()` entry (`sweep.sh`) is this port's closest thing to a
+  genuine, structural, cross-GPU rounding chaos so far — a fractal
+  distance-estimation raymarch-surface-boundary tie — and it earned that
+  entry specifically *because* its golden passed the reproducibility check
+  (bit-exact across two independent mints) while its candidate still showed
+  a real, if sparse, divergence: both sides deterministic, genuinely
+  different from each other, nothing a harness fix could close. That is the
+  correct shape of evidence for a `tol_for()` (or, for something structural
+  enough, a real CHAOS) entry. The check is cheap (mint twice, diff) and
+  the two verdicts it distinguishes need different fixes in different
+  places (harness vs. nothing-to-fix-just-tolerate), so it should run
+  before either label gets applied, not after.
+- **The `isStateSurface` predicate is a live, growing list, not a closed
+  one.** It started scoped to agent-state surfaces (physarum), grew to
+  cover render/display surfaces (convolutionFeedback) once a second fixture
+  needed it, and may need a third category for a fixture not yet written.
+  `parity/export-and-render.mjs`'s own inline comment on the predicate is
+  the authoritative, current list — this document summarizes the story, not
+  the mechanism's exact current scope.
 
 ## Reproduce
 
 ```bash
-GODOT=/Applications/Godot.app/Contents/MacOS/Godot
+export NM_REFERENCE_ROOT=/path/to/noisemaker
 
-# 1. spawn/raster/deposit are bit-exact (no flow):
-SHADE_HEADLESS=1 node parity/export-and-render.mjs parity/corpus/programs/agentsSpawn.dsl \
-    parity/out --size 256 --backend webgl2 --run-seconds 10 --sample-every 5
-$GODOT --rendering-driver metal --path godot --script res://addons/noisemaker/tools/render_graph.gd \
-    --position 5000,5000 -- --graph parity/out/agentsSpawn.graph.json \
-    --out parity/out/agentsSpawn.candidate.png --size 256 --run-seconds 10 --sample-every 5
-# → max-diff 0.000, ssim 1.00000
+# 1. Golden-reproducibility check (the first question any chaos-looking
+#    verdict deserves): mint twice, diff.
+node parity/export-and-render.mjs parity/programs/convolutionFeedback.dsl parity/out
+cp parity/out/convolutionFeedback.golden.png /tmp/run1.png
+node parity/export-and-render.mjs parity/programs/convolutionFeedback.dsl parity/out
+# compare /tmp/run1.png against the freshly-overwritten parity/out/convolutionFeedback.golden.png
+# -> bit-exact today (max-abs-diff=0), thanks to the o0-o7 reset above.
 
-# 2. nav at target params is bit-exact (static input):  navTargetParams.dsl  → 6/6 ssim 0.9996
-# 3. flow WITHOUT oklab is bit-exact:                    agentsNoOklab.dsl    → max-diff 0
-# 4. flow WITH oklab diverges (the gate):                agentsPoints.dsl     → ssim 0.88
-#    (drive each with run_samples.sh / export-and-render.mjs as in steps 1)
+# 2. Ablation control (committed fixture, not a scratch DSL):
+bash parity/run.sh convolutionFeedbackNoFeedback
+# -> PASS, bit-exact-class (max-diff<=1, ssim=1.0) -- the plumbing was
+#    always correct; only the feedback surface's pre-protocol state wasn't.
+
+# 3. The fixture itself, at its now-correct tol_for() entry:
+bash parity/run.sh convolutionFeedback 9.001 0.999
+# -> PASS -- see parity/sweep.sh tol_for() for the live, current number.
+
+# 4. This port's closest analog to genuine structural chaos, for contrast
+#    (a real cross-GPU rounding tie, not a harness bug -- both sides
+#    deterministic, see synth3d/flythrough3d's own tol_for() entry above):
+bash parity/run.sh synth3dFlythrough3d 138.001 0.999
+# -> PASS -- golden bit-exact reproducible across independent mints,
+#    candidate genuinely differs at a raymarch surface boundary.
 ```

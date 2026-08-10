@@ -30,7 +30,7 @@ HLSL/GDShader ports there is no re-derivation step and no partial-coverage story
 | `mixer` | 15 | renders (whole namespace) |
 | `classicNoisedeck` | 20 | renders — legacy generators |
 | `points` / `render` | 10 / 11 | renders — agent points/deposit; billboards implemented, not gate-verified (see Known limits) |
-| `synth3d` / `filter3d` | 7 / 2 | renders — 3D volumes, raymarch, cubemaps |
+| `synth3d` / `filter3d` | 7 / 2 | renders, gate-verified — all 9 effects now have a `parity/programs/*.dsl` fixture (chained through `render3d()`), fresh-minted and graded this pass: 8/9 bit-exact-class (max-diff ≤1, ssim 1.0), 1 NEAR (`synth3dFlythrough3d`, a genuine fractal raymarch-boundary rounding tie, `tol_for()` 138.001/0.999 — see `docs/CHAOS-GATE.md`). `render3d`/`renderCubemap3d` MRT output resolution had a real bug (graph key `"color"` vs. GLSL variable `fragColor` — see "Known limits" below) fixed as part of gate-verifying this row; every fixture was degenerate (all-zero output) before that fix |
 
 **Compiler gates** — the C++ port (`qt/noisemaker/compiler/`: lexer → parser → validator →
 expander → resources → orchestrator) against the reference's own oracle dumps, over the full
@@ -59,11 +59,25 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
   detecting it (`tools/convert-shaders-qt.mjs` / `tools/convert-definitions.mjs` regenerate both;
   hand-editing either is a porting-rule violation).
 - **Corpus-wide pixel sweep** (`parity/sweep.sh`, fresh goldens + candidates minted in the same
-  run): **289 PASS / 45 NEAR / 1 CHAOS, 0 FAIL, of 335** render fixtures. Re-verified from a
-  from-scratch rebuild this crystallization pass; the NEAR/CHAOS program-name sets are
-  byte-identical to the pre-crystallization ledger (no drift beyond one transient golden-minting
-  flake, resolved below).
-- **The `scratches` golden-minting flake, resolved fresh this pass:** the first from-scratch sweep
+  run): **298 PASS / 47 NEAR / 0 CHAOS, 0 FAIL, of 345** render fixtures (final fix wave: +9 new
+  `synth3d`/`filter3d` gate fixtures, +1 new `convolutionFeedback` ablation fixture, and
+  `convolutionFeedback` itself moved from CHAOS — excluded from grading entirely — to a graded NEAR
+  pass, after its CHAOS classification turned out to be a harness bug, not inherent reference
+  chaos; see `docs/CHAOS-GATE.md`). **This corpus currently has zero CHAOS entries.**
+- **Two golden-minting flakes hit and resolved this pass** (same known mechanism class as the
+  precedent immediately below: a batch-minted golden occasionally differs from a same-run
+  single-fixture re-mint for the near-zero Sobel/gradient-singularity effect family —
+  `fibers`/`hatchPencil`/`scratches`/`strayHair`/`strokesSmudge`/their `Reference*` siblings):
+  `fibers` FAILed once in this pass's own full sweep (`ssim=0.92057` against a batch-minted
+  golden, just under its `tol_for()` floor of 0.93); a same-run single-fixture re-mint reproduced
+  the originally-documented number almost exactly (`ssim=0.93312`) and differed from the
+  batch-minted golden by 32 px (max-diff 92) — the same signature as the `scratches` flake below,
+  not a regression from anything in this pass's own changes (`fibers.frag` and its effect family
+  are untouched by every fix in this pass). Resolved the same way: re-grading the full corpus
+  against the corrected golden (`SKIP_GOLDEN=1 SKIP_RENDER=1 bash parity/sweep.sh`) with no
+  `tol_for()` change — **345/345 pass, 0 FAIL** is that final, clean state.
+- **The `scratches` golden-minting flake, resolved in an earlier pass (unchanged, kept for
+  context):** an earlier from-scratch sweep
   FAILed `scratches` alone (`ssim=0.729` against a batch-minted golden). Investigated rather than
   assumed: a same-run single-fixture re-mint (`export-and-render.mjs`, unbatched) produced a
   golden that differs from the batch-minted one (`ssim=0.966` golden-vs-golden, byte-identical
@@ -138,12 +152,21 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
 ## Known limits
 
 - **External-input effects are staged, not implemented.** `midi()`/`audio()` (live external-input
-  automation) and 3D-scene DSL surface (`render3d()`/`read3d()`/`mesh()`/volume/flow3d family)
-  raise `UnsupportedDsl` at the same points the Unity/TouchDesigner frontends do — no compute/mesh/
-  volume renderer backend exists at all. A full-corpus scan of all 335 `parity/programs/*.dsl`
-  found zero fixtures needing either family, so the DEFER stage-classification machinery
-  (`is_defer()`/`NM_EXTRA_DEFER`) exists, is unit-tested, and currently classifies nothing — real,
-  not dead, code for whoever adds the first such fixture.
+  automation) raise `UnsupportedDsl` at the same points the Unity/TouchDesigner frontends do. A
+  full-corpus scan of all 335 (now 344) `parity/programs/*.dsl` found zero fixtures needing this
+  family, so the DEFER stage-classification machinery (`is_defer()`/`NM_EXTRA_DEFER`) exists, is
+  unit-tested, and currently classifies nothing — real, not dead, code for whoever adds the first
+  such fixture.
+- **Correction (this pass): `render3d()`/the volume-atlas 3D family does NOT raise
+  `UnsupportedDsl` and never did** — this line previously, incorrectly, grouped it with the
+  genuinely-unimplemented external-input family above; that claim was never re-verified after the
+  T3-era runtime (which does implement the fullscreen/MRT/points machinery this family actually
+  needs — there is no separate "3D backend" to be missing) grew past whatever state made it true,
+  if it ever was. Direct evidence: all 7 `synth3d` + 2 `filter3d` effects render correctly, gated
+  in the coverage table above. `read3d()`/`mesh()` (a mesh-geometry DSL surface distinct from the
+  volume-atlas path `render3d()`/`synth3d`/`filter3d` use) were not part of this investigation and
+  their status is genuinely unknown — not claimed working, not claimed `UnsupportedDsl`, just
+  unverified either way pending someone actually testing them.
 - **Billboards are implemented but not gate-verified.** `drawMode:"billboards"`
   (`pointsBillboardRender`) shares the same count/blend/VAO machinery as the verified `points`
   path, but no corpus fixture exercises it, so "structurally identical to a verified path" is the
