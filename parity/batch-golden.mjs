@@ -298,7 +298,19 @@ async function mintOne (page, globals, opts, dsl, expectedPassCount, programName
       name === 'xyz' || name === 'vel' || name === 'rgba' || name === 'trail' ||
       name.endsWith('_xyz') || name.endsWith('_vel') || name.endsWith('_rgba') || name.endsWith('_trail') ||
       /state/i.test(name) || /^(xyz|vel|rgba|points_trail)_node_\d+$/.test(name) ||
-      /_pheromone_/.test(name) || /_trail_/.test(name)
+      /_pheromone_/.test(name) || /_trail_/.test(name) ||
+      /^o\d+$/.test(name) // render/display surfaces (o0-o7) -- final fix wave,
+      // see export-and-render.mjs's own copy of this predicate for the full
+      // rationale (convolutionFeedback's CHAOS classification was this same
+      // bug, just on a surface class this predicate didn't cover yet) and
+      // docs/CHAOS-GATE.md. Keep BOTH copies of this predicate in sync --
+      // this file's own header comment above calls it a "verbatim copy,"
+      // and a full-corpus sweep (parity/sweep.sh) caught the drift the
+      // FIRST time this file's copy fell behind (convolutionFeedback FAILed
+      // here at the pre-fix mean=10.7 signature while passing an isolated
+      // export-and-render.mjs-only check) -- worth grepping for other
+      // "verbatim copy" comments in this file before assuming a future
+      // export-and-render.mjs change doesn't also need mirroring here.
     const clearedNames = []
     for (const [bareId, surf] of p.surfaces.entries()) {
       if (!isStateSurface(bareId)) continue

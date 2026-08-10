@@ -109,31 +109,17 @@ timed_params() {
 is_chaos() {
 	case " ${NM_EXTRA_CHAOS:-} " in *" $1 "*) return 0 ;; esac
 	case "$1" in
-		# convolutionFeedback: default params (sharpenAmount=2.5) are an
-		# EXPANSIVE feedback loop -- 99.97% of pixels differ (65307/65536),
-		# 98.46% by more than 2/255, mean-abs-diff=10.7 -- a whole-image
-		# divergence, not a bounded/isolated tie (see the ~40 tol_for()
-		# entries below, all <1.2% of pixels). Visually confirmed the
-		# godot-documented "different instance of the same chaos" signature
-		# (same organic turbulent structure, different exact pixels) rather
-		# than a broken/blank/wrong image. Isolated per godot's own method,
-		# re-run fresh on THIS backend: intensity:0 (feedback loop
-		# neutralized) mints+renders BIT-EXACT-CLASS (max-diff=1,
-		# ssim=1.00000, parity/programs/*.dsl has no ablation fixture for
-		# this committed -- verified via a scratch DSL, see task-T6-report.md),
-		# proving the sharpen/blur/composite plumbing itself is correct;
-		# sharpenAmount:0.1 (10x gentler than default) is markedly closer to
-		# passing (mean 8.4 vs 10.7, ssim 0.990 vs 0.960) but still exceeds
-		# strict tolerance, unlike godot's own port where 0.1 was enough to
-		# pass outright -- consistent with the SAME expansive-feedback
-		# mechanism at a different amplification threshold on this GPU/
-		# driver stack, not a different mechanism. Same documented class as
-		# reactionDiffusion (godot); NOTE reactionDiffusion and agentsPoints
-		# -- godot's other two CHAOS entries -- are BIT-EXACT PASSES on this
-		# backend (see task-T6-report.md) and carry NO entry here: copying
-		# godot's three-item CHAOS set without re-verifying would have been
-		# wrong for 2 of the 3.
-		convolutionFeedback) return 0 ;;
+		# (convolutionFeedback WAS classified CHAOS here -- see docs/
+		# CHAOS-GATE.md's "Round 2: the CHAOS classification was itself a
+		# harness bug" section. Its apparent 99.97%-of-pixels reference-side
+		# non-determinism was the SAME RAF-loop-race task-T5-report.md round
+		# 3 fixed for agent-state surfaces, just uncaught because o0-o7
+		# (render/display surfaces) weren't in that fix's isStateSurface
+		# predicate -- convolutionFeedback reads its own prior-frame `o0`
+		# back as a feedback input, a genuine hazard the old predicate never
+		# covered. Fixed in export-and-render.mjs; the golden is now
+		# bit-exact reproducible and the fixture is an ordinary tol_for()
+		# NEAR entry below, not excluded from grading.)
 		*) return 1 ;;
 	esac
 }
@@ -234,6 +220,27 @@ tol_for() {
 		# against in T5, still manifests).
 		median)  echo "14.001 0.999" ;; # 0.0168% px, ssim=0.9999998
 		step)    echo "3.001 0.999" ;;  # step() threshold tie on a near-boundary value: 0.0015% px, ssim=1.0
+		# --- Fractal distance-estimation raymarch-surface-boundary chaos
+		# (final fix wave, synth3d/filter3d smoke coverage): same
+		# mechanism class as newton/julia/mandelbrot above (a sub-ULP
+		# starting difference in fractal iteration/distance-estimation
+		# math flips a discrete decision at a boundary), here manifesting
+		# as a raymarch hit/miss or orbit-trap-color flip at the
+		# fractal surface's silhouette in a 3D SDF raymarcher instead of
+		# a 2D escape-time iteration count. Golden confirmed bit-exact
+		# reproducible across 2 independent mints (rules out reference-
+		# side nondeterminism, unlike agentsPoints/flow pre-T5-round-3);
+		# diff is sparse and localized (689/65536 px = 1.05%, only 4 px
+		# >=100 diff), consistent with the boundary-flip signature, not
+		# a broken image.
+		synth3dFlythrough3d) echo "138.001 0.999" ;; # 1.05% px, ssim=0.99985
+		# --- Feedback-loop sharpen/blur cross-GPU rounding tie (RECLASSIFIED
+		# from CHAOS -- see is_chaos()'s note and docs/CHAOS-GATE.md).
+		# Once the harness's o0-o7 reset closed the real bug (reference-side
+		# apparent non-determinism from an uncleared prior-frame render
+		# surface), this is an ordinary sparse boundary tie like the classes
+		# above, not a whole-image divergence.
+		convolutionFeedback) echo "9.001 0.999" ;; # 0.35% px, ssim=1.00000
 		*)      echo "2.001 0.98" ;;  # 2.001 = epsilon-tolerant "<=2" (compare.py float round-trip)
 	esac
 }

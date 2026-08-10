@@ -524,11 +524,35 @@ async function main () {
         // just leave it zeroed with no shader-side respawn to repopulate it
         // -- worth a second look before extending this fix to a new fixture
         // family, not assumed to generalize for free.
+        //
+        // EXTENSION (final fix wave, item 7 / CHAOS-GATE investigation):
+        // `o0`-`o7` (render/display surfaces) added after finding
+        // `convolutionFeedback` -- classified CHAOS ("reference-side
+        // non-determinism") on the strength of exactly the same symptom
+        // physarum had before the T5-round-3 fix above -- reads its OWN
+        // prior-frame `global_o0` back as `feedbackTex` input (`filter/
+        // convolutionFeedback` sharpen->blur->blend chain), a genuine
+        // frame-to-frame hazard surface that just isn't agent-STATE-shaped,
+        // so the original predicate never covered it. Verified directly:
+        // clearing o0-o7 here makes `convolutionFeedback`'s golden bit-exact
+        // reproducible across independent mints (was max-abs-diff=175,
+        // mean=38.9, 65535/65536 px differing between two back-to-back
+        // mints; is now max-diff=0) -- this was the SAME RAF-loop-race
+        // harness bug throughout, not inherent reference chaos. Reclassified
+        // out of sweep.sh's is_chaos() into an ordinary tol_for() NEAR entry
+        // as a result -- see docs/CHAOS-GATE.md (rewritten for this finding)
+        // and parity/sweep.sh's tol_for()/is_chaos() for the follow-through.
+        // A render surface a graph never reads back (the common case: o0
+        // written once, presented, never sampled by an earlier pass in a
+        // LATER frame) is unaffected by being clearable here -- clearing it
+        // pre-protocol is a no-op for any graph that doesn't feed it back
+        // into itself the way convolutionFeedback does.
         const isStateSurface = (name) =>
           name === 'xyz' || name === 'vel' || name === 'rgba' || name === 'trail' ||
           name.endsWith('_xyz') || name.endsWith('_vel') || name.endsWith('_rgba') || name.endsWith('_trail') ||
           /state/i.test(name) || /^(xyz|vel|rgba|points_trail)_node_\d+$/.test(name) ||
-          /_pheromone_/.test(name) || /_trail_/.test(name)
+          /_pheromone_/.test(name) || /_trail_/.test(name) ||
+          /^o\d+$/.test(name) // render/display surfaces (o0-o7) -- see below
         const clearedNames = []
         for (const [bareId, surf] of p.surfaces.entries()) {
           if (!isStateSurface(bareId)) continue
