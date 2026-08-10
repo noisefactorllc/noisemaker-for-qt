@@ -317,6 +317,137 @@ int main() {
               "the real curl.frag-shaped live fallback is still detected after comment-stripping");
     }
 
+    // 12) Broadened detection (final fix wave): a define used as a bare
+    //     `if (K)` condition with NO fallback declared anywhere in the
+    //     shader is ALSO boolean-context -- corpus-validated to newly flag
+    //     exactly render3d.frag/renderCubemap3d.frag's `INVERT` and
+    //     synth3d/noise3d/precompute.frag's `RIDGES` (grep-confirmed against
+    //     the real corpus before writing this test: neither key has an
+    //     in-shader `#ifndef`/`#define` fallback -- the runtime is always
+    //     expected to inject a value). Mirrors TD's second detector
+    //     (`_BOOL_IF_RE`), which the original narrower port deliberately
+    //     declined; re-review asked for it after validating the blast
+    //     radius corpus-wide. render3d.frag's real shape (INVERT, no
+    //     fallback):
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "// INVERT is a compile-time #define injected by the expander; no in-shader fallback.\n"
+            "float getField(vec3 p) {\n"
+            "    float v = 0.0;\n"
+            "    if (INVERT) {\n"
+            "        v = 1.0 - v;\n"
+            "    }\n"
+            "    return v;\n"
+            "}\n"
+            "void main() {}\n");
+
+        QJsonObject numericTrue;
+        numericTrue.insert(QStringLiteral("INVERT"), 1);
+        const QString textTrue = QString::fromUtf8(nm::assembleShader(source, numericTrue, false));
+        check(textTrue.contains(QStringLiteral("#define INVERT true")),
+              "render3d/renderCubemap3d-shaped: numeric 1 for a fallback-less bare-if(K) key emits bare 'true'");
+
+        QJsonObject numericFalse;
+        numericFalse.insert(QStringLiteral("INVERT"), 0);
+        const QString textFalse = QString::fromUtf8(nm::assembleShader(source, numericFalse, false));
+        check(textFalse.contains(QStringLiteral("#define INVERT false")),
+              "render3d/renderCubemap3d-shaped: numeric 0 for a fallback-less bare-if(K) key emits bare 'false'");
+    }
+
+    // 13) noise3d/precompute.frag's real shape (RIDGES, no fallback, `if
+    //     (RIDGES)` inside a loop body -- confirms the detector isn't
+    //     anchored to `if` appearing at statement-start or any particular
+    //     indentation).
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "// RIDGES is a compile-time #define; no in-shader fallback.\n"
+            "float fbm4D() {\n"
+            "    float sum = 0.0;\n"
+            "    for (int i = 0; i < 4; i++) {\n"
+            "        float n = 0.5;\n"
+            "        if (RIDGES) {\n"
+            "            n = 1.0 - abs(n);\n"
+            "        }\n"
+            "        sum += n;\n"
+            "    }\n"
+            "    return sum;\n"
+            "}\n"
+            "void main() {}\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("RIDGES"), 1);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define RIDGES true")),
+              "noise3d/precompute-shaped: RIDGES used as if(RIDGES) inside a loop body, no fallback, still classified boolean");
+    }
+
+    // 14) Ternary and logical-op forms (not present in the corpus today,
+    //     but part of this round's broadened contract: "bare if(K)/if(!K)/
+    //     ternary-or-logical-op condition"). A bare negated `if (!K)`, a
+    //     ternary `K ? a : b`, and a logical-op `K && ...` all classify K
+    //     as boolean-context with no fallback declared.
+    {
+        QJsonObject defines;
+        defines.insert(QStringLiteral("A"), 1);
+        defines.insert(QStringLiteral("B"), 1);
+        defines.insert(QStringLiteral("C"), 1);
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "void main() {\n"
+            "    if (!A) { }\n"
+            "    float x = B ? 1.0 : 0.0;\n"
+            "    bool y = C && true;\n"
+            "}\n");
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define A true")), "bare if(!K) classifies K (A) as boolean-context");
+        check(text.contains(QStringLiteral("#define B true")), "a ternary condition classifies K (B) as boolean-context");
+        check(text.contains(QStringLiteral("#define C true")), "a logical-op condition classifies K (C) as boolean-context");
+    }
+
+    // 15) Comment-awareness still applies to the broadened detectors: a
+    //     bare if(K)/ternary/logical-op pattern inside a comment must not
+    //     classify K as boolean-context either.
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "// old approach used if (K) directly\n"
+            "/* another dead idea: K ? 1.0 : 0.0 */\n"
+            "void main() { float x = float(K) * 2.0; }\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("K"), 3);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define K 3")),
+              "a commented-out bare-if/ternary pattern does not classify K as boolean-context");
+    }
+
+    // 16) False-positive guard: a define used ONLY in arithmetic (never as
+    //     a bare if/ternary/logical-op condition, and with no
+    //     #define K true|false fallback) must stay numeric. This is the
+    //     overwhelming majority case in the real corpus (OCTAVES, NOISE_TYPE,
+    //     OUTPUT_MODE, etc.) and must not regress when the detector is
+    //     broadened.
+    {
+        const QString source = QStringLiteral(
+            "#version 300 es\n"
+            "void main() {\n"
+            "    float x = float(K) * 2.0;\n"
+            "    for (int i = 0; i < K; i++) { }\n"
+            "    if (K == 3) { }\n" // comparison, not a bare condition -- K is not itself the condition
+            "}\n");
+
+        QJsonObject defines;
+        defines.insert(QStringLiteral("K"), 3);
+        const QString text = QString::fromUtf8(nm::assembleShader(source, defines, false));
+        check(text.contains(QStringLiteral("#define K 3")),
+              "a define used only in arithmetic/loop-bound/comparison contexts stays numeric");
+        check(!text.left(text.indexOf(QStringLiteral("void main"))).contains(QStringLiteral("#define K true"))
+                  && !text.left(text.indexOf(QStringLiteral("void main"))).contains(QStringLiteral("#define K false")),
+              "the injected define line for an arithmetic-only key is never a bool literal");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_shader_assembly)\n");
         return 0;

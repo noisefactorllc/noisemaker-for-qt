@@ -15,22 +15,36 @@ bool containsWholeWord(const QString& source, const QString& word) {
     return re.match(source).hasMatch();
 }
 
-// Boolean-CONTEXT define detection (T6 cross-track bug: curl/curlSeeded).
-// `curl.frag` declares `#ifndef RIDGES / #define RIDGES true / #endif` as
-// its in-shader default, then uses `if (RIDGES)` as a genuine bool
-// condition -- but the compiled graph's `defines` value for RIDGES arrives
-// as the JSON NUMBER 1/0 (QJsonValue::Double), not a JSON boolean. Desktop
-// GLSL 330 core is strict about bool-vs-int in a condition ("Condition must
-// be of type bool" on `if (1)`) where GLSL ES 3.00 / WebGL2-ANGLE tolerates
-// it. Mirrors the TouchDesigner port's proven fix for the exact same class
+// Boolean-CONTEXT define detection (T6 cross-track bug: curl/curlSeeded;
+// broadened in a later re-review pass -- see below). `curl.frag` declares
+// `#ifndef RIDGES / #define RIDGES true / #endif` as its in-shader default,
+// then uses `if (RIDGES)` as a genuine bool condition -- but the compiled
+// graph's `defines` value for RIDGES arrives as the JSON NUMBER 1/0
+// (QJsonValue::Double), not a JSON boolean. Desktop GLSL 330 core is strict
+// about bool-vs-int in a condition ("Condition must be of type bool" on
+// `if (1)`) where GLSL ES 3.00 / WebGL2-ANGLE tolerates it. Mirrors the
+// TouchDesigner port's proven fix for the exact same class
 // (`td/noisemaker/runtime/td_backend.py` `_bool_define_keys`/`_truthy`,
-// noisemaker-for-touchdesigner) -- deliberately only the narrower of TD's
-// two detectors (the `#define K true|false` source-declared fallback), not
-// TD's additional bare-`if (K)`-without-a-fallback heuristic: scoping this
-// fix to keys the SHADER ITSELF already declares as boolean keeps the
-// blast radius to exactly the curl-class bug, not a blanket "any define
-// used in an `if` is a bool" inference that could reinterpret a genuinely
-// numeric define elsewhere in the corpus.
+// noisemaker-for-touchdesigner).
+//
+// UPDATE (re-review, final fix wave): the first pass here deliberately
+// ported only TD's narrower detector (the `#define K true|false`
+// source-declared fallback), declining TD's additional bare-`if (K)`-
+// without-a-fallback heuristic to keep the blast radius minimal. Re-review
+// validated corpus-wide that the broader heuristic is needed and safe:
+// `render3d.frag`/`renderCubemap3d.frag`'s `INVERT` and
+// `synth3d/noise3d/precompute.frag`'s `RIDGES` are each used as a bare
+// `if (K)` condition with NO in-shader fallback declared at all (the
+// runtime is always expected to inject a value for them) -- the narrow
+// detector alone misses these, and they hit the identical GLSL-330-vs-
+// GLSL-ES bool/int strictness bug curl did. Grep-confirmed against the real
+// corpus before broadening this: these three are the ONLY new keys the
+// broader detector flags; nothing else in the shipped shader tree matches.
+// Below now also detects K used as a bare (optionally negated) condition in
+// `if (K)`/`if (!K)`, a ternary `K ? a : b`/`!K ? a : b`, or a logical-op
+// `K && ...`/`K || ...` (and negated forms) -- this last pair is broader
+// than TD's own precedent, added defensively since "boolean-context" isn't
+// only ever spelled as an `if`.
 //
 // Strips `//` and `/* */` GLSL comments for SCANNING purposes only -- never
 // applied to the text that actually gets assembled into shader output,
@@ -83,22 +97,82 @@ QString stripCommentsForScan(const QString& source) {
     return out;
 }
 
-// Matches a bare `#define K true` / `#define K false` line anywhere in the
-// COMMENT-STRIPPED source (the `#ifndef K`/`#endif` wrapper around it, if
-// present, isn't part of the match -- TD's own regex doesn't require it
-// either, and it isn't needed: the injected `#define K <value>` line above
-// always wins over the in-shader fallback via the `#ifndef` guard
-// regardless of whether this detector's regex also matched that guard
-// syntax).
-QSet<QString> boolDefineKeys(const QString& source) {
-    static const QRegularExpression re(QStringLiteral("#define\\s+(\\w+)\\s+(?:true|false)\\b"));
-    const QString scanText = stripCommentsForScan(source);
-    QSet<QString> keys;
+// Collects every capture-group-1 match of `re` in `scanText` into `keys`.
+void collectMatches(const QRegularExpression& re, const QString& scanText, QSet<QString>* keys) {
     QRegularExpressionMatchIterator it = re.globalMatch(scanText);
     while (it.hasNext()) {
-        keys.insert(it.next().captured(1));
+        keys->insert(it.next().captured(1));
     }
+}
+
+// Matches a bare `#define K true` / `#define K false` line (the source-
+// declared-fallback detector -- curl.frag's shape). `[A-Za-z_]\w*` (not
+// `\w+`): a preprocessor identifier can't start with a digit, matching
+// TD's own regex exactly -- also keeps this consistent with
+// `boolConditionKeys()` below, where the distinction matters (a bare `\w+`
+// there would capture numeric-literal operands of `?`/`&&`/`||` as fake
+// "keys", verified empirically against the real corpus: `if (K == 3)` never
+// matches either way, but `K ? a : 0` style expressions elsewhere in the
+// corpus have a literal digit on the OTHER side of the operator that `\w+`
+// would wrongly treat as a candidate key of its own).
+QSet<QString> boolDefineFallbackKeys(const QString& scanText) {
+    static const QRegularExpression re(QStringLiteral("#define\\s+([A-Za-z_]\\w*)\\s+(?:true|false)\\b"));
+    QSet<QString> keys;
+    collectMatches(re, scanText, &keys);
     return keys;
+}
+
+// Matches K used as a bare (optionally negated) boolean CONDITION with no
+// fallback declared: `if (K)`/`if (!K)`, a ternary `K ? a : b`/`!K ? a : b`,
+// or a logical-op `K && ...`/`K || ...` (and negated forms). Anchored to a
+// standalone identifier immediately followed (only whitespace between) by
+// the operator that makes it a condition -- `K == 1`, `K * 2.0`, `K + 1`,
+// `for (int i = 0; i < K; i++)` etc. never match any of these, so a
+// genuinely numeric define used in arithmetic/comparison/loop-bound
+// contexts is unaffected.
+//
+// This is a deliberately loose TEXTUAL scan -- it also matches ordinary
+// local GLSL variables used as conditions (`bool wrap = ...; if (wrap)
+// {...}`), which is harmless by construction: `boolDefineKeys()`'s result
+// is only ever consulted via `boolKeys.contains(key)` for a key that is
+// ALSO a real entry in the compiled graph's own `defines` object for that
+// pass, and the corpus's naming convention keeps every actual compile-time
+// define UPPERCASE (verified against every `definition.js` "define" field
+// in the reference: exactly `BEHAVIOR`, `COLOR_MODE`, `DIMENSIONS`,
+// `FILTERING`, `INVERT`, `OCTAVES`, `RIDGES`) while local variables follow
+// ordinary camelCase/lowercase GLSL naming -- so a same-file local variable
+// never collides with a real define name in this corpus today. Verified
+// exhaustively: cross-referencing this detector's corpus-wide raw matches
+// against that authoritative 7-name list confirms the ONLY names that
+// actually intersect are `INVERT` (render3d.frag, renderCubemap3d.frag) and
+// `RIDGES` (curl.frag, synth3d/noise3d/precompute.frag) -- exactly what
+// re-review validated, "and nothing else new" meaning behaviorally, not
+// "the regex never matches anything else" (it matches plenty of local
+// variables; none of them are ever a real define key). render3d/
+// renderCubemap3d/noise3d-precompute's real shape is the first (`if`)
+// form; the ternary/logical-op forms are not currently hit by any corpus
+// define but are part of this detector's contract regardless (added
+// defensively, confirmed to change no current behavior).
+QSet<QString> boolConditionKeys(const QString& scanText) {
+    static const QRegularExpression ifRe(QStringLiteral("\\bif\\s*\\(\\s*!?\\s*([A-Za-z_]\\w*)\\s*\\)"));
+    static const QRegularExpression ternaryRe(QStringLiteral("\\b!?\\s*([A-Za-z_]\\w*)\\s*\\?"));
+    static const QRegularExpression logicalRe(QStringLiteral("\\b!?\\s*([A-Za-z_]\\w*)\\s*(?:&&|\\|\\|)"));
+    QSet<QString> keys;
+    collectMatches(ifRe, scanText, &keys);
+    collectMatches(ternaryRe, scanText, &keys);
+    collectMatches(logicalRe, scanText, &keys);
+    return keys;
+}
+
+// Union of both detectors, over the COMMENT-STRIPPED source (the
+// `#ifndef K`/`#endif` wrapper around a fallback declaration, if present,
+// isn't itself part of either match -- TD's own regex doesn't require it
+// either, and it isn't needed: the injected `#define K <value>` line above
+// always wins over the in-shader fallback via the `#ifndef` guard
+// regardless of whether a detector's regex also matched that guard syntax).
+QSet<QString> boolDefineKeys(const QString& source) {
+    const QString scanText = stripCommentsForScan(source);
+    return boolDefineFallbackKeys(scanText) | boolConditionKeys(scanText);
 }
 
 // JS/Python-style truthiness for a QJsonValue, used only for keys
