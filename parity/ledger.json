@@ -3061,8 +3061,8 @@
     ],
     "verdict": "NEAR",
     "max_abs_diff": 6.999999523162842,
-    "mean_abs_diff": 0.5648689270019531,
-    "ssim": 0.9990286231040955,
+    "mean_abs_diff": 0.5627174377441406,
+    "ssim": 0.9990360736846924,
     "passed": true,
     "skipped": false,
     "policy": {
@@ -3078,8 +3078,8 @@
         "golden": "parity/out/navierStokes.golden.t5.png",
         "candidate": "parity/out/navierStokes.candidate.t5.png",
         "max_abs_diff": 6.999999523162842,
-        "mean_abs_diff": 0.5648689270019531,
-        "ssim": 0.9990286231040955,
+        "mean_abs_diff": 0.5627174377441406,
+        "ssim": 0.9990360736846924,
         "passed": true,
         "policy_matches": true
       },
@@ -3088,7 +3088,7 @@
         "golden": "parity/out/navierStokes.golden.t10.png",
         "candidate": "parity/out/navierStokes.candidate.t10.png",
         "max_abs_diff": 2.0000035762786865,
-        "mean_abs_diff": 0.0592193603515625,
+        "mean_abs_diff": 0.05954360589385033,
         "ssim": 0.9998668432235718,
         "passed": true,
         "policy_matches": true
@@ -3098,8 +3098,8 @@
         "golden": "parity/out/navierStokes.golden.t15.png",
         "candidate": "parity/out/navierStokes.candidate.t15.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.004760741721838713,
-        "ssim": 0.9999925494194031,
+        "mean_abs_diff": 0.004932403564453125,
+        "ssim": 0.9999924302101135,
         "passed": true,
         "policy_matches": true
       },
@@ -3108,8 +3108,8 @@
         "golden": "parity/out/navierStokes.golden.t20.png",
         "candidate": "parity/out/navierStokes.candidate.t20.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.00716400146484375,
-        "ssim": 0.9999898076057434,
+        "mean_abs_diff": 0.010093689896166325,
+        "ssim": 0.9999852180480957,
         "passed": true,
         "policy_matches": true
       },
@@ -3118,8 +3118,8 @@
         "golden": "parity/out/navierStokes.golden.t25.png",
         "candidate": "parity/out/navierStokes.candidate.t25.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.004779816139489412,
-        "ssim": 0.9999926686286926,
+        "mean_abs_diff": 0.004169464576989412,
+        "ssim": 0.9999938011169434,
         "passed": true,
         "policy_matches": true
       },
@@ -3128,8 +3128,8 @@
         "golden": "parity/out/navierStokes.golden.t30.png",
         "candidate": "parity/out/navierStokes.candidate.t30.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.02069854736328125,
-        "ssim": 0.999964714050293,
+        "mean_abs_diff": 0.02020263671875,
+        "ssim": 0.9999663829803467,
         "passed": true,
         "policy_matches": true
       }
