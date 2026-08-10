@@ -4,4 +4,5 @@ examples/viewer/build/
 parity/out/
 parity/.venv/
 tools/node_modules/
+__pycache__/
 .DS_Store
