@@ -825,18 +825,18 @@
     "mode": "default",
     "golden": "parity/out/curl.golden.png",
     "candidate": "parity/out/curl.candidate.png",
-    "verdict": "FAIL",
-    "max_abs_diff": null,
-    "mean_abs_diff": null,
-    "ssim": null,
-    "passed": false,
+    "verdict": "PASS",
+    "max_abs_diff": 0.9999999403953552,
+    "mean_abs_diff": 3.8146970382513246e-06,
+    "ssim": 1.0,
+    "passed": true,
     "skipped": false,
     "policy": {
       "tolerance": 2.001,
       "ssim_min": 0.98,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "comparison child exited nonzero"
+      "reason": "strict RGBA8 float round-trip allowance"
     }
   },
   {
@@ -845,18 +845,18 @@
     "mode": "default",
     "golden": "parity/out/curlSeeded.golden.png",
     "candidate": "parity/out/curlSeeded.candidate.png",
-    "verdict": "FAIL",
-    "max_abs_diff": null,
-    "mean_abs_diff": null,
-    "ssim": null,
-    "passed": false,
+    "verdict": "PASS",
+    "max_abs_diff": 0.9999999403953552,
+    "mean_abs_diff": 0.00025176999042741954,
+    "ssim": 1.0,
+    "passed": true,
     "skipped": false,
     "policy": {
       "tolerance": 2.001,
       "ssim_min": 0.98,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "comparison child exited nonzero"
+      "reason": "strict RGBA8 float round-trip allowance"
     }
   },
   {

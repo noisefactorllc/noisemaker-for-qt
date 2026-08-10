@@ -14,10 +14,25 @@ actual report.json evidence). Two additions specific to this task:
   - A universe-completeness check: the set of programs in --results MUST
     equal exactly the set of parity/programs/*.dsl files on disk (PORTING-
     GUIDE.md rule 5's "never weaken a gate" extends to the ledger itself --
-    a silently-dropped program is a hidden FAIL, not a passed sweep).
+    a silently-dropped program is a hidden FAIL, not a passed sweep). This
+    check compares by ROW COUNT as well as by set membership: a --results
+    file that lists one program twice (nothing missing, nothing extra --
+    each occurrence resolves to a real, on-disk .dsl) would otherwise pass
+    the set-equality check silently, since Python set comprehensions collapse
+    duplicates before the comparison ever sees them -- `{row["program"] for
+    row in rows}` on two "chrome" rows is the same one-element set as on a
+    single "chrome" row. A future sweep.sh change that accidentally records
+    a program twice (e.g. a case-arm falling through into both a special
+    case and the generic path) would silently ship a ledger with a duplicated
+    row and a clean exit code without this check. Today's sweep.sh cannot
+    produce that shape (verified: no duplicate rows in the shipped ledger),
+    but this file is the hard backstop for FUTURE sweep changes, not just
+    today's -- so it checks for its own sake, not because today's data needs
+    it.
 """
 
 import argparse
+import collections
 import json
 import re
 from pathlib import Path
@@ -210,16 +225,28 @@ def main():
     programs_dir = args.root / "parity" / "programs"
     if programs_dir.is_dir():
         universe = {path.stem for path in programs_dir.glob("*.dsl")}
-        covered = {row["program"] for row in rows}
+        row_counts = collections.Counter(row["program"] for row in rows)
+        covered = set(row_counts)
         missing = sorted(universe - covered)
         extra = sorted(covered - universe)
-        if missing or extra:
+        duplicates = sorted(name for name, count in row_counts.items() if count > 1)
+        # len(rows) != len(covered) is exactly "some program has >1 row" --
+        # asserted explicitly (not just implied by `duplicates` below) so a
+        # future edit to the duplicate-detection logic can't silently drop
+        # this guarantee without also breaking an explicit count check.
+        if len(rows) != len(covered):
+            assert duplicates, "row/covered count mismatch with no duplicate program identified"
+        if missing or extra or duplicates:
             if missing:
                 print(f"[write-ledger] UNIVERSE MISMATCH: {len(missing)} program(s) on disk have no "
                       f"ledger row: {' '.join(missing)}")
             if extra:
                 print(f"[write-ledger] UNIVERSE MISMATCH: {len(extra)} ledger row(s) have no matching "
                       f".dsl on disk: {' '.join(extra)}")
+            if duplicates:
+                print(f"[write-ledger] UNIVERSE MISMATCH: {len(duplicates)} program(s) have more than "
+                      f"one ledger row ({len(rows)} rows for {len(covered)} distinct programs): "
+                      f"{' '.join(duplicates)}")
             exit_code = 1
 
     if exit_code:

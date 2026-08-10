@@ -416,6 +416,45 @@ class HarnessContractTests(unittest.TestCase):
         ledger = json.loads((parity / "ledger.json").read_text())
         self.assertEqual({row["program"] for row in ledger}, {"covered"})
 
+    def test_ledger_rejects_duplicate_program_row(self):
+        # Reviewer-proven blind spot: a --results file that lists ONE program
+        # TWICE (nothing missing, nothing extra -- both rows resolve to a
+        # real on-disk .dsl) used to pass the universe check silently, since
+        # `{row["program"] for row in rows}` collapses duplicates into one
+        # set element before the set-equality comparison ever runs. This
+        # locks in the fix: row count must equal distinct-program count too.
+        parity = self.tmp / "parity"
+        (parity / "out").mkdir(parents=True)
+        (parity / "programs").mkdir()
+        shutil.copy2(REPO / "parity" / "write-ledger.py", parity / "write-ledger.py")
+        (parity / "programs" / "chrome.dsl").write_text("noise().chrome().write(o0)\n")
+        (parity / "out" / "chrome.report.json").write_text(json.dumps({
+            "name": "chrome",
+            "passed": True,
+            "max_abs_diff": 0,
+            "mean_abs_diff": 0,
+            "ssim": 1,
+            "tolerance": 2.001,
+            "ssim_min": 0.98,
+        }))
+        results = self.tmp / "results.tsv"
+        # "chrome" appears twice -- e.g. a sweep.sh case-arm bug that lets one
+        # program fall through into both a special case and the generic path.
+        results.write_text(
+            "chrome\tAUTO\t2.001\t0.98\tstrict comparison\n"
+            "chrome\tAUTO\t2.001\t0.98\tstrict comparison\n"
+        )
+
+        result = subprocess.run([
+            "python3", str(parity / "write-ledger.py"),
+            "--root", str(self.tmp), "--results", str(results),
+            "--output", "parity/ledger.json",
+        ], capture_output=True, text=True)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("UNIVERSE MISMATCH", result.stdout)
+        self.assertIn("chrome", result.stdout)
+
     def test_sweep_renders_multiple_cases_in_one_nm_render_launch(self):
         parity = self.tmp / "parity"
         (parity / "programs").mkdir(parents=True)
