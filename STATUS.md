@@ -82,7 +82,7 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
   assumed: a same-run single-fixture re-mint (`export-and-render.mjs`, unbatched) produced a
   golden that differs from the batch-minted one (`ssim=0.966` golden-vs-golden, byte-identical
   compiled graph) but matches this run's own already-correct candidate at `ssim=0.76117` — the
-  exact figure `task-T6-report.md` recorded when it first diagnosed this fixture's
+  exact figure recorded when the first corpus-wide sweep diagnosed this fixture's
   session-history-dependent non-determinism inside the reference engine's own renderer (not a qt
   bug; documented in `batch-golden.mjs`'s header as a known, unautomated flake specific to this
   one fixture's `overlayTex` mechanism). Replaced the flaked golden with the verified
@@ -102,7 +102,7 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
   | Sine tone mapping + specular `pow()` amplify isolated sub-LSB height differences | 2 | `chrome`, `chromeLiquid` | `chrome` max-diff 32.0/32.001 |
   | Floyd-Steinberg block resimulation cascades an isolated quantization tie | 2 | `ditherErrorDiffusion`, `ditherReferenceErrorDiffusion` | ssim 0.999926 |
   | Glossy `pow()` amplifies isolated sub-LSB blur residuals | 2 | `reliefPlaster`, `reliefReferencePlaster` | max-diff 7.0/7.001 |
-  | Quickselect chooses a different equal-valued candidate at a packed comparison tie | 1 | `median` | max-diff 14.0/14.001 (task-T5-report.md Episode 4: `noise()` 1-ULP input) |
+  | Quickselect chooses a different equal-valued candidate at a packed comparison tie | 1 | `median` | max-diff 14.0/14.001 (`noise()` 1-ULP input feeding the exact quickselect; established during executor bring-up) |
   | `step()` threshold tie flips at a near-boundary input value | 1 | `step` | max-diff 3.0/3.001 |
   | Separable Gaussian subtraction/rescaling amplifies isolated sub-LSB residuals | 1 | `unsharpMask` | max-diff 3.0/3.001 |
   | Timed samples reach a deterministic steady state (global strict bar, not its own policy) | 1 | `navierStokes` | see Timed below |
@@ -116,7 +116,7 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
   `sharpenAmount=2.5`): an expansive sharpen/blur feedback loop that amplifies cross-GPU
   floating-point non-determinism over its 8 settle frames — **not** the same three fixtures
   Godot's own CHAOS table carries (`reactionDiffusion` and `agentsPoints` are confirmed **bit-exact
-  PASSES** on this backend, established in `task-T6-report.md` and unchanged since). Isolation
+  PASSES** on this backend, established during the first corpus-wide sweep and unchanged since). Isolation
   evidence (established when this classification was first made; the classification and its
   underlying shader are both unchanged this pass, so nothing new to re-derive): at default params
   99.97% of pixels differ (65307/65536), 98.46% by more than 2/255, mean-abs-diff=10.7 — a
@@ -270,4 +270,4 @@ golden or the ledger. Then regrade the full corpus through the unmodified tool c
 `SKIP_GOLDEN=1 SKIP_RENDER=1 bash parity/sweep.sh`.
 
 To add or regenerate an effect, see [PORTING-GUIDE.md](PORTING-GUIDE.md). Per-task development
-history lives in the git log and `.superpowers/sdd/2026-08-08-qt-port/`.
+history lives in the git log.

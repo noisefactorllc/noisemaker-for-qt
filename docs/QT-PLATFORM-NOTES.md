@@ -37,7 +37,7 @@ Verified against numpy's IEEE round-to-even float16 cast: 200k+ random
 (zero, ±max normal, overflow boundary, subnormal boundary, exact-tie
 mantissas, ±Inf, NaN), all 65536 possible half bit patterns for `unpack()`
 exactness, and full round-trip consistency for every non-NaN half value —
-zero mismatches in all three (task-T5-report.md, Episode 4 / round 1).
+zero mismatches in all three (verified during executor bring-up).
 `median`'s own 11-pixel residual traced separately to `noise()`'s
 pre-existing, already-documented 1-ULP platform difference (proven via the
 `medianGradient.dsl` isolation fixture — a `gradient()` input instead of
@@ -167,9 +167,6 @@ change than the problem warrants.
   packHalf2x16 summary this file expands on).
 - `docs/GRAPH-JSON-SCHEMA.md` (the `outputs` field's `color`/`fragColor`
   naming note).
-- `.superpowers/sdd/2026-08-08-qt-port/task-T5-report.md` (packHalf2x16
-  verification, `median`/`noise()` 1-ULP isolation) and `task-T6-report.md`
-  (curl/curlSeeded triage that first characterized the boolean-define bug).
 - `noisemaker-for-touchdesigner/docs/TD-PLATFORM-NOTES.md` (the independent
   cross-port confirmation of the boolean-define bug class, and the format
   this file follows).

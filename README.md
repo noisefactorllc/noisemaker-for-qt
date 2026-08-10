@@ -34,12 +34,9 @@ doesn't buy in terms of parity risk).
 
 ## Quickstart
 
-Every command below was actually run this task (T7) before being written down here — literal
-transcripts are in
-[`.superpowers/sdd/2026-08-08-qt-port/task-T7-report.md`](.superpowers/sdd/2026-08-08-qt-port/task-T7-report.md).
-Note on the first block: this repo's canonical build directory for the core library is `qt/build`
-(gitignored), and that's what the commands below show — but at T7's own verification time,
-`qt/build`/`qt/build-compiler` were reserved for a corpus-wide parity sweep running concurrently, so
+Every command below was verified by literally running it before it was written down here.
+The canonical build directory for the core library is `qt/build` (gitignored), and that's what
+the commands below show; any out-of-tree build directory works the same way, so
 T7's own verification ran the identical commands against a scratch build directory instead (same
 flags, different `-B`/`--prefix` path; see the task report for that literal transcript). The
 `examples/viewer` commands further down were verified against these exact literal paths, no

@@ -6,8 +6,9 @@ situation and is rewritten here to. The short version: this port had
 **exactly one** fixture ever classified CHAOS (`filter/convolutionFeedback`),
 its classification was investigated rather than accepted, and the
 investigation found it was **not** inherent reference-engine chaos at all —
-it was the same golden-minting-harness race `task-T5-report.md` (round 3)
-already root-caused and fixed for agent-state surfaces, just not yet
+it was the same golden-minting-harness race already root-caused and fixed
+for agent-state surfaces during executor bring-up (see the header notes in
+`parity/export-and-render.mjs`), just not yet
 extended to cover the render/display surface convolutionFeedback's own
 feedback loop reads back. Once fixed, the fixture's golden became bit-exact
 reproducible and its remaining candidate-vs-golden gap collapsed to an
@@ -21,7 +22,7 @@ here yet.
 
 ---
 
-## Round 1 — the original classification (task-T6-report.md)
+## Round 1 — the original classification (first corpus sweep)
 
 `filter/convolutionFeedback` (a sharpen → blur → feedback-blend loop) was
 classified CHAOS after a strict-tolerance sweep failed it badly at default
@@ -39,14 +40,15 @@ graded pixel-for-pixel at all.
 
 This was reasonable triage under the evidence available at the time, and
 explicitly flagged as unresolved rather than silently accepted:
-`task-T6-report.md`'s own Concerns section lists it as a fixture that
+the sweep's own recorded findings listed it as a fixture that
 "needs a compiler-track or renderer-track follow-up."
 
 ## Round 2 — the CHAOS classification was itself a harness bug
 
 Re-investigating for this rewrite, rather than transcribing round 1's
 conclusion: the *first* question a "chaos" verdict deserves, per this
-family's own established method (`task-T5-report.md` round 2/3), is whether
+family's own established method (the physarum investigation, documented in
+`parity/export-and-render.mjs`), is whether
 the reference's own golden is even reproducible run-to-run. It hadn't been
 checked for this fixture specifically. It should have been:
 
@@ -60,7 +62,7 @@ more specific, more actionable signal than "chaos" — it points at the
 *minting harness*, not at inherent floating-point non-determinism in the
 reference engine or an unavoidable cross-GPU rounding gap in the port.
 
-`task-T5-report.md`'s round 3 already root-caused and fixed exactly this
+The physarum investigation already root-caused and fixed exactly this
 class of symptom for a different fixture (`physarum`/`physarumNoSense`):
 `CanvasRenderer`'s always-on `requestAnimationFrame` loop free-runs on
 wall-clock time through DSL-compile and the harness's own async
