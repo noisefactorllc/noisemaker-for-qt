@@ -201,6 +201,31 @@ Viewer::Viewer(QWidget* parent) : QOpenGLWidget(parent) {
     connect(&m_timer, &QTimer::timeout, this, [this] { update(); });
 }
 
+Viewer::~Viewer() {
+    // Fix round 3: this destructor's BODY runs before m_backend (a plain
+    // member) is torn down and before ~QOpenGLWidget() runs -- ordinary
+    // C++ derived-class destruction order (body, then members in reverse
+    // declaration order, then base class). That makes this the ONLY place
+    // that can release m_backend's GPU objects on the ORDINARY
+    // widget-destruction path while its context is both still valid AND
+    // still m_backend's own: cleanupGl() (below), wired to the context's
+    // aboutToBeDestroyed(), fires from INSIDE ~QOpenGLWidget() -- by then,
+    // without this destructor, m_backend would already have been
+    // destroyed by member teardown, so cleanupGl() would see null and
+    // no-op every time. Confirmed empirically (not just reasoned about):
+    // a temporary probe showed cleanupGl() never actually entering its
+    // release branch on ordinary shutdown before this fix existed.
+    //
+    // QOpenGLWidget::makeCurrent() is valid here -- the context is still
+    // alive; only ~QOpenGLWidget() (which runs AFTER this body) tears it
+    // down.
+    makeCurrent();
+    if (m_backend) {
+        m_backend->releaseGl();
+    }
+    doneCurrent();
+}
+
 void Viewer::checkGlErrors(const char* where) {
     QOpenGLContext* ctx = context();
     if (!ctx) return;
@@ -214,11 +239,19 @@ void Viewer::checkGlErrors(const char* where) {
 }
 
 void Viewer::cleanupGl() {
+    // Fix round 3: null check BEFORE the log line, not after -- the log
+    // must never again claim a release that didn't happen. On the
+    // ORDINARY widget-destruction path m_backend is already null here
+    // (member teardown ran before ~QOpenGLWidget() fired this signal --
+    // see ~Viewer(), which handles that path instead), so this correctly,
+    // silently no-ops there; it only actually releases anything on the
+    // mid-run context-recreation path (reparent / screen / GPU change),
+    // where the widget survives and m_backend is still valid.
+    if (!m_backend) return;
     std::fprintf(stderr,
                   "viewer: context aboutToBeDestroyed -- releasing this Backend's GL resources "
                   "before teardown\n");
-    if (!m_backend) return; // nothing set up yet on this context (e.g. a prior initializeGL() failed)
-    makeCurrent();          // the dying context is still valid here -- see initializeGL()'s comment
+    makeCurrent(); // the dying context is still valid here -- see initializeGL()'s comment
     m_backend->releaseGl();
     doneCurrent();
 }

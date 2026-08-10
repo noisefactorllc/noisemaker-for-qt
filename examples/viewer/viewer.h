@@ -26,6 +26,19 @@ class Viewer : public QOpenGLWidget {
 public:
     explicit Viewer(QWidget* parent = nullptr);
 
+    // Explicit (fix round 3): a derived class's destructor BODY runs
+    // BEFORE its members are torn down and BEFORE the base class
+    // destructor runs (ordinary C++ destruction order) -- so this is the
+    // only place that can release m_backend's GPU objects while its
+    // context is STILL both valid and still m_backend's, for the ORDINARY
+    // widget-destruction path. Without this, the compiler-generated
+    // destructor would destroy m_backend (a plain member) first, and only
+    // THEN run ~QOpenGLWidget() (which is what actually tears down the
+    // context and fires aboutToBeDestroyed) -- by which point m_backend
+    // was already gone, so cleanupGl() always saw null and no-op'd.
+    // Confirmed empirically, not just reasoned about (see viewer.cpp).
+    ~Viewer() override;
+
     // Highest GL error code observed since initializeGL() (0 / GL_NO_ERROR
     // if none). Polled explicitly after each render() / readSurface() call
     // rather than assumed absent — see paintGL() / checkGlErrors().
@@ -47,18 +60,22 @@ private:
     // Connected (in initializeGL()) to THIS call's context's own
     // QOpenGLContext::aboutToBeDestroyed() -- the canonical Qt pattern for
     // freeing GL resources tied to a context Qt is about to tear down out
-    // from under this widget (reparent / screen / GPU change), while that
-    // context is still valid enough to make current. Releases the CURRENT
-    // m_backend's GPU objects via nm::Backend::releaseGl() (fix round 2:
-    // without this, every re-entry leaked the outgoing Backend's entire
-    // GPU resource set, since nm::Backend's own destructor only does real
-    // GL cleanup for a context IT owns, never for an externally-owned one
-    // like this widget's). Fires before the NEXT initializeGL() call that
-    // the context recreation triggers. No explicit disconnect needed: the
-    // connection's sender (the old QOpenGLContext) is itself destroyed as
-    // part of the same teardown, which Qt disconnects automatically; each
+    // from under this widget WHILE THE WIDGET ITSELF SURVIVES (reparent /
+    // screen / GPU change: only the context is recreated, ~Viewer() never
+    // runs). Fires before the NEXT initializeGL() call that the context
+    // recreation triggers. No explicit disconnect needed: the connection's
+    // sender (the old QOpenGLContext) is itself destroyed as part of the
+    // same teardown, which Qt disconnects automatically; each
     // initializeGL() call connects fresh to that call's (different)
     // context object.
+    //
+    // NOT the path for ordinary widget destruction -- see ~Viewer() above
+    // (fix round 3): by the time THIS signal would fire during normal
+    // shutdown, member teardown has already destroyed m_backend, so this
+    // correctly (and silently, since fix round 3 -- the log line moved
+    // after the null check) no-ops there. releaseGl() is idempotent, so
+    // it's harmless for both paths to ever fire on the same still-valid
+    // Backend (they don't, in practice, but nothing depends on that).
     void cleanupGl();
 
     nm::EffectRegistry m_registry;
