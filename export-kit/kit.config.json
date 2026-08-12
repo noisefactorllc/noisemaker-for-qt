@@ -1,0 +1,38 @@
+{
+  "configVersion": 1,
+  "id": "qt",
+  "series": "0.1",
+  "shaderSource": "kit",
+  "engineSource": "kit",
+  "pageTemplate": false,
+  "gatedTopLevelDirs": {
+    "engine": "engine",
+    "effects": "engine",
+    "shaders": "shaders"
+  },
+  "subtrees": [
+    { "from": "qt/noisemaker/compiler", "to": "engine/noisemaker/compiler" },
+    { "from": "qt/noisemaker/runtime", "to": "engine/noisemaker/runtime" },
+    { "from": "qt/noisemaker/effects", "to": "effects" },
+    { "from": "qt/noisemaker/shaders", "to": "shaders" }
+  ],
+  "licenses": [
+    { "from": "LICENSE", "to": "LICENSES/noisemaker-for-qt-LICENSE.txt" }
+  ],
+  "shaderLayout": {
+    "root": "shaders",
+    "effectsPrefix": "effects/",
+    "includeDir": null
+  },
+  "inject": {
+    "type": "dsl-file",
+    "target": "program.dsl"
+  },
+  "compat": {
+    "mode": "list",
+    "fromDefs": "qt/noisemaker/effects",
+    "excludeNames": ["media", "scope", "spectrum"],
+    "excludeIds": ["filter/text", "render/meshLoader", "render/meshRender", "synth/roll"]
+  },
+  "engineBytesFrom": ["engine/", "effects/"]
+}
