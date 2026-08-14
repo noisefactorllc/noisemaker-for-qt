@@ -7,10 +7,15 @@
 #include <QSize>
 #include <QString>
 
+#include <functional>
 #include <memory>
+#include <optional>
+#include <vector>
 
 #include "agents.h"
+#include "frame_export.h"
 #include "graph.h"
+#include "output_sink.h"
 #include "pingpong.h"
 #include "surface.h"
 
@@ -51,6 +56,13 @@ public:
     // call. Does not internally loop for settle frames — callers that need
     // N settle iterations call this N times (see nm-render `--frames`).
     void render(const Graph& graph, double t);
+    void render(const Graph& graph, double t, double presentationTimestamp);
+
+    std::function<void()> addSink(const std::shared_ptr<OutputSink>& sink);
+    void removeSink(OutputSink* sink);
+    SinkStats sinkStats(const OutputSink* sink) const;
+    std::shared_ptr<FrameExportQueue> createFrameExportQueue(
+        FrameExportOptions options = {});
 
     // Reads back the texture bound to `graph.renderSurface` from the most
     // recent render() call. Top-down, RGBA8888, round(v*255), no gamma
@@ -109,8 +121,14 @@ private:
     QJsonObject engineUniforms() const;
     int resolveRepeatCount(const Pass& pass) const;
     int resolvePointCount(const Graph& graph, const Pass& pass);
+    void renderInternal(
+        const Graph& graph,
+        double t,
+        std::optional<double> presentationTimestamp);
     GpuSurface& resolveInputSurface(const Graph& graph, const QString& texId);
     GpuSurface& resolveOutputSurface(const Graph& graph, const QString& texId);
+    QString currentRenderSurfaceId() const;
+    const GpuSurface* currentRenderSurface() const;
     QJsonObject loadEffectUniformLayout(const QString& ns, const QString& func);
 
     QOpenGLContext* m_context = nullptr;
@@ -133,6 +151,8 @@ private:
     PingPongState m_pingpong;                     // cross-frame ping-pong bookkeeping (pingpong.h)
     QJsonObject m_mergedUniforms;                  // this render()'s graph-wide uniform merge
     QHash<QString, QJsonObject> m_uniformLayoutCache; // "ns/func" -> effect JSON's uniformLayout ({} if none)
+    SinkManager m_sinkManager;
+    std::vector<std::weak_ptr<FrameExportQueue>> m_frameExportQueues;
 };
 
 } // namespace nm

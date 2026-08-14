@@ -15,6 +15,10 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/pingpong.cpp
     ${CMAKE_CURRENT_LIST_DIR}/agents.h
     ${CMAKE_CURRENT_LIST_DIR}/agents.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/output_sink.h
+    ${CMAKE_CURRENT_LIST_DIR}/output_sink.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/frame_export.h
+    ${CMAKE_CURRENT_LIST_DIR}/frame_export.cpp
     ${CMAKE_CURRENT_LIST_DIR}/backend.h
     ${CMAKE_CURRENT_LIST_DIR}/backend.cpp
     ${CMAKE_CURRENT_LIST_DIR}/png_io.h

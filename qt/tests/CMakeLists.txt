@@ -10,6 +10,15 @@ add_executable(test_graph_load test_graph_load.cpp)
 target_link_libraries(test_graph_load PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_graph_load COMMAND test_graph_load)
 
+add_executable(test_output_runtime test_output_runtime.cpp)
+target_link_libraries(test_output_runtime PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_output_runtime COMMAND test_output_runtime)
+
+add_executable(test_frame_export test_frame_export.cpp)
+target_link_libraries(test_frame_export PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_frame_export COMMAND test_frame_export)
+set_tests_properties(test_frame_export PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
 target_link_libraries(test_lexer PRIVATE noisemaker-qt Qt6::Core)

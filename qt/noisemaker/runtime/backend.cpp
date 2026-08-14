@@ -14,6 +14,7 @@
 #include <QVector>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
@@ -106,6 +107,20 @@ Backend::Backend() = default;
 // of only on Backend destruction with a context Backend itself owns.
 void Backend::releaseGl() {
     if (!m_gl) return; // nothing set up, or already released
+
+    try {
+        m_sinkManager.close();
+    } catch (...) {
+    }
+    for (const auto& weakQueue : m_frameExportQueues) {
+        if (const auto queue = weakQueue.lock()) {
+            try {
+                queue->close();
+            } catch (...) {
+            }
+        }
+    }
+    m_frameExportQueues.clear();
 
     if (m_surfaces) {
         m_surfaces->releaseAll();
@@ -215,6 +230,11 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
     m_surfaces = std::make_unique<SurfaceCache>(m_gl);
     createFullscreenVao();
     createEmptyVao();
+    if (m_sinkManager.closed()) m_sinkManager = SinkManager();
+    OutputDescriptor descriptor;
+    descriptor.width = size.width();
+    descriptor.height = size.height();
+    m_sinkManager.configure(descriptor);
 }
 
 void Backend::createFullscreenVao() {
@@ -1022,6 +1042,17 @@ void Backend::executePass(const Graph& graph, const Pass& pass) {
 }
 
 void Backend::render(const Graph& graph, double t) {
+    renderInternal(graph, t, std::nullopt);
+}
+
+void Backend::render(const Graph& graph, double t, double presentationTimestamp) {
+    renderInternal(graph, t, presentationTimestamp);
+}
+
+void Backend::renderInternal(
+    const Graph& graph,
+    double t,
+    std::optional<double> presentationTimestamp) {
     m_time = t;
     m_currentRenderSurface = graph.renderSurface;
     m_mergedUniforms = mergeAllPassUniforms(graph);
@@ -1045,6 +1076,50 @@ void Backend::render(const Graph& graph, double t) {
 
     m_pingpong.endFrame();
     m_gl->glFlush();
+    if (const GpuSurface* surface = currentRenderSurface()) {
+        if (!presentationTimestamp) {
+            const auto now = std::chrono::steady_clock::now().time_since_epoch();
+            presentationTimestamp =
+                std::chrono::duration<double, std::milli>(now).count();
+        }
+        m_sinkManager.submit(*surface, *presentationTimestamp);
+    }
+}
+
+std::function<void()> Backend::addSink(const std::shared_ptr<OutputSink>& sink) {
+    return m_sinkManager.add(sink);
+}
+
+void Backend::removeSink(OutputSink* sink) {
+    m_sinkManager.remove(sink);
+}
+
+SinkStats Backend::sinkStats(const OutputSink* sink) const {
+    return m_sinkManager.statsFor(sink);
+}
+
+std::shared_ptr<FrameExportQueue> Backend::createFrameExportQueue(
+    FrameExportOptions options) {
+    if (!m_gl) {
+        throw std::runtime_error(
+            "nm::Backend::createFrameExportQueue: setup must be called first");
+    }
+    auto queue = std::make_shared<FrameExportQueue>(m_gl, std::move(options));
+    m_frameExportQueues.push_back(queue);
+    return queue;
+}
+
+QString Backend::currentRenderSurfaceId() const {
+    if (m_currentRenderSurface.isEmpty()) return QString();
+    if (m_pingpong.isHazard(m_currentRenderSurface)) {
+        return m_pingpong.physicalRead(m_currentRenderSurface);
+    }
+    return QStringLiteral("global_") + m_currentRenderSurface;
+}
+
+const GpuSurface* Backend::currentRenderSurface() const {
+    const QString texId = currentRenderSurfaceId();
+    return texId.isEmpty() || !m_surfaces ? nullptr : m_surfaces->find(texId);
 }
 
 QImage Backend::readSurface() const {
@@ -1057,14 +1132,9 @@ QImage Backend::readSurface() const {
     // common case (a render surface written once, never read in-graph) is
     // never a hazard, so this falls through to the original flat lookup
     // unchanged -- zero behavior change for Tier-1.
-    QString texId;
-    if (m_pingpong.isHazard(m_currentRenderSurface)) {
-        texId = m_pingpong.physicalRead(m_currentRenderSurface);
-    } else {
-        texId = QStringLiteral("global_") + m_currentRenderSurface;
-    }
-    const GpuSurface* surface = m_surfaces->find(texId);
+    const GpuSurface* surface = currentRenderSurface();
     if (!surface) {
+        const QString texId = currentRenderSurfaceId();
         throw std::runtime_error(
             ("nm::Backend::readSurface: surface '" + texId + "' was never written").toStdString());
     }
