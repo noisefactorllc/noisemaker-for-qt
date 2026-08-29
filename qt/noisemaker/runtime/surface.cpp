@@ -127,7 +127,7 @@ void resolveGlFormat(const QString& format, unsigned int* internalFormat, unsign
     if (format == QStringLiteral("rgba16f") || format == QStringLiteral("rgba16float")) {
         *internalFormat = GL_RGBA16F;
         *glType = GL_HALF_FLOAT;
-    } else if (format == QStringLiteral("rgba32f")) {
+    } else if (format == QStringLiteral("rgba32f") || format == QStringLiteral("rgba32float")) {
         *internalFormat = GL_RGBA32F;
         *glType = GL_FLOAT;
     } else if (format == QStringLiteral("rgba8") || format == QStringLiteral("rgba8unorm")) {

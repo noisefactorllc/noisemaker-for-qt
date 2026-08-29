@@ -111,6 +111,8 @@ private:
     void createFullscreenVao();
     void createEmptyVao();
     const CompiledProgram& programFor(const Pass& pass);
+    int probeColorBytesPerSample();
+    bool applyMrtFormatBudgets(Graph& graph);
     QByteArray loadEffectSource(const Pass& pass) const;
     QByteArray loadVertexSource(const Pass& pass) const;
     void executePass(const Graph& graph, const Pass& pass);
@@ -142,6 +144,10 @@ private:
     unsigned int m_fullscreenVbo = 0;
     unsigned int m_emptyVao = 0; // no attributes/buffer; agent passes draw by gl_VertexID alone
     int m_maxTextureUnits = 16; // GL-guaranteed minimum; refined in setup() via GL_MAX_TEXTURE_IMAGE_UNITS
+    int m_maxTextureSize = 0;
+    int m_maxColorBytesPerSample = 0;
+    bool m_warnedVolumeClamp = false;
+    bool m_warnedMrtDemotion = false;
 
     QHash<QString, CompiledProgram> m_programs; // cache key -> compiled program
     std::unique_ptr<SurfaceCache> m_surfaces;   // texId -> GpuSurface registry

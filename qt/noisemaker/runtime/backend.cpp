@@ -1,9 +1,11 @@
 #include "backend.h"
 
+#include "device_limits.h"
 #include "pingpong.h"
 #include "shader_assembly.h"
 
 #include <QFile>
+#include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QMap>
@@ -88,6 +90,17 @@ QString programCacheKey(const Pass& pass) {
         + QLatin1Char('|') + pass.drawMode;
 }
 
+int fragmentOutputLocation(
+    QOpenGLFunctions_4_1_Core* gl,
+    unsigned int program,
+    const QString& outputName) {
+    int location = gl->glGetFragDataLocation(program, outputName.toUtf8().constData());
+    if (location < 0 && outputName == QStringLiteral("color")) {
+        location = gl->glGetFragDataLocation(program, "fragColor");
+    }
+    return location;
+}
+
 float jsonArrayComponent(const QJsonArray& arr, int index, float fallback) {
     if (index >= arr.size()) {
         return fallback;
@@ -133,6 +146,10 @@ void Backend::releaseGl() {
         m_gl->glDeleteProgram(it->handle);
     }
     m_programs.clear();
+    m_maxTextureSize = 0;
+    m_maxColorBytesPerSample = 0;
+    m_warnedVolumeClamp = false;
+    m_warnedMrtDemotion = false;
     if (m_fullscreenVao) {
         m_gl->glDeleteVertexArrays(1, &m_fullscreenVao);
         m_fullscreenVao = 0;
@@ -219,6 +236,10 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
     GLint maxTextureUnits = m_maxTextureUnits;
     m_gl->glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
     m_maxTextureUnits = maxTextureUnits;
+    GLint maxTextureSize = 0;
+    m_gl->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
+    m_maxTextureSize = maxTextureSize;
+    m_maxColorBytesPerSample = probeColorBytesPerSample();
 
     // PORTING-GUIDE.md GL state parity rules: WebGL2 has vertex-shader
     // point size always enabled; desktop GL defaults it off. Enabled once
@@ -235,6 +256,109 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
     descriptor.width = size.width();
     descriptor.height = size.height();
     m_sinkManager.configure(descriptor);
+}
+
+int Backend::probeColorBytesPerSample() {
+    struct ProbeCombination {
+        int bytes;
+        std::vector<unsigned int> formats;
+    };
+    const std::vector<ProbeCombination> combinations = {
+        {64, {GL_RGBA32F, GL_RGBA32F, GL_RGBA32F, GL_RGBA32F}},
+        {48, {GL_RGBA32F, GL_RGBA32F, GL_RGBA32F}},
+        {40, {GL_RGBA32F, GL_RGBA32F, GL_RGBA16F}},
+        {32, {GL_RGBA32F, GL_RGBA16F, GL_RGBA16F}},
+    };
+
+    GLint maxDrawBuffers = 0;
+    GLint previousReadFramebuffer = 0;
+    GLint previousDrawFramebuffer = 0;
+    GLint previousTexture = 0;
+    m_gl->glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
+    m_gl->glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &previousReadFramebuffer);
+    m_gl->glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousDrawFramebuffer);
+    m_gl->glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
+
+    unsigned int framebuffer = 0;
+    m_gl->glGenFramebuffers(1, &framebuffer);
+    m_gl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+    int budget = 16;
+    for (const ProbeCombination& combination : combinations) {
+        if (static_cast<int>(combination.formats.size()) > maxDrawBuffers) continue;
+
+        std::vector<unsigned int> textures(combination.formats.size(), 0);
+        std::vector<unsigned int> drawBuffers;
+        drawBuffers.reserve(combination.formats.size());
+        m_gl->glGenTextures(static_cast<int>(textures.size()), textures.data());
+        for (int i = 0; i < static_cast<int>(textures.size()); ++i) {
+            const unsigned int format = combination.formats.at(i);
+            m_gl->glBindTexture(GL_TEXTURE_2D, textures.at(i));
+            m_gl->glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                static_cast<int>(format),
+                2,
+                2,
+                0,
+                GL_RGBA,
+                format == GL_RGBA32F ? GL_FLOAT : GL_HALF_FLOAT,
+                nullptr);
+            m_gl->glFramebufferTexture2D(
+                GL_DRAW_FRAMEBUFFER,
+                GL_COLOR_ATTACHMENT0 + static_cast<unsigned int>(i),
+                GL_TEXTURE_2D,
+                textures.at(i),
+                0);
+            drawBuffers.push_back(GL_COLOR_ATTACHMENT0 + static_cast<unsigned int>(i));
+        }
+        m_gl->glDrawBuffers(static_cast<int>(drawBuffers.size()), drawBuffers.data());
+        const bool complete = m_gl->glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        for (int i = 0; i < static_cast<int>(textures.size()); ++i) {
+            m_gl->glFramebufferTexture2D(
+                GL_DRAW_FRAMEBUFFER,
+                GL_COLOR_ATTACHMENT0 + static_cast<unsigned int>(i),
+                GL_TEXTURE_2D,
+                0,
+                0);
+        }
+        m_gl->glDeleteTextures(static_cast<int>(textures.size()), textures.data());
+        if (complete) {
+            budget = combination.bytes;
+            break;
+        }
+    }
+    m_gl->glDeleteFramebuffers(1, &framebuffer);
+    m_gl->glBindFramebuffer(
+        GL_READ_FRAMEBUFFER,
+        static_cast<unsigned int>(previousReadFramebuffer));
+    m_gl->glBindFramebuffer(
+        GL_DRAW_FRAMEBUFFER,
+        static_cast<unsigned int>(previousDrawFramebuffer));
+    m_gl->glBindTexture(GL_TEXTURE_2D, static_cast<unsigned int>(previousTexture));
+    while (m_gl->glGetError() != GL_NO_ERROR) {
+    }
+    return budget;
+}
+
+bool Backend::applyMrtFormatBudgets(Graph& graph) {
+    if (m_maxColorBytesPerSample <= 0) return false;
+    bool changed = false;
+    for (const Pass& pass : graph.passes) {
+        if (pass.outputs.size() <= 1) continue;
+        const CompiledProgram& program = programFor(pass);
+        QHash<QString, int> outputLocations;
+        for (auto it = pass.outputs.begin(); it != pass.outputs.end(); ++it) {
+            outputLocations.insert(
+                it.key(),
+                fragmentOutputLocation(m_gl, program.handle, it.key()));
+        }
+        changed = detail::applyMrtFormatBudget(
+            graph,
+            pass,
+            outputLocations,
+            m_maxColorBytesPerSample) || changed;
+    }
+    return changed;
 }
 
 void Backend::createFullscreenVao() {
@@ -924,10 +1048,7 @@ void Backend::executePass(const Graph& graph, const Pass& pass) {
         for (auto it = pass.outputs.begin(); it != pass.outputs.end(); ++it) {
             const QString texId = it.value().toString();
             GpuSurface& surface = resolveOutputSurface(graph, texId);
-            GLint location = m_gl->glGetFragDataLocation(program.handle, it.key().toUtf8().constData());
-            if (location < 0 && it.key() == QStringLiteral("color")) {
-                location = m_gl->glGetFragDataLocation(program.handle, "fragColor");
-            }
+            const int location = fragmentOutputLocation(m_gl, program.handle, it.key());
             const unsigned int textureHandle = surface.texture;
             const int surfaceWidth = surface.width;
             const int surfaceHeight = surface.height;
@@ -1053,16 +1174,31 @@ void Backend::renderInternal(
     const Graph& graph,
     double t,
     std::optional<double> presentationTimestamp) {
+    Graph effectiveGraph = graph;
+    if (detail::clampGraphVolumeSizes(effectiveGraph, m_maxTextureSize)
+        && !m_warnedVolumeClamp) {
+        qWarning().noquote()
+            << QStringLiteral("nm::Backend: clamped volumeSize to fit GL_MAX_TEXTURE_SIZE %1")
+                   .arg(m_maxTextureSize);
+        m_warnedVolumeClamp = true;
+    }
+    if (applyMrtFormatBudgets(effectiveGraph) && !m_warnedMrtDemotion) {
+        qWarning().noquote()
+            << QStringLiteral("nm::Backend: demoted trailing MRT attachments to fit the device's %1-byte color budget")
+                   .arg(m_maxColorBytesPerSample);
+        m_warnedMrtDemotion = true;
+    }
+
     m_time = t;
-    m_currentRenderSurface = graph.renderSurface;
-    m_mergedUniforms = mergeAllPassUniforms(graph);
-    m_pingpong.syncGraph(graph);
+    m_currentRenderSurface = effectiveGraph.renderSurface;
+    m_mergedUniforms = mergeAllPassUniforms(effectiveGraph);
+    m_pingpong.syncGraph(effectiveGraph);
     m_pingpong.beginFrame();
 
-    for (const Pass& pass : graph.passes) {
+    for (const Pass& pass : effectiveGraph.passes) {
         const int repeatCount = resolveRepeatCount(pass);
         for (int iter = 0; iter < repeatCount; ++iter) {
-            executePass(graph, pass);
+            executePass(effectiveGraph, pass);
             m_pingpong.updateFrameBindings(pass);
             if (repeatCount > 1) {
                 // reference §10.6 / godot: adopt EVERY iteration, not only

@@ -10,6 +10,11 @@ add_executable(test_graph_load test_graph_load.cpp)
 target_link_libraries(test_graph_load PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_graph_load COMMAND test_graph_load)
 
+add_executable(test_device_limits test_device_limits.cpp)
+target_link_libraries(test_device_limits PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_device_limits COMMAND test_device_limits)
+set_tests_properties(test_device_limits PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+
 add_executable(test_output_runtime test_output_runtime.cpp)
 target_link_libraries(test_output_runtime PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_output_runtime COMMAND test_output_runtime)

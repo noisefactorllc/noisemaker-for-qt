@@ -11,6 +11,8 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/shader_assembly.cpp
     ${CMAKE_CURRENT_LIST_DIR}/surface.h
     ${CMAKE_CURRENT_LIST_DIR}/surface.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/device_limits.h
+    ${CMAKE_CURRENT_LIST_DIR}/device_limits.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pingpong.h
     ${CMAKE_CURRENT_LIST_DIR}/pingpong.cpp
     ${CMAKE_CURRENT_LIST_DIR}/agents.h
