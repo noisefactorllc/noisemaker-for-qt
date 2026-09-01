@@ -1,3 +1,8 @@
+<!-- repo-hero -->
+<a href="https://noisemaker.app/"><img src="docs/hero.jpg" alt="Noisemaker for Qt" width="100%"></a>
+
+<sub>Open source from <a href="https://noisefactor.io">Noise Factor</a> &middot; <a href="https://github.com/noisefactorllc">more projects</a></sub>
+
 # Noisemaker for Qt
 
 **Noisemaker** is a procedural visual engine: small text programs — chains of composable effects —
