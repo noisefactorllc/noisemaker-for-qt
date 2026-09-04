@@ -194,8 +194,10 @@ private:
     static double toNumber(const QJsonObject& node);
 
     QJsonObject transformOscInvocation(const QJsonObject& call, const Token& nameToken);
-    QJsonObject transformMidiInvocation(const QJsonObject& call, const Token& nameToken);
-    QJsonObject transformAudioInvocation(const QJsonObject& call, const Token& nameToken);
+    QJsonObject transformMidiInvocation(const QJsonObject& call, const Token& nameToken,
+                                        const QStringList& kwargOrder);
+    QJsonObject transformAudioInvocation(const QJsonObject& call, const Token& nameToken,
+                                         const QStringList& kwargOrder);
     QJsonObject transformFromInvocation(const QJsonObject& call, const Token& nameToken);
 };
 
@@ -713,33 +715,35 @@ QJsonObject Parser::parseCall() {
     expect(TokenType::LPAREN, QStringLiteral("Expect '('"));
     QJsonArray args;
     QJsonObject kwargs;
+    QStringList kwargOrder;
     bool keyword = false;
+    bool positional = false;
+    const bool allowMixed = nameToken.lexeme == QStringLiteral("midi")
+        || nameToken.lexeme == QStringLiteral("audio");
     if (peek().type != TokenType::RPAREN) {
-        if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
-            keyword = true;
-            parseKwarg(kwargs);
-            while (peek().type == TokenType::COMMA) {
-                advance();
-                if (peek().type == TokenType::RPAREN) break;
-                if (!(peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON)) {
+        while (true) {
+            if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
+                if (positional && !allowMixed) {
                     const Token t = peek();
                     throw DslSyntaxError::at(QStringLiteral("Cannot mix positional and keyword arguments"), t.line,
                                               t.col);
                 }
+                keyword = true;
+                const QString kwargName = peek().lexeme;
                 parseKwarg(kwargs);
-            }
-        } else {
-            args.append(parseArg());
-            while (peek().type == TokenType::COMMA) {
-                advance();
-                if (peek().type == TokenType::RPAREN) break;
-                if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
+                kwargOrder.append(kwargName);
+            } else {
+                if (keyword && !allowMixed) {
                     const Token t = peek();
                     throw DslSyntaxError::at(QStringLiteral("Cannot mix positional and keyword arguments"), t.line,
                                               t.col);
                 }
+                positional = true;
                 args.append(parseArg());
             }
+            if (peek().type != TokenType::COMMA) break;
+            advance();
+            if (peek().type == TokenType::RPAREN) break;
         }
     }
     expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
@@ -784,10 +788,10 @@ QJsonObject Parser::parseCall() {
         // synth effect (e.g. a positional non-oscKind arg with no kwargs).
     }
     if (lexeme == QStringLiteral("midi")) {
-        return transformMidiInvocation(call, nameToken);
+        return transformMidiInvocation(call, nameToken, kwargOrder);
     }
     if (lexeme == QStringLiteral("audio")) {
-        return transformAudioInvocation(call, nameToken);
+        return transformAudioInvocation(call, nameToken, kwargOrder);
     }
     // read()/read3d() are pipeline built-ins. NOTE: `surface`/`tex3d` are
     // OMITTED entirely (not null) when unresolved -- the reference has no
@@ -878,54 +882,179 @@ QJsonObject Parser::transformOscInvocation(const QJsonObject& call, const Token&
     return node;
 }
 
-QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token& nameToken) {
+QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token& nameToken,
+                                            const QStringList& kwargOrder) {
     const QJsonArray args = call.value(QStringLiteral("args")).toArray();
     const QJsonObject kwargs = call.value(QStringLiteral("kwargs")).toObject();
 
-    auto resolve = [&](const QString& name, int index, const QJsonValue& dflt) -> QJsonValue {
-        if (kwargs.contains(name)) return kwargs.value(name);
-        if (index < args.size()) return args.at(index);
-        return dflt;
+    static const QStringList paramOrder = {
+        QStringLiteral("channel"), QStringLiteral("mode"), QStringLiteral("min"),
+        QStringLiteral("max"), QStringLiteral("sensitivity"),
     };
+    static const QStringList keywordOnlyParams = {
+        QStringLiteral("name"), QStringLiteral("id"),
+    };
+    QStringList validParams = paramOrder;
+    validParams.append(keywordOnlyParams);
+    if (args.size() > paramOrder.size()) {
+        throw DslSyntaxError::at(QStringLiteral("midi() name and id are keyword-only"), nameToken.line,
+                                  nameToken.col);
+    }
+    for (const QString& key : kwargOrder) {
+        if (!validParams.contains(key)) {
+            throw DslSyntaxError(QStringLiteral("midi() unknown parameter '%1' at line %2 col %3. Valid: %4")
+                                      .arg(key)
+                                      .arg(nameToken.line)
+                                      .arg(nameToken.col)
+                                      .arg(validParams.join(QStringLiteral(", "))),
+                                  nameToken.line, nameToken.col);
+        }
+    }
 
-    const QJsonValue channel = resolve(QStringLiteral("channel"), 0, QJsonValue(QJsonValue::Undefined));
+    const QJsonObject defaults = {
+        {QStringLiteral("mode"), ast::memberOf(QStringLiteral("midiMode"), QStringLiteral("velocity"))},
+        {QStringLiteral("min"), ast::number(0)},
+        {QStringLiteral("max"), ast::number(1)},
+        {QStringLiteral("sensitivity"), ast::number(1)},
+    };
+    QJsonObject resolved;
+    int posCursor = 0;
+    for (const QString& paramName : paramOrder) {
+        if (kwargs.contains(paramName)) {
+            resolved.insert(paramName, kwargs.value(paramName));
+        } else if (posCursor < args.size()) {
+            resolved.insert(paramName, args.at(posCursor++));
+        } else if (defaults.contains(paramName)) {
+            resolved.insert(paramName, defaults.value(paramName));
+        }
+    }
+    if (posCursor < args.size()) {
+        throw DslSyntaxError::at(QStringLiteral("midi() has an excess positional argument"), nameToken.line,
+                                  nameToken.col);
+    }
+
+    const QJsonValue channel = resolved.value(QStringLiteral("channel"));
     if (channel.isUndefined()) {
         throw DslSyntaxError::at(QStringLiteral("midi() requires 'channel' argument"), nameToken.line,
                                   nameToken.col);
+    }
+    if (kwargs.contains(QStringLiteral("id")) && !kwargs.contains(QStringLiteral("name"))) {
+        throw DslSyntaxError::at(QStringLiteral("midi() 'id' requires readable 'name'"), nameToken.line,
+                                  nameToken.col);
+    }
+    for (const QString& paramName : keywordOnlyParams) {
+        if (!kwargs.contains(paramName)) continue;
+        const QJsonObject value = kwargs.value(paramName).toObject();
+        if (value.value(QStringLiteral("type")).toString() != NodeKind::String) {
+            throw DslSyntaxError::at(QStringLiteral("midi() '%1' requires a quoted string").arg(paramName),
+                                      nameToken.line, nameToken.col);
+        }
+        if (value.value(QStringLiteral("value")).toString().isEmpty()) {
+            throw DslSyntaxError::at(QStringLiteral("midi() '%1' must not be empty").arg(paramName),
+                                      nameToken.line, nameToken.col);
+        }
     }
 
     QJsonObject node;
     node.insert(QStringLiteral("type"), NodeKind::Midi);
     node.insert(QStringLiteral("channel"), channel);
-    node.insert(QStringLiteral("mode"), resolve(QStringLiteral("mode"), 1,
-                                                 ast::memberOf(QStringLiteral("midiMode"), QStringLiteral("velocity"))));
-    node.insert(QStringLiteral("min"), resolve(QStringLiteral("min"), 2, ast::number(0)));
-    node.insert(QStringLiteral("max"), resolve(QStringLiteral("max"), 3, ast::number(1)));
-    node.insert(QStringLiteral("sensitivity"), resolve(QStringLiteral("sensitivity"), 4, ast::number(1)));
+    node.insert(QStringLiteral("mode"), resolved.value(QStringLiteral("mode")));
+    node.insert(QStringLiteral("min"), resolved.value(QStringLiteral("min")));
+    node.insert(QStringLiteral("max"), resolved.value(QStringLiteral("max")));
+    node.insert(QStringLiteral("sensitivity"), resolved.value(QStringLiteral("sensitivity")));
+    if (kwargs.contains(QStringLiteral("name"))) {
+        node.insert(QStringLiteral("name"), kwargs.value(QStringLiteral("name")));
+    }
+    if (kwargs.contains(QStringLiteral("id"))) node.insert(QStringLiteral("id"), kwargs.value(QStringLiteral("id")));
     node.insert(QStringLiteral("loc"), ast::loc(nameToken.line, nameToken.col));
     return node;
 }
 
-QJsonObject Parser::transformAudioInvocation(const QJsonObject& call, const Token& nameToken) {
+QJsonObject Parser::transformAudioInvocation(const QJsonObject& call, const Token& nameToken,
+                                             const QStringList& kwargOrder) {
     const QJsonArray args = call.value(QStringLiteral("args")).toArray();
     const QJsonObject kwargs = call.value(QStringLiteral("kwargs")).toObject();
 
-    auto resolve = [&](const QString& name, int index, const QJsonValue& dflt) -> QJsonValue {
-        if (kwargs.contains(name)) return kwargs.value(name);
-        if (index < args.size()) return args.at(index);
-        return dflt;
+    static const QStringList paramOrder = {
+        QStringLiteral("band"), QStringLiteral("min"), QStringLiteral("max"),
     };
+    static const QStringList keywordOnlyParams = {
+        QStringLiteral("channel"), QStringLiteral("name"), QStringLiteral("id"),
+    };
+    QStringList validParams = paramOrder;
+    validParams.append(keywordOnlyParams);
+    if (args.size() > paramOrder.size()) {
+        throw DslSyntaxError::at(QStringLiteral("audio() channel, name and id are keyword-only"), nameToken.line,
+                                  nameToken.col);
+    }
+    for (const QString& key : kwargOrder) {
+        if (!validParams.contains(key)) {
+            throw DslSyntaxError(QStringLiteral("audio() unknown parameter '%1' at line %2 col %3. Valid: %4")
+                                      .arg(key)
+                                      .arg(nameToken.line)
+                                      .arg(nameToken.col)
+                                      .arg(validParams.join(QStringLiteral(", "))),
+                                  nameToken.line, nameToken.col);
+        }
+    }
 
-    const QJsonValue band = resolve(QStringLiteral("band"), 0, QJsonValue(QJsonValue::Undefined));
+    const QJsonObject defaults = {
+        {QStringLiteral("min"), ast::number(0)},
+        {QStringLiteral("max"), ast::number(1)},
+    };
+    QJsonObject resolved;
+    int posCursor = 0;
+    for (const QString& paramName : paramOrder) {
+        if (kwargs.contains(paramName)) {
+            resolved.insert(paramName, kwargs.value(paramName));
+        } else if (posCursor < args.size()) {
+            resolved.insert(paramName, args.at(posCursor++));
+        } else if (defaults.contains(paramName)) {
+            resolved.insert(paramName, defaults.value(paramName));
+        }
+    }
+    if (posCursor < args.size()) {
+        throw DslSyntaxError::at(QStringLiteral("audio() has an excess positional argument"), nameToken.line,
+                                  nameToken.col);
+    }
+
+    const QJsonValue band = resolved.value(QStringLiteral("band"));
     if (band.isUndefined()) {
         throw DslSyntaxError::at(QStringLiteral("audio() requires 'band' argument"), nameToken.line, nameToken.col);
+    }
+    if (kwargs.contains(QStringLiteral("id")) && !kwargs.contains(QStringLiteral("name"))) {
+        throw DslSyntaxError::at(QStringLiteral("audio() 'id' requires readable 'name'"), nameToken.line,
+                                  nameToken.col);
+    }
+    if (kwargs.contains(QStringLiteral("channel")) != kwargs.contains(QStringLiteral("name"))) {
+        throw DslSyntaxError::at(QStringLiteral("audio() selected device requires both 'name' and 'channel'"),
+                                  nameToken.line, nameToken.col);
+    }
+    for (const QString& paramName : {QStringLiteral("name"), QStringLiteral("id")}) {
+        if (!kwargs.contains(paramName)) continue;
+        const QJsonObject value = kwargs.value(paramName).toObject();
+        if (value.value(QStringLiteral("type")).toString() != NodeKind::String) {
+            throw DslSyntaxError::at(QStringLiteral("audio() '%1' requires a quoted string").arg(paramName),
+                                      nameToken.line, nameToken.col);
+        }
+        if (value.value(QStringLiteral("value")).toString().isEmpty()) {
+            throw DslSyntaxError::at(QStringLiteral("audio() '%1' must not be empty").arg(paramName),
+                                      nameToken.line, nameToken.col);
+        }
     }
 
     QJsonObject node;
     node.insert(QStringLiteral("type"), NodeKind::Audio);
     node.insert(QStringLiteral("band"), band);
-    node.insert(QStringLiteral("min"), resolve(QStringLiteral("min"), 1, ast::number(0)));
-    node.insert(QStringLiteral("max"), resolve(QStringLiteral("max"), 2, ast::number(1)));
+    node.insert(QStringLiteral("min"), resolved.value(QStringLiteral("min")));
+    node.insert(QStringLiteral("max"), resolved.value(QStringLiteral("max")));
+    if (kwargs.contains(QStringLiteral("channel"))) {
+        node.insert(QStringLiteral("channel"), kwargs.value(QStringLiteral("channel")));
+    }
+    if (kwargs.contains(QStringLiteral("name"))) {
+        node.insert(QStringLiteral("name"), kwargs.value(QStringLiteral("name")));
+    }
+    if (kwargs.contains(QStringLiteral("id"))) node.insert(QStringLiteral("id"), kwargs.value(QStringLiteral("id")));
     node.insert(QStringLiteral("loc"), ast::loc(nameToken.line, nameToken.col));
     return node;
 }

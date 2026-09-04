@@ -240,6 +240,11 @@ int main() {
                                        .value(QStringLiteral("value")).toDouble(-2);
         check(noiseVal == 5.0 && noise1dVal == 5.0, "oscKind.noise == oscKind.noise1d == 5 (alias)");
 
+        const QJsonValue audioBand = reg.enums().std().value(QStringLiteral("audioBand"));
+        const double rawVal = audioBand.toObject().value(QStringLiteral("raw")).toObject()
+                                  .value(QStringLiteral("value")).toDouble(-1);
+        check(rawVal == 4.0, "audioBand.raw == 4");
+
         const QJsonValue palette = reg.enums().std().value(QStringLiteral("palette"));
         check(palette.isObject(), "std().palette is a subtree");
         const double noneIdx = palette.toObject().value(QStringLiteral("none")).toObject()

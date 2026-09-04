@@ -88,6 +88,7 @@ QJsonObject buildStd() {
     audioBand.insert(QStringLiteral("mid"), Enums::leaf(1));
     audioBand.insert(QStringLiteral("high"), Enums::leaf(2));
     audioBand.insert(QStringLiteral("vol"), Enums::leaf(3));
+    audioBand.insert(QStringLiteral("raw"), Enums::leaf(4));
     root.insert(QStringLiteral("audioBand"), audioBand);
 
     QJsonObject palette;

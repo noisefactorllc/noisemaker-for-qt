@@ -338,6 +338,81 @@ int main() {
               "audio positional band resolved");
     }
     {
+        const QJsonObject prog = parseSrc(QStringLiteral(
+            "search synth\nlet x = midi(channel: 2, midiMode.trigger, 0.25, 0.75, 0.5, name: \"Controller\", id: \"port-a\")\n"
+            "solid(0.1,0.2,0.3).write(o0)\nrender(o0)\n"));
+        const QJsonObject midi = prog.value(QStringLiteral("vars")).toArray().at(0).toObject().value(QStringLiteral("expr")).toObject();
+        check(midi.value(QStringLiteral("mode")).toObject().value(QStringLiteral("path")).toArray().at(1).toString()
+                  == QStringLiteral("trigger"),
+              "midi dense positionals fill fields skipped by kwargs");
+        check(numEq(midi.value(QStringLiteral("min")).toObject().value(QStringLiteral("value")).toDouble(), 0.25)
+                  && numEq(midi.value(QStringLiteral("max")).toObject().value(QStringLiteral("value")).toDouble(), 0.75),
+              "midi mixed positional min/max resolved");
+        check(midi.value(QStringLiteral("name")).toObject().value(QStringLiteral("value")).toString()
+                  == QStringLiteral("Controller")
+                  && midi.value(QStringLiteral("id")).toObject().value(QStringLiteral("value")).toString()
+                         == QStringLiteral("port-a"),
+              "midi device identity retained");
+    }
+    {
+        const QJsonObject prog = parseSrc(QStringLiteral(
+            "search synth\nlet x = audio(band: audioBand.raw, 0.25, 0.75, channel: 2, name: \"Interface\", id: \"device-b\")\n"
+            "solid(0.1,0.2,0.3).write(o0)\nrender(o0)\n"));
+        const QJsonObject audio = prog.value(QStringLiteral("vars")).toArray().at(0).toObject().value(QStringLiteral("expr")).toObject();
+        check(audio.value(QStringLiteral("band")).toObject().value(QStringLiteral("path")).toArray().at(1).toString()
+                  == QStringLiteral("raw"),
+              "audio raw band retained");
+        check(numEq(audio.value(QStringLiteral("min")).toObject().value(QStringLiteral("value")).toDouble(), 0.25)
+                  && numEq(audio.value(QStringLiteral("max")).toObject().value(QStringLiteral("value")).toDouble(), 0.75),
+              "audio dense positionals fill fields skipped by kwargs");
+        check(audio.value(QStringLiteral("channel")).toObject().value(QStringLiteral("value")).toDouble() == 2.0
+                  && audio.value(QStringLiteral("name")).toObject().value(QStringLiteral("value")).toString()
+                         == QStringLiteral("Interface")
+                  && audio.value(QStringLiteral("id")).toObject().value(QStringLiteral("value")).toString()
+                         == QStringLiteral("device-b"),
+              "audio device identity and channel retained");
+    }
+    for (const QString& source : {
+             QStringLiteral("search synth\nlet x = midi(1, id: \"port-a\")\n"),
+             QStringLiteral("search synth\nlet x = midi(1, midiMode.velocity, 0, 1, 1, \"Controller\")\n"),
+             QStringLiteral("search synth\nlet x = midi(1, bogus: 1)\n"),
+             QStringLiteral("search synth\nlet x = midi(1, name: Controller)\n"),
+             QStringLiteral("search synth\nlet x = midi(1, name: \"\")\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, name: \"Interface\")\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, channel: 1)\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, id: \"device-b\")\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, 0, 1, 2)\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, bogus: 1)\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, channel: 1, name: Interface)\n"),
+             QStringLiteral("search synth\nlet x = audio(audioBand.low, channel: 1, name: \"\")\n"),
+         }) {
+        bool threw = false;
+        try {
+            parseSrc(source);
+        } catch (const nm::DslSyntaxError&) {
+            threw = true;
+        }
+        check(threw, "midi/audio selector invariants reject incomplete identity");
+    }
+    for (const auto& testCase : {
+             std::pair{
+                 QStringLiteral("search synth\nlet x = midi(1, zzz: 1, aaa: 2)\n"),
+                 QStringLiteral("midi() unknown parameter 'zzz' at line 2 col 9. Valid: channel, mode, min, max, "
+                                "sensitivity, name, id")},
+             std::pair{
+                 QStringLiteral("search synth\nlet x = audio(audioBand.low, zzz: 1, aaa: 2)\n"),
+                 QStringLiteral("audio() unknown parameter 'zzz' at line 2 col 9. Valid: band, min, max, channel, "
+                                "name, id")},
+         }) {
+        QString message;
+        try {
+            parseSrc(testCase.first);
+        } catch (const nm::DslSyntaxError& error) {
+            message = error.message();
+        }
+        check(message == testCase.second, "midi/audio reports the first unknown keyword in source order");
+    }
+    {
         const QJsonObject prog = parseSrc(QStringLiteral("search synth\nfrom(filter, blur(amount: 5)).write(o0)\nrender(o0)\n"));
         const QJsonObject call = prog.value(QStringLiteral("plans")).toArray().at(0).toObject().value(QStringLiteral("chain")).toArray().at(0).toObject();
         check(call.value(QStringLiteral("name")).toString() == QStringLiteral("blur"), "from(filter, blur(...)) replaces the call with the target");

@@ -346,6 +346,14 @@ int main() {
                        "7/9: midi() numeric param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(octaves: audio(low)).write(o0)\nrender(o0)\n"),
                        "8/9: audio() numeric param -> UnsupportedDsl");
+    expectUnsupported(QStringLiteral(
+                          "search synth\nnoise(octaves: midi(channel: 1, name: \"Controller\", id: \"port-a\"))"
+                          ".write(o0)\nrender(o0)\n"),
+                      "selected midi() remains outside the Qt runtime boundary");
+    expectUnsupported(QStringLiteral(
+                          "search synth\nnoise(scaleX: audio(band: audioBand.raw, channel: 2, name: \"Interface\", "
+                          "id: \"device-b\")).write(o0)\nrender(o0)\n"),
+                      "selected raw audio() remains outside the Qt runtime boundary");
     expectUnsupported(QStringLiteral("search synth\nnoise(octaves: time).write(o0)\nrender(o0)\n"),
                        "9/9: state-value numeric param -> UnsupportedDsl");
 
