@@ -19,6 +19,11 @@ add_executable(test_output_runtime test_output_runtime.cpp)
 target_link_libraries(test_output_runtime PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_output_runtime COMMAND test_output_runtime)
 
+add_executable(test_automation test_automation.cpp)
+target_link_libraries(test_automation PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_automation COMMAND test_automation)
+set_tests_properties(test_automation PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+
 add_executable(test_frame_export test_frame_export.cpp)
 target_link_libraries(test_frame_export PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
 add_test(NAME test_frame_export COMMAND test_frame_export)

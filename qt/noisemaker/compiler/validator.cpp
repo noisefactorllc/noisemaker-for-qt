@@ -6,6 +6,7 @@
 #include "enums.h"
 
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMap>
@@ -13,6 +14,7 @@
 #include <QString>
 #include <QStringList>
 
+#include <algorithm>
 #include <charconv>
 #include <cmath>
 
@@ -41,10 +43,8 @@ namespace {
 //     `column: undefined`. TD's port sets a real `column` value here
 //     (reading `.col` into `d['column']`) -- VERIFIED WRONG against the
 //     live oracle; do not copy that.
-//   - ALLOWED_STRING_PARAMS has FOUR entries (adds 'text.style'), not the
-//     three both prior ports transcribe -- verified directly against the
-//     live shaders/src/lang/validator.js source and filter/text.json's
-//     real `style` global (type:"string", default "").
+//   - ALLOWED_STRING_PARAMS includes the four text fields plus the
+//     name/id identity fields accepted by midi() and audio().
 //   - "member"-typed params (`def.type === 'member'`, e.g. filter.channel,
 //     filter.palette, filter3d.palette3d, synth.osc2d -- FOUR effects
 //     total) are the ONLY ones dispatched through the dedicated member
@@ -130,15 +130,69 @@ const QSet<QString>& stateValues() {
 }
 
 // !! Do not expand -- strict allowlist for string params (reference
-// ALLOWED_STRING_PARAMS; SEE FILE HEADER re: the 4th entry).
+// ALLOWED_STRING_PARAMS; effect fields and input-identity fields only).
 const QSet<QString>& allowedStringParams() {
     static const QSet<QString> s = {
         QStringLiteral("text.text"),
         QStringLiteral("text.font"),
         QStringLiteral("text.justify"),
         QStringLiteral("text.style"),
+        QStringLiteral("midi.name"),
+        QStringLiteral("midi.id"),
+        QStringLiteral("audio.name"),
+        QStringLiteral("audio.id"),
     };
     return s;
+}
+
+const QMap<QString, QStringList>& automationFields() {
+    static const QMap<QString, QStringList> fields = {
+        {NodeKind::Oscillator,
+         {QStringLiteral("oscType"), QStringLiteral("min"), QStringLiteral("max"),
+          QStringLiteral("speed"), QStringLiteral("offset"), QStringLiteral("seed")}},
+        {NodeKind::Midi,
+         {QStringLiteral("channel"), QStringLiteral("mode"), QStringLiteral("min"),
+          QStringLiteral("max"), QStringLiteral("sensitivity"), QStringLiteral("name"),
+          QStringLiteral("id")}},
+        {NodeKind::Audio,
+         {QStringLiteral("band"), QStringLiteral("min"), QStringLiteral("max"),
+          QStringLiteral("channel"), QStringLiteral("name"), QStringLiteral("id")}},
+    };
+    return fields;
+}
+
+constexpr int kMaxAutomationDepth = 8;
+
+QString decodeJsonStringLiteralContent(const QString& raw) {
+    QJsonParseError error{};
+    const QByteArray encoded = QByteArrayLiteral("[\"") + raw.toUtf8() + QByteArrayLiteral("\"]");
+    const QJsonDocument parsed = QJsonDocument::fromJson(encoded, &error);
+    if (error.error == QJsonParseError::NoError && parsed.isArray()
+        && !parsed.array().isEmpty() && parsed.array().first().isString()) {
+        return parsed.array().first().toString();
+    }
+
+    QString decoded;
+    for (int i = 0; i < raw.size(); ++i) {
+        if (raw.at(i) != QLatin1Char('\\') || i + 1 >= raw.size()) {
+            decoded.append(raw.at(i));
+            continue;
+        }
+        const QChar next = raw.at(++i);
+        if (next == QLatin1Char('n')) decoded.append(QLatin1Char('\n'));
+        else if (next == QLatin1Char('r')) decoded.append(QLatin1Char('\r'));
+        else if (next == QLatin1Char('t')) decoded.append(QLatin1Char('\t'));
+        else if (next == QLatin1Char('b')) decoded.append(QLatin1Char('\b'));
+        else if (next == QLatin1Char('f')) decoded.append(QLatin1Char('\f'));
+        else if (next == QLatin1Char('v')) decoded.append(QChar(0x0b));
+        else if (next == QLatin1Char('0')) decoded.append(QChar(0));
+        else if (next == QLatin1Char('\\') || next == QLatin1Char('\'') || next == QLatin1Char('"')) decoded.append(next);
+        else {
+            decoded.append(QLatin1Char('\\'));
+            decoded.append(next);
+        }
+    }
+    return decoded;
 }
 
 const QSet<QString>& surfacePassthroughCalls() {
@@ -256,6 +310,7 @@ private:
     EffectRegistry& reg_;
     QJsonArray diagnostics_;
     QMap<QString, QJsonValue> symbols_;
+    QSet<QString> reportedAutomationCycles_;
     QStringList programSearchOrder_;
     int tempIndex_ = 0;
 
@@ -270,7 +325,7 @@ private:
     static QJsonValue firstChainCall(const QJsonValue& node);
     QJsonValue getStarterInfo(const QJsonValue& node);
     bool isStarterChain(const QJsonValue& node);
-    QJsonValue substitute(const QJsonValue& node);
+    QJsonValue substitute(const QJsonValue& node, const QStringList& resolving = {});
     void bindVar(const QJsonObject& v);
     static QJsonValue buildNamespaceSnapshot(const QJsonValue& callNamespace);
 
@@ -305,8 +360,22 @@ private:
                            const QJsonObject& original, QJsonObject& args, const QString& argKey);
     void resolveNumericArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call, const OpSpec& spec,
                             QJsonObject& args, const QString& argKey);
-    QJsonObject resolveOscillator(const QJsonObject& node);
-    QJsonValue resolveOscParam(const QJsonValue& param);
+    struct AutomationNumberOptions {
+        bool allowBoolean = false;
+        bool allowAutomation = false;
+        bool allowMember = true;
+        bool clamp01 = false;
+        bool* invalid = nullptr;
+    };
+    QJsonValue resolveAutomationEnum(const QJsonValue& node, const QString& enumName,
+                                     const QJsonValue& fallback, const QSet<int>& validValues,
+                                     const QString& descriptorName, const QString& fieldName);
+    QJsonValue resolveAutomationString(const QJsonValue& node, const QString& descriptorName,
+                                       const QString& fieldName);
+    QJsonValue resolveAutomationNumber(const QJsonValue& node, const QString& descriptorName,
+                                       const QString& fieldName, const QJsonValue& fallback,
+                                       AutomationNumberOptions options, int depth = 0);
+    QJsonValue compileAutomationDescriptor(const QJsonObject& node, int depth = 0);
 };
 
 // ---------------------------------------------------------------- diagnostics
@@ -499,19 +568,39 @@ bool Validator::isStarterChain(const QJsonValue& node) {
     return info.isObject() && info.toObject().value(QStringLiteral("index")).toInt(-1) == 0;
 }
 
-QJsonValue Validator::substitute(const QJsonValue& nodeVal) {
+QJsonValue Validator::substitute(const QJsonValue& nodeVal, const QStringList& resolving) {
     if (!nodeVal.isObject()) return nodeVal;
     const QJsonObject node = nodeVal.toObject();
     const QString t = node.value(QStringLiteral("type")).toString();
+    if (t == NodeKind::Ident) {
+        const QString name = node.value(QStringLiteral("name")).toString();
+        if (resolving.contains(name)) {
+            const int cycleStart = resolving.indexOf(name);
+            QStringList cycle = resolving.mid(cycleStart);
+            cycle.append(name);
+            const QString cycleKey = cycle.join(QStringLiteral(" -> "));
+            if (!reportedAutomationCycles_.contains(cycleKey)) {
+                reportedAutomationCycles_.insert(cycleKey);
+                pushDiag(QStringLiteral("S001"), node,
+                         QStringLiteral("Automation cycle detected: %1").arg(cycleKey));
+            }
+            QJsonObject invalid = ast::number(0);
+            invalid.insert(QStringLiteral("_automationInvalid"), true);
+            return invalid;
+        }
+    }
     if (t == NodeKind::Ident && symbols_.contains(node.value(QStringLiteral("name")).toString())) {
-        QJsonValue result = substitute(symbols_.value(node.value(QStringLiteral("name")).toString()));
+        const QString name = node.value(QStringLiteral("name")).toString();
+        QStringList nestedResolving = resolving;
+        nestedResolving.append(name);
+        QJsonValue result = substitute(symbols_.value(name), nestedResolving);
         // Marks the substituted node as having come from a variable
         // reference -- resolveNumericArg's Number/Boolean case and
-        // resolveOscillator both read this back (verified against the
+        // compileAutomationDescriptor both read this back (verified against the
         // oracle: `let o = osc(...); noise(scaleX: o)` embeds `_varRef`
         // BOTH at the Oscillator value's top level AND nested inside its
         // `_ast` copy, because the mutation happens on the shared node
-        // object here, before resolveOscillator captures it as `_ast`).
+        // object here, before compileAutomationDescriptor captures it as `_ast`).
         if (result.isObject()) {
             QJsonObject r = result.toObject();
             r.insert(QStringLiteral("_varRef"), node.value(QStringLiteral("name")));
@@ -519,12 +608,19 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal) {
         }
         return result;
     }
+    if (automationFields().contains(t)) {
+        QJsonObject mapped = node;
+        for (const QString& field : automationFields().value(t)) {
+            if (node.contains(field)) mapped.insert(field, substitute(node.value(field), resolving));
+        }
+        return mapped;
+    }
     if (t == NodeKind::Chain) {
         QJsonArray mapped;
         for (const QJsonValue& cVal : node.value(QStringLiteral("chain")).toArray()) {
             const QJsonObject c = cVal.toObject();
             QJsonArray mappedArgs;
-            for (const QJsonValue& a : c.value(QStringLiteral("args")).toArray()) mappedArgs.append(substitute(a));
+            for (const QJsonValue& a : c.value(QStringLiteral("args")).toArray()) mappedArgs.append(substitute(a, resolving));
             QJsonObject mappedCall;
             mappedCall.insert(QStringLiteral("type"), NodeKind::Call);
             mappedCall.insert(QStringLiteral("name"), c.value(QStringLiteral("name")));
@@ -532,7 +628,7 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal) {
             if (c.contains(QStringLiteral("kwargs"))) {
                 QJsonObject kw;
                 const QJsonObject srcKw = c.value(QStringLiteral("kwargs")).toObject();
-                for (auto it = srcKw.constBegin(); it != srcKw.constEnd(); ++it) kw.insert(it.key(), substitute(it.value()));
+                for (auto it = srcKw.constBegin(); it != srcKw.constEnd(); ++it) kw.insert(it.key(), substitute(it.value(), resolving));
                 mappedCall.insert(QStringLiteral("kwargs"), kw);
             }
             mapped.append(resolveCall(mappedCall));
@@ -544,7 +640,7 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal) {
     }
     if (t == NodeKind::Call) {
         QJsonArray mappedArgs;
-        for (const QJsonValue& a : node.value(QStringLiteral("args")).toArray()) mappedArgs.append(substitute(a));
+        for (const QJsonValue& a : node.value(QStringLiteral("args")).toArray()) mappedArgs.append(substitute(a, resolving));
         QJsonObject mappedCall;
         mappedCall.insert(QStringLiteral("type"), NodeKind::Call);
         mappedCall.insert(QStringLiteral("name"), node.value(QStringLiteral("name")));
@@ -552,7 +648,7 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal) {
         if (node.contains(QStringLiteral("kwargs"))) {
             QJsonObject kw;
             const QJsonObject srcKw = node.value(QStringLiteral("kwargs")).toObject();
-            for (auto it = srcKw.constBegin(); it != srcKw.constEnd(); ++it) kw.insert(it.key(), substitute(it.value()));
+            for (auto it = srcKw.constBegin(); it != srcKw.constEnd(); ++it) kw.insert(it.key(), substitute(it.value(), resolving));
             mappedCall.insert(QStringLiteral("kwargs"), kw);
         }
         return resolveCall(mappedCall);
@@ -561,7 +657,8 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal) {
 }
 
 void Validator::bindVar(const QJsonObject& v) {
-    const QJsonValue expr = substitute(v.value(QStringLiteral("expr")));
+    const QString name = v.value(QStringLiteral("name")).toString();
+    const QJsonValue expr = substitute(v.value(QStringLiteral("expr")), {name});
     if (isStarterChain(expr)) {
         const QJsonValue head = firstChainCall(expr);
         if (!head.isUndefined()) pushDiag(QStringLiteral("S006"), head);
@@ -574,7 +671,6 @@ void Validator::bindVar(const QJsonObject& v) {
         pushDiag(QStringLiteral("S004"), v);
         return;
     }
-    const QString name = v.value(QStringLiteral("name")).toString();
     if (exprType == NodeKind::Ident) {
         const QString identName = expr.toObject().value(QStringLiteral("name")).toString();
         if (!symbols_.contains(identName) && !stateValues().contains(identName) && reg_.getOp(identName) == nullptr
@@ -701,7 +797,7 @@ QJsonValue Validator::make3dRef(const QJsonValue& nVal, const QString& defaultKi
 
 QJsonValue Validator::compileStmt(const QJsonObject& stmt) {
     const QString t = stmt.value(QStringLiteral("type")).toString();
-    // UnsupportedDsl fail-loud points 1-2 of 9 (see validator.h / file
+    // UnsupportedDsl fail-loud points 1-2 of 7 (see validator.h / file
     // header). NOT "the reference interprets control flow live every
     // frame" -- verified otherwise (task T7 docs pass): the reference's
     // OWN validator (validator.js compileStmt) CAN build a Branch plan
@@ -1365,7 +1461,7 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
         args.insert(argKey, node.toObject().value(QStringLiteral("value")).toDouble() != 0.0);
         return;
     }
-    // UnsupportedDsl 3/9: `(state) => ...` compiles to a `{fn}` closure in
+    // UnsupportedDsl 3/7: `(state) => ...` compiles to a `{fn}` closure in
     // the reference validator, same dead end as Branch above -- nothing
     // downstream ever calls it (verified: no `.fn(` call site anywhere in
     // shaders/src/runtime/*.js). Not a live interpreter this AOT frontend
@@ -1376,7 +1472,7 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
             "Func boolean params ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS6.5)."));
     }
     const QString identName = node.toObject().value(QStringLiteral("name")).toString();
-    // UnsupportedDsl 4/9: a bare state-value ident (time/frame/...) reads a
+    // UnsupportedDsl 4/7: a bare state-value ident (time/frame/...) reads a
     // LIVE per-frame value; this AOT frontend resolves args once, ahead of
     // time.
     if (t == NodeKind::Ident && stateValues().contains(identName)) {
@@ -1415,7 +1511,7 @@ void Validator::resolveMemberArg(const ParamDef& def, const QJsonValue& node, co
                                                      : n.value(QStringLiteral("value")));
         return;
     } else if (t == NodeKind::Ident && stateValues().contains(node.toObject().value(QStringLiteral("name")).toString())) {
-        // UnsupportedDsl 5/9.
+        // UnsupportedDsl 5/7.
         throw UnsupportedDsl(QStringLiteral(
             "state-value member params are not implemented in the first-cut DSL frontend (reference/02 SS6.6)."));
     } else if (t == NodeKind::Ident) {
@@ -1584,24 +1680,14 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
         }
         return;
     }
-    // UnsupportedDsl 6/9: Func numeric automation.
+    // UnsupportedDsl 6/7: Func numeric automation.
     if (t == NodeKind::Func) {
         throw UnsupportedDsl(QStringLiteral(
             "Func numeric params ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS6.10)."));
     }
-    if (t == NodeKind::Oscillator) {
-        args.insert(argKey, resolveOscillator(node.toObject()));
+    if (automationFields().contains(t)) {
+        args.insert(argKey, compileAutomationDescriptor(node.toObject()));
         return;
-    }
-    // UnsupportedDsl 7/9 and 8/9: midi()/audio() are LIVE external-input
-    // automation; nothing to resolve ahead of time.
-    if (t == NodeKind::Midi) {
-        throw UnsupportedDsl(QStringLiteral(
-            "midi() automation args are not implemented in the first-cut DSL frontend (reference/02 SS6.12)."));
-    }
-    if (t == NodeKind::Audio) {
-        throw UnsupportedDsl(QStringLiteral(
-            "audio() automation args are not implemented in the first-cut DSL frontend (reference/02 SS6.13)."));
     }
     if (t == NodeKind::Member) {
         const QJsonValue cur = resolveEnum(normalizeMemberPath(node.toObject().value(QStringLiteral("path"))));
@@ -1631,7 +1717,7 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
         return;
     }
     const QString identName = node.toObject().value(QStringLiteral("name")).toString();
-    // UnsupportedDsl 9/9: a bare state-value ident in numeric position.
+    // UnsupportedDsl 7/7: a bare state-value ident in numeric position.
     if (t == NodeKind::Ident && stateValues().contains(identName)) {
         throw UnsupportedDsl(QStringLiteral(
             "state-value numeric params (time/frame/...) are not implemented in the first-cut DSL frontend "
@@ -1668,42 +1754,258 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
     args.insert(argKey, numericDefault());
 }
 
-// 6.11 osc() value oscillator -> resolved config object.
-QJsonObject Validator::resolveOscillator(const QJsonObject& node) {
-    double oscTypeValue = 0;
-    const QJsonValue oscTypeNode = node.value(QStringLiteral("oscType"));
-    if (nodeType(oscTypeNode) == NodeKind::Member) {
-        const QJsonValue r = resolveEnum(normalizeMemberPath(oscTypeNode.toObject().value(QStringLiteral("path"))));
-        if (r.isDouble()) oscTypeValue = r.toDouble();
-    } else if (nodeType(oscTypeNode) == NodeKind::Ident) {
-        const QJsonValue r = resolveEnum({QStringLiteral("oscKind"), oscTypeNode.toObject().value(QStringLiteral("name")).toString()});
-        if (r.isDouble()) oscTypeValue = r.toDouble();
+QJsonValue Validator::resolveAutomationEnum(const QJsonValue& nodeVal, const QString& enumName,
+                                             const QJsonValue& fallback, const QSet<int>& validValues,
+                                             const QString& descriptorName, const QString& fieldName) {
+    QJsonValue resolved(QJsonValue::Undefined);
+    const QJsonObject node = nodeVal.toObject();
+    const QString type = nodeType(nodeVal);
+    if (type == NodeKind::Number) {
+        resolved = node.value(QStringLiteral("value"));
+    } else if (type == NodeKind::Member) {
+        resolved = resolveEnum(normalizeMemberPath(node.value(QStringLiteral("path"))));
+    } else if (type == NodeKind::Ident) {
+        resolved = resolveEnum({enumName, node.value(QStringLiteral("name")).toString()});
     }
-    auto param = [&](const char* key, double fallback) {
-        const QJsonValue r = resolveOscParam(node.value(QString::fromLatin1(key)));
-        return r.isDouble() ? r.toDouble() : fallback;
-    };
-    QJsonObject v;
-    v.insert(QStringLiteral("type"), QStringLiteral("Oscillator"));
-    v.insert(QStringLiteral("oscType"), oscTypeValue);
-    v.insert(QStringLiteral("min"), std::max(0.0, std::min(1.0, param("min", 0.0))));
-    v.insert(QStringLiteral("max"), std::max(0.0, std::min(1.0, param("max", 1.0))));
-    v.insert(QStringLiteral("speed"), param("speed", 1.0));
-    v.insert(QStringLiteral("offset"), param("offset", 0.0));
-    v.insert(QStringLiteral("seed"), param("seed", 1.0));
-    v.insert(QStringLiteral("_ast"), node);
-    if (node.contains(QStringLiteral("_varRef"))) v.insert(QStringLiteral("_varRef"), node.value(QStringLiteral("_varRef")));
-    return v;
+    if (resolved.isObject() && nodeType(resolved) == NodeKind::Number) {
+        resolved = resolved.toObject().value(QStringLiteral("value"));
+    }
+    if (resolved.isDouble()) {
+        const double value = resolved.toDouble();
+        if (std::isfinite(value) && std::floor(value) == value && validValues.contains(static_cast<int>(value))) {
+            return value;
+        }
+    }
+
+    if (type == NodeKind::String) {
+        pushDiag(QStringLiteral("S001"), nodeVal,
+                 QStringLiteral("String literal not allowed for %1() %2").arg(descriptorName, fieldName));
+    } else {
+        QString message = QStringLiteral("%1() %2 must resolve to a supported enum value")
+                              .arg(descriptorName, fieldName);
+        if (descriptorName == QStringLiteral("audio") && fieldName == QStringLiteral("band")) {
+            const QString got = resolved.isUndefined() ? QStringLiteral("undefined")
+                                                       : (resolved.isDouble() ? jsNumberToString(resolved.toDouble())
+                                                                              : resolved.toVariant().toString());
+            message = QStringLiteral("audio() band must resolve to an integer from 0 to 4 (got %1)").arg(got);
+        }
+        pushDiag(QStringLiteral("S002"), nodeVal, message);
+    }
+    return fallback;
 }
 
-QJsonValue Validator::resolveOscParam(const QJsonValue& param) {
-    if (!param.isObject()) return QJsonValue(QJsonValue::Undefined);
-    const QJsonObject p = param.toObject();
-    const QString t = p.value(QStringLiteral("type")).toString();
-    if (t == NodeKind::Number) return p.value(QStringLiteral("value"));
-    if (t == NodeKind::Boolean) return p.value(QStringLiteral("value")).toBool() ? 1.0 : 0.0;
-    if (t == NodeKind::Member) return resolveEnum(normalizeMemberPath(p.value(QStringLiteral("path"))));
-    return QJsonValue(QJsonValue::Undefined);
+QJsonValue Validator::resolveAutomationString(const QJsonValue& nodeVal, const QString& descriptorName,
+                                               const QString& fieldName) {
+    if (nodeVal.isUndefined() || nodeVal.isNull()) return QJsonValue(QJsonValue::Undefined);
+    const QString allowlistKey = descriptorName + QLatin1Char('.') + fieldName;
+    if (!allowedStringParams().contains(allowlistKey)) {
+        pushDiag(QStringLiteral("S001"), nodeVal,
+                 QStringLiteral("String parameter '%1' is not allowlisted").arg(allowlistKey));
+        return QJsonValue(QJsonValue::Undefined);
+    }
+    const QJsonObject node = nodeVal.toObject();
+    if (nodeType(nodeVal) != NodeKind::String) {
+        pushDiag(QStringLiteral("S001"), nodeVal,
+                 QStringLiteral("%1() %2 requires a quoted string").arg(descriptorName, fieldName));
+        return QJsonValue(QJsonValue::Undefined);
+    }
+    const QString raw = node.value(QStringLiteral("value")).toString();
+    if (raw.isEmpty()) {
+        pushDiag(QStringLiteral("S001"), nodeVal,
+                 QStringLiteral("%1() %2 must not be empty").arg(descriptorName, fieldName));
+        return QJsonValue(QJsonValue::Undefined);
+    }
+    return decodeJsonStringLiteralContent(raw);
+}
+
+QJsonValue Validator::resolveAutomationNumber(const QJsonValue& nodeVal, const QString& descriptorName,
+                                               const QString& fieldName, const QJsonValue& fallback,
+                                               AutomationNumberOptions options, int depth) {
+    if (nodeVal.isUndefined() || nodeVal.isNull()) return fallback;
+    auto reject = [&](const QString& code, const QString& message) {
+        if (options.invalid) *options.invalid = true;
+        pushDiag(code, nodeVal, message);
+        return fallback;
+    };
+
+    const QJsonObject node = nodeVal.toObject();
+    const QString type = nodeType(nodeVal);
+    QJsonValue resolved(QJsonValue::Undefined);
+    if (type == NodeKind::Number) {
+        resolved = node.value(QStringLiteral("value"));
+    } else if (options.allowBoolean && type == NodeKind::Boolean) {
+        resolved = node.value(QStringLiteral("value")).toBool() ? 1.0 : 0.0;
+    } else if (type == NodeKind::Member && options.allowMember) {
+        resolved = resolveEnum(normalizeMemberPath(node.value(QStringLiteral("path"))));
+        if (resolved.isObject() && nodeType(resolved) == NodeKind::Number) {
+            resolved = resolved.toObject().value(QStringLiteral("value"));
+        }
+    } else if (automationFields().contains(type) && options.allowAutomation) {
+        const QJsonValue compiled = compileAutomationDescriptor(node, depth + 1);
+        if (compiled.isObject() && compiled.toObject().value(QStringLiteral("_invalid")).toBool(false)
+            && options.invalid) {
+            *options.invalid = true;
+        }
+        return compiled;
+    } else if (type == NodeKind::String) {
+        return reject(QStringLiteral("S001"),
+                      QStringLiteral("String literal not allowed for %1() %2").arg(descriptorName, fieldName));
+    } else if (type == NodeKind::Ident) {
+        return reject(QStringLiteral("S003"),
+                      QStringLiteral("Undefined automation source '%1' for %2() %3")
+                          .arg(node.value(QStringLiteral("name")).toString(), descriptorName, fieldName));
+    } else {
+        return reject(QStringLiteral("S002"),
+                      QStringLiteral("%1() %2 must be a number%3")
+                          .arg(descriptorName, fieldName,
+                               options.allowAutomation ? QStringLiteral(" or automation source") : QString()));
+    }
+
+    if (!resolved.isDouble() || !std::isfinite(resolved.toDouble())) {
+        return reject(QStringLiteral("S002"),
+                      QStringLiteral("%1() %2 must resolve to a finite number").arg(descriptorName, fieldName));
+    }
+    double value = resolved.toDouble();
+    if (options.clamp01) value = std::clamp(value, 0.0, 1.0);
+    return value;
+}
+
+QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int depth) {
+    if (depth > kMaxAutomationDepth) {
+        pushDiag(QStringLiteral("S001"), node,
+                 QStringLiteral("Automation nesting exceeds the maximum depth of %1").arg(kMaxAutomationDepth));
+        return 0.0;
+    }
+
+    const QString type = node.value(QStringLiteral("type")).toString();
+    if (type == NodeKind::Oscillator) {
+        AutomationNumberOptions nestedUnit;
+        nestedUnit.allowBoolean = true;
+        nestedUnit.allowAutomation = true;
+        nestedUnit.clamp01 = true;
+        AutomationNumberOptions nestedNumber;
+        nestedNumber.allowBoolean = true;
+        nestedNumber.allowAutomation = true;
+
+        QJsonObject value;
+        value.insert(QStringLiteral("type"), NodeKind::Oscillator);
+        value.insert(QStringLiteral("oscType"), resolveAutomationEnum(
+            node.value(QStringLiteral("oscType")), QStringLiteral("oscKind"), 0.0,
+            {0, 1, 2, 3, 4, 5}, QStringLiteral("osc"), QStringLiteral("type")));
+        value.insert(QStringLiteral("min"), resolveAutomationNumber(
+            node.value(QStringLiteral("min")), QStringLiteral("osc"), QStringLiteral("min"), 0.0, nestedUnit, depth));
+        value.insert(QStringLiteral("max"), resolveAutomationNumber(
+            node.value(QStringLiteral("max")), QStringLiteral("osc"), QStringLiteral("max"), 1.0, nestedUnit, depth));
+        value.insert(QStringLiteral("speed"), resolveAutomationNumber(
+            node.value(QStringLiteral("speed")), QStringLiteral("osc"), QStringLiteral("speed"), 1.0, nestedNumber, depth));
+        value.insert(QStringLiteral("offset"), resolveAutomationNumber(
+            node.value(QStringLiteral("offset")), QStringLiteral("osc"), QStringLiteral("offset"), 0.0, nestedNumber, depth));
+        value.insert(QStringLiteral("seed"), resolveAutomationNumber(
+            node.value(QStringLiteral("seed")), QStringLiteral("osc"), QStringLiteral("seed"), 1.0, nestedNumber, depth));
+        value.insert(QStringLiteral("_ast"), node);
+        if (node.contains(QStringLiteral("_varRef"))) value.insert(QStringLiteral("_varRef"), node.value(QStringLiteral("_varRef")));
+        return value;
+    }
+
+    if (type == NodeKind::Midi) {
+        AutomationNumberOptions literal;
+        literal.allowBoolean = true;
+        AutomationNumberOptions nestedUnit;
+        nestedUnit.allowBoolean = true;
+        nestedUnit.allowAutomation = true;
+        nestedUnit.clamp01 = true;
+        AutomationNumberOptions nestedSensitivity;
+        nestedSensitivity.allowBoolean = true;
+        nestedSensitivity.allowAutomation = true;
+
+        QJsonObject value;
+        value.insert(QStringLiteral("type"), NodeKind::Midi);
+        value.insert(QStringLiteral("channel"), resolveAutomationNumber(
+            node.value(QStringLiteral("channel")), QStringLiteral("midi"), QStringLiteral("channel"), 1.0, literal, depth));
+        value.insert(QStringLiteral("mode"), resolveAutomationEnum(
+            node.value(QStringLiteral("mode")), QStringLiteral("midiMode"), 4.0,
+            {0, 1, 2, 3, 4}, QStringLiteral("midi"), QStringLiteral("mode")));
+        value.insert(QStringLiteral("min"), resolveAutomationNumber(
+            node.value(QStringLiteral("min")), QStringLiteral("midi"), QStringLiteral("min"), 0.0, nestedUnit, depth));
+        value.insert(QStringLiteral("max"), resolveAutomationNumber(
+            node.value(QStringLiteral("max")), QStringLiteral("midi"), QStringLiteral("max"), 1.0, nestedUnit, depth));
+        value.insert(QStringLiteral("sensitivity"), resolveAutomationNumber(
+            node.value(QStringLiteral("sensitivity")), QStringLiteral("midi"), QStringLiteral("sensitivity"), 1.0,
+            nestedSensitivity, depth));
+        for (const QString& field : {QStringLiteral("name"), QStringLiteral("id")}) {
+            const QJsonValue resolved = resolveAutomationString(node.value(field), QStringLiteral("midi"), field);
+            if (!resolved.isUndefined()) value.insert(field, resolved);
+        }
+        value.insert(QStringLiteral("_ast"), node);
+        if (node.contains(QStringLiteral("_varRef"))) value.insert(QStringLiteral("_varRef"), node.value(QStringLiteral("_varRef")));
+        return value;
+    }
+
+    if (type == NodeKind::Audio) {
+        const QJsonValue band = resolveAutomationEnum(
+            node.value(QStringLiteral("band")), QStringLiteral("audioBand"), QJsonValue(QJsonValue::Undefined),
+            {0, 1, 2, 3, 4}, QStringLiteral("audio"), QStringLiteral("band"));
+        bool invalidMin = false;
+        bool invalidMax = false;
+        AutomationNumberOptions minOptions;
+        minOptions.allowAutomation = true;
+        minOptions.allowMember = false;
+        minOptions.clamp01 = true;
+        minOptions.invalid = &invalidMin;
+        AutomationNumberOptions maxOptions = minOptions;
+        maxOptions.invalid = &invalidMax;
+        const QJsonValue minimum = resolveAutomationNumber(
+            node.value(QStringLiteral("min")), QStringLiteral("audio"), QStringLiteral("min"), 0.0, minOptions, depth);
+        const QJsonValue maximum = resolveAutomationNumber(
+            node.value(QStringLiteral("max")), QStringLiteral("audio"), QStringLiteral("max"), 1.0, maxOptions, depth);
+
+        QJsonValue channel(QJsonValue::Undefined);
+        bool validChannel = true;
+        if (node.contains(QStringLiteral("channel"))) {
+            const QJsonValue channelNode = node.value(QStringLiteral("channel"));
+            const QJsonValue raw = channelNode.toObject().value(QStringLiteral("value"));
+            if (nodeType(channelNode) == NodeKind::Number && raw.isDouble()
+                && std::floor(raw.toDouble()) == raw.toDouble() && raw.toDouble() >= 1.0) {
+                channel = raw;
+            } else {
+                validChannel = false;
+                if (nodeType(channelNode) == NodeKind::String) {
+                    pushDiag(QStringLiteral("S001"), channelNode,
+                             QStringLiteral("String literal not allowed for audio() channel"));
+                } else {
+                    QString got = nodeType(channelNode);
+                    if (raw.isDouble()) got = jsNumberToString(raw.toDouble());
+                    else if (channelNode.toObject().value(QStringLiteral("name")).isString()) {
+                        got = channelNode.toObject().value(QStringLiteral("name")).toString();
+                    }
+                    pushDiag(QStringLiteral("S002"), channelNode,
+                             QStringLiteral("audio() channel must be a positive integer (got %1)").arg(got));
+                }
+            }
+        }
+        const QJsonValue name = resolveAutomationString(
+            node.value(QStringLiteral("name")), QStringLiteral("audio"), QStringLiteral("name"));
+        const QJsonValue id = resolveAutomationString(
+            node.value(QStringLiteral("id")), QStringLiteral("audio"), QStringLiteral("id"));
+        const bool validName = !node.contains(QStringLiteral("name")) || !name.isUndefined();
+        const bool validId = !node.contains(QStringLiteral("id")) || !id.isUndefined();
+
+        QJsonObject value;
+        value.insert(QStringLiteral("type"), NodeKind::Audio);
+        if (!band.isUndefined()) value.insert(QStringLiteral("band"), band);
+        value.insert(QStringLiteral("min"), minimum);
+        value.insert(QStringLiteral("max"), maximum);
+        if (!channel.isUndefined()) value.insert(QStringLiteral("channel"), channel);
+        if (!name.isUndefined()) value.insert(QStringLiteral("name"), name);
+        if (!id.isUndefined()) value.insert(QStringLiteral("id"), id);
+        value.insert(QStringLiteral("_invalid"), band.isUndefined() || invalidMin || invalidMax
+                                                       || !validName || !validId || !validChannel);
+        value.insert(QStringLiteral("_ast"), node);
+        if (node.contains(QStringLiteral("_varRef"))) value.insert(QStringLiteral("_varRef"), node.value(QStringLiteral("_varRef")));
+        return value;
+    }
+
+    return 0.0;
 }
 
 // ---------------------------------------------------------------- entry point

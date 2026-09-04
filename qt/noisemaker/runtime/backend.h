@@ -58,6 +58,22 @@ public:
     void render(const Graph& graph, double t);
     void render(const Graph& graph, double t, double presentationTimestamp);
 
+    // Host-owned external-input snapshots consumed by midi()/audio()
+    // automation descriptors. The JSON shape mirrors the reference runtime:
+    // MIDI has channels keyed "1".."16" and optional selected `ports`;
+    // audio has legacy band fields and optional selected `devices`.
+    void setMidiState(const QJsonObject& state);
+    void setAudioState(const QJsonObject& state);
+
+    // Resolve a compiler-produced automation descriptor at normalized time.
+    // Non-automation values pass through unchanged; paramSpec {min,max}
+    // scales the normalized automation output for its consumer uniform.
+    QJsonValue resolveUniformValue(const QJsonValue& value, double normalizedTime,
+                                   const QJsonObject& paramSpec = {}) const;
+
+    // Capture requirements derived recursively from every pass uniform.
+    QJsonObject getAudioInputRequirements(const Graph& graph) const;
+
     std::function<void()> addSink(const std::shared_ptr<OutputSink>& sink);
     void removeSink(OutputSink* sink);
     SinkStats sinkStats(const OutputSink* sink) const;
@@ -96,6 +112,8 @@ public:
     void releaseGl();
 
 private:
+    friend struct BackendTestAccess;
+
     struct CompiledProgram {
         unsigned int handle = 0;
         QHash<QString, int> uniformLocations;          // GLint
@@ -157,6 +175,8 @@ private:
     PingPongState m_pingpong;                     // cross-frame ping-pong bookkeeping (pingpong.h)
     QJsonObject m_mergedUniforms;                  // this render()'s graph-wide uniform merge
     QHash<QString, QJsonObject> m_uniformLayoutCache; // "ns/func" -> effect JSON's uniformLayout ({} if none)
+    QJsonObject m_midiState;
+    QJsonObject m_audioState;
     SinkManager m_sinkManager;
     std::vector<std::weak_ptr<FrameExportQueue>> m_frameExportQueues;
 };

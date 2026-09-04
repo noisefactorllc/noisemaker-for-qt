@@ -109,9 +109,513 @@ float jsonArrayComponent(const QJsonArray& arr, int index, float fallback) {
     return (v.isNull() || v.isUndefined()) ? fallback : static_cast<float>(v.toDouble());
 }
 
+constexpr double kTau = 6.283185307179586476925286766559;
+constexpr int kMaxAutomationDepth = 8;
+
+const QJsonObject kUnitRange{{QStringLiteral("min"), 0.0}, {QStringLiteral("max"), 1.0}};
+const QJsonObject kOscillatorSpeedRange{{QStringLiteral("min"), -20.0}, {QStringLiteral("max"), 20.0}};
+const QJsonObject kOscillatorOffsetRange{{QStringLiteral("min"), -1.0}, {QStringLiteral("max"), 1.0}};
+const QJsonObject kOscillatorSeedRange{{QStringLiteral("min"), 1.0}, {QStringLiteral("max"), 9999.0}};
+const QJsonObject kMidiSensitivityRange{{QStringLiteral("min"), 0.0}, {QStringLiteral("max"), 10.0}};
+
+bool finiteNumber(const QJsonValue& value) {
+    return value.isDouble() && std::isfinite(value.toDouble());
+}
+
+QString automationType(const QJsonObject& value) {
+    QString type = value.value(QStringLiteral("type")).toString();
+    if (type == QStringLiteral("Oscillator") || type == QStringLiteral("Midi") || type == QStringLiteral("Audio")) {
+        return type;
+    }
+    const QString astType = value.value(QStringLiteral("_ast")).toObject().value(QStringLiteral("type")).toString();
+    return astType == QStringLiteral("Oscillator") || astType == QStringLiteral("Midi") || astType == QStringLiteral("Audio")
+        ? astType
+        : QString();
+}
+
+bool isAutomationValue(const QJsonValue& value) {
+    return value.isObject() && !automationType(value.toObject()).isEmpty();
+}
+
+double scaleAutomationValue(double value, const QJsonObject& range) {
+    const QJsonValue minimum = range.value(QStringLiteral("min"));
+    const QJsonValue maximum = range.value(QStringLiteral("max"));
+    if (!finiteNumber(minimum) || !finiteNumber(maximum)) return value;
+    return minimum.toDouble() + value * (maximum.toDouble() - minimum.toDouble());
+}
+
+double oscSine(double time) {
+    return (1.0 - std::cos(time * kTau)) * 0.5;
+}
+
+double oscTriangle(double time) {
+    const double fraction = time - std::floor(time);
+    return 1.0 - std::abs(fraction * 2.0 - 1.0);
+}
+
+double oscSaw(double time) {
+    return time - std::floor(time);
+}
+
+double oscSawInverse(double time) {
+    return 1.0 - oscSaw(time);
+}
+
+double oscSquare(double time) {
+    return oscSaw(time) >= 0.5 ? 1.0 : 0.0;
+}
+
+double hash21(double px, double py, double seed) {
+    double x = std::fmod(px * 234.34 + seed, 1.0);
+    double y = std::fmod(py * 435.345 + seed, 1.0);
+    if (x < 0.0) x += 1.0;
+    if (y < 0.0) y += 1.0;
+    const double p = x + y + (x + y) * 34.23;
+    return std::fmod(x * y * p, 1.0);
+}
+
+double noise2d(double px, double py, double seed) {
+    const double ix = std::floor(px);
+    const double iy = std::floor(py);
+    double fx = px - ix;
+    double fy = py - iy;
+    fx = fx * fx * (3.0 - 2.0 * fx);
+    fy = fy * fy * (3.0 - 2.0 * fy);
+    const double a = hash21(ix, iy, seed);
+    const double b = hash21(ix + 1.0, iy, seed);
+    const double c = hash21(ix, iy + 1.0, seed);
+    const double d = hash21(ix + 1.0, iy + 1.0, seed);
+    return a * (1.0 - fx) * (1.0 - fy) + b * fx * (1.0 - fy)
+        + c * (1.0 - fx) * fy + d * fx * fy;
+}
+
+double oscNoise(double time, double seed) {
+    const double angle = std::fmod(time, 1.0) * kTau;
+    const double loopX = std::cos(angle) * 2.0;
+    const double loopY = std::sin(angle) * 2.0;
+    return (noise2d(loopX + seed, loopY + seed, seed)
+            + noise2d(loopX + seed * 2.0, loopY + seed * 2.0, seed))
+        * 0.5;
+}
+
+struct IntegrationRule {
+    const double* nodes;
+    const double* weights;
+    int size;
+};
+
+const double kNodes16[] = {
+    -0.9894009349916499, -0.9445750230732326, -0.8656312023878318, -0.755404408355003,
+    -0.6178762444026438, -0.4580167776572274, -0.2816035507792589, -0.0950125098376374,
+    0.0950125098376374, 0.2816035507792589, 0.4580167776572274, 0.6178762444026438,
+    0.755404408355003, 0.8656312023878318, 0.9445750230732326, 0.9894009349916499,
+};
+const double kWeights16[] = {
+    0.0271524594117541, 0.0622535239386479, 0.0951585116824928, 0.1246289712555339,
+    0.1495959888165767, 0.1691565193950025, 0.1826034150449236, 0.1894506104550685,
+    0.1894506104550685, 0.1826034150449236, 0.1691565193950025, 0.1495959888165767,
+    0.1246289712555339, 0.0951585116824928, 0.0622535239386479, 0.0271524594117541,
+};
+const double kNodes8[] = {
+    -0.9602898564975363, -0.7966664774136267, -0.525532409916329, -0.1834346424956498,
+    0.1834346424956498, 0.525532409916329, 0.7966664774136267, 0.9602898564975363,
+};
+const double kWeights8[] = {
+    0.1012285362903763, 0.2223810344533745, 0.3137066458778873, 0.362683783378362,
+    0.362683783378362, 0.3137066458778873, 0.2223810344533745, 0.1012285362903763,
+};
+const double kNodes4[] = {-0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526};
+const double kWeights4[] = {0.3478548451374538, 0.6521451548625461, 0.6521451548625461, 0.3478548451374538};
+const double kNodes2[] = {-0.5773502691896257, 0.5773502691896257};
+const double kWeights2[] = {1.0, 1.0};
+const IntegrationRule kIntegrationRules[] = {
+    {kNodes16, kWeights16, 16}, {kNodes8, kWeights8, 8},
+    {kNodes4, kWeights4, 4}, {kNodes2, kWeights2, 2},
+};
+
+class AutomationEvaluator {
+public:
+    AutomationEvaluator(const QJsonObject& midiState, const QJsonObject& audioState)
+        : midiState_(midiState), audioState_(audioState) {
+        const auto now = std::chrono::system_clock::now().time_since_epoch();
+        wallTime_ = std::chrono::duration<double, std::milli>(now).count();
+    }
+
+    double evaluate(const QJsonObject& config, double normalizedTime, const QJsonObject& range,
+                    int depth = 0) const {
+        if (automationType(config).isEmpty() || depth > kMaxAutomationDepth) {
+            return scaleAutomationValue(0.0, range);
+        }
+
+        double value = 0.0;
+        const QString type = automationType(config);
+        if (type == QStringLiteral("Oscillator")) {
+            value = evaluateOscillator(config, normalizedTime, depth);
+        } else if (type == QStringLiteral("Midi")) {
+            const double minimum = resolveField(config.value(QStringLiteral("min")), normalizedTime,
+                                                kUnitRange, depth, 0.0);
+            const double maximum = resolveField(config.value(QStringLiteral("max")), normalizedTime,
+                                                kUnitRange, depth, 1.0);
+            const double sensitivity = resolveField(config.value(QStringLiteral("sensitivity")), normalizedTime,
+                                                    kMidiSensitivityRange, depth, 1.0);
+            value = evaluateMidi(config, selectedMidiState(config), minimum, maximum, sensitivity);
+        } else if (config.value(QStringLiteral("_invalid")).toBool(false)) {
+            value = finiteNumber(config.value(QStringLiteral("min")))
+                ? config.value(QStringLiteral("min")).toDouble()
+                : 0.0;
+        } else {
+            const double minimum = resolveField(config.value(QStringLiteral("min")), normalizedTime,
+                                                kUnitRange, depth, 0.0);
+            const double maximum = resolveField(config.value(QStringLiteral("max")), normalizedTime,
+                                                kUnitRange, depth, 1.0);
+            value = evaluateAudio(config, selectedAudioState(config), minimum, maximum);
+        }
+        return scaleAutomationValue(value, range);
+    }
+
+private:
+    const QJsonObject& midiState_;
+    const QJsonObject& audioState_;
+    double wallTime_ = 0.0;
+
+    double resolveField(const QJsonValue& value, double normalizedTime, const QJsonObject& range,
+                        int depth, double fallback) const {
+        if (isAutomationValue(value)) return evaluate(value.toObject(), normalizedTime, range, depth + 1);
+        return finiteNumber(value) ? value.toDouble() : fallback;
+    }
+
+    static bool hasDynamicFields(const QJsonObject& config) {
+        const QString type = automationType(config);
+        if (type == QStringLiteral("Midi")) {
+            return isAutomationValue(config.value(QStringLiteral("min")))
+                || isAutomationValue(config.value(QStringLiteral("max")))
+                || isAutomationValue(config.value(QStringLiteral("sensitivity")));
+        }
+        return isAutomationValue(config.value(QStringLiteral("min")))
+            || isAutomationValue(config.value(QStringLiteral("max")));
+    }
+
+    static double oscPrimitive(int type, double x) {
+        const double whole = std::floor(x);
+        const double fraction = x - whole;
+        if (type == 0) return x * 0.5 - std::sin(x * kTau) / (2.0 * kTau);
+        if (type == 1) {
+            const double partial = fraction < 0.5
+                ? fraction * fraction
+                : 2.0 * fraction - fraction * fraction - 0.5;
+            return whole * 0.5 + partial;
+        }
+        if (type == 2) return whole * 0.5 + fraction * fraction * 0.5;
+        if (type == 3) return x - (whole * 0.5 + fraction * fraction * 0.5);
+        if (type == 4) return whole * 0.5 + std::max(0.0, fraction - 0.5);
+        return 0.0;
+    }
+
+    static bool canIntegrateExactly(const QJsonObject& config) {
+        const int type = config.value(QStringLiteral("oscType")).toInt(-1);
+        if (type < 0 || type > 4) return false;
+        for (const QString& field : {QStringLiteral("min"), QStringLiteral("max"), QStringLiteral("speed"),
+                                     QStringLiteral("offset"), QStringLiteral("seed")}) {
+            if (!finiteNumber(config.value(field))) return false;
+        }
+        return true;
+    }
+
+    double integrateSimpleOscillator(const QJsonObject& config, double normalizedTime) const {
+        const int type = config.value(QStringLiteral("oscType")).toInt();
+        const double minimum = config.value(QStringLiteral("min")).toDouble();
+        const double maximum = config.value(QStringLiteral("max")).toDouble();
+        const double speed = config.value(QStringLiteral("speed")).toDouble();
+        const double offset = config.value(QStringLiteral("offset")).toDouble();
+        if (speed == 0.0) return evaluateOscillator(config, 0.0, 0) * normalizedTime;
+        const double rawIntegral = (oscPrimitive(type, offset + speed * normalizedTime)
+                                    - oscPrimitive(type, offset)) / speed;
+        return minimum * normalizedTime + (maximum - minimum) * rawIntegral;
+    }
+
+    double integrate(const QJsonObject& config, double normalizedTime, const QJsonObject& range,
+                     int depth) const {
+        double integral = 0.0;
+        const QString type = automationType(config);
+        if (type == QStringLiteral("Oscillator") && canIntegrateExactly(config)) {
+            integral = integrateSimpleOscillator(config, normalizedTime);
+        } else if ((type == QStringLiteral("Midi") || type == QStringLiteral("Audio"))
+                   && !hasDynamicFields(config)) {
+            integral = evaluate(config, normalizedTime, {}, depth + 1) * normalizedTime;
+        } else {
+            const IntegrationRule& rule = kIntegrationRules[std::min(depth, 3)];
+            const double midpoint = normalizedTime * 0.5;
+            const double halfWidth = normalizedTime * 0.5;
+            double sum = 0.0;
+            for (int i = 0; i < rule.size; ++i) {
+                sum += rule.weights[i]
+                    * evaluate(config, midpoint + halfWidth * rule.nodes[i], {}, depth + 1);
+            }
+            integral = halfWidth * sum;
+        }
+        const QJsonValue minimum = range.value(QStringLiteral("min"));
+        const QJsonValue maximum = range.value(QStringLiteral("max"));
+        if (!finiteNumber(minimum) || !finiteNumber(maximum)) return integral;
+        return minimum.toDouble() * normalizedTime
+            + integral * (maximum.toDouble() - minimum.toDouble());
+    }
+
+    double evaluateOscillator(const QJsonObject& config, double normalizedTime, int depth) const {
+        const double minimum = resolveField(config.value(QStringLiteral("min")), normalizedTime,
+                                            kUnitRange, depth, 0.0);
+        const double maximum = resolveField(config.value(QStringLiteral("max")), normalizedTime,
+                                            kUnitRange, depth, 1.0);
+        const double offset = resolveField(config.value(QStringLiteral("offset")), normalizedTime,
+                                           kOscillatorOffsetRange, depth, 0.0);
+        const double seed = resolveField(config.value(QStringLiteral("seed")), normalizedTime,
+                                         kOscillatorSeedRange, depth, 1.0);
+        const QJsonValue speed = config.value(QStringLiteral("speed"));
+        const double phase = isAutomationValue(speed)
+            ? integrate(speed.toObject(), normalizedTime, kOscillatorSpeedRange, depth)
+            : normalizedTime * (finiteNumber(speed) ? speed.toDouble() : 1.0);
+        const double time = phase + offset;
+        double raw = 0.0;
+        switch (config.value(QStringLiteral("oscType")).toInt(-1)) {
+            case 0: raw = oscSine(time); break;
+            case 1: raw = oscTriangle(time); break;
+            case 2: raw = oscSaw(time); break;
+            case 3: raw = oscSawInverse(time); break;
+            case 4: raw = oscSquare(time); break;
+            case 5: raw = oscNoise(time, seed); break;
+            default: break;
+        }
+        return minimum + raw * (maximum - minimum);
+    }
+
+    QJsonObject selectedMidiState(const QJsonObject& config) const {
+        const QString id = config.value(QStringLiteral("id")).toString();
+        const QString name = config.value(QStringLiteral("name")).toString();
+        if (id.isEmpty() && name.isEmpty()) return midiState_;
+        const QJsonObject ports = midiState_.value(QStringLiteral("ports")).toObject();
+        if (!id.isEmpty()) {
+            const QJsonObject entry = ports.value(id).toObject();
+            if (entry.isEmpty() || !entry.value(QStringLiteral("connected")).toBool(true)) return {};
+            const QJsonObject state = entry.value(QStringLiteral("state")).toObject();
+            return state.isEmpty() ? entry : state;
+        }
+        QJsonObject match;
+        for (const QJsonValue& value : ports) {
+            const QJsonObject entry = value.toObject();
+            if (entry.value(QStringLiteral("connected")).toBool(true)
+                && entry.value(QStringLiteral("name")).toString() == name) {
+                if (!match.isEmpty()) return {};
+                match = entry;
+            }
+        }
+        const QJsonObject state = match.value(QStringLiteral("state")).toObject();
+        return state.isEmpty() ? match : state;
+    }
+
+    double evaluateMidi(const QJsonObject& config, const QJsonObject& state,
+                        double minimum, double maximum, double sensitivity) const {
+        if (state.isEmpty()) return minimum;
+        const int channelNumber = config.value(QStringLiteral("channel")).toInt(1);
+        const QJsonValue channelsValue = state.value(QStringLiteral("channels"));
+        QJsonObject channel;
+        if (channelsValue.isObject()) {
+            const QJsonObject channels = channelsValue.toObject();
+            channel = channels.value(QString::number(channelNumber)).toObject();
+            if (channel.isEmpty()) channel = channels.value(QStringLiteral("1")).toObject();
+        } else if (channelsValue.isArray()) {
+            const QJsonArray channels = channelsValue.toArray();
+            if (channelNumber >= 1 && channelNumber <= channels.size()) {
+                channel = channels.at(channelNumber - 1).toObject();
+            }
+            if (channel.isEmpty() && !channels.isEmpty()) channel = channels.first().toObject();
+        }
+        if (channel.isEmpty()) return minimum;
+        const double gate = channel.value(QStringLiteral("gate")).toDouble();
+        double raw = 0.0;
+        switch (config.value(QStringLiteral("mode")).toInt(4)) {
+            case 0: raw = channel.value(QStringLiteral("key")).toDouble(); break;
+            case 1:
+                if (gate == 1.0) raw = channel.value(QStringLiteral("key")).toDouble();
+                break;
+            case 2:
+                if (gate == 1.0) raw = channel.value(QStringLiteral("velocity")).toDouble();
+                break;
+            case 3:
+                if (gate == 1.0) {
+                    raw = channel.value(QStringLiteral("key")).toDouble();
+                    const double decay = std::min(1.0,
+                        (wallTime_ - channel.value(QStringLiteral("time")).toDouble()) * sensitivity * 0.001);
+                    raw *= 1.0 - decay;
+                }
+                break;
+            default:
+                if (gate == 1.0) {
+                    raw = channel.value(QStringLiteral("velocity")).toDouble();
+                    const double decay = std::min(1.0,
+                        (wallTime_ - channel.value(QStringLiteral("time")).toDouble()) * sensitivity * 0.001);
+                    raw *= 1.0 - decay;
+                }
+                break;
+        }
+        return minimum + raw / 127.0 * (maximum - minimum);
+    }
+
+    QJsonObject selectedAudioState(const QJsonObject& config) const {
+        const bool hasSelector = config.contains(QStringLiteral("name"))
+            || config.contains(QStringLiteral("id")) || config.contains(QStringLiteral("channel"));
+        if (!hasSelector) return audioState_;
+        const int channel = config.value(QStringLiteral("channel")).toInt(-1);
+        if (channel < 1) return {};
+        const QJsonObject devices = audioState_.value(QStringLiteral("devices")).toObject();
+        const QString id = config.value(QStringLiteral("id")).toString();
+        const QString name = config.value(QStringLiteral("name")).toString();
+        QJsonObject entry;
+        if (!id.isEmpty()) {
+            entry = devices.value(id).toObject();
+        } else if (!name.isEmpty()) {
+            for (const QJsonValue& value : devices) {
+                const QJsonObject candidate = value.toObject();
+                if (candidate.value(QStringLiteral("connected")).toBool(true)
+                    && candidate.value(QStringLiteral("name")).toString() == name) {
+                    if (!entry.isEmpty()) return {};
+                    entry = candidate;
+                }
+            }
+        }
+        if (entry.isEmpty() || !entry.value(QStringLiteral("connected")).toBool(true)) return {};
+        const QJsonValue channelsValue = entry.value(QStringLiteral("channels"));
+        if (channelsValue.isObject()) return channelsValue.toObject().value(QString::number(channel)).toObject();
+        if (channelsValue.isArray()) {
+            const QJsonArray channels = channelsValue.toArray();
+            return channel <= channels.size() ? channels.at(channel - 1).toObject() : QJsonObject();
+        }
+        return {};
+    }
+
+    static double evaluateAudio(const QJsonObject& config, const QJsonObject& state,
+                                double minimum, double maximum) {
+        if (state.isEmpty()) return minimum;
+        double raw = 0.0;
+        switch (config.value(QStringLiteral("band")).toInt(-1)) {
+            case 0: raw = state.value(QStringLiteral("low")).toDouble(); break;
+            case 1: raw = state.value(QStringLiteral("mid")).toDouble(); break;
+            case 2: raw = state.value(QStringLiteral("high")).toDouble(); break;
+            case 3: raw = state.value(QStringLiteral("vol")).toDouble(); break;
+            case 4:
+                if (!state.value(QStringLiteral("rawReady")).toBool(false)
+                    && !state.value(QStringLiteral("raw_ready")).toBool(false)) return minimum;
+                raw = (std::clamp(state.value(QStringLiteral("raw")).toDouble(), -1.0, 1.0) + 1.0) * 0.5;
+                break;
+            default: break;
+        }
+        raw = std::clamp(raw, 0.0, 1.0);
+        return minimum + raw * (maximum - minimum);
+    }
+};
+
+void visitAudioRequirements(const QJsonValue& value, QJsonObject& result,
+                            QMap<QString, int>& selectedKeys, int depth = 0) {
+    if (depth > 64) return;
+    if (value.isObject()) {
+        const QJsonObject object = value.toObject();
+        if (automationType(object) == QStringLiteral("Audio")) {
+            QJsonObject source = object.value(QStringLiteral("_ast")).toObject();
+            if (source.value(QStringLiteral("type")).toString() != QStringLiteral("Audio")) source = object;
+            const bool selectorIntent = object.contains(QStringLiteral("name")) || object.contains(QStringLiteral("id"))
+                || object.contains(QStringLiteral("channel")) || source.contains(QStringLiteral("name"))
+                || source.contains(QStringLiteral("id")) || source.contains(QStringLiteral("channel"));
+            const QJsonValue bandValue = object.value(QStringLiteral("band"));
+            const bool validBand = !object.value(QStringLiteral("_invalid")).toBool(false)
+                && finiteNumber(bandValue) && std::floor(bandValue.toDouble()) == bandValue.toDouble()
+                && bandValue.toInt() >= 0 && bandValue.toInt() <= 4;
+            if (!validBand) return;
+            visitAudioRequirements(object.value(QStringLiteral("min")), result, selectedKeys, depth + 1);
+            visitAudioRequirements(object.value(QStringLiteral("max")), result, selectedKeys, depth + 1);
+
+            const QString name = object.value(QStringLiteral("name")).toString();
+            const QJsonValue channelValue = object.value(QStringLiteral("channel"));
+            if (!name.isEmpty() && finiteNumber(channelValue) && std::floor(channelValue.toDouble()) == channelValue.toDouble()
+                && channelValue.toInt() >= 1) {
+                const QString id = object.value(QStringLiteral("id")).toString();
+                QJsonObject requirement;
+                requirement.insert(QStringLiteral("id"), id.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(id));
+                requirement.insert(QStringLiteral("name"), name);
+                requirement.insert(QStringLiteral("channel"), channelValue);
+                requirement.insert(QStringLiteral("needsRaw"), bandValue.toInt() == 4);
+                const QString key = id + QChar(0x1f) + name + QChar(0x1f) + QString::number(channelValue.toInt());
+                QJsonArray selected = result.value(QStringLiteral("selected")).toArray();
+                if (selectedKeys.contains(key)) {
+                    const int index = selectedKeys.value(key);
+                    if (requirement.value(QStringLiteral("needsRaw")).toBool()) {
+                        QJsonObject existing = selected.at(index).toObject();
+                        existing.insert(QStringLiteral("needsRaw"), true);
+                        selected.replace(index, existing);
+                    }
+                } else {
+                    selectedKeys.insert(key, selected.size());
+                    selected.append(requirement);
+                }
+                result.insert(QStringLiteral("selected"), selected);
+            } else if (!selectorIntent) {
+                result.insert(QStringLiteral("needsLegacy"), true);
+                if (bandValue.toInt() == 4) result.insert(QStringLiteral("needsLegacyRaw"), true);
+            }
+            return;
+        }
+        for (auto it = object.begin(); it != object.end(); ++it) {
+            visitAudioRequirements(it.value(), result, selectedKeys, depth + 1);
+        }
+    } else if (value.isArray()) {
+        for (const QJsonValue& item : value.toArray()) {
+            visitAudioRequirements(item, result, selectedKeys, depth + 1);
+        }
+    }
+}
+
 } // namespace
 
 Backend::Backend() = default;
+
+void Backend::setMidiState(const QJsonObject& state) {
+    m_midiState = state;
+}
+
+void Backend::setAudioState(const QJsonObject& state) {
+    m_audioState = state;
+}
+
+QJsonValue Backend::resolveUniformValue(const QJsonValue& value, double normalizedTime,
+                                        const QJsonObject& paramSpec) const {
+    if (!isAutomationValue(value)) return value;
+    return AutomationEvaluator(m_midiState, m_audioState).evaluate(value.toObject(), normalizedTime, paramSpec);
+}
+
+QJsonObject Backend::getAudioInputRequirements(const Graph& graph) const {
+    QJsonObject result{
+        {QStringLiteral("needsLegacy"), false},
+        {QStringLiteral("needsLegacyRaw"), false},
+        {QStringLiteral("selected"), QJsonArray{}},
+    };
+    const QString dataRoot = m_dataRoot.isEmpty() ? QStringLiteral("qt/noisemaker") : m_dataRoot;
+    QMap<QString, int> selectedKeys;
+    for (const Pass& pass : graph.passes) {
+        if (!pass.effectNamespace.isEmpty() && !pass.func.isEmpty()) {
+            QFile file(QStringLiteral("%1/effects/%2/%3.json").arg(dataRoot, pass.effectNamespace, pass.func));
+            if (file.open(QIODevice::ReadOnly)) {
+                const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+                if (document.isObject()) {
+                    for (const QJsonValue& tag : document.object().value(QStringLiteral("tags")).toArray()) {
+                        if (tag.toString() == QStringLiteral("audio")) {
+                            result.insert(QStringLiteral("needsLegacy"), true);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        visitAudioRequirements(pass.uniforms, result, selectedKeys);
+    }
+    return result;
+}
 
 // See backend.h for the full contract (idempotent; caller must already have
 // a valid context current). Extracted from the destructor's owned-context
@@ -682,7 +1186,9 @@ void Backend::bindUniforms(const CompiledProgram& program, const Pass& pass) {
         if (it.value().isNull() || it.value().isUndefined()) {
             continue;
         }
-        setUniformValue(program.uniformLocations.value(it.key()), program.uniformTypes.value(it.key()), it.value());
+        const QJsonObject paramSpec = pass.uniformSpecs.value(it.key()).toObject();
+        const QJsonValue value = resolveUniformValue(it.value(), m_time, paramSpec);
+        setUniformValue(program.uniformLocations.value(it.key()), program.uniformTypes.value(it.key()), value);
     }
     for (auto it = globals.begin(); it != globals.end(); ++it) {
         if (pass.uniforms.contains(it.key())) {
@@ -764,7 +1270,8 @@ void Backend::bindUniformBlock(const CompiledProgram& program, const Pass& pass)
             continue;
         }
 
-        const QJsonValue value = merged.value(it.key());
+        const QJsonValue value = resolveUniformValue(
+            merged.value(it.key()), m_time, pass.uniformSpecs.value(it.key()).toObject());
         if (value.isUndefined() || value.isNull()) {
             continue; // absent -> leaves the zero-initialized slot bytes, matching the reference's implicit 0.0
         }
@@ -910,8 +1417,12 @@ int Backend::resolveRepeatCount(const Pass& pass) const {
     }
     if (pass.repeat.isString()) {
         const auto it = pass.uniforms.constFind(pass.repeat.toString());
-        if (it != pass.uniforms.constEnd() && it.value().isDouble()) {
-            return std::max(1, static_cast<int>(std::floor(it.value().toDouble())));
+        if (it != pass.uniforms.constEnd()) {
+            const QJsonValue value = resolveUniformValue(
+                it.value(), m_time, pass.uniformSpecs.value(it.key()).toObject());
+            if (value.isDouble()) {
+                return std::max(1, static_cast<int>(std::floor(value.toDouble())));
+            }
         }
     }
     return 1;

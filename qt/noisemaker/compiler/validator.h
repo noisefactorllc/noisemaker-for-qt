@@ -28,11 +28,11 @@ class EffectRegistry;
 
 // A DSL feature this first-cut AOT frontend does not implement. Never
 // silently wrong -- mirrors the sibling ports' NotImplementedException /
-// UnsupportedDsl (TD's validator.py). Thrown at exactly nine sites,
+// UnsupportedDsl (TD's validator.py). Thrown at seven logical sites,
 // exactly where the reference INTERPRETS the feature at runtime rather
 // than resolving it at compile time (control flow: if/elif/else,
-// break/continue/return; midi()/audio() automation args; Func-typed
-// boolean/numeric params; state-value boolean/member/numeric params). See
+// break/continue/return; Func-typed boolean/numeric params; state-value
+// boolean/member/numeric params). See
 // validator.cpp for each site and its reference/02 section reference.
 class UnsupportedDsl : public std::runtime_error {
 public:

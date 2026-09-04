@@ -54,6 +54,7 @@ struct Pass {
     QJsonObject inputs;      // samplerName -> texId
     QJsonObject outputs;     // outName -> texId
     QJsonObject uniforms;    // name -> literal value
+    QJsonObject uniformSpecs; // name -> {min,max}, used to scale automation values
     QJsonValue repeat;       // int | uniform-name string | undefined
     QJsonValue drawBuffers;  // int | undefined; >1 signals MRT alongside outputs.size()>1
     QJsonValue count;        // int | "input"/"auto"/"screen" string | undefined (agent vertex count)

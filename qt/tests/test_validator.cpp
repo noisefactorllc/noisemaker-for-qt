@@ -312,7 +312,7 @@ int main() {
     }
 
     // ==================================================================
-    // UnsupportedDsl: every one of the 9 fail-loud sites throws, even
+    // UnsupportedDsl: every one of the 7 logical fail-loud sites throws, even
     // though the reference itself fully resolves/interprets all of them
     // (verified: every one of these probes is `ok:true` against the live
     // oracle -- these are deliberate AOT-frontend divergences, not gaps).
@@ -330,35 +330,23 @@ int main() {
     };
 
     expectUnsupported(QStringLiteral("search synth\nif (1) {\n  noise().write(o0)\n}\nrender(o0)\n"),
-                       "1/9: if/elif/else -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nbreak\n"), "2a/9: break -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\ncontinue\n"), "2b/9: continue -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nreturn\n"), "2c/9: return -> UnsupportedDsl");
+                       "1/7: if/elif/else -> UnsupportedDsl");
+    expectUnsupported(QStringLiteral("search synth\nbreak\n"), "2a/7: break -> UnsupportedDsl");
+    expectUnsupported(QStringLiteral("search synth\ncontinue\n"), "2b/7: continue -> UnsupportedDsl");
+    expectUnsupported(QStringLiteral("search synth\nreturn\n"), "2c/7: return -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(wrap: () => true).write(o0)\nrender(o0)\n"),
-                       "3/9: Func boolean param -> UnsupportedDsl");
+                       "3/7: Func boolean param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(wrap: time).write(o0)\nrender(o0)\n"),
-                       "4/9: state-value boolean param -> UnsupportedDsl");
+                       "4/7: state-value boolean param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(type: time).write(o0)\nrender(o0)\n"),
-                       "5/9: state-value member param -> UnsupportedDsl");
+                       "5/7: state-value member param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(octaves: () => 5).write(o0)\nrender(o0)\n"),
-                       "6/9: Func numeric param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nnoise(octaves: midi(1)).write(o0)\nrender(o0)\n"),
-                       "7/9: midi() numeric param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nnoise(octaves: audio(low)).write(o0)\nrender(o0)\n"),
-                       "8/9: audio() numeric param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral(
-                          "search synth\nnoise(octaves: midi(channel: 1, name: \"Controller\", id: \"port-a\"))"
-                          ".write(o0)\nrender(o0)\n"),
-                      "selected midi() remains outside the Qt runtime boundary");
-    expectUnsupported(QStringLiteral(
-                          "search synth\nnoise(scaleX: audio(band: audioBand.raw, channel: 2, name: \"Interface\", "
-                          "id: \"device-b\")).write(o0)\nrender(o0)\n"),
-                      "selected raw audio() remains outside the Qt runtime boundary");
+                       "6/7: Func numeric param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(octaves: time).write(o0)\nrender(o0)\n"),
-                       "9/9: state-value numeric param -> UnsupportedDsl");
+                       "7/7: state-value numeric param -> UnsupportedDsl");
 
     // Oscillator (osc()) is explicitly NOT in the UnsupportedDsl set --
-    // fully resolved at validate time (it's deterministic, no live input).
+    // its descriptor is compiled for deterministic runtime evaluation.
     {
         const QJsonObject out = validateSrc(
             QStringLiteral("search synth\nnoise(scaleX: osc(min: 10, max: 90, speed: 2)).write(o0)\nrender(o0)\n"));
@@ -388,6 +376,101 @@ int main() {
         check(oscVal.value(QStringLiteral("_varRef")).toString() == QStringLiteral("o"), "_varRef present at the Oscillator value's top level");
         check(oscVal.value(QStringLiteral("_ast")).toObject().value(QStringLiteral("_varRef")).toString() == QStringLiteral("o"),
               "_varRef is ALSO present nested inside _ast (same underlying node object in the reference)");
+    }
+
+    // ==================================================================
+    // Nested automation descriptors: numeric fields may themselves be
+    // oscillator/MIDI/audio sources; enum/string selector fields may not.
+    // ==================================================================
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth\n"
+            "let rate = osc(type: oscKind.sine, min: 0.25, max: 0.75)\n"
+            "let carrier = osc(type: oscKind.saw, speed: rate)\n"
+            "noise(scaleX: carrier).write(o0)\nrender(o0)\n"));
+        const QJsonObject carrier = args(out, 0, 0).value(QStringLiteral("scaleX")).toObject();
+        const QJsonObject rate = carrier.value(QStringLiteral("speed")).toObject();
+        check(diags(out).isEmpty(), "nested oscillator compiles without diagnostics");
+        check(carrier.value(QStringLiteral("type")).toString() == QStringLiteral("Oscillator")
+                  && rate.value(QStringLiteral("type")).toString() == QStringLiteral("Oscillator"),
+              "oscillator speed preserves its nested automation descriptor");
+        check(rate.value(QStringLiteral("_varRef")).toString() == QStringLiteral("rate"),
+              "nested automation preserves the referenced variable name");
+    }
+
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth\n"
+            "let movement = midi(channel: 1, name: \"Controller\", id: \"port-a\")\n"
+            "let gate = audio(band: audioBand.vol, min: movement, channel: 2, "
+            "name: \"Interface\", id: \"device-b\")\n"
+            "noise(scaleX: gate).write(o0)\nrender(o0)\n"));
+        const QJsonObject audio = args(out, 0, 0).value(QStringLiteral("scaleX")).toObject();
+        check(diags(out).isEmpty(), "nested selected MIDI/audio descriptors compile without diagnostics");
+        check(audio.value(QStringLiteral("type")).toString() == QStringLiteral("Audio")
+                  && audio.value(QStringLiteral("min")).toObject().value(QStringLiteral("type")).toString()
+                         == QStringLiteral("Midi"),
+              "audio numeric bounds preserve a nested MIDI source");
+        check(audio.value(QStringLiteral("name")).toString() == QStringLiteral("Interface")
+                  && audio.value(QStringLiteral("id")).toString() == QStringLiteral("device-b")
+                  && audio.value(QStringLiteral("channel")).toInt() == 2,
+              "compiled audio descriptor preserves its selected-device identity");
+    }
+
+    {
+        const QJsonObject invalidBand = validateSrc(QStringLiteral(
+            "search synth\nlet movement = midi(channel: 1)\n"
+            "noise(scaleX: audio(band: movement)).write(o0)\nrender(o0)\n"));
+        check(anyDiagCode(invalidBand, QStringLiteral("S002")),
+              "automation remains invalid for literal-only audio band");
+
+        const QJsonObject invalidMin = validateSrc(QStringLiteral(
+            "search synth\nnoise(scaleX: audio(band: audioBand.vol, min: \"bad\"))"
+            ".write(o0)\nrender(o0)\n"));
+        const QJsonObject audio = args(invalidMin, 0, 0).value(QStringLiteral("scaleX")).toObject();
+        check(anyDiagCode(invalidMin, QStringLiteral("S001"))
+                  && audio.value(QStringLiteral("_invalid")).toBool(),
+              "invalid audio numeric fields diagnose and mark the descriptor invalid");
+    }
+
+    {
+        const QJsonObject cycle = validateSrc(QStringLiteral(
+            "search synth\n"
+            "let first = osc(type: oscKind.sine, speed: second)\n"
+            "let second = osc(type: oscKind.tri, speed: first)\n"
+            "noise(scaleX: first).write(o0)\nrender(o0)\n"));
+        bool foundCycle = false;
+        for (const QJsonValue& diagnostic : diags(cycle)) {
+            if (diagnostic.toObject().value(QStringLiteral("message")).toString().contains(
+                    QStringLiteral("Automation cycle detected"))) {
+                foundCycle = true;
+            }
+        }
+        check(foundCycle, "automation reference cycle produces a diagnostic instead of recursing");
+    }
+
+    {
+        const QJsonObject tooDeep = validateSrc(QStringLiteral(
+            "search synth\n"
+            "let rate9 = osc(type: oscKind.sine)\n"
+            "let rate8 = osc(type: oscKind.sine, speed: rate9)\n"
+            "let rate7 = osc(type: oscKind.sine, speed: rate8)\n"
+            "let rate6 = osc(type: oscKind.sine, speed: rate7)\n"
+            "let rate5 = osc(type: oscKind.sine, speed: rate6)\n"
+            "let rate4 = osc(type: oscKind.sine, speed: rate5)\n"
+            "let rate3 = osc(type: oscKind.sine, speed: rate4)\n"
+            "let rate2 = osc(type: oscKind.sine, speed: rate3)\n"
+            "let rate1 = osc(type: oscKind.sine, speed: rate2)\n"
+            "let carrier = osc(type: oscKind.saw, speed: rate1)\n"
+            "noise(scaleX: carrier).write(o0)\nrender(o0)\n"));
+        bool foundDepth = false;
+        for (const QJsonValue& diagnostic : diags(tooDeep)) {
+            if (diagnostic.toObject().value(QStringLiteral("message")).toString().contains(
+                    QStringLiteral("maximum depth of 8"))) {
+                foundDepth = true;
+            }
+        }
+        check(foundDepth, "automation nesting beyond eight levels produces the reference diagnostic");
     }
 
     // ==================================================================
