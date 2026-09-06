@@ -23,7 +23,7 @@ That reads `program.dsl` from this project and writes `output.png` in the curren
 ./build/noisemaker-qt-export path/to/program.dsl path/to/output.png
 ```
 
-The generated project uses Qt 6 Core, Gui, and OpenGL. Its shaders are the Qt port's desktop GLSL `.frag` and `.vert` stages; no WebGPU, Unity, Godot, or TouchDesigner shaders are included.
+The generated project uses Qt 6 Core, Gui, and OpenGL. Its shaders are the Qt port's desktop GLSL `.frag` and `.vert` stages. The export includes no WebGPU, Unity, Godot, or TouchDesigner shaders.
 
 ## Effects
 
@@ -31,4 +31,4 @@ The generated project uses Qt 6 Core, Gui, and OpenGL. Its shaders are the Qt po
 
 ## Export options
 
-The default export includes both the pinned `noisemaker-for-qt` C++ engine/effect catalog and its matching shader corpus. If you omit either source-code option in Noisedeck, wire this skeleton to the same files from an existing copy of the Qt port before configuring it.
+The default export includes both the pinned `noisemaker-for-qt` C++ engine/effect catalog and its matching shader corpus. If you omit either source-code option in Noisedeck, use the same files from an existing copy of the Qt port. Connect this skeleton to those files before you configure it.

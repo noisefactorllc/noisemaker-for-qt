@@ -5,23 +5,17 @@
 
 # Noisemaker for Qt
 
-**Noisemaker** is a procedural visual engine: small text programs — chains of composable effects —
-compile to a render graph and run live as animated GPU textures. **Noisemaker for Qt** brings that
-same DSL compiler and effects library to Qt 6, as an idiomatic C++17 library (`noisemaker-qt`,
-namespace `nm::`) plus an offscreen render CLI (`nm-render`) and a live `QOpenGLWidget` example,
-executed via classic `QOpenGL*` with pixel-level parity against the reference engine.
+**Noisemaker** is a procedural visual engine. Small text programs combine effects into chains, compile to a render graph, and run live as animated GPU textures. **Noisemaker for Qt** brings the same DSL compiler and effects library to Qt 6. It includes a C++17 library (`noisemaker-qt`, namespace `nm::`), an offscreen render CLI (`nm-render`), and a live `QOpenGLWidget` example. These use classic `QOpenGL*` with pixel-level parity against the reference engine.
 
 ## Family context
 
-This port is one of several hand-ports of the same reference engine to different target platforms
-— siblings targeting Unity (HLSL), Godot (GDShader), and TouchDesigner (GLSL) among them — and
-shares their infrastructure: the engine-agnostic `reference/01–10` re-implementer specs, the
-render-graph JSON contract (`docs/GRAPH-JSON-SCHEMA.md`), and the parity-harness design
-(`parity/`). Unlike the HLSL/GDShader ports, this one shares the reference's actual shader
-*language* — desktop GLSL is the same family as the reference's WebGL2 GLSL ES source, so this
-port commits the reference GLSL byte-identical rather than re-deriving it (see
-[ARCHITECTURE.md](ARCHITECTURE.md) "Shader corpus" and "Why classic OpenGL" for what that does and
-doesn't buy in terms of parity risk).
+This port is one of several hand-ports of the same reference engine. Siblings target Unity (HLSL), Godot (GDShader), TouchDesigner (GLSL), and other platforms. They share the following infrastructure:
+
+- The engine-agnostic `reference/01–10` re-implementer specs.
+- The render-graph JSON contract (`docs/GRAPH-JSON-SCHEMA.md`).
+- The parity-harness design (`parity/`).
+
+Unlike the HLSL/GDShader ports, this port shares the reference's shader *language*. Desktop GLSL belongs to the same family as the reference's WebGL2 GLSL ES source. This port therefore commits byte-identical reference GLSL instead of deriving it again. See [ARCHITECTURE.md](ARCHITECTURE.md), "Shader corpus" and "Why classic OpenGL", for the effect on parity risk.
 
 ## What's here
 
@@ -33,17 +27,13 @@ doesn't buy in terms of parity risk).
   or `--graph <json>` (a pre-exported graph) in, a PNG out. Drives the parity harness and doubles
   as a standalone batch renderer.
 - **`examples/viewer`** — a minimal live `QOpenGLWidget` embedding: DSL in (the live compiler path,
-  `nm::compileGraph`), an animated render out, at roughly 60fps. The smallest honest demonstration
-  of embedding this library in a real Qt application. Widgets/OpenGLWidgets are a dependency of
+  `nm::compileGraph`), an animated render out, at roughly 60fps. This demonstrates how to embed the library in a Qt application. Widgets/OpenGLWidgets are a dependency of
   this example only, never of `libnoisemaker-qt` itself.
 
 ## Quickstart
 
 Every command below was verified by literally running it before it was written down here.
-The canonical build directory for the core library is `qt/build` (gitignored), and that's what
-the commands below show; any out-of-tree build directory works the same way, so
-T7's own verification ran the identical commands against a scratch build directory instead (same
-flags, different `-B`/`--prefix` path; see the task report for that literal transcript). The
+The commands below use the core library's canonical build directory, `qt/build` (gitignored). Any out-of-tree build directory works the same way. T7's verification used identical commands with a scratch build directory: the same flags, but a different `-B`/`--prefix` path. See the task report for the literal transcript. The
 `examples/viewer` commands further down were verified against these exact literal paths, no
 substitution needed.
 
@@ -77,9 +67,7 @@ examples/viewer/build/viewer --selfcheck  # headless-friendly: renders ~3s, scre
 
 ### Build the viewer against an *installed* package instead
 
-`libnoisemaker-qt` is `find_package`-consumable: installing it exports a static lib, its public
-headers, and its runtime shader/effect data (loaded from disk at runtime — never compiled in) under
-one prefix.
+`libnoisemaker-qt` supports `find_package`. Installation exports a static library, its public headers, and its runtime shader/effect data under one prefix. The runtime loads this data from disk. The data is never compiled into the library.
 
 ```sh
 cmake --install qt/build --prefix /path/to/some/prefix
@@ -91,21 +79,19 @@ examples/viewer/build2/viewer --selfcheck
 
 ## Status, parity, and coverage
 
-**210 effect definitions, 311/311 shaders byte-identical, 6/6 compiler oracle gates at 345/345,
-and a corpus-wide pixel sweep at 289 PASS / 45 NEAR / 1 CHAOS / 0 FAIL of 335** — crystallized
-from a from-scratch rebuild and full re-verification. Full detail (the coverage table by
-namespace, every NEAR mechanism with its evidence, the CHAOS entry's isolation evidence, timed and
-live-DSL results, and known limits) is tracked in **[STATUS.md](STATUS.md)**, the single source of
-truth; this README does not duplicate it further.
+A from-scratch rebuild and full re-verification produced these results:
+
+- **210 effect definitions.**
+- **311/311 shaders byte-identical.**
+- **6/6 compiler oracle gates at 345/345.**
+- **Corpus-wide pixel sweep: 289 PASS / 45 NEAR / 1 CHAOS / 0 FAIL of 335.**
+
+**[STATUS.md](STATUS.md)** is the single source of truth. It includes coverage by namespace, every NEAR mechanism with its evidence, and the CHAOS entry's isolation evidence. It also includes timed and live-DSL results and known limits. This README does not duplicate it further.
 
 ## Architecture
 
-See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the render-graph seam, the OpenGL-vs-RHI decision
-record, the shader corpus policy, the runtime model, and the compiler design, and
-**[PORTING-GUIDE.md](PORTING-GUIDE.md)** for the porting rules (shader byte-copy policy, GL state
-parity rules, compiler porting rules) anyone touching this port needs to follow.
+See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the render-graph seam, OpenGL-vs-RHI decision record, shader corpus policy, runtime model, and compiler design. Follow **[PORTING-GUIDE.md](PORTING-GUIDE.md)** when changing this port. It covers the shader byte-copy policy, GL state parity rules, and compiler porting rules.
 
 ## License and trademark
 
-Code is MIT-licensed — see [LICENSE](LICENSE). "Noisemaker" and "Noise Factor" naming is governed
-by [TRADEMARK.md](TRADEMARK.md); read it before using either name for a derivative product.
+Code is MIT-licensed. See [LICENSE](LICENSE). [TRADEMARK.md](TRADEMARK.md) governs use of the "Noisemaker" and "Noise Factor" names. Read it before using either name for a derivative product.
