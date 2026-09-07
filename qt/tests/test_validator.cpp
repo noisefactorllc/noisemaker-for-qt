@@ -490,6 +490,35 @@ int main() {
         check(noVars.value(QStringLiteral("vars")).toArray().isEmpty(), "vars is [] (present, empty) when the program has no `let` bindings");
     }
 
+    {
+        try {
+            const QStringList modes{"cc", "cc14", "nrpn", "pitchBend", "pressure", "polyPressure"};
+            for (int i = 0; i < modes.size(); ++i) {
+                const auto out = validateSrc(QStringLiteral("search synth\nnoise(scaleX: midi(1, midiMode.%1, nrpn: 42)).write(o0)\nrender(o0)\n").arg(modes.at(i)));
+                const auto midi = args(out, 0, 0).value("scaleX").toObject();
+                check(diags(out).isEmpty() && midi.value("mode").toInt() == i + 5,
+                      "expression MIDI mode compiles to its canonical number");
+            }
+            const auto zone = validateSrc(QStringLiteral("search synth\nnoise(scaleX: midi(zone: midiZone.upper, members: 3, mode: midiMode.pressure)).write(o0)\nrender(o0)\n"));
+            const auto midi = args(zone, 0, 0).value("scaleX").toObject();
+            check(diags(zone).isEmpty() && midi.value("zone").toInt() == 1 && !midi.contains("channel"),
+                  "MPE zone compiles without an implicit channel");
+            for (const QString& expression : {QStringLiteral("midi(17, midiMode.cc)"), QStringLiteral("midi(1, midiMode.cc14, cc: 32)"), QStringLiteral("midi(1, midiMode.nrpn)"), QStringLiteral("midi(zone: midiZone.lower, members: 0)")}) {
+                const auto invalid = validateSrc(QStringLiteral("search synth\nnoise(scaleX: %1).write(o0)\nrender(o0)\n").arg(expression));
+                check(!diags(invalid).isEmpty() && args(invalid, 0, 0).value("scaleX").toObject().value("_invalid").toBool(),
+                      "invalid static MIDI selectors fail closed");
+            }
+            const auto audio = validateSrc(QStringLiteral("search synth\nnoise(scaleX: audio(audioBand.raw, channel: 32)).write(o0)\nrender(o0)\n"));
+            check(diags(audio).isEmpty() && args(audio, 0, 0).value("scaleX").toObject().value("channel").toInt() == 32,
+                  "default-device audio accepts its highest supported channel");
+            const auto badAudio = validateSrc(QStringLiteral("search synth\nnoise(scaleX: audio(audioBand.raw, channel: 33)).write(o0)\nrender(o0)\n"));
+            check(args(badAudio, 0, 0).value("scaleX").toObject().value("_invalid").toBool(),
+                  "audio rejects channels above 32");
+        } catch (const std::exception&) {
+            check(false, "new MIDI and audio selectors parse successfully");
+        }
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_validator)\n");
         return 0;

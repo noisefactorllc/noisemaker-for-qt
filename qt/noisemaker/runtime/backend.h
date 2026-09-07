@@ -60,8 +60,17 @@ public:
 
     // Host-owned external-input snapshots consumed by midi()/audio()
     // automation descriptors. The JSON shape mirrors the reference runtime:
-    // MIDI has channels keyed "1".."16" and optional selected `ports`;
-    // audio has legacy band fields and optional selected `devices`.
+    // MIDI channels are keyed "1".."16" (or a zero-based array). Each
+    // channel carries cc, cc14, nrpn and polyPressure indexed by number,
+    // pitchBend (default 8192), pressure, and heldNotes entries with
+    // key/velocity/time/order. Maps use JSON objects; arrays are also accepted.
+    // MPE chooses the newest held note in mpeZones.lower/upper member counts
+    // (default 15). Optional ports hold connected/name/state; unscopedState
+    // supplies notes without a port when aggregating MPE across sources.
+    // Audio has legacy band fields, optional selected `devices`, and
+    // defaultChannels keyed "1".."32" (or a zero-based array). Channel band
+    // states carry low/mid/high/vol/raw/rawReady; unavailable channels are
+    // omitted. The host owns capture, connection state and snapshot resets.
     void setMidiState(const QJsonObject& state);
     void setAudioState(const QJsonObject& state);
 

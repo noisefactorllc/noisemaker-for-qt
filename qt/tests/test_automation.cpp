@@ -271,6 +271,43 @@ int main() {
               "repeat counts consume the resolved and range-scaled automation uniform");
     }
 
+    {
+        const auto channel = QJsonDocument::fromJson(R"JSON({"key":60,"velocity":100,"gate":1,"cc":{"1":64},"cc14":{"1":8193},"nrpn":{"42":12000},"pitchBend":4096,"pressure":90,"polyPressure":{"60":80},"heldNotes":{"60":{"key":60,"velocity":100,"time":0,"order":4}}})JSON").object();
+        backend.setMidiState({{"channels", QJsonObject{{"1", channel}, {"2", channel}}}});
+        QJsonObject midi{{"type","Midi"},{"channel",1},{"min",0.2},{"max",0.8},{"sensitivity",0},{"nrpn",42}};
+        const double expected[] = {64.0/127,8193.0/16383,12000.0/16383,4096.0/16383,90.0/127,80.0/127};
+        for (int mode = 5; mode <= 10; ++mode) {
+            midi.insert("mode", mode);
+            check(approx(backend.resolveUniformValue(midi,0).toDouble(), 0.2 + expected[mode-5]*0.6),
+                  "MIDI expression reads its native channel state");
+        }
+        midi.insert("channel",17);
+        check(backend.resolveUniformValue(midi,0).toDouble() == 0.2, "expression channel cannot use legacy fallback");
+        midi.remove("channel"); midi.insert("zone",0); midi.insert("members",1);
+        check(approx(backend.resolveUniformValue(midi,0).toDouble(), 0.2 + 80.0/127*0.6),
+              "MPE uses the newest held note on a member channel");
+        midi.insert("_invalid",true);
+        check(backend.resolveUniformValue(midi,0).toDouble() == 0.2, "invalid MIDI descriptors return their minimum");
+    }
+    {
+        backend.setAudioState({{"vol",1.0},{"defaultChannels",QJsonObject{{"2",QJsonObject{{"raw",-0.5},{"rawReady",true},{"vol",0.75}}}}}});
+        QJsonObject audio{{"type","Audio"},{"band",4},{"channel",2},{"min",0.0},{"max",1.0}};
+        check(approx(backend.resolveUniformValue(audio,0).toDouble(),0.25), "default audio channel uses its own raw sample");
+        nm::Graph graph;
+        nm::Pass pass;
+        pass.uniforms.insert("amount", audio);
+        graph.passes.append(pass);
+        const auto requirements = backend.getAudioInputRequirements(graph);
+        const auto selected = requirements.value("selected").toArray();
+        check(!requirements.value("needsLegacy").toBool() && selected.size() == 1
+                  && selected.first().toObject().value("name").isNull()
+                  && selected.first().toObject().value("channel").toInt() == 2
+                  && selected.first().toObject().value("needsRaw").toBool(),
+              "default-channel raw audio reports selected capture requirements");
+        audio.insert("channel",33);
+        check(backend.resolveUniformValue(audio,0).toDouble() == 0.0, "unsupported audio channels never fall back to aggregate");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_automation)\n");
         return 0;

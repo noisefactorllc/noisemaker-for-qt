@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <optional>
 
 namespace nm {
 
@@ -153,7 +154,8 @@ const QMap<QString, QStringList>& automationFields() {
         {NodeKind::Midi,
          {QStringLiteral("channel"), QStringLiteral("mode"), QStringLiteral("min"),
           QStringLiteral("max"), QStringLiteral("sensitivity"), QStringLiteral("name"),
-          QStringLiteral("id")}},
+          QStringLiteral("id"), QStringLiteral("cc"), QStringLiteral("nrpn"),
+          QStringLiteral("zone"), QStringLiteral("members")}},
         {NodeKind::Audio,
          {QStringLiteral("band"), QStringLiteral("min"), QStringLiteral("max"),
           QStringLiteral("channel"), QStringLiteral("name"), QStringLiteral("id")}},
@@ -365,6 +367,9 @@ private:
         bool allowAutomation = false;
         bool allowMember = true;
         bool clamp01 = false;
+        bool integer = false;
+        std::optional<double> minimum;
+        std::optional<double> maximum;
         bool* invalid = nullptr;
     };
     QJsonValue resolveAutomationEnum(const QJsonValue& node, const QString& enumName,
@@ -1866,6 +1871,17 @@ QJsonValue Validator::resolveAutomationNumber(const QJsonValue& nodeVal, const Q
                       QStringLiteral("%1() %2 must resolve to a finite number").arg(descriptorName, fieldName));
     }
     double value = resolved.toDouble();
+    if (options.integer && std::floor(value) != value) {
+        return reject(QStringLiteral("S002"), QStringLiteral("%1() %2 must be an integer").arg(descriptorName, fieldName));
+    }
+    if (options.minimum && value < *options.minimum) {
+        return reject(QStringLiteral("S002"), QStringLiteral("%1() %2 must be at least %3 (got %4)")
+            .arg(descriptorName, fieldName, jsNumberToString(*options.minimum), jsNumberToString(value)));
+    }
+    if (options.maximum && value > *options.maximum) {
+        return reject(QStringLiteral("S002"), QStringLiteral("%1() %2 must be at most %3 (got %4)")
+            .arg(descriptorName, fieldName, jsNumberToString(*options.maximum), jsNumberToString(value)));
+    }
     if (options.clamp01) value = std::clamp(value, 0.0, 1.0);
     return value;
 }
@@ -1908,23 +1924,58 @@ QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int d
     }
 
     if (type == NodeKind::Midi) {
+        const auto undefined = QJsonValue(QJsonValue::Undefined);
+        const auto mode = resolveAutomationEnum(node.value(QStringLiteral("mode")), QStringLiteral("midiMode"), 4.0,
+            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, QStringLiteral("midi"), QStringLiteral("mode"));
+        const bool hasZone = node.contains(QStringLiteral("zone"));
+        const auto zone = hasZone ? resolveAutomationEnum(node.value(QStringLiteral("zone")), QStringLiteral("midiZone"), undefined,
+            {0, 1}, QStringLiteral("midi"), QStringLiteral("zone")) : undefined;
+        bool invalidSelection = hasZone && (zone.isUndefined() || node.contains(QStringLiteral("channel")));
+        bool invalidChannel = false;
+        bool invalidCc = false;
+        auto selectorOptions = [](double minimum, double maximum, bool* invalid) {
+            AutomationNumberOptions options;
+            options.integer = true; options.allowMember = false;
+            options.minimum = minimum; options.maximum = maximum; options.invalid = invalid;
+            return options;
+        };
+        auto members = undefined;
+        if (node.contains(QStringLiteral("members"))) {
+            members = resolveAutomationNumber(node.value(QStringLiteral("members")), QStringLiteral("midi"), QStringLiteral("members"), undefined,
+                selectorOptions(1, 15, &invalidSelection), depth);
+            if (!hasZone) invalidSelection = true;
+        }
         AutomationNumberOptions literal;
         literal.allowBoolean = true;
+        const auto channel = hasZone ? undefined : resolveAutomationNumber(node.value(QStringLiteral("channel")), QStringLiteral("midi"), QStringLiteral("channel"), 1.0,
+            mode.toInt() >= 5 ? selectorOptions(1, 16, &invalidChannel) : literal, depth);
+        auto cc = undefined;
+        if (node.contains(QStringLiteral("cc")) || mode.toInt() == 5 || mode.toInt() == 6) {
+            cc = resolveAutomationNumber(node.value(QStringLiteral("cc")), QStringLiteral("midi"), QStringLiteral("cc"), 1.0,
+                selectorOptions(0, mode.toInt() == 6 ? 31 : 127, &invalidCc), depth);
+        }
+        auto nrpn = undefined;
+        if (node.contains(QStringLiteral("nrpn")) || mode.toInt() == 7) {
+            if (!node.contains(QStringLiteral("nrpn"))) {
+                pushDiag(QStringLiteral("S002"), node, QStringLiteral("midi() nrpn mode requires a parameter number"));
+                invalidSelection = true;
+            }
+            nrpn = resolveAutomationNumber(node.value(QStringLiteral("nrpn")), QStringLiteral("midi"), QStringLiteral("nrpn"), undefined,
+                selectorOptions(0, 16382, &invalidSelection), depth);
+        }
         AutomationNumberOptions nestedUnit;
-        nestedUnit.allowBoolean = true;
-        nestedUnit.allowAutomation = true;
-        nestedUnit.clamp01 = true;
+        nestedUnit.allowBoolean = true; nestedUnit.allowAutomation = true; nestedUnit.clamp01 = true;
         AutomationNumberOptions nestedSensitivity;
-        nestedSensitivity.allowBoolean = true;
-        nestedSensitivity.allowAutomation = true;
-
+        nestedSensitivity.allowBoolean = true; nestedSensitivity.allowAutomation = true;
         QJsonObject value;
         value.insert(QStringLiteral("type"), NodeKind::Midi);
-        value.insert(QStringLiteral("channel"), resolveAutomationNumber(
-            node.value(QStringLiteral("channel")), QStringLiteral("midi"), QStringLiteral("channel"), 1.0, literal, depth));
-        value.insert(QStringLiteral("mode"), resolveAutomationEnum(
-            node.value(QStringLiteral("mode")), QStringLiteral("midiMode"), 4.0,
-            {0, 1, 2, 3, 4}, QStringLiteral("midi"), QStringLiteral("mode")));
+        value.insert(QStringLiteral("channel"), channel);
+        value.insert(QStringLiteral("mode"), mode);
+        value.insert(QStringLiteral("cc"), cc);
+        value.insert(QStringLiteral("nrpn"), nrpn);
+        if (hasZone) value.insert(QStringLiteral("zone"), zone);
+        if (node.contains(QStringLiteral("members"))) value.insert(QStringLiteral("members"), members);
+        if (invalidSelection || invalidChannel || invalidCc) value.insert(QStringLiteral("_invalid"), true);
         value.insert(QStringLiteral("min"), resolveAutomationNumber(
             node.value(QStringLiteral("min")), QStringLiteral("midi"), QStringLiteral("min"), 0.0, nestedUnit, depth));
         value.insert(QStringLiteral("max"), resolveAutomationNumber(
@@ -1965,7 +2016,7 @@ QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int d
             const QJsonValue channelNode = node.value(QStringLiteral("channel"));
             const QJsonValue raw = channelNode.toObject().value(QStringLiteral("value"));
             if (nodeType(channelNode) == NodeKind::Number && raw.isDouble()
-                && std::floor(raw.toDouble()) == raw.toDouble() && raw.toDouble() >= 1.0) {
+                && std::floor(raw.toDouble()) == raw.toDouble() && raw.toDouble() >= 1.0 && raw.toDouble() <= 32.0) {
                 channel = raw;
             } else {
                 validChannel = false;
@@ -1975,11 +2026,12 @@ QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int d
                 } else {
                     QString got = nodeType(channelNode);
                     if (raw.isDouble()) got = jsNumberToString(raw.toDouble());
+                    else if (raw.isBool()) got = raw.toBool() ? QStringLiteral("true") : QStringLiteral("false");
                     else if (channelNode.toObject().value(QStringLiteral("name")).isString()) {
                         got = channelNode.toObject().value(QStringLiteral("name")).toString();
                     }
                     pushDiag(QStringLiteral("S002"), channelNode,
-                             QStringLiteral("audio() channel must be a positive integer (got %1)").arg(got));
+                             QStringLiteral("audio() channel must be a positive integer from 1 to 32 (got %1)").arg(got));
                 }
             }
         }

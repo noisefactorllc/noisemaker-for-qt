@@ -81,7 +81,14 @@ QJsonObject buildStd() {
     midiMode.insert(QStringLiteral("gateVelocity"), Enums::leaf(2));
     midiMode.insert(QStringLiteral("triggerNote"), Enums::leaf(3));
     midiMode.insert(QStringLiteral("velocity"), Enums::leaf(4));
+    midiMode.insert(QStringLiteral("cc"), Enums::leaf(5));
+    midiMode.insert(QStringLiteral("cc14"), Enums::leaf(6));
+    midiMode.insert(QStringLiteral("nrpn"), Enums::leaf(7));
+    midiMode.insert(QStringLiteral("pitchBend"), Enums::leaf(8));
+    midiMode.insert(QStringLiteral("pressure"), Enums::leaf(9));
+    midiMode.insert(QStringLiteral("polyPressure"), Enums::leaf(10));
     root.insert(QStringLiteral("midiMode"), midiMode);
+    root.insert(QStringLiteral("midiZone"), QJsonObject{{QStringLiteral("lower"), Enums::leaf(0)}, {QStringLiteral("upper"), Enums::leaf(1)}});
 
     QJsonObject audioBand;
     audioBand.insert(QStringLiteral("low"), Enums::leaf(0));

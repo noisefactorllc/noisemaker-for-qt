@@ -379,7 +379,6 @@ int main() {
              QStringLiteral("search synth\nlet x = midi(1, name: Controller)\n"),
              QStringLiteral("search synth\nlet x = midi(1, name: \"\")\n"),
              QStringLiteral("search synth\nlet x = audio(audioBand.low, name: \"Interface\")\n"),
-             QStringLiteral("search synth\nlet x = audio(audioBand.low, channel: 1)\n"),
              QStringLiteral("search synth\nlet x = audio(audioBand.low, id: \"device-b\")\n"),
              QStringLiteral("search synth\nlet x = audio(audioBand.low, 0, 1, 2)\n"),
              QStringLiteral("search synth\nlet x = audio(audioBand.low, bogus: 1)\n"),
@@ -398,7 +397,7 @@ int main() {
              std::pair{
                  QStringLiteral("search synth\nlet x = midi(1, zzz: 1, aaa: 2)\n"),
                  QStringLiteral("midi() unknown parameter 'zzz' at line 2 col 9. Valid: channel, mode, min, max, "
-                                "sensitivity, name, id")},
+                                "sensitivity, name, id, cc, nrpn, zone, members")},
              std::pair{
                  QStringLiteral("search synth\nlet x = audio(audioBand.low, zzz: 1, aaa: 2)\n"),
                  QStringLiteral("audio() unknown parameter 'zzz' at line 2 col 9. Valid: band, min, max, channel, "

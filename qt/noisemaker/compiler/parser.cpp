@@ -892,12 +892,13 @@ QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token
         QStringLiteral("max"), QStringLiteral("sensitivity"),
     };
     static const QStringList keywordOnlyParams = {
-        QStringLiteral("name"), QStringLiteral("id"),
+        QStringLiteral("name"), QStringLiteral("id"), QStringLiteral("cc"),
+        QStringLiteral("nrpn"), QStringLiteral("zone"), QStringLiteral("members"),
     };
     QStringList validParams = paramOrder;
     validParams.append(keywordOnlyParams);
     if (args.size() > paramOrder.size()) {
-        throw DslSyntaxError::at(QStringLiteral("midi() name and id are keyword-only"), nameToken.line,
+        throw DslSyntaxError::at(QStringLiteral("midi() name, id, cc, nrpn, zone and members are keyword-only"), nameToken.line,
                                   nameToken.col);
     }
     for (const QString& key : kwargOrder) {
@@ -934,15 +935,21 @@ QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token
     }
 
     const QJsonValue channel = resolved.value(QStringLiteral("channel"));
-    if (channel.isUndefined()) {
-        throw DslSyntaxError::at(QStringLiteral("midi() requires 'channel' argument"), nameToken.line,
+    if (channel.isUndefined() && !kwargs.contains(QStringLiteral("zone"))) {
+        throw DslSyntaxError::at(QStringLiteral("midi() requires 'channel' or 'zone' argument"), nameToken.line,
                                   nameToken.col);
+    }
+    if (!channel.isUndefined() && kwargs.contains(QStringLiteral("zone"))) {
+        throw DslSyntaxError::at(QStringLiteral("midi() 'channel' and 'zone' are mutually exclusive"), nameToken.line, nameToken.col);
+    }
+    if (kwargs.contains(QStringLiteral("members")) && !kwargs.contains(QStringLiteral("zone"))) {
+        throw DslSyntaxError::at(QStringLiteral("midi() 'members' requires 'zone'"), nameToken.line, nameToken.col);
     }
     if (kwargs.contains(QStringLiteral("id")) && !kwargs.contains(QStringLiteral("name"))) {
         throw DslSyntaxError::at(QStringLiteral("midi() 'id' requires readable 'name'"), nameToken.line,
                                   nameToken.col);
     }
-    for (const QString& paramName : keywordOnlyParams) {
+    for (const QString& paramName : {QStringLiteral("name"), QStringLiteral("id")}) {
         if (!kwargs.contains(paramName)) continue;
         const QJsonObject value = kwargs.value(paramName).toObject();
         if (value.value(QStringLiteral("type")).toString() != NodeKind::String) {
@@ -966,6 +973,9 @@ QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token
         node.insert(QStringLiteral("name"), kwargs.value(QStringLiteral("name")));
     }
     if (kwargs.contains(QStringLiteral("id"))) node.insert(QStringLiteral("id"), kwargs.value(QStringLiteral("id")));
+    for (const QString& field : {QStringLiteral("cc"), QStringLiteral("nrpn"), QStringLiteral("zone"), QStringLiteral("members")}) {
+        if (kwargs.contains(field)) node.insert(field, kwargs.value(field));
+    }
     node.insert(QStringLiteral("loc"), ast::loc(nameToken.line, nameToken.col));
     return node;
 }
@@ -1026,7 +1036,7 @@ QJsonObject Parser::transformAudioInvocation(const QJsonObject& call, const Toke
         throw DslSyntaxError::at(QStringLiteral("audio() 'id' requires readable 'name'"), nameToken.line,
                                   nameToken.col);
     }
-    if (kwargs.contains(QStringLiteral("channel")) != kwargs.contains(QStringLiteral("name"))) {
+    if (kwargs.contains(QStringLiteral("name")) && !kwargs.contains(QStringLiteral("channel"))) {
         throw DslSyntaxError::at(QStringLiteral("audio() selected device requires both 'name' and 'channel'"),
                                   nameToken.line, nameToken.col);
     }
