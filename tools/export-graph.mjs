@@ -208,9 +208,29 @@ function deriveProgName (pass) {
 function definesForPass (pass, programs) {
   const prog = programs && programs[pass.program]
   const d = prog && prog.defines
-  if (!d) return {}
   const out = {}
-  for (const [k, v] of Object.entries(d)) out[k] = v
+  if (d) for (const [k, v] of Object.entries(d)) out[k] = v
+  // Recover pass-level defines (pointsRender/pointsBillboardRender's per-viewMode deposit
+  // variants, reference 0ed489ec) from the `__KEY_val` suffix deriveProgName() strips off
+  // pass.program: the reference never sets an explicit pass.defines either (only
+  // `programName += passDefineSuffix`), and the `programs` registry above is empty for this
+  // export path (it's only populated by the live browser runtime's HTTP shader fetch), so
+  // this suffix is the only place the value survives.
+  const raw = pass.program || ''
+  let s = raw
+  const nodePrefix = pass.nodeId ? `${pass.nodeId}_` : null
+  if (nodePrefix && s.startsWith(nodePrefix)) s = s.slice(nodePrefix.length)
+  const suffixIdx = s.indexOf('__')
+  if (suffixIdx >= 0) {
+    for (const seg of s.slice(suffixIdx).split('__')) {
+      if (!seg) continue
+      const idx = seg.lastIndexOf('_')
+      if (idx < 0) continue
+      const key = seg.slice(0, idx)
+      const val = seg.slice(idx + 1)
+      out[key] = /^-?\d+$/.test(val) ? Number(val) : val
+    }
+  }
   return out
 }
 
