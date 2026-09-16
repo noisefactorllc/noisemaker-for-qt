@@ -141,13 +141,6 @@ QString deriveProgName(const ExpandedPass& pass) {
     return s;
 }
 
-QJsonObject definesForPass(const ExpandedPass& pass, const QJsonObject& programs) {
-    const QJsonValue progVal = programs.value(pass.program);
-    if (!progVal.isObject()) return QJsonObject();
-    const QJsonValue definesVal = progVal.toObject().value(QStringLiteral("defines"));
-    return definesVal.isObject() ? definesVal.toObject() : QJsonObject();
-}
-
 QJsonObject normalizePass(const ExpandedPass& pass, const QJsonObject& programs, const QJsonObject& defineMap) {
     const bool isBlit = pass.isBlit;
     QJsonObject out;
@@ -159,7 +152,7 @@ QJsonObject normalizePass(const ExpandedPass& pass, const QJsonObject& programs,
                isBlit ? QJsonValue(QStringLiteral("blit")) : (pass.effectFunc.isUndefined() ? QJsonValue(QJsonValue::Null) : pass.effectFunc));
     out.insert(QStringLiteral("progName"), isBlit ? QStringLiteral("blit") : deriveProgName(pass));
     out.insert(QStringLiteral("program"), pass.program.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(pass.program));
-    out.insert(QStringLiteral("defines"), isBlit ? QJsonObject() : definesForPass(pass, programs));
+    out.insert(QStringLiteral("defines"), isBlit ? QJsonObject() : pass.passDefines);
 
     QJsonObject inputs;
     for (const auto& kv : pass.inputs) inputs.insert(kv.first, kv.second);
@@ -216,6 +209,7 @@ QJsonObject normalizePass(const ExpandedPass& pass, const QJsonObject& programs,
     if (!pass.drawBuffers.isUndefined()) out.insert(QStringLiteral("drawBuffers"), pass.drawBuffers);
     if (!pass.blend.isUndefined()) out.insert(QStringLiteral("blend"), pass.blend);
     if (!pass.repeat.isUndefined()) out.insert(QStringLiteral("repeat"), pass.repeat);
+    if (!pass.conditions.isUndefined()) out.insert(QStringLiteral("conditions"), pass.conditions);
     // `clear` is never produced by this Expander (reference/03 survey —
     // the reference expander.js itself never sets pass.clear either).
 

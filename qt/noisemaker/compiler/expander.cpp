@@ -565,15 +565,26 @@ private:
         QString programDefineSuffix;
         collectDefines(effectDef, stepArgs, effectName, compileTimeDefines, programDefineSuffix);
 
-        // 3. Program collection (§4.6).
-        const QJsonObject shadersSource = effectDef.value(QStringLiteral("shaders")).toObject();
-        for (auto it = shadersSource.constBegin(); it != shadersSource.constEnd(); ++it) {
-            const QString progName = it.key();
+        // 3. Program collection (§4.6). The reference keys this off `effectDef.shaders`, an
+        // effect-instance field its live browser runtime populates by FETCHING each pass's
+        // .glsl/.frag/.vert over HTTP (canvas.js loadEffectShaders()) before the effect is
+        // ever registered. This port's effect JSON never carries embedded shader source at all
+        // (byte-identical .frag files load from disk by namespace/func/progName convention
+        // instead — ARCHITECTURE.md "Shader corpus"), so there is no `shaders` field to iterate.
+        // Derive the same unique-progName set directly from `passes[].program` instead — the
+        // backend never reads shader source out of `programs_` either way (graph.h: "the
+        // backend never reads shader source from it"), only `uniformLayout`/`defines`.
+        QSet<QString> progNames;
+        for (const QJsonValue& pv : effectDef.value(QStringLiteral("passes")).toArray()) {
+            const QString p = pv.toObject().value(QStringLiteral("program")).toString();
+            if (!p.isEmpty()) progNames.insert(p);
+        }
+        for (const QString& progName : progNames) {
             const QString uniqueProgName = nodeId + QLatin1Char('_') + progName + programDefineSuffix;
             if (programs_.contains(uniqueProgName)) continue;
             QJsonValue layout = effectDef.value(QStringLiteral("uniformLayouts")).toObject().value(progName);
             if (!layout.isObject()) layout = effectDef.value(QStringLiteral("uniformLayout"));
-            QJsonObject entry = it.value().toObject();
+            QJsonObject entry;
             entry.insert(QStringLiteral("uniformLayout"), layout.isObject() ? layout : QJsonValue(QJsonObject()));
             entry.insert(QStringLiteral("defines"), compileTimeDefines);
             programs_.insert(uniqueProgName, entry);
@@ -664,8 +675,15 @@ private:
                                             || hasParamRef;
             if (shouldScopeParams) {
                 const QString scopeSuffix = shouldScopeAsParticle ? currentParticlePipelineId_ : chainScopeId_;
-                resolvedSpec.insert(QStringLiteral("width"), dim::scope(spec.value(QStringLiteral("width")), scopeSuffix, scopedParamMap));
-                resolvedSpec.insert(QStringLiteral("height"), dim::scope(spec.value(QStringLiteral("height")), scopeSuffix, scopedParamMap));
+                // A non-global, non-particle-scoped texture (shouldScopeAsParticle false) that
+                // still references `stateSize` (e.g. heightGrid's pass-through/agent programs)
+                // must scope THAT param to the particle pipeline id, not this texture's own
+                // chain scope — reference expander.js's inline `dimensionScope` ternary.
+                const QString stateSizeScope = (!currentParticlePipelineId_.isEmpty() && !texName.startsWith(QStringLiteral("global_")))
+                                                    ? currentParticlePipelineId_
+                                                    : QString();
+                resolvedSpec.insert(QStringLiteral("width"), dim::scope(spec.value(QStringLiteral("width")), scopeSuffix, scopedParamMap, stateSizeScope));
+                resolvedSpec.insert(QStringLiteral("height"), dim::scope(spec.value(QStringLiteral("height")), scopeSuffix, scopedParamMap, stateSizeScope));
             }
             textureSpecs_.insert(virtualTexId, resolvedSpec);
         }
@@ -847,6 +865,22 @@ private:
         const QString rawJson = QString::fromUtf8(registry_.rawJson(effectName));
         const QVector<PassKeyOrder> keyOrders = rawJson.isEmpty() ? QVector<PassKeyOrder>() : passKeyOrders(rawJson);
 
+        // Uniform names gated by ANY pass's conditions.runIf/skipIf (reference expander.js
+        // `conditionalUniforms`). A choice-bearing global normally has NO uniformSpecs entry
+        // (percentage-based automation scaling doesn't apply to a discrete selector) — but a
+        // conditional selector like viewMode/blendMode/shapeMode must resolve to the SAME
+        // integer in every shader pass and in CPU-side pass selection, so it gets one anyway.
+        QSet<QString> conditionalUniforms;
+        for (const QJsonValue& pv : effectPasses) {
+            const QJsonObject cond = pv.toObject().value(QStringLiteral("conditions")).toObject();
+            for (const QJsonValue& c : cond.value(QStringLiteral("runIf")).toArray()) {
+                conditionalUniforms.insert(c.toObject().value(QStringLiteral("uniform")).toString());
+            }
+            for (const QJsonValue& c : cond.value(QStringLiteral("skipIf")).toArray()) {
+                conditionalUniforms.insert(c.toObject().value(QStringLiteral("uniform")).toString());
+            }
+        }
+
         for (int i = 0; i < effectPasses.size(); ++i) {
             const QJsonObject passDef = effectPasses.at(i).toObject();
 
@@ -867,9 +901,42 @@ private:
             pass.countUniform = passDef.value(QStringLiteral("countUniform"));
             pass.repeat = passDef.value(QStringLiteral("repeat"));
             pass.blend = passDef.value(QStringLiteral("blend"));
+            pass.conditions = passDef.value(QStringLiteral("conditions"));
             pass.workgroups = passDef.value(QStringLiteral("workgroups"));
             pass.storageBuffers = passDef.value(QStringLiteral("storageBuffers"));
             pass.storageTextures = passDef.value(QStringLiteral("storageTextures"));
+
+            // Pass-level compile-time defines (reference/03-era `.flatMap()` per-variant pass
+            // cloning: several clones of the same `program` name, each carrying its own
+            // `defines`, e.g. pointsBillboardRender's deposit_0/deposit_1/depositDefocus_1/...).
+            // Mirrors reference expander.js: append a sorted-key suffix to the program cache id
+            // and, on first use, clone the base (node-level) program entry with defines =
+            // {...compileTimeDefines, ...passDef.defines}. `pass.passDefines` ALSO carries the
+            // resolved value directly (consumed by normalizePass()/toRawPassJson()) rather than
+            // requiring every caller to re-derive it from `programs_[pass.program]`.
+            if (!compileTimeDefines.isEmpty()) pass.passDefines = compileTimeDefines;
+            const QJsonValue passDefinesVal = passDef.value(QStringLiteral("defines"));
+            if (passDefinesVal.isObject() && !passDefinesVal.toObject().isEmpty()) {
+                const QJsonObject passDefines = passDefinesVal.toObject();
+                const QJsonValue baseProgramVal = programs_.value(pass.program);
+                QStringList defineKeys = passDefines.keys();
+                std::sort(defineKeys.begin(), defineKeys.end());
+                QString passDefineSuffix;
+                for (const QString& k : defineKeys) {
+                    passDefineSuffix += QStringLiteral("__") + k + QLatin1Char('_') + jsStringOf(passDefines.value(k));
+                }
+                pass.program += passDefineSuffix;
+                QJsonObject mergedDefines = compileTimeDefines;
+                for (auto dit = passDefines.constBegin(); dit != passDefines.constEnd(); ++dit) {
+                    mergedDefines.insert(dit.key(), dit.value());
+                }
+                pass.passDefines = mergedDefines;
+                if (baseProgramVal.isObject() && !programs_.contains(pass.program)) {
+                    QJsonObject clonedEntry = baseProgramVal.toObject();
+                    clonedEntry.insert(QStringLiteral("defines"), mergedDefines);
+                    programs_.insert(pass.program, clonedEntry);
+                }
+            }
 
             pass.effectKey = effectName;
             const QJsonValue funcVal = effectDef.value(QStringLiteral("func"));
@@ -913,6 +980,16 @@ private:
                     range.insert(QStringLiteral("min"), minVal.isDouble() ? minVal : QJsonValue(0));
                     range.insert(QStringLiteral("max"), maxVal.isDouble() ? maxVal : QJsonValue(100));
                     pass.uniformSpecs.insert(uName, range);
+                } else if (type == QStringLiteral("int") && hasChoices && conditionalUniforms.contains(uName)) {
+                    QJsonObject spec;
+                    spec.insert(QStringLiteral("type"), QStringLiteral("int"));
+                    const QJsonValue minVal = def.value(QStringLiteral("min"));
+                    const QJsonValue maxVal = def.value(QStringLiteral("max"));
+                    if (minVal.isDouble() && maxVal.isDouble()) {
+                        spec.insert(QStringLiteral("min"), minVal);
+                        spec.insert(QStringLiteral("max"), maxVal);
+                    }
+                    pass.uniformSpecs.insert(uName, spec);
                 }
             }
 
@@ -949,6 +1026,13 @@ private:
             const QJsonObject passDefUniforms = passDef.value(QStringLiteral("uniforms")).toObject();
             for (auto it = passDefUniforms.constBegin(); it != passDefUniforms.constEnd(); ++it) {
                 const QString uniformName = it.key();
+                // A literal number specializes draws that share a program (e.g. depthMerge's
+                // per-clone `runLength`), without exposing internal pass selection as a DSL
+                // arg — reference expander.js: `if (typeof globalRef === 'number') { ...; continue }`.
+                if (it.value().isDouble()) {
+                    pass.uniforms.insert(uniformName, it.value());
+                    continue;
+                }
                 const QString globalRef = it.value().toString();
                 if (pipelineUniforms_.contains(uniformName)) {
                     pass.uniforms.insert(uniformName, pipelineUniforms_.value(uniformName));
@@ -1327,6 +1411,7 @@ QJsonObject toRawPassJson(const ExpandedPass& pass) {
         if (!pass.countUniform.isUndefined()) out.insert(QStringLiteral("countUniform"), pass.countUniform);
         if (!pass.repeat.isUndefined()) out.insert(QStringLiteral("repeat"), pass.repeat);
         if (!pass.blend.isUndefined()) out.insert(QStringLiteral("blend"), pass.blend);
+        if (!pass.conditions.isUndefined()) out.insert(QStringLiteral("conditions"), pass.conditions);
         if (!pass.workgroups.isUndefined()) out.insert(QStringLiteral("workgroups"), pass.workgroups);
         if (!pass.storageBuffers.isUndefined()) out.insert(QStringLiteral("storageBuffers"), pass.storageBuffers);
         if (!pass.storageTextures.isUndefined()) out.insert(QStringLiteral("storageTextures"), pass.storageTextures);

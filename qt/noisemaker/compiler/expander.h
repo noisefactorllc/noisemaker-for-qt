@@ -91,6 +91,14 @@ struct ExpandedPass {
     QJsonValue countUniform = QJsonValue(QJsonValue::Undefined);
     QJsonValue repeat = QJsonValue(QJsonValue::Undefined);
     QJsonValue blend = QJsonValue(QJsonValue::Undefined);
+    // Per-pass execution predicate (reference expander.js: `conditions: passDef.conditions`).
+    // Evaluated at RUNTIME (per frame, against that frame's resolved uniforms), not here —
+    // this Expander only carries the JSON through unevaluated, mirroring the reference.
+    QJsonValue conditions = QJsonValue(QJsonValue::Undefined);
+    // Resolved compile-time defines for this pass (node-level compileTimeDefines merged with
+    // any pass-level clone override) — see expandPasses()'s "Pass-level compile-time defines"
+    // comment for why this bypasses the (permanently empty, for this port) `programs_` map.
+    QJsonObject passDefines;
     QJsonValue workgroups = QJsonValue(QJsonValue::Undefined);
     QJsonValue storageBuffers = QJsonValue(QJsonValue::Undefined);
     QJsonValue storageTextures = QJsonValue(QJsonValue::Undefined);

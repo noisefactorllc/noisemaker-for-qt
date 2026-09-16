@@ -40,6 +40,14 @@ const starterNames = []
 for (const rel of rels) {
     const inst = JSON.parse(readFileSync(join(effectsDir, rel), 'utf8'))
     const namespace = inst.namespace, func = inst.func
+    // See tools/dump-graph.mjs's identical synthesis for why: the reference's live runtime
+    // populates effectDef.shaders by fetching glsl/wgsl over HTTP before registration; this
+    // port's JSON never carries shader source at all, so without a placeholder here
+    // expander.js's "Program collection" step (and this port's own expander.cpp mirror of it)
+    // can never populate `programs` per-pass-clone defines.
+    const shaders = {}
+    for (const p of inst.passes || []) if (p.program) shaders[p.program] = shaders[p.program] || {}
+    inst.shaders = shaders
     registerEffect(inst.func, inst)
     registerEffect(`${namespace}.${func}`, inst)
     registerEffect(`${namespace}/${func}`, inst)

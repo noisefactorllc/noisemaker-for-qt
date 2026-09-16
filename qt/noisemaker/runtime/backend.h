@@ -149,6 +149,7 @@ private:
     void setUniformValue(int location, unsigned int glType, const QJsonValue& value);
     QJsonObject engineUniforms() const;
     int resolveRepeatCount(const Pass& pass) const;
+    bool shouldSkipPass(const Pass& pass) const;
     int resolvePointCount(const Graph& graph, const Pass& pass);
     void renderInternal(
         const Graph& graph,

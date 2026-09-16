@@ -59,6 +59,9 @@ struct Pass {
     QJsonValue drawBuffers;  // int | undefined; >1 signals MRT alongside outputs.size()>1
     QJsonValue count;        // int | "input"/"auto"/"screen" string | undefined (agent vertex count)
     QJsonValue blend;        // bool | [srcFactor, dstFactor] string pair | undefined
+    QJsonValue conditions;   // {runIf?:[{uniform,equals}], skipIf?:[...]} | undefined — evaluated
+                              // per frame against the pass's resolved uniforms (reference
+                              // pipeline.js shouldSkipPass mirror; see Backend::shouldSkipPass).
 };
 
 // The compiled render graph consumed by nm::Backend:

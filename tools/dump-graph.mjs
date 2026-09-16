@@ -36,6 +36,18 @@ const defineMap = {}
 for (const rel of rels) {
     const inst = JSON.parse(readFileSync(join(effectsDir, rel), 'utf8'))
     const namespace = inst.namespace, func = inst.func
+    // Reference canvas.js's loadEffectShaders() fetches each pass's glsl/wgsl over HTTP and
+    // mutates instance.shaders[prog] BEFORE registerEffectWithRuntime() — that's what makes
+    // expander.js's "Program collection" step (effectDef.shaders) non-empty in the live app.
+    // This port's effect JSON never carries shader source at all (byte-identical .frag files
+    // load from disk by name convention instead — see ARCHITECTURE.md "Shader corpus"), so
+    // without an equivalent step here `effectDef.shaders` stays permanently empty and the
+    // oracle's own `programs`/per-pass-clone `defines` can never be exercised — synthesize an
+    // empty per-progName placeholder purely so that "Program collection" step (and this port's
+    // own qt/noisemaker/compiler/expander.cpp mirror of it) has something to key defines onto.
+    const shaders = {}
+    for (const p of inst.passes || []) if (p.program) shaders[p.program] = shaders[p.program] || {}
+    inst.shaders = shaders
     registerEffect(inst.func, inst)
     registerEffect(`${namespace}.${func}`, inst)
     registerEffect(`${namespace}/${func}`, inst)

@@ -1511,6 +1511,40 @@ int Backend::resolveRepeatCount(const Pass& pass) const {
     return 1;
 }
 
+bool Backend::shouldSkipPass(const Pass& pass) const {
+    // reference pipeline.js shouldSkipPass mirror. The reference resolves a condition's
+    // uniform from the pass's OWN (already time-resolved) uniforms, falling back to the
+    // frame's graph-wide merged uniforms — same fallback resolveRepeatCount/resolvePointCount
+    // use for cross-pass lookups (e.g. a pass gated on a sibling pass's global param).
+    if (!pass.conditions.isObject()) return false;
+    const QJsonObject conditions = pass.conditions.toObject();
+
+    const auto resolvedUniform = [&](const QString& name) -> QJsonValue {
+        const auto it = pass.uniforms.constFind(name);
+        if (it != pass.uniforms.constEnd()) {
+            return resolveUniformValue(it.value(), m_time, pass.uniformSpecs.value(name).toObject());
+        }
+        return m_mergedUniforms.value(name);
+    };
+
+    const QJsonArray skipIf = conditions.value(QStringLiteral("skipIf")).toArray();
+    for (const QJsonValue& condVal : skipIf) {
+        const QJsonObject cond = condVal.toObject();
+        if (resolvedUniform(cond.value(QStringLiteral("uniform")).toString()) == cond.value(QStringLiteral("equals"))) {
+            return true;
+        }
+    }
+
+    const QJsonArray runIf = conditions.value(QStringLiteral("runIf")).toArray();
+    for (const QJsonValue& condVal : runIf) {
+        const QJsonObject cond = condVal.toObject();
+        if (resolvedUniform(cond.value(QStringLiteral("uniform")).toString()) != cond.value(QStringLiteral("equals"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int Backend::resolvePointCount(const Graph& graph, const Pass& pass) {
     // reference webgl2.js executePass points/billboards branch: a literal
     // number passes straight through; "auto"/"screen"/"input" derive the
@@ -1790,6 +1824,7 @@ void Backend::renderInternal(
     m_pingpong.beginFrame();
 
     for (const Pass& pass : effectiveGraph.passes) {
+        if (shouldSkipPass(pass)) continue;
         const int repeatCount = resolveRepeatCount(pass);
         for (int iter = 0; iter < repeatCount; ++iter) {
             executePass(effectiveGraph, pass);

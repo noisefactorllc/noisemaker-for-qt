@@ -118,6 +118,12 @@ function projectPass (pass) {
   // Per-pass execution predicate (reference/03 §4.x). pointsBillboardRender gates its two
   // deposit passes on `blendMode`; dropping this ran BOTH passes and double-deposited.
   if (pass.conditions !== undefined) out.conditions = pass.conditions
+  // Per-pass compile-time defines (the `.flatMap()` per-variant clone pattern: several passes
+  // share one `program` name but each carries its own defines, e.g. pointsBillboardRender's
+  // deposit_0/deposit_1/depositDefocus_1/... clones need VIEW_MODE/BLEND_MODE/BLUR_LAYER baked
+  // in — without this the shared byte-identical shader's `#if VIEW_MODE == 0` etc. preprocessor
+  // guards see an undefined macro (treated as 0), so every clone silently runs the SAME branch).
+  if (pass.defines !== undefined) out.defines = pass.defines
   if (pass.clear !== undefined) out.clear = pass.clear
   if (pass.type !== undefined) out.type = pass.type
   if (pass.entryPoint !== undefined) out.entryPoint = pass.entryPoint

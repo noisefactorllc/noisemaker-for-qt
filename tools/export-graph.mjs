@@ -253,6 +253,13 @@ function normalizePass (pass, programs, defineMap) {
   if (pass.drawBuffers !== undefined) out.drawBuffers = pass.drawBuffers
   if (pass.blend !== undefined) out.blend = pass.blend
   if (pass.repeat !== undefined) out.repeat = pass.repeat
+  // Per-pass execution predicate (reference expander.js `conditions: passDef.conditions`).
+  // Evaluated at RUNTIME against that frame's resolved uniforms (Backend::shouldSkipPass /
+  // reference pipeline.js shouldSkipPass) — NOT resolved away here. Dropping this from the
+  // exported schema made pointsBillboardRender's deposit/deposit_alpha clones both always
+  // run and double-deposit (matches the same field already captured in
+  // tools/convert-definitions.mjs's projectPass for the effect-definition JSON).
+  if (pass.conditions !== undefined) out.conditions = pass.conditions
   if (pass.clear !== undefined) out.clear = pass.clear
 
   // Metadata.

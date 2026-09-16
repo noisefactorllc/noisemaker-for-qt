@@ -43,6 +43,16 @@ bool referencesParam(const QJsonValue& d);
 // `screenDivide` never occurs in practice (the reference itself only ever
 // checks one or the other, `param` first) — ported the same one-or-the-
 // other precedence.
-QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, QString>& scopedParamMap);
+//
+// `stateSizeScope`, when non-empty, overrides `scopeSuffix` SPECIFICALLY for
+// a `{param: "stateSize"}` dimension (never `screenDivide`) — a non-global,
+// non-particle-pipeline-scoped texture (e.g. points/heightGrid's own
+// pass-through/agent programs) that still sizes itself off the pipeline's
+// agent-state resolution must scope `stateSize` to the PARTICLE PIPELINE id,
+// not this texture's own chain scope, so it agrees with the pipeline's real
+// state-texture dimensions instead of picking up an unrelated chain-scoped
+// default. Mirrors reference expander.js's inline `dimensionScope` ternary.
+QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, QString>& scopedParamMap,
+                  const QString& stateSizeScope = QString());
 
 } // namespace nm::dim

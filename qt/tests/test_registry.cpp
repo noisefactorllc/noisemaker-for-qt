@@ -305,7 +305,7 @@ int main() {
                   && dump.contains(QStringLiteral("paramAliases")) && dump.contains(QStringLiteral("effectAliases"))
                   && dump.contains(QStringLiteral("effectKeys")),
               "dumpSummary() has exactly the five gate keys");
-        check(dump.value(QStringLiteral("ops")).toObject().size() == 210, "dumpSummary().ops has 210 entries");
+        check(dump.value(QStringLiteral("ops")).toObject().size() == 213, "dumpSummary().ops has 213 entries");
         const QJsonObject remapArg = dump.value(QStringLiteral("ops")).toObject().value(QStringLiteral("synth.remap"))
                                           .toObject();
         check(!remapArg.isEmpty(), "dumpSummary().ops has a synth.remap entry");
