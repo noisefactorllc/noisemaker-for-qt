@@ -13,6 +13,8 @@ reference tree CONTENT at verification time, and any future re-sync should re-st
 rather than assume the SHA alone is sufficient provenance — even though this reference's own
 history is, unlike Blender's, a normal linear log with no amended commits today.*
 
+*Incrementally synced 2026-09-18 to reference `ead42a5d` (`688c514655d3..ead42a5df110a7f04d732cb200a1a39629db8a67`) — regenerated effect definitions via `tools/convert-definitions.mjs` (213/213 definitions match reference in `parity/check_definitions.mjs`). Updated `defaultProgram` in `qt/noisemaker/effects/synth3d/heightmap3d.json`, `qt/noisemaker/effects/render/renderLandscape3d.json`, and `parity/programs/heightmap3d_landscape.dsl` to use discrete write/read chains instead of inline surface parameters. All parity gates verified: check_definitions (213/213 PASS), check_shaders (320/320 PASS), check_registry (213/213 ops, 5/5 PASS), check_lex (360/360 PASS), check_parse (360/360 PASS), check_validate (360/360 PASS), check_expand (360/360 PASS), check_graph (360/360 PASS), ctest (12/12 PASS), and pytest parity/ (31/31 PASS). Note: the catalogue coverage tables below reflect the initial `244ebf13` crystallization and have not been re-swept.*
+
 This file holds the detailed coverage and parity numbers. For what the project is and how to use
 it, see the [README](README.md).
 
