@@ -519,6 +519,26 @@ int main() {
         }
     }
 
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth, filter\nlet eff = rotate(1, 0.1)\nnoise().eff().write(o0)\nrender(o0)\n"));
+        check(diags(out).isEmpty(), "chained variable alias: no validator diagnostics");
+        const QJsonArray plans = out.value(QStringLiteral("plans")).toArray();
+        check(plans.size() == 1, "chained variable alias: exactly 1 plan");
+        if (!plans.isEmpty()) {
+            const QJsonArray chain = plans.first().toObject().value(QStringLiteral("chain")).toArray();
+            check(chain.size() == 3, "chained variable alias: plan chain has exactly 3 steps");
+            if (chain.size() >= 3) {
+                check(chain.at(0).toObject().value(QStringLiteral("op")).toString() == QStringLiteral("synth.noise"),
+                      "chained variable alias: step 0 is synth.noise");
+                check(chain.at(1).toObject().value(QStringLiteral("op")).toString() == QStringLiteral("filter.rotate"),
+                      "chained variable alias: step 1 is filter.rotate");
+                check(chain.at(2).toObject().value(QStringLiteral("op")).toString() == QStringLiteral("_write"),
+                      "chained variable alias: step 2 is terminal _write");
+            }
+        }
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_validator)\n");
         return 0;

@@ -258,6 +258,29 @@ int main() {
         check(isRuntimeError, "nm::UnsupportedDsl (expander.h) is nm::UnsupportedDsl (validator.h) -- one shared type");
     }
 
+    // ======================================================================
+    // Chained variable alias expansion
+    // ======================================================================
+    {
+        const QString src = QStringLiteral(
+            "search synth, filter\nlet eff = rotate(1, 0.1)\nnoise().eff().write(o0)\nrender(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "chained variable alias: no expand errors");
+        check(r.passes.size() == 3, "chained variable alias: exactly 3 passes (noise + rotate + write blit)");
+        const nm::ExpandedPass* noisePass = findPass(r, QStringLiteral("node_0_pass_0"));
+        const nm::ExpandedPass* rotatePass = findPass(r, QStringLiteral("node_1_pass_0"));
+        check(noisePass != nullptr && rotatePass != nullptr, "chained variable alias: both effect passes exist");
+        const nm::ExpandedPass* writePass = findPass(r, QStringLiteral("node_2_write_blit"));
+        check(writePass != nullptr, "chained variable alias: terminal write blit pass exists");
+        if (writePass) {
+            check(writePass->isBlit, "chained variable alias: terminal pass is blit");
+            check(findInput(*writePass, QStringLiteral("src")) == QStringLiteral("node_1_out"),
+                  "chained variable alias: blit reads node_1_out");
+            check(findOutput(*writePass, QStringLiteral("color")) == QStringLiteral("global_o0"),
+                  "chained variable alias: blit writes global_o0");
+        }
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_expander)\n");
         return 0;
