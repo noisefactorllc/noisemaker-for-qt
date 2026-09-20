@@ -22,6 +22,7 @@ struct GpuSurface {
     unsigned int fbo = 0;
     int width = 0;
     int height = 0;
+    QString format;
 };
 
 // Resolves a TextureSpec dimension value against a screen size. Exact

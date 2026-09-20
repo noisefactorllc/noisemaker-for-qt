@@ -152,6 +152,53 @@ int main(int argc, char** argv) {
                 gl.glBindTexture(GL_TEXTURE_2D, 0);
                 check(internalFormat == GL_RGBA32F,
                       "rgba32float allocates the same full-precision format as rgba32f");
+
+                // Dynamic recreation when format changes on the same texId
+                nm::Graph dynamicGraph;
+                dynamicGraph.textures.insert(
+                    QStringLiteral("dyn"), textureSpec(QStringLiteral("rgba32f")));
+                const nm::GpuSurface& dynFirst = cache.get(
+                    dynamicGraph, QStringLiteral("dyn"), QSize(2, 2));
+                check(dynFirst.format == QStringLiteral("rgba32f"),
+                      "initial texture format matches spec");
+
+                dynamicGraph.textures[QStringLiteral("dyn")].format = QStringLiteral("rgba16f");
+                const nm::GpuSurface& dynSecond = cache.get(
+                    dynamicGraph, QStringLiteral("dyn"), QSize(2, 2));
+                check(dynSecond.format == QStringLiteral("rgba16f"),
+                      "recreated texture format reflects updated spec");
+                gl.glBindTexture(GL_TEXTURE_2D, dynSecond.texture);
+                int dynInternalFormat = 0;
+                gl.glGetTexLevelParameteriv(
+                    GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &dynInternalFormat);
+                gl.glBindTexture(GL_TEXTURE_2D, 0);
+                check(dynInternalFormat == GL_RGBA16F,
+                      "recreated texture has GL_RGBA16F internal format");
+
+                const nm::GpuSurface& dynThird = cache.get(
+                    dynamicGraph, QStringLiteral("dyn"), QSize(2, 2));
+                check(dynThird.texture == dynSecond.texture,
+                      "matching surface is reused without recreation");
+
+                // Aliased / hazard surface recreation on format change
+                const nm::GpuSurface& aliasFirst = cache.getAliased(
+                    QStringLiteral("global_dyn#a"), dynamicGraph, QStringLiteral("dyn"), QSize(2, 2));
+                check(aliasFirst.format == QStringLiteral("rgba16f"),
+                      "aliased surface inherits format from spec");
+
+                dynamicGraph.textures[QStringLiteral("dyn")].format = QStringLiteral("rgba8");
+                const nm::GpuSurface& aliasSecond = cache.getAliased(
+                    QStringLiteral("global_dyn#a"), dynamicGraph, QStringLiteral("dyn"), QSize(2, 2));
+                check(aliasSecond.format == QStringLiteral("rgba8"),
+                      "aliased surface recreates when spec format changes");
+                gl.glBindTexture(GL_TEXTURE_2D, aliasSecond.texture);
+                int aliasInternalFormat = 0;
+                gl.glGetTexLevelParameteriv(
+                    GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &aliasInternalFormat);
+                gl.glBindTexture(GL_TEXTURE_2D, 0);
+                check(aliasInternalFormat == GL_RGBA8,
+                      "recreated aliased texture has GL_RGBA8 internal format");
+
                 cache.releaseAll();
 
                 gl.glDeleteFramebuffers(2, framebuffers);

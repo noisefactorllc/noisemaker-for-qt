@@ -198,6 +198,7 @@ GpuSurface SurfaceCache::createSurface(int width, int height, const QString& for
     surface.fbo = fbo;
     surface.width = width;
     surface.height = height;
+    surface.format = format;
     return surface;
 }
 
@@ -224,6 +225,28 @@ SurfaceCache::ResolvedSpec SurfaceCache::resolveSpec(const Graph& graph, const Q
 GpuSurface& SurfaceCache::getOrCreate(const QString& cacheKey, const ResolvedSpec& spec) {
     auto it = m_surfaces.find(cacheKey);
     if (it != m_surfaces.end()) {
+        if (it->width == spec.width && it->height == spec.height && it->format == spec.format) {
+            return it.value();
+        }
+        if (it->fbo != 0) {
+            m_gl->glDeleteFramebuffers(1, &it->fbo);
+            it->fbo = 0;
+        }
+        if (it->texture != 0) {
+            const unsigned int oldTex = it->texture;
+            for (auto mrtIt = m_mrtFbos.begin(); mrtIt != m_mrtFbos.end(); ) {
+                if (mrtIt.key().contains(QStringLiteral(":%1,").arg(oldTex))) {
+                    unsigned int fbo = mrtIt.value();
+                    m_gl->glDeleteFramebuffers(1, &fbo);
+                    mrtIt = m_mrtFbos.erase(mrtIt);
+                } else {
+                    ++mrtIt;
+                }
+            }
+            m_gl->glDeleteTextures(1, &it->texture);
+            it->texture = 0;
+        }
+        it.value() = createSurface(spec.width, spec.height, spec.format);
         return it.value();
     }
     return *m_surfaces.insert(cacheKey, createSurface(spec.width, spec.height, spec.format));
@@ -231,19 +254,11 @@ GpuSurface& SurfaceCache::getOrCreate(const QString& cacheKey, const ResolvedSpe
 
 GpuSurface& SurfaceCache::get(const Graph& graph, const QString& texId, QSize screenSize,
                                const QJsonObject& mergedUniforms) {
-    auto it = m_surfaces.find(texId);
-    if (it != m_surfaces.end()) {
-        return it.value();
-    }
     return getOrCreate(texId, resolveSpec(graph, texId, screenSize, mergedUniforms));
 }
 
 GpuSurface& SurfaceCache::getAliased(const QString& physicalKey, const Graph& graph, const QString& specTexId,
                                       QSize screenSize, const QJsonObject& mergedUniforms) {
-    auto it = m_surfaces.find(physicalKey);
-    if (it != m_surfaces.end()) {
-        return it.value();
-    }
     return getOrCreate(physicalKey, resolveSpec(graph, specTexId, screenSize, mergedUniforms));
 }
 

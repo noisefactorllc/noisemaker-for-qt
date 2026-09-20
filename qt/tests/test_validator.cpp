@@ -508,6 +508,20 @@ int main() {
                 check(!diags(invalid).isEmpty() && args(invalid, 0, 0).value("scaleX").toObject().value("_invalid").toBool(),
                       "invalid static MIDI selectors fail closed");
             }
+            const QStringList noteModes{"noteChange", "gateNote", "gateVelocity", "triggerNote", "velocity"};
+            for (const QString& m : noteModes) {
+                for (int ch : {1, 16}) {
+                    const auto valid = validateSrc(QStringLiteral("search synth\nnoise(scaleX: midi(%1, midiMode.%2)).write(o0)\nrender(o0)\n").arg(ch).arg(m));
+                    const auto midi = args(valid, 0, 0).value("scaleX").toObject();
+                    check(diags(valid).isEmpty() && midi.value("channel").toInt() == ch && !midi.value("_invalid").toBool(),
+                          "legacy note mode accepts static channel within 1..16");
+                }
+                for (const QString& badCh : {QStringLiteral("0"), QStringLiteral("17"), QStringLiteral("1.5"), QStringLiteral("true")}) {
+                    const auto invalid = validateSrc(QStringLiteral("search synth\nnoise(scaleX: midi(%1, midiMode.%2)).write(o0)\nrender(o0)\n").arg(badCh).arg(m));
+                    check(!diags(invalid).isEmpty() && args(invalid, 0, 0).value("scaleX").toObject().value("_invalid").toBool(),
+                          "legacy note mode rejects non-integer or out-of-range static channel");
+                }
+            }
             const auto audio = validateSrc(QStringLiteral("search synth\nnoise(scaleX: audio(audioBand.raw, channel: 32)).write(o0)\nrender(o0)\n"));
             check(diags(audio).isEmpty() && args(audio, 0, 0).value("scaleX").toObject().value("channel").toInt() == 32,
                   "default-device audio accepts its highest supported channel");

@@ -1945,10 +1945,8 @@ QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int d
                 selectorOptions(1, 15, &invalidSelection), depth);
             if (!hasZone) invalidSelection = true;
         }
-        AutomationNumberOptions literal;
-        literal.allowBoolean = true;
         const auto channel = hasZone ? undefined : resolveAutomationNumber(node.value(QStringLiteral("channel")), QStringLiteral("midi"), QStringLiteral("channel"), 1.0,
-            mode.toInt() >= 5 ? selectorOptions(1, 16, &invalidChannel) : literal, depth);
+            selectorOptions(1, 16, &invalidChannel), depth);
         auto cc = undefined;
         if (node.contains(QStringLiteral("cc")) || mode.toInt() == 5 || mode.toInt() == 6) {
             cc = resolveAutomationNumber(node.value(QStringLiteral("cc")), QStringLiteral("midi"), QStringLiteral("cc"), 1.0,
