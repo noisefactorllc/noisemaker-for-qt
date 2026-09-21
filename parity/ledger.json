@@ -80,26 +80,6 @@
     }
   },
   {
-    "program": "bc",
-    "effect": "filter/bc",
-    "mode": "default",
-    "golden": "parity/out/bc.golden.png",
-    "candidate": "parity/out/bc.candidate.png",
-    "verdict": "PASS",
-    "max_abs_diff": 0.9999999403953552,
-    "mean_abs_diff": 1.5258788153005298e-05,
-    "ssim": 1.0,
-    "passed": true,
-    "skipped": false,
-    "policy": {
-      "tolerance": 2.001,
-      "ssim_min": 0.98,
-      "strict_tolerance": 2.001,
-      "strict_ssim_min": 0.98,
-      "reason": "strict RGBA8 float round-trip allowance"
-    }
-  },
-  {
     "program": "bitwise",
     "effect": null,
     "mode": "default",
@@ -668,26 +648,6 @@
     "verdict": "PASS",
     "max_abs_diff": 0.9999999403953552,
     "mean_abs_diff": 1.9073484509135596e-05,
-    "ssim": 1.0,
-    "passed": true,
-    "skipped": false,
-    "policy": {
-      "tolerance": 2.001,
-      "ssim_min": 0.98,
-      "strict_tolerance": 2.001,
-      "strict_ssim_min": 0.98,
-      "reason": "strict RGBA8 float round-trip allowance"
-    }
-  },
-  {
-    "program": "colorspace",
-    "effect": "filter/colorspace",
-    "mode": "default",
-    "golden": "parity/out/colorspace.golden.png",
-    "candidate": "parity/out/colorspace.candidate.png",
-    "verdict": "PASS",
-    "max_abs_diff": 0.9999999403953552,
-    "mean_abs_diff": 2.6702879040385596e-05,
     "ssim": 1.0,
     "passed": true,
     "skipped": false,
@@ -2089,26 +2049,6 @@
     "max_abs_diff": 0.0,
     "mean_abs_diff": 0.0,
     "ssim": 1.0,
-    "passed": true,
-    "skipped": false,
-    "policy": {
-      "tolerance": 2.001,
-      "ssim_min": 0.98,
-      "strict_tolerance": 2.001,
-      "strict_ssim_min": 0.98,
-      "reason": "strict RGBA8 float round-trip allowance"
-    }
-  },
-  {
-    "program": "hs",
-    "effect": "filter/hs",
-    "mode": "default",
-    "golden": "parity/out/hs.golden.png",
-    "candidate": "parity/out/hs.candidate.png",
-    "verdict": "PASS",
-    "max_abs_diff": 0.9999999403953552,
-    "mean_abs_diff": 1.9073484509135596e-05,
-    "ssim": 1.0000001192092896,
     "passed": true,
     "skipped": false,
     "policy": {

@@ -53,7 +53,7 @@ int main() {
     // ==================================================================
     {
         check(reg.getOp(QStringLiteral("synth.noise")) != nullptr, "synth.noise op is registered");
-        check(reg.getOp(QStringLiteral("filter.bc")) != nullptr, "filter.bc (hidden/deprecated) op is registered");
+        check(reg.getOp(QStringLiteral("filter.adjust")) != nullptr, "filter.adjust op is registered");
         check(reg.hasEffect(QStringLiteral("synth.noise")), "synth.noise effect lookup key present");
         check(reg.hasEffect(QStringLiteral("synth/noise")), "synth/noise (slash) effect lookup key present");
         check(reg.hasEffect(QStringLiteral("noise")), "bare 'noise' effect lookup key present (some effect wins it)");
@@ -269,7 +269,7 @@ int main() {
 
         QJsonObject emptyAliasKwargs;
         emptyAliasKwargs.insert(QStringLiteral("brightness"), 1.0);
-        const QStringList noWarnings = reg.resolveParamAliases(QStringLiteral("filter.bc"), emptyAliasKwargs);
+        const QStringList noWarnings = reg.resolveParamAliases(QStringLiteral("filter.adjust"), emptyAliasKwargs);
         check(noWarnings.isEmpty(), "an effect with an EMPTY paramAliases map ({}) produces no warnings");
     }
 
@@ -277,10 +277,8 @@ int main() {
     // effect aliases: hidden + deprecatedBy
     // ==================================================================
     {
-        const QString warning = reg.checkEffectAlias(QStringLiteral("filter.bc"));
-        check(!warning.isEmpty() && warning.contains(QStringLiteral("'bc' is deprecated"))
-                  && warning.contains(QStringLiteral("use 'adjust' instead")),
-              "checkEffectAlias('filter.bc') warns to use 'adjust'");
+        check(reg.checkEffectAlias(QStringLiteral("filter.adjust")).isEmpty(),
+              "checkEffectAlias('filter.adjust') (no alias) returns empty");
         check(reg.checkEffectAlias(QStringLiteral("synth.noise")).isEmpty(),
               "checkEffectAlias('synth.noise') (no alias) returns empty");
     }
@@ -305,14 +303,14 @@ int main() {
                   && dump.contains(QStringLiteral("paramAliases")) && dump.contains(QStringLiteral("effectAliases"))
                   && dump.contains(QStringLiteral("effectKeys")),
               "dumpSummary() has exactly the five gate keys");
-        check(dump.value(QStringLiteral("ops")).toObject().size() == 213, "dumpSummary().ops has 213 entries");
+        check(dump.value(QStringLiteral("ops")).toObject().size() == 210, "dumpSummary().ops has 210 entries");
         const QJsonObject remapArg = dump.value(QStringLiteral("ops")).toObject().value(QStringLiteral("synth.remap"))
                                           .toObject();
         check(!remapArg.isEmpty(), "dumpSummary().ops has a synth.remap entry");
-        const QJsonObject bcArg = dump.value(QStringLiteral("ops")).toObject().value(QStringLiteral("filter.bc")).toObject();
+        const QJsonObject adjustArg = dump.value(QStringLiteral("ops")).toObject().value(QStringLiteral("filter.adjust")).toObject();
         bool brightnessHasNoEnumOrChoices = true;
         bool brightnessHasUniformMinMax = false;
-        for (const QJsonValue& a : bcArg.value(QStringLiteral("args")).toArray()) {
+        for (const QJsonValue& a : adjustArg.value(QStringLiteral("args")).toArray()) {
             const QJsonObject ao = a.toObject();
             if (ao.value(QStringLiteral("name")).toString() == QStringLiteral("brightness")) {
                 brightnessHasNoEnumOrChoices = !ao.contains(QStringLiteral("enum"))
@@ -322,8 +320,8 @@ int main() {
             }
         }
         check(brightnessHasNoEnumOrChoices,
-              "filter.bc's brightness arg omits enum/enumPath/choices entirely (absent, not null)");
-        check(brightnessHasUniformMinMax, "filter.bc's brightness arg carries uniform/min/max (all present)");
+              "filter.adjust's brightness arg omits enum/enumPath/choices entirely (absent, not null)");
+        check(brightnessHasUniformMinMax, "filter.adjust's brightness arg carries uniform/min/max (all present)");
         check(dump.value(QStringLiteral("effectKeys")).toObject().value(QStringLiteral("synth.noise")).toString()
                   == QStringLiteral("synth.noise"),
               "effectKeys['synth.noise'] fingerprints to 'synth.noise'");
