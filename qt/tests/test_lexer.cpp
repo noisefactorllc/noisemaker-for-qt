@@ -74,14 +74,47 @@ bool isTok(const Tok& t, const QString& type, const QString& lexeme, int line, i
 int main() {
     // --- output/source refs vs identifiers -------------------------------
     {
-        const QJsonArray toks = nm::lex(QStringLiteral("o0 o12 s3 output0"));
-        check(toks.size() == 5, "o0 o12 s3 output0 -> 4 tokens + EOF");
+        const QJsonArray toks = nm::lex(QStringLiteral("o0 o7 s3 output0"));
+        check(toks.size() == 5, "o0 o7 s3 output0 -> 4 tokens + EOF");
         check(isTok(at(toks, 0), nm::TokenType::OUTPUT_REF, QStringLiteral("o0"), 1, 1), "o0 -> OUTPUT_REF");
-        check(isTok(at(toks, 1), nm::TokenType::OUTPUT_REF, QStringLiteral("o12"), 1, 4),
-              "o12 -> OUTPUT_REF (multi-digit)");
-        check(isTok(at(toks, 2), nm::TokenType::SOURCE_REF, QStringLiteral("s3"), 1, 8), "s3 -> SOURCE_REF");
-        check(isTok(at(toks, 3), nm::TokenType::IDENT, QStringLiteral("output0"), 1, 11),
+        check(isTok(at(toks, 1), nm::TokenType::OUTPUT_REF, QStringLiteral("o7"), 1, 4),
+              "o7 -> OUTPUT_REF (upper boundary)");
+        check(isTok(at(toks, 2), nm::TokenType::SOURCE_REF, QStringLiteral("s3"), 1, 7), "s3 -> SOURCE_REF");
+        check(isTok(at(toks, 3), nm::TokenType::IDENT, QStringLiteral("output0"), 1, 10),
               "output0 -> IDENT ('o' ref rule needs 'o' immediately followed by a digit)");
+    }
+
+    // --- output surface range enforcement (o0-o7, member segments, other families)
+    {
+        for (const QString& bad : {QStringLiteral("o8"), QStringLiteral("o12"), QStringLiteral("o99")}) {
+            bool threw = false;
+            try {
+                nm::lex(bad);
+            } catch (const nm::DslSyntaxError& err) {
+                threw = true;
+                const QString expectedMsg = QStringLiteral("Output surface reference '%1' is out of range; expected o0-o7 at line 1 col 1").arg(bad);
+                check(QString::fromUtf8(err.what()) == expectedMsg, "error message matches reference format");
+            }
+            check(threw, QStringLiteral("%1 throws DslSyntaxError").arg(bad).toUtf8().constData());
+        }
+
+        // member segments foo.o8 and foo.o99 are allowed
+        const QJsonArray memberToks = nm::lex(QStringLiteral("foo.o0 foo.o7 foo.o8 foo.o99"));
+        check(memberToks.size() == 13, "foo.o0 foo.o7 foo.o8 foo.o99 -> 12 tokens + EOF");
+        check(isTok(at(memberToks, 2), nm::TokenType::OUTPUT_REF, QStringLiteral("o0"), 1, 5), "foo.o0 member segment");
+        check(isTok(at(memberToks, 5), nm::TokenType::OUTPUT_REF, QStringLiteral("o7"), 1, 12), "foo.o7 member segment");
+        check(isTok(at(memberToks, 8), nm::TokenType::OUTPUT_REF, QStringLiteral("o8"), 1, 19), "foo.o8 member segment");
+        check(isTok(at(memberToks, 11), nm::TokenType::OUTPUT_REF, QStringLiteral("o99"), 1, 26), "foo.o99 member segment");
+
+        // other surface reference families preserve multi-digit numbers
+        const QJsonArray otherToks = nm::lex(QStringLiteral("s99 vol99 geo99 xyz99 vel99 rgba99 mesh99"));
+        check(isTok(at(otherToks, 0), nm::TokenType::SOURCE_REF, QStringLiteral("s99"), 1, 1), "s99 -> SOURCE_REF");
+        check(isTok(at(otherToks, 1), nm::TokenType::VOL_REF, QStringLiteral("vol99"), 1, 5), "vol99 -> VOL_REF");
+        check(isTok(at(otherToks, 2), nm::TokenType::GEO_REF, QStringLiteral("geo99"), 1, 11), "geo99 -> GEO_REF");
+        check(isTok(at(otherToks, 3), nm::TokenType::XYZ_REF, QStringLiteral("xyz99"), 1, 17), "xyz99 -> XYZ_REF");
+        check(isTok(at(otherToks, 4), nm::TokenType::VEL_REF, QStringLiteral("vel99"), 1, 23), "vel99 -> VEL_REF");
+        check(isTok(at(otherToks, 5), nm::TokenType::RGBA_REF, QStringLiteral("rgba99"), 1, 29), "rgba99 -> RGBA_REF");
+        check(isTok(at(otherToks, 6), nm::TokenType::MESH_REF, QStringLiteral("mesh99"), 1, 36), "mesh99 -> MESH_REF");
     }
 
     // --- vol BEFORE vel (3rd-char disambiguation) + geo/xyz/rgba/mesh ----

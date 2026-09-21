@@ -145,8 +145,16 @@ QJsonArray lex(const QString& src) {
         if ((ch == QLatin1Char('o') || ch == QLatin1Char('s')) && isDigit(at(src, i + 1))) {
             int j = i + 1;
             while (j < n && isDigit(src.at(j))) j++;
-            add(ch == QLatin1Char('o') ? TokenType::OUTPUT_REF : TokenType::SOURCE_REF, src.mid(i, j - i), startLine,
-                startCol);
+            const QString lexeme = src.mid(i, j - i);
+            const QString tokenType = (ch == QLatin1Char('o')) ? TokenType::OUTPUT_REF : TokenType::SOURCE_REF;
+            const bool isMemberSegment = !tokens.isEmpty() && tokens.last().type == TokenType::DOT;
+            if (tokenType == TokenType::OUTPUT_REF && !isMemberSegment
+                && !(lexeme.length() == 2 && lexeme.at(1) >= QLatin1Char('0') && lexeme.at(1) <= QLatin1Char('7'))) {
+                throw DslSyntaxError::at(
+                    QStringLiteral("Output surface reference '%1' is out of range; expected o0-o7").arg(lexeme),
+                    startLine, startCol);
+            }
+            add(tokenType, lexeme, startLine, startCol);
             col += j - i;
             i = j;
             continue;
