@@ -80,6 +80,9 @@ int handleDumpValidated(const QStringList& args) {
     } catch (const nm::DslSyntaxError& e) {
         out.insert(QStringLiteral("ok"), false);
         out.insert(QStringLiteral("error"), e.message());
+        if (!e.diagnostic().isEmpty()) {
+            out.insert(QStringLiteral("diagnostic"), e.diagnostic());
+        }
     } catch (const std::exception& e) {
         // Covers nm::UnsupportedDsl too (derives from std::runtime_error) --
         // the family's fail-loud points are reported the same way any other

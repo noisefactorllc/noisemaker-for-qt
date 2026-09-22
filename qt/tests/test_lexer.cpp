@@ -313,6 +313,105 @@ int main() {
         check(isTok(at(toks, 0), nm::TokenType::EOF_, QStringLiteral(""), 1, 1), "EOF on empty source is line 1 col 1");
     }
 
+    // --- structured lexer diagnostics (upstream 643b2be1) ------------------
+    {
+        struct Case {
+            const char* name;
+            QString source;
+            QString code;
+            QString message;
+            int line;
+            int column;
+            int spanStart;
+            int spanEnd;
+        };
+
+        const QVector<Case> cases = {
+            {"unexpected character after CRLF, tab, and UTF-16 text",
+             QString::fromUtf8("// \xF0\x9F\x98\x80\r\n\t@"), QStringLiteral("L001"),
+             QStringLiteral("Unexpected character '@' at line 2 col 2"), 2, 2, 8, 9},
+            {"unterminated double-quoted string at EOF",
+             QStringLiteral("\"abc"), QStringLiteral("L002"),
+             QStringLiteral("Unterminated string literal at line 1 col 1"), 1, 1, 0, 4},
+            {"unterminated single-quoted string at LF",
+             QStringLiteral(" 'abc\nnext"), QStringLiteral("L002"),
+             QStringLiteral("Unterminated string literal at line 1 col 2"), 1, 2, 1, 5},
+            {"unterminated triple-quoted string across lines",
+             QStringLiteral("\n  \"\"\"a\nb"), QStringLiteral("L002"),
+             QStringLiteral("Unterminated triple-quoted string at line 2 col 3"), 2, 3, 3, 9},
+            {"unterminated block comment across lines",
+             QStringLiteral("\n /* a\nb"), QStringLiteral("L003"),
+             QStringLiteral("Unterminated comment at line 2 col 2"), 2, 2, 2, 8},
+            {"out-of-range output reference",
+             QStringLiteral("search synth\nrender(o99)"), QStringLiteral("L004"),
+             QStringLiteral("Output surface reference 'o99' is out of range; expected o0-o7 at line 2 col 8"), 2, 8, 20, 23},
+            {"UTF-16 columns after a string",
+             QString::fromUtf8("\"\xF0\x9F\x98\x80\" @"), QStringLiteral("L001"),
+             QStringLiteral("Unexpected character '@' at line 1 col 6"), 1, 6, 5, 6},
+            {"source coordinates after a multiline function token",
+             QStringLiteral("() => (1\n + 2), @"), QStringLiteral("L001"),
+             QStringLiteral("Unexpected character '@' at line 1 col 17"), 2, 8, 16, 17},
+            {"source coordinates after an escaped LF in a string",
+             QStringLiteral("\"a\\\nb\" @"), QStringLiteral("L001"),
+             QStringLiteral("Unexpected character '@' at line 1 col 8"), 2, 4, 7, 8},
+        };
+
+        for (const auto& c : cases) {
+            bool caught = false;
+            try {
+                nm::lex(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == c.message,
+                      QStringLiteral("diagnostic message matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject d = err.diagnostic();
+                check(!d.isEmpty(),
+                      QStringLiteral("diagnostic payload present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("code")).toString() == c.code,
+                      QStringLiteral("diagnostic code matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("lexer"),
+                      QStringLiteral("diagnostic stage matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"),
+                      QStringLiteral("diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("message")).toString() == c.message,
+                      QStringLiteral("diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(loc.value(QStringLiteral("line")).toInt() == c.line,
+                      QStringLiteral("diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(loc.value(QStringLiteral("column")).toInt() == c.column,
+                      QStringLiteral("diagnostic location column matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+                check(span.value(QStringLiteral("start")).toInt() == c.spanStart,
+                      QStringLiteral("diagnostic span start matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(span.value(QStringLiteral("end")).toInt() == c.spanEnd,
+                      QStringLiteral("diagnostic span end matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caught, QStringLiteral("throws DslSyntaxError for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+
+        // Verify successful tokens are preserved unchanged
+        const QJsonArray toks = nm::lex(QString::fromUtf8("/*x*/\nfoo.o99 \"\xF0\x9F\x98\x80\""));
+        check(toks.size() == 6, "successful tokens count matches 6 (including EOF)");
+        check(isTok(at(toks, 0), nm::TokenType::COMMENT, QStringLiteral("/*x*/"), 1, 1), "comment token preserved");
+        check(isTok(at(toks, 1), nm::TokenType::IDENT, QStringLiteral("foo"), 2, 1), "ident token preserved");
+        check(isTok(at(toks, 2), nm::TokenType::DOT, QStringLiteral("."), 2, 4), "dot token preserved");
+        check(isTok(at(toks, 3), nm::TokenType::OUTPUT_REF, QStringLiteral("o99"), 2, 5), "o99 member ref token preserved");
+        check(isTok(at(toks, 4), nm::TokenType::STRING, QString::fromUtf8("\xF0\x9F\x98\x80"), 2, 9), "emoji string token preserved");
+        check(isTok(at(toks, 5), nm::TokenType::EOF_, QStringLiteral(""), 2, 13), "eof token col preserved");
+
+        // Verify diagnostic table lookups
+        check(nm::diagStage(QStringLiteral("L001")) == QStringLiteral("lexer"), "diagStage L001");
+        check(nm::diagStage(QStringLiteral("P001")) == QStringLiteral("parser"), "diagStage P001");
+        check(nm::diagStage(QStringLiteral("S001")) == QStringLiteral("semantic"), "diagStage S001");
+        check(nm::diagStage(QStringLiteral("R001")) == QStringLiteral("runtime"), "diagStage R001");
+        check(nm::diagSeverity(QStringLiteral("L001")) == QStringLiteral("error"), "diagSeverity L001 error");
+        check(nm::diagSeverity(QStringLiteral("S002")) == QStringLiteral("warning"), "diagSeverity S002 warning");
+        check(nm::diagSeverity(QStringLiteral("S007")) == QStringLiteral("warning"), "diagSeverity S007 warning");
+        check(nm::diagSeverity(QStringLiteral("S008")) == QStringLiteral("warning"), "diagSeverity S008 warning");
+        check(nm::diagDefaultMessage(QStringLiteral("L003")) == QStringLiteral("Unterminated comment"), "diagDefaultMessage L003");
+        check(nm::diagDefaultMessage(QStringLiteral("L004")) == QStringLiteral("Output surface reference out of range"), "diagDefaultMessage L004");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_lexer)\n");
         return 0;

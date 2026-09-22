@@ -5,6 +5,7 @@
 
 #include <QChar>
 #include <QHash>
+#include <QJsonObject>
 #include <QStringList>
 #include <QVector>
 
@@ -88,6 +89,35 @@ QJsonArray lex(const QString& src) {
         tokens.push_back(Token{type, lexeme, tokLine, tokCol});
     };
 
+    // Only scan source coordinates on failure. Successful tokens and legacy
+    // error messages retain their existing position bookkeeping.
+    auto fail = [&](const QString& code, const QString& message, int start, int end) {
+        int errorLine = 1;
+        int column = 1;
+        for (int offset = 0; offset < start; ++offset) {
+            if (src.at(offset) == QLatin1Char('\n')) {
+                errorLine++;
+                column = 1;
+            } else {
+                column++;
+            }
+        }
+        QJsonObject location;
+        location.insert(QStringLiteral("line"), errorLine);
+        location.insert(QStringLiteral("column"), column);
+        QJsonObject span;
+        span.insert(QStringLiteral("start"), start);
+        span.insert(QStringLiteral("end"), end);
+        QJsonObject diagnostic;
+        diagnostic.insert(QStringLiteral("code"), code);
+        diagnostic.insert(QStringLiteral("stage"), diagStage(code));
+        diagnostic.insert(QStringLiteral("severity"), diagSeverity(code));
+        diagnostic.insert(QStringLiteral("message"), message);
+        diagnostic.insert(QStringLiteral("location"), location);
+        diagnostic.insert(QStringLiteral("span"), span);
+        throw DslSyntaxError(message, errorLine, column, diagnostic);
+    };
+
     while (i < n) {
         QChar ch = src.at(i);
 
@@ -131,7 +161,9 @@ QJsonArray lex(const QString& src) {
                 j++;
             }
             if (j >= n) {
-                throw DslSyntaxError::at(QStringLiteral("Unterminated comment"), startLine, startCol);
+                fail(QStringLiteral("L003"),
+                     QStringLiteral("Unterminated comment at line %1 col %2").arg(startLine).arg(startCol),
+                     i, n);
             }
             j += 2;
             add(TokenType::COMMENT, src.mid(i, j - i), startLine, startCol);
@@ -150,9 +182,10 @@ QJsonArray lex(const QString& src) {
             const bool isMemberSegment = !tokens.isEmpty() && tokens.last().type == TokenType::DOT;
             if (tokenType == TokenType::OUTPUT_REF && !isMemberSegment
                 && !(lexeme.length() == 2 && lexeme.at(1) >= QLatin1Char('0') && lexeme.at(1) <= QLatin1Char('7'))) {
-                throw DslSyntaxError::at(
-                    QStringLiteral("Output surface reference '%1' is out of range; expected o0-o7").arg(lexeme),
-                    startLine, startCol);
+                fail(QStringLiteral("L004"),
+                     QStringLiteral("Output surface reference '%1' is out of range; expected o0-o7 at line %2 col %3")
+                         .arg(lexeme).arg(startLine).arg(startCol),
+                     i, j);
             }
             add(tokenType, lexeme, startLine, startCol);
             col += j - i;
@@ -316,7 +349,9 @@ QJsonArray lex(const QString& src) {
             }
             if (j >= n - 2
                 || !(at(src, j) == QLatin1Char('"') && at(src, j + 1) == QLatin1Char('"') && at(src, j + 2) == QLatin1Char('"'))) {
-                throw DslSyntaxError::at(QStringLiteral("Unterminated triple-quoted string"), startLine, startCol);
+                fail(QStringLiteral("L002"),
+                     QStringLiteral("Unterminated triple-quoted string at line %1 col %2").arg(startLine).arg(startCol),
+                     i, n);
             }
             // Extract string content without the triple quotes
             const QString content = src.mid(i + 3, j - (i + 3));
@@ -345,7 +380,9 @@ QJsonArray lex(const QString& src) {
                 }
             }
             if (j >= n || src.at(j) == QLatin1Char('\n')) {
-                throw DslSyntaxError::at(QStringLiteral("Unterminated string literal"), line, col);
+                fail(QStringLiteral("L002"),
+                     QStringLiteral("Unterminated string literal at line %1 col %2").arg(line).arg(col),
+                     i, j);
             }
             // Extract string content without quotes
             const QString content = src.mid(i + 1, j - (i + 1));
@@ -379,7 +416,9 @@ QJsonArray lex(const QString& src) {
             continue;
         }
 
-        throw DslSyntaxError::at(QStringLiteral("Unexpected character '%1'").arg(ch), line, col);
+        fail(QStringLiteral("L001"),
+             QStringLiteral("Unexpected character '%1' at line %2 col %3").arg(ch).arg(line).arg(col),
+             i, i + 1);
     }
 
     tokens.push_back(Token{TokenType::EOF_, QString(), line, col});

@@ -86,27 +86,6 @@ namespace {
 //     explicit from()-resolved namespace; `search synth\nsolid(...)` with
 //     no write() produces ONLY S001, never S006. Ported bug-for-bug.
 
-QString diagSeverity(const QString& code) {
-    if (code == QStringLiteral("S002") || code == QStringLiteral("S007") || code == QStringLiteral("S008")) {
-        return QStringLiteral("warning");
-    }
-    return QStringLiteral("error");
-}
-
-QString diagDefaultMessage(const QString& code) {
-    static const QMap<QString, QString> table = {
-        {QStringLiteral("S001"), QStringLiteral("Unknown identifier")},
-        {QStringLiteral("S002"), QStringLiteral("Argument out of range")},
-        {QStringLiteral("S003"), QStringLiteral("Variable used before assignment")},
-        {QStringLiteral("S004"), QStringLiteral("Cannot assign null or undefined")},
-        {QStringLiteral("S005"), QStringLiteral("Illegal chain structure")},
-        {QStringLiteral("S006"), QStringLiteral("Starter chain missing write() call")},
-        {QStringLiteral("S007"), QStringLiteral("Deprecated parameter alias")},
-        {QStringLiteral("S008"), QStringLiteral("Deprecated effect")},
-    };
-    return table.value(code);
-}
-
 const QSet<QString>& stateSurfaces() {
     static const QSet<QString> s = {
         QStringLiteral("time"), QStringLiteral("frame"), QStringLiteral("mouse"),

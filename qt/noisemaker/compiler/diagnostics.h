@@ -17,6 +17,7 @@
 // the string (reference/oracle agreement on error TEXT isn't machine-
 // gated here — see task report).
 
+#include <QJsonObject>
 #include <QString>
 
 #include <stdexcept>
@@ -26,11 +27,17 @@ namespace nm {
 // Thrown by nm::lex / nm::parse on malformed DSL input. `message()` is the
 // full display text (already carrying "at line L col C" where the
 // reference attaches one); `line()`/`col()` are -1 when the reference
-// throw site had no location.
+// throw site had no location; `diagnostic()` carries the structured diagnostic
+// object if emitted by the throw site.
 class DslSyntaxError : public std::runtime_error {
 public:
-    explicit DslSyntaxError(const QString& message, int line = -1, int col = -1)
-        : std::runtime_error(message.toStdString()), message_(message), line_(line), col_(col) {}
+    explicit DslSyntaxError(const QString& message, int line = -1, int col = -1,
+                           const QJsonObject& diagnostic = QJsonObject())
+        : std::runtime_error(message.toStdString()),
+          message_(message),
+          line_(line),
+          col_(col),
+          diagnostic_(diagnostic) {}
 
     // Builds "<core> at line L col C" (mirrors the reference's
     // `` `${msg} at line ${line} col ${col}` `` template literal, used by
@@ -40,11 +47,17 @@ public:
     const QString& message() const { return message_; }
     int line() const { return line_; }
     int col() const { return col_; }
+    const QJsonObject& diagnostic() const { return diagnostic_; }
 
 private:
     QString message_;
     int line_;
     int col_;
+    QJsonObject diagnostic_;
 };
+
+QString diagStage(const QString& code);
+QString diagSeverity(const QString& code);
+QString diagDefaultMessage(const QString& code);
 
 } // namespace nm

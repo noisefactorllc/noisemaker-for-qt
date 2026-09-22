@@ -60,6 +60,9 @@ int handleDumpAst(const QStringList& args) {
     } catch (const nm::DslSyntaxError& e) {
         out.insert(QStringLiteral("ok"), false);
         out.insert(QStringLiteral("error"), e.message());
+        if (!e.diagnostic().isEmpty()) {
+            out.insert(QStringLiteral("diagnostic"), e.diagnostic());
+        }
     } catch (const std::exception& e) {
         out.insert(QStringLiteral("ok"), false);
         out.insert(QStringLiteral("error"), QString::fromUtf8(e.what()));
