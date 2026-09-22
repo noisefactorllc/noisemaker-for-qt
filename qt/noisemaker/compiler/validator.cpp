@@ -37,13 +37,9 @@ namespace {
 //     literally has an "id" FIELD, which only Subchain nodes ever do; for
 //     every other node type the key is entirely absent after JSON
 //     serialization (undefined-valued keys are dropped).
-//   - `location` in a diagnostic is `{line}` ONLY, never `{line,column}`:
-//     the reference reads `node.loc.column`, but parser.js's loc objects
-//     only ever have `.line`/`.col` (not `.column`) -- a reference typo
-//     that survives because JSON.stringify silently drops the resulting
-//     `column: undefined`. TD's port sets a real `column` value here
-//     (reading `.col` into `d['column']`) -- VERIFIED WRONG against the
-//     live oracle; do not copy that.
+//   - `location` in a diagnostic is `{line, column}` when loc is present:
+//     the reference reads `node.loc.column ?? node.loc.col` (upstream
+//     e5bd2013 / GAP-002), preserving column coordinates with precedence.
 //   - ALLOWED_STRING_PARAMS includes the four text fields plus the
 //     name/id identity fields accepted by midi() and audio().
 //   - "member"-typed params (`def.type === 'member'`, e.g. filter.channel,
@@ -426,11 +422,19 @@ void Validator::pushDiag(const QString& code, const QJsonValue& nodeVal, const Q
     if (node.contains(QStringLiteral("id"))) {
         diag.insert(QStringLiteral("nodeId"), node.value(QStringLiteral("id")));
     }
-    // location: {line} ONLY -- never "column" (see file header).
+    // location: {line, column} if loc is present (upstream e5bd2013 / GAP-002).
     const QJsonValue locVal = node.value(QStringLiteral("loc"));
     if (locVal.isObject()) {
+        const QJsonObject loc = locVal.toObject();
         QJsonObject location;
-        location.insert(QStringLiteral("line"), locVal.toObject().value(QStringLiteral("line")));
+        location.insert(QStringLiteral("line"), loc.value(QStringLiteral("line")));
+        QJsonValue colVal = loc.value(QStringLiteral("column"));
+        if (colVal.isNull() || colVal.isUndefined()) {
+            colVal = loc.value(QStringLiteral("col"));
+        }
+        if (colVal.isDouble()) {
+            location.insert(QStringLiteral("column"), colVal.toInt());
+        }
         diag.insert(QStringLiteral("location"), location);
     }
     if (!identName.isEmpty()) diag.insert(QStringLiteral("identifier"), identName);

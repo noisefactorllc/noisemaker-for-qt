@@ -14,8 +14,8 @@
 //   - "member"-typed params (filter.channel et al.) silently fall back to
 //     default on an unresolved value -- NO diagnostic. Every OTHER
 //     enum/choices-bearing param (declared plain "int"/"float"/"palette")
-//     dispatches through the NUMERIC resolver instead and DOES push S003.
-//   - diagnostic `location` is `{line}` only, never `{line,column}`.
+//     falls through to the numeric resolver's branches, pushing S003 on failure.
+//   - diagnostic `location` is `{line, column}` when loc is present (upstream e5bd2013).
 //   - `nodeId` is present (possibly null) only for Subchain-triggered
 //     diagnostics (the only AST node type with a literal `id` field).
 //
@@ -282,7 +282,7 @@ int main() {
     }
 
     // ==================================================================
-    // diagnostic shape: location is {line} only (never column); nodeId is
+    // diagnostic shape: location is {line, column}; nodeId is
     // present (possibly null) ONLY for a Subchain-triggered diagnostic
     // ==================================================================
     {
@@ -298,17 +298,89 @@ int main() {
                 foundSubchainDiag = true;
                 check(d.contains(QStringLiteral("nodeId")) && d.value(QStringLiteral("nodeId")).isNull(),
                       "Subchain-triggered diagnostic has nodeId:null present (Subchain nodes carry a literal 'id' field)");
-                check(d.value(QStringLiteral("location")).toObject().size() == 1
-                          && d.value(QStringLiteral("location")).toObject().contains(QStringLiteral("line")),
-                      "location is {line} ONLY -- no 'column' key, ever");
+                check(d.value(QStringLiteral("location")).toObject().value(QStringLiteral("line")).toInt() == 2
+                          && d.value(QStringLiteral("location")).toObject().value(QStringLiteral("column")).toInt() == 9,
+                      "Subchain location preserves line 2, column 9 (preserving source column from loc)");
             }
             if (d.value(QStringLiteral("code")).toString() == QStringLiteral("S005")
                 && d.value(QStringLiteral("identifier")).toString() == QStringLiteral("[Write]")) {
                 foundWriteDiag = true;
                 check(!d.contains(QStringLiteral("nodeId")), "Write-triggered diagnostic has NO nodeId key at all (Write nodes have no 'id' field)");
+                check(d.value(QStringLiteral("location")).toObject().value(QStringLiteral("line")).toInt() == 2
+                          && d.value(QStringLiteral("location")).toObject().value(QStringLiteral("column")).toInt() == 30,
+                      "Write location preserves line 2, column 30 (preserving source column from loc)");
             }
         }
         check(foundSubchainDiag && foundWriteDiag, "both the subchain-no-input and write-no-input diagnostics were found");
+    }
+
+    // ==================================================================
+    // column coordinate precedence and fallback (upstream e5bd2013 / GAP-002)
+    // ==================================================================
+    {
+        auto makeAstWithLoc = [](const QJsonObject& loc, bool includeLoc) {
+            QJsonObject ast;
+            QJsonObject nsObj;
+            QJsonArray searchOrder;
+            searchOrder.append(QStringLiteral("synth"));
+            nsObj.insert(QStringLiteral("searchOrder"), searchOrder);
+            ast.insert(QStringLiteral("namespace"), nsObj);
+
+            QJsonArray plans;
+            QJsonObject stmt;
+            QJsonArray chain;
+            QJsonObject writeNode;
+            writeNode.insert(QStringLiteral("type"), nm::NodeKind::Write);
+            QJsonObject surf;
+            surf.insert(QStringLiteral("type"), nm::NodeKind::OutputRef);
+            surf.insert(QStringLiteral("name"), QStringLiteral("o0"));
+            writeNode.insert(QStringLiteral("surface"), surf);
+            if (includeLoc) {
+                writeNode.insert(QStringLiteral("loc"), loc);
+            }
+            chain.append(writeNode);
+            stmt.insert(QStringLiteral("chain"), chain);
+            plans.append(stmt);
+            ast.insert(QStringLiteral("plans"), plans);
+            return ast;
+        };
+
+        // loc with explicit column
+        QJsonObject loc1;
+        loc1.insert(QStringLiteral("line"), 4);
+        loc1.insert(QStringLiteral("column"), 12);
+        const QJsonObject out1 = nm::validate(makeAstWithLoc(loc1, true), registry());
+        const QJsonArray ds1 = diags(out1);
+        check(ds1.size() == 1, "AST Write node with loc.column produces 1 diagnostic");
+        check(ds1.first().toObject().value(QStringLiteral("location")).toObject().value(QStringLiteral("line")).toInt() == 4
+                  && ds1.first().toObject().value(QStringLiteral("location")).toObject().value(QStringLiteral("column")).toInt() == 12,
+              "diagnostic preserves loc.column coordinate");
+
+        // loc with column and col: column takes precedence
+        QJsonObject loc2;
+        loc2.insert(QStringLiteral("line"), 7);
+        loc2.insert(QStringLiteral("column"), 15);
+        loc2.insert(QStringLiteral("col"), 99);
+        const QJsonObject out2 = nm::validate(makeAstWithLoc(loc2, true), registry());
+        const QJsonArray ds2 = diags(out2);
+        check(ds2.first().toObject().value(QStringLiteral("location")).toObject().value(QStringLiteral("column")).toInt() == 15,
+              "diagnostic prefers loc.column over loc.col fallback");
+
+        // loc with col only: falls back to col
+        QJsonObject locFallback;
+        locFallback.insert(QStringLiteral("line"), 5);
+        locFallback.insert(QStringLiteral("col"), 42);
+        const QJsonObject outFallback = nm::validate(makeAstWithLoc(locFallback, true), registry());
+        const QJsonArray dsFallback = diags(outFallback);
+        check(dsFallback.first().toObject().value(QStringLiteral("location")).toObject().value(QStringLiteral("column")).toInt() == 42,
+              "diagnostic falls back to loc.col when loc.column is absent");
+
+        // unlocated node: no location object
+        const QJsonObject out3 = nm::validate(makeAstWithLoc(QJsonObject(), false), registry());
+        const QJsonArray ds3 = diags(out3);
+        check(ds3.size() == 1, "unlocated AST node produces 1 diagnostic");
+        check(!ds3.first().toObject().contains(QStringLiteral("location")),
+              "unlocated AST node produces diagnostic without location object");
     }
 
     // ==================================================================
