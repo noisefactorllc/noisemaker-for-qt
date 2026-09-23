@@ -158,14 +158,9 @@ private:
     }
     QString typeAt(int idx) const { return inBounds(idx) ? tokens_.at(idx).type : QString(); }
     const Token* tokenAt(int idx) const { return inBounds(idx) ? &tokens_.at(idx) : nullptr; }
-    Token expect(const QString& type, const QString& msg) {
-        const Token t = peek();
-        if (t.type == type) return advance();
+
+    DslSyntaxError parserError(const QString& code, const QString& message, const Token& t) const {
         const bool hasLocation = (t.line > 0 && t.col > 0 && (t.rawLine.isEmpty() || t.hasLine) && (t.rawCol.isEmpty() || t.hasCol));
-        const QString lineStr = t.rawLine.isEmpty() ? (t.line > 0 ? QString::number(t.line) : QStringLiteral("undefined")) : t.rawLine;
-        const QString colStr = t.rawCol.isEmpty() ? (t.col > 0 ? QString::number(t.col) : QStringLiteral("undefined")) : t.rawCol;
-        const QString message = QStringLiteral("%1 at line %2 col %3").arg(msg, lineStr, colStr);
-        const QString code = (type == TokenType::RPAREN) ? QStringLiteral("P002") : QStringLiteral("P001");
         QJsonObject diagnostic;
         diagnostic.insert(QStringLiteral("code"), code);
         diagnostic.insert(QStringLiteral("stage"), diagStage(code));
@@ -180,7 +175,21 @@ private:
             diagnostic.insert(QStringLiteral("location"), QJsonValue(QJsonValue::Null));
         }
         diagnostic.insert(QStringLiteral("span"), QJsonValue(QJsonValue::Null));
-        throw DslSyntaxError(message, hasLocation ? t.line : -1, hasLocation ? t.col : -1, diagnostic);
+        return DslSyntaxError(message, hasLocation ? t.line : -1, hasLocation ? t.col : -1, diagnostic);
+    }
+
+    DslSyntaxError parserErrorAt(const QString& code, const QString& core, const Token& t, const QString& suffix = QString()) const {
+        const QString lineStr = t.rawLine.isEmpty() ? (t.line > 0 ? QString::number(t.line) : QStringLiteral("undefined")) : t.rawLine;
+        const QString colStr = t.rawCol.isEmpty() ? (t.col > 0 ? QString::number(t.col) : QStringLiteral("undefined")) : t.rawCol;
+        const QString message = QStringLiteral("%1 at line %2 col %3%4").arg(core, lineStr, colStr, suffix);
+        return parserError(code, message, t);
+    }
+
+    Token expect(const QString& type, const QString& msg) {
+        const Token t = peek();
+        if (t.type == type) return advance();
+        const QString code = (type == TokenType::RPAREN) ? QStringLiteral("P002") : QStringLiteral("P001");
+        throw parserErrorAt(code, msg, t);
     }
 
     // Collect and consume any pending COMMENT tokens; returns their
@@ -270,8 +279,8 @@ QJsonObject Parser::parseProgram() {
         if (peek().type == TokenType::SEARCH) {
             if (!plans.isEmpty() || !vars.isEmpty() || hasRender) {
                 const Token t = peek();
-                throw DslSyntaxError::at(QStringLiteral("'search' directive must appear before other statements"),
-                                          t.line, t.col);
+                throw parserErrorAt(QStringLiteral("P004"),
+                                    QStringLiteral("'search' directive must appear before other statements"), t);
             }
             parseSearchDirective();
             continue;
@@ -306,11 +315,11 @@ QJsonObject Parser::parseProgram() {
         }
         while (peek().type == TokenType::SEMICOLON) advance();
     }
-    expect(TokenType::EOF_, QStringLiteral("Expected end of input"));
+    const Token eof = expect(TokenType::EOF_, QStringLiteral("Expected end of input"));
     if (!hasSearch_ || searchOrder_.isEmpty()) {
-        throw DslSyntaxError(QStringLiteral(
+        throw parserError(QStringLiteral("P004"), QStringLiteral(
             "Missing required 'search' directive. Every program must start with 'search <namespace>, ...' "
-            "to specify namespace search order."));
+            "to specify namespace search order."), eof);
     }
 
     QJsonObject program;
@@ -334,14 +343,16 @@ QJsonObject Parser::parseProgram() {
 void Parser::parseSearchDirective() {
     if (hasSearch_) {
         const Token t = peek();
-        throw DslSyntaxError::at(QStringLiteral("Only one search directive is allowed per program"), t.line, t.col);
+        throw parserErrorAt(QStringLiteral("P004"),
+                            QStringLiteral("Only one search directive is allowed per program"), t);
     }
     advance(); // consume 'search'
     QStringList namespaces;
 
     const Token first = peek();
     if (!namespaceTokenTypes().contains(first.type)) {
-        throw DslSyntaxError::at(QStringLiteral("Expected namespace identifier after search"), first.line, first.col);
+        throw parserErrorAt(QStringLiteral("P004"),
+                            QStringLiteral("Expected namespace identifier after search"), first);
     }
     advance();
     validateNamespace(first);
@@ -351,8 +362,8 @@ void Parser::parseSearchDirective() {
         advance();
         const Token nsToken = peek();
         if (!namespaceTokenTypes().contains(nsToken.type)) {
-            throw DslSyntaxError::at(QStringLiteral("Expected namespace identifier after comma"), nsToken.line,
-                                      nsToken.col);
+            throw parserErrorAt(QStringLiteral("P004"),
+                                QStringLiteral("Expected namespace identifier after comma"), nsToken);
         }
         advance();
         validateNamespace(nsToken);
@@ -381,9 +392,10 @@ void Parser::parseSearchDirective() {
 
 void Parser::validateNamespace(const Token& token) {
     if (!isValidNamespaceName(token.lexeme)) {
-        throw DslSyntaxError::at(QStringLiteral("Invalid namespace '%1'. Valid namespaces: %2")
-                                      .arg(token.lexeme, validNamespaces().join(QStringLiteral(", "))),
-                                  token.line, token.col);
+        throw parserErrorAt(QStringLiteral("P004"),
+                            QStringLiteral("Invalid namespace '%1'").arg(token.lexeme),
+                            token,
+                            QStringLiteral(". Valid namespaces: %1").arg(validNamespaces().join(QStringLiteral(", "))));
     }
 }
 
@@ -401,8 +413,8 @@ QJsonArray Parser::parseBlock() {
 QJsonObject Parser::parseStatement() {
     if (peek().type == TokenType::SEARCH) {
         const Token t = peek();
-        throw DslSyntaxError::at(QStringLiteral("'search' directive is only allowed at the start of the program"),
-                                  t.line, t.col);
+        throw parserErrorAt(QStringLiteral("P004"),
+                            QStringLiteral("'search' directive is only allowed at the start of the program"), t);
     }
     if (peek().type == TokenType::LET) {
         advance();
@@ -869,16 +881,10 @@ QJsonObject Parser::transformOscInvocation(const QJsonObject& call, const Token&
 
     for (const QString& key : kwargs.keys()) {
         if (!paramOrder.contains(key)) {
-            // NOTE: location is embedded MID-message here, followed by
-            // "Valid: ..." -- does not fit the DslSyntaxError::at()
-            // trailing-suffix shape, so built directly (matches the
-            // reference's template literal exactly).
-            throw DslSyntaxError(QStringLiteral("osc() unknown parameter '%1' at line %2 col %3. Valid: %4")
-                                      .arg(key)
-                                      .arg(nameToken.line)
-                                      .arg(nameToken.col)
-                                      .arg(paramOrder.join(QStringLiteral(", "))),
-                                  nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("osc() unknown parameter '%1'").arg(key),
+                                nameToken,
+                                QStringLiteral(". Valid: %1").arg(paramOrder.join(QStringLiteral(", "))));
         }
     }
 
@@ -917,17 +923,16 @@ QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token
     QStringList validParams = paramOrder;
     validParams.append(keywordOnlyParams);
     if (args.size() > paramOrder.size()) {
-        throw DslSyntaxError::at(QStringLiteral("midi() name, id, cc, nrpn, zone and members are keyword-only"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("midi() name, id, cc, nrpn, zone and members are keyword-only"),
+                            nameToken);
     }
     for (const QString& key : kwargOrder) {
         if (!validParams.contains(key)) {
-            throw DslSyntaxError(QStringLiteral("midi() unknown parameter '%1' at line %2 col %3. Valid: %4")
-                                      .arg(key)
-                                      .arg(nameToken.line)
-                                      .arg(nameToken.col)
-                                      .arg(validParams.join(QStringLiteral(", "))),
-                                  nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("midi() unknown parameter '%1'").arg(key),
+                                nameToken,
+                                QStringLiteral(". Valid: %1").arg(validParams.join(QStringLiteral(", "))));
         }
     }
 
@@ -949,35 +954,44 @@ QJsonObject Parser::transformMidiInvocation(const QJsonObject& call, const Token
         }
     }
     if (posCursor < args.size()) {
-        throw DslSyntaxError::at(QStringLiteral("midi() has an excess positional argument"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("midi() has an excess positional argument"),
+                            nameToken);
     }
 
     const QJsonValue channel = resolved.value(QStringLiteral("channel"));
     if (channel.isUndefined() && !kwargs.contains(QStringLiteral("zone"))) {
-        throw DslSyntaxError::at(QStringLiteral("midi() requires 'channel' or 'zone' argument"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("midi() requires 'channel' or 'zone' argument"),
+                            nameToken);
     }
     if (!channel.isUndefined() && kwargs.contains(QStringLiteral("zone"))) {
-        throw DslSyntaxError::at(QStringLiteral("midi() 'channel' and 'zone' are mutually exclusive"), nameToken.line, nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("midi() 'channel' and 'zone' are mutually exclusive"),
+                            nameToken);
     }
     if (kwargs.contains(QStringLiteral("members")) && !kwargs.contains(QStringLiteral("zone"))) {
-        throw DslSyntaxError::at(QStringLiteral("midi() 'members' requires 'zone'"), nameToken.line, nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("midi() 'members' requires 'zone'"),
+                            nameToken);
     }
     if (kwargs.contains(QStringLiteral("id")) && !kwargs.contains(QStringLiteral("name"))) {
-        throw DslSyntaxError::at(QStringLiteral("midi() 'id' requires readable 'name'"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("midi() 'id' requires readable 'name'"),
+                            nameToken);
     }
     for (const QString& paramName : {QStringLiteral("name"), QStringLiteral("id")}) {
         if (!kwargs.contains(paramName)) continue;
         const QJsonObject value = kwargs.value(paramName).toObject();
         if (value.value(QStringLiteral("type")).toString() != NodeKind::String) {
-            throw DslSyntaxError::at(QStringLiteral("midi() '%1' requires a quoted string").arg(paramName),
-                                      nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("midi() '%1' requires a quoted string").arg(paramName),
+                                nameToken);
         }
         if (value.value(QStringLiteral("value")).toString().isEmpty()) {
-            throw DslSyntaxError::at(QStringLiteral("midi() '%1' must not be empty").arg(paramName),
-                                      nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("midi() '%1' must not be empty").arg(paramName),
+                                nameToken);
         }
     }
 
@@ -1013,17 +1027,16 @@ QJsonObject Parser::transformAudioInvocation(const QJsonObject& call, const Toke
     QStringList validParams = paramOrder;
     validParams.append(keywordOnlyParams);
     if (args.size() > paramOrder.size()) {
-        throw DslSyntaxError::at(QStringLiteral("audio() channel, name and id are keyword-only"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("audio() channel, name and id are keyword-only"),
+                            nameToken);
     }
     for (const QString& key : kwargOrder) {
         if (!validParams.contains(key)) {
-            throw DslSyntaxError(QStringLiteral("audio() unknown parameter '%1' at line %2 col %3. Valid: %4")
-                                      .arg(key)
-                                      .arg(nameToken.line)
-                                      .arg(nameToken.col)
-                                      .arg(validParams.join(QStringLiteral(", "))),
-                                  nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("audio() unknown parameter '%1'").arg(key),
+                                nameToken,
+                                QStringLiteral(". Valid: %1").arg(validParams.join(QStringLiteral(", "))));
         }
     }
 
@@ -1043,32 +1056,39 @@ QJsonObject Parser::transformAudioInvocation(const QJsonObject& call, const Toke
         }
     }
     if (posCursor < args.size()) {
-        throw DslSyntaxError::at(QStringLiteral("audio() has an excess positional argument"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("audio() has an excess positional argument"),
+                            nameToken);
     }
 
     const QJsonValue band = resolved.value(QStringLiteral("band"));
     if (band.isUndefined()) {
-        throw DslSyntaxError::at(QStringLiteral("audio() requires 'band' argument"), nameToken.line, nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("audio() requires 'band' argument"),
+                            nameToken);
     }
     if (kwargs.contains(QStringLiteral("id")) && !kwargs.contains(QStringLiteral("name"))) {
-        throw DslSyntaxError::at(QStringLiteral("audio() 'id' requires readable 'name'"), nameToken.line,
-                                  nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("audio() 'id' requires readable 'name'"),
+                            nameToken);
     }
     if (kwargs.contains(QStringLiteral("name")) && !kwargs.contains(QStringLiteral("channel"))) {
-        throw DslSyntaxError::at(QStringLiteral("audio() selected device requires both 'name' and 'channel'"),
-                                  nameToken.line, nameToken.col);
+        throw parserErrorAt(QStringLiteral("P003"),
+                            QStringLiteral("audio() selected device requires both 'name' and 'channel'"),
+                            nameToken);
     }
     for (const QString& paramName : {QStringLiteral("name"), QStringLiteral("id")}) {
         if (!kwargs.contains(paramName)) continue;
         const QJsonObject value = kwargs.value(paramName).toObject();
         if (value.value(QStringLiteral("type")).toString() != NodeKind::String) {
-            throw DslSyntaxError::at(QStringLiteral("audio() '%1' requires a quoted string").arg(paramName),
-                                      nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("audio() '%1' requires a quoted string").arg(paramName),
+                                nameToken);
         }
         if (value.value(QStringLiteral("value")).toString().isEmpty()) {
-            throw DslSyntaxError::at(QStringLiteral("audio() '%1' must not be empty").arg(paramName),
-                                      nameToken.line, nameToken.col);
+            throw parserErrorAt(QStringLiteral("P003"),
+                                QStringLiteral("audio() '%1' must not be empty").arg(paramName),
+                                nameToken);
         }
     }
 

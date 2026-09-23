@@ -457,7 +457,9 @@ int main() {
             parseSrc(QStringLiteral("solid(0.1,0.2,0.3).write(o0)\nrender(o0)\n"));
         } catch (const nm::DslSyntaxError& e) {
             threw = true;
-            check(e.line() == -1, "missing-search error has no location (matches reference: no 'at line' suffix)");
+            check(e.line() == 3, "missing-search error has EOF location line 3");
+            check(!e.message().contains(QStringLiteral("at line")), "missing-search error has no 'at line' suffix");
+            check(e.diagnostic().value(QStringLiteral("code")).toString() == QStringLiteral("P004"), "missing-search diagnostic code is P004");
         }
         check(threw, "missing search directive throws");
     }
@@ -615,6 +617,187 @@ int main() {
                 check(d.value(QStringLiteral("span")).isNull(), "diagnostic span is null");
             }
             check(caught, "throws DslSyntaxError for unavailable coordinates");
+        }
+    }
+
+    // ==================================================================
+    // Structured automation argument diagnostics (P003)
+    // ==================================================================
+    {
+        struct AutoCase {
+            const char* name;
+            QString source;
+            QString message;
+            int line;
+            int column;
+        };
+
+        const QVector<AutoCase> autoCases = {
+            {"osc unknown param", QStringLiteral("search synth\nlet x = osc(type: oscKind.sine, bogus: 1)"),
+             QStringLiteral("osc() unknown parameter 'bogus' at line 2 col 9. Valid: type, min, max, speed, offset, seed"), 2, 9},
+            {"midi excess positional", QStringLiteral("search synth\nlet x = midi(1, 2, 3, 4, 5, 6)"),
+             QStringLiteral("midi() name, id, cc, nrpn, zone and members are keyword-only at line 2 col 9"), 2, 9},
+            {"midi unknown param", QStringLiteral("search synth\nlet x = midi(bogus: 1)"),
+             QStringLiteral("midi() unknown parameter 'bogus' at line 2 col 9. Valid: channel, mode, min, max, sensitivity, name, id, cc, nrpn, zone, members"), 2, 9},
+            {"midi excess positional with kwargs", QStringLiteral("search synth\nlet x = midi(1, 2, 3, 4, 5, channel: 1)"),
+             QStringLiteral("midi() has an excess positional argument at line 2 col 9"), 2, 9},
+            {"midi missing channel or zone", QStringLiteral("search synth\nlet x = midi()"),
+             QStringLiteral("midi() requires 'channel' or 'zone' argument at line 2 col 9"), 2, 9},
+            {"midi channel and zone mutually exclusive", QStringLiteral("search synth\nlet x = midi(1, zone: 1)"),
+             QStringLiteral("midi() 'channel' and 'zone' are mutually exclusive at line 2 col 9"), 2, 9},
+            {"midi members requires zone", QStringLiteral("search synth\nlet x = midi(1, members: 2)"),
+             QStringLiteral("midi() 'members' requires 'zone' at line 2 col 9"), 2, 9},
+            {"midi id requires name", QStringLiteral("search synth\nlet x = midi(1, id: \"port\")"),
+             QStringLiteral("midi() 'id' requires readable 'name' at line 2 col 9"), 2, 9},
+            {"midi name requires string", QStringLiteral("search synth\nlet x = midi(1, name: 1)"),
+             QStringLiteral("midi() 'name' requires a quoted string at line 2 col 9"), 2, 9},
+            {"midi name empty", QStringLiteral("search synth\nlet x = midi(1, name: \"\")"),
+             QStringLiteral("midi() 'name' must not be empty at line 2 col 9"), 2, 9},
+            {"midi id requires string", QStringLiteral("search synth\nlet x = midi(1, name: \"port\", id: 1)"),
+             QStringLiteral("midi() 'id' requires a quoted string at line 2 col 9"), 2, 9},
+            {"midi id empty", QStringLiteral("search synth\nlet x = midi(1, name: \"port\", id: \"\")"),
+             QStringLiteral("midi() 'id' must not be empty at line 2 col 9"), 2, 9},
+            {"audio excess positional", QStringLiteral("search synth\nlet x = audio(1, 2, 3, 4)"),
+             QStringLiteral("audio() channel, name and id are keyword-only at line 2 col 9"), 2, 9},
+            {"audio unknown param", QStringLiteral("search synth\nlet x = audio(bogus: 1)"),
+             QStringLiteral("audio() unknown parameter 'bogus' at line 2 col 9. Valid: band, min, max, channel, name, id"), 2, 9},
+            {"audio excess positional with kwargs", QStringLiteral("search synth\nlet x = audio(1, 2, 3, band: 1)"),
+             QStringLiteral("audio() has an excess positional argument at line 2 col 9"), 2, 9},
+            {"audio missing band", QStringLiteral("search synth\nlet x = audio()"),
+             QStringLiteral("audio() requires 'band' argument at line 2 col 9"), 2, 9},
+            {"audio id requires name", QStringLiteral("search synth\nlet x = audio(1, id: \"device\")"),
+             QStringLiteral("audio() 'id' requires readable 'name' at line 2 col 9"), 2, 9},
+            {"audio selected device requires name and channel", QStringLiteral("search synth\nlet x = audio(1, name: \"device\")"),
+             QStringLiteral("audio() selected device requires both 'name' and 'channel' at line 2 col 9"), 2, 9},
+            {"audio name requires string", QStringLiteral("search synth\nlet x = audio(1, channel: 1, name: 1)"),
+             QStringLiteral("audio() 'name' requires a quoted string at line 2 col 9"), 2, 9},
+            {"audio name empty", QStringLiteral("search synth\nlet x = audio(1, channel: 1, name: \"\")"),
+             QStringLiteral("audio() 'name' must not be empty at line 2 col 9"), 2, 9},
+            {"audio id requires string", QStringLiteral("search synth\nlet x = audio(1, channel: 1, name: \"device\", id: 1)"),
+             QStringLiteral("audio() 'id' requires a quoted string at line 2 col 9"), 2, 9},
+            {"audio id empty", QStringLiteral("search synth\nlet x = audio(1, channel: 1, name: \"device\", id: \"\")"),
+             QStringLiteral("audio() 'id' must not be empty at line 2 col 9"), 2, 9},
+        };
+
+        for (const auto& c : autoCases) {
+            bool caught = false;
+            try {
+                parseSrc(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == c.message,
+                      QStringLiteral("automation diagnostic message matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject d = err.diagnostic();
+                check(!d.isEmpty(),
+                      QStringLiteral("automation diagnostic payload present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P003"),
+                      QStringLiteral("automation diagnostic code is P003 for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"),
+                      QStringLiteral("automation diagnostic stage matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"),
+                      QStringLiteral("automation diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("message")).toString() == c.message,
+                      QStringLiteral("automation diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("span")).isNull(),
+                      QStringLiteral("automation diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(loc.value(QStringLiteral("line")).toInt() == c.line,
+                      QStringLiteral("automation diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(loc.value(QStringLiteral("column")).toInt() == c.column,
+                      QStringLiteral("automation diagnostic location column matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caught, QStringLiteral("throws DslSyntaxError for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+    }
+
+    // ==================================================================
+    // Structured search directive diagnostics (P004)
+    // ==================================================================
+    {
+        const QString missingSearchMsg = QStringLiteral("Missing required 'search' directive. Every program must start with 'search <namespace>, ...' to specify namespace search order.");
+        struct SearchCase {
+            const char* name;
+            QString source;
+            QString message;
+            int line;
+            int column;
+        };
+
+        const QVector<SearchCase> searchCases = {
+            {"empty program", QStringLiteral(""), missingSearchMsg, 1, 1},
+            {"missing directive after statements", QStringLiteral("let x = 1"), missingSearchMsg, 1, 10},
+            {"duplicate directive", QStringLiteral("search synth search filter"),
+             QStringLiteral("Only one search directive is allowed per program at line 1 col 14"), 1, 14},
+            {"invalid namespace", QStringLiteral("search bogus"),
+             QStringLiteral("Invalid namespace 'bogus' at line 1 col 8. Valid namespaces: io, classicNoisedeck, synth, mixer, filter, render, points, synth3d, filter3d, user"), 1, 8},
+            {"missing first namespace", QStringLiteral("search"),
+             QStringLiteral("Expected namespace identifier after search at line 1 col 7"), 1, 7},
+            {"missing additional namespace", QStringLiteral("search synth,"),
+             QStringLiteral("Expected namespace identifier after comma at line 1 col 14"), 1, 14},
+            {"misplaced directive", QStringLiteral("let x = 1; search synth"),
+             QStringLiteral("'search' directive must appear before other statements at line 1 col 12"), 1, 12},
+            {"nested directive", QStringLiteral("search synth\nif(true) { search filter }"),
+             QStringLiteral("'search' directive is only allowed at the start of the program at line 2 col 12"), 2, 12},
+            {"CRLF and tab", QString::fromUtf8("// \xF0\x9F\x98\x80\r\n\tsearch 1"),
+             QStringLiteral("Expected namespace identifier after search at line 2 col 9"), 2, 9},
+            {"UTF-16 column", QString::fromUtf8("search synth\nlet x = \"\xF0\x9F\x98\x80\"; search filter"),
+             QStringLiteral("'search' directive must appear before other statements at line 2 col 15"), 2, 15},
+        };
+
+        for (const auto& c : searchCases) {
+            bool caught = false;
+            try {
+                parseSrc(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == c.message,
+                      QStringLiteral("search diagnostic message matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject d = err.diagnostic();
+                check(!d.isEmpty(),
+                      QStringLiteral("search diagnostic payload present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P004"),
+                      QStringLiteral("search diagnostic code is P004 for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"),
+                      QStringLiteral("search diagnostic stage matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"),
+                      QStringLiteral("search diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("message")).toString() == c.message,
+                      QStringLiteral("search diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("span")).isNull(),
+                      QStringLiteral("search diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(loc.value(QStringLiteral("line")).toInt() == c.line,
+                      QStringLiteral("search diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(loc.value(QStringLiteral("column")).toInt() == c.column,
+                      QStringLiteral("search diagnostic location column matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caught, QStringLiteral("throws DslSyntaxError for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+    }
+
+    // ==================================================================
+    // Parser automation and search diagnostics represent unavailable coordinates explicitly
+    // ==================================================================
+    {
+        for (const QString& src : {QStringLiteral("search synth\nlet x = midi()"), QStringLiteral("search bogus")}) {
+            const QJsonArray origTokens = nm::lex(src);
+            QJsonArray modifiedTokens;
+            for (const QJsonValue& val : origTokens) {
+                QJsonObject tokObj = val.toObject();
+                tokObj.remove(QStringLiteral("line"));
+                tokObj.remove(QStringLiteral("col"));
+                modifiedTokens.append(tokObj);
+            }
+            bool caught = false;
+            try {
+                nm::parse(modifiedTokens);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString().startsWith(QLatin1Char('P')), "code starts with P");
+                check(d.value(QStringLiteral("location")).isNull(), "location is null when coordinates unavailable");
+            }
+            check(caught, "throws DslSyntaxError for unavailable coordinates in P003/P004");
         }
     }
 

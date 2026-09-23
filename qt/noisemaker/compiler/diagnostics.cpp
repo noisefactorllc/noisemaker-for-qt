@@ -20,6 +20,8 @@ const QMap<QString, DiagnosticInfo>& diagTable() {
         {QStringLiteral("L004"), {"Output surface reference out of range", "error", "lexer"}},
         {QStringLiteral("P001"), {"Unexpected token", "error", "parser"}},
         {QStringLiteral("P002"), {"Expected closing parenthesis", "error", "parser"}},
+        {QStringLiteral("P003"), {"Invalid automation arguments", "error", "parser"}},
+        {QStringLiteral("P004"), {"Invalid search directive", "error", "parser"}},
         {QStringLiteral("S001"), {"Unknown identifier", "error", "semantic"}},
         {QStringLiteral("S002"), {"Argument out of range", "warning", "semantic"}},
         {QStringLiteral("S003"), {"Variable used before assignment", "error", "semantic"}},
