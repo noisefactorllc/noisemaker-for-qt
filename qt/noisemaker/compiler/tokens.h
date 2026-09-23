@@ -23,7 +23,10 @@
 // VALUE is still exactly "EOF".
 
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QString>
+
+#include <cmath>
 
 namespace nm {
 
@@ -91,6 +94,10 @@ struct Token {
     QString lexeme;
     int line = 0;
     int col = 0;
+    bool hasLine = false;
+    bool hasCol = false;
+    QString rawLine;
+    QString rawCol;
 };
 
 // {type, lexeme, line, col} — matches the reference token shape exactly
@@ -109,8 +116,46 @@ inline Token tokenFromJson(const QJsonObject& o) {
     Token t;
     t.type = o.value(QStringLiteral("type")).toString();
     t.lexeme = o.value(QStringLiteral("lexeme")).toString();
-    t.line = o.value(QStringLiteral("line")).toInt();
-    t.col = o.value(QStringLiteral("col")).toInt();
+
+    const bool containsLine = o.contains(QStringLiteral("line"));
+    const QJsonValue lineVal = o.value(QStringLiteral("line"));
+    if (containsLine && lineVal.isDouble()) {
+        const double d = lineVal.toDouble();
+        if (std::floor(d) == d) {
+            t.line = static_cast<int>(d);
+            t.hasLine = (t.line > 0);
+            t.rawLine = QString::number(t.line);
+        } else {
+            t.hasLine = false;
+            t.rawLine = QString::number(d);
+        }
+    } else if (containsLine && lineVal.isString()) {
+        t.hasLine = false;
+        t.rawLine = lineVal.toString();
+    } else {
+        t.hasLine = false;
+        t.rawLine = containsLine && lineVal.isNull() ? QStringLiteral("null") : QStringLiteral("undefined");
+    }
+
+    const bool containsCol = o.contains(QStringLiteral("col"));
+    const QJsonValue colVal = o.value(QStringLiteral("col"));
+    if (containsCol && colVal.isDouble()) {
+        const double d = colVal.toDouble();
+        if (std::floor(d) == d) {
+            t.col = static_cast<int>(d);
+            t.hasCol = (t.col > 0);
+            t.rawCol = QString::number(t.col);
+        } else {
+            t.hasCol = false;
+            t.rawCol = QString::number(d);
+        }
+    } else if (containsCol && colVal.isString()) {
+        t.hasCol = false;
+        t.rawCol = colVal.toString();
+    } else {
+        t.hasCol = false;
+        t.rawCol = containsCol && colVal.isNull() ? QStringLiteral("null") : QStringLiteral("undefined");
+    }
     return t;
 }
 

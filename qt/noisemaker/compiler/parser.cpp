@@ -161,7 +161,26 @@ private:
     Token expect(const QString& type, const QString& msg) {
         const Token t = peek();
         if (t.type == type) return advance();
-        throw DslSyntaxError::at(msg, t.line, t.col);
+        const bool hasLocation = (t.line > 0 && t.col > 0 && (t.rawLine.isEmpty() || t.hasLine) && (t.rawCol.isEmpty() || t.hasCol));
+        const QString lineStr = t.rawLine.isEmpty() ? (t.line > 0 ? QString::number(t.line) : QStringLiteral("undefined")) : t.rawLine;
+        const QString colStr = t.rawCol.isEmpty() ? (t.col > 0 ? QString::number(t.col) : QStringLiteral("undefined")) : t.rawCol;
+        const QString message = QStringLiteral("%1 at line %2 col %3").arg(msg, lineStr, colStr);
+        const QString code = (type == TokenType::RPAREN) ? QStringLiteral("P002") : QStringLiteral("P001");
+        QJsonObject diagnostic;
+        diagnostic.insert(QStringLiteral("code"), code);
+        diagnostic.insert(QStringLiteral("stage"), diagStage(code));
+        diagnostic.insert(QStringLiteral("severity"), diagSeverity(code));
+        diagnostic.insert(QStringLiteral("message"), message);
+        if (hasLocation) {
+            QJsonObject loc;
+            loc.insert(QStringLiteral("line"), t.line);
+            loc.insert(QStringLiteral("column"), t.col);
+            diagnostic.insert(QStringLiteral("location"), loc);
+        } else {
+            diagnostic.insert(QStringLiteral("location"), QJsonValue(QJsonValue::Null));
+        }
+        diagnostic.insert(QStringLiteral("span"), QJsonValue(QJsonValue::Null));
+        throw DslSyntaxError(message, hasLocation ? t.line : -1, hasLocation ? t.col : -1, diagnostic);
     }
 
     // Collect and consume any pending COMMENT tokens; returns their

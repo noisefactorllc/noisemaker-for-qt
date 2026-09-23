@@ -509,6 +509,115 @@ int main() {
         check(allMatch, "write() accepts xyz/vel/rgba/mesh refs and the literal 'none' ident");
     }
 
+    // ==================================================================
+    // Structured parser expectation diagnostics (P001 / P002)
+    // ==================================================================
+    {
+        struct ExpectCase {
+            const char* name;
+            QString source;
+            QString code;
+            QString message;
+            int line;
+            int column;
+        };
+
+        const QVector<ExpectCase> cases = {
+            {"opening parenthesis", QStringLiteral("search synth\nrender o0"), QStringLiteral("P001"), QStringLiteral("Expect '(' at line 2 col 8"), 2, 8},
+            {"closing parenthesis at EOF", QStringLiteral("search synth\nrender(o0"), QStringLiteral("P002"), QStringLiteral("Expect ')' at line 2 col 10"), 2, 10},
+            {"identifier", QStringLiteral("search synth\nlet = 1"), QStringLiteral("P001"), QStringLiteral("Expected identifier at line 2 col 5"), 2, 5},
+            {"assignment sign", QStringLiteral("search synth\nlet x 1"), QStringLiteral("P001"), QStringLiteral("Expect '=' at line 2 col 7"), 2, 7},
+            {"block opening", QStringLiteral("search synth\nif(true) return 1"), QStringLiteral("P001"), QStringLiteral("Expect '{' at line 2 col 10"), 2, 10},
+            {"end of input", QStringLiteral("search synth\nrender(o0) xyz"), QStringLiteral("P001"), QStringLiteral("Expected end of input at line 2 col 12"), 2, 12},
+            {"call closing parenthesis", QStringLiteral("search synth\nfoo(1"), QStringLiteral("P002"), QStringLiteral("Expect ')' at line 2 col 6"), 2, 6},
+            {"write3d separator", QStringLiteral("search synth\nfoo().write3d(tex3d0 geo0)"), QStringLiteral("P001"), QStringLiteral("Expect ',' between tex3d and geo in write3d() at line 2 col 22"), 2, 22},
+            {"CRLF and tab", QString::fromUtf8("// \xF0\x9F\x98\x80\r\nsearch synth\r\n\trender(o0"), QStringLiteral("P002"), QStringLiteral("Expect ')' at line 3 col 11"), 3, 11},
+            {"UTF-16 column", QString::fromUtf8("search synth\nlet x = \"\xF0\x9F\x98\x80\"; render o0"), QStringLiteral("P001"), QStringLiteral("Expect '(' at line 2 col 22"), 2, 22},
+        };
+
+        for (const auto& c : cases) {
+            bool caught = false;
+            try {
+                parseSrc(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == c.message,
+                      QStringLiteral("parser diagnostic message matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject d = err.diagnostic();
+                check(!d.isEmpty(),
+                      QStringLiteral("parser diagnostic payload present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("code")).toString() == c.code,
+                      QStringLiteral("parser diagnostic code matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"),
+                      QStringLiteral("parser diagnostic stage matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"),
+                      QStringLiteral("parser diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("message")).toString() == c.message,
+                      QStringLiteral("parser diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("span")).isNull(),
+                      QStringLiteral("parser diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(loc.value(QStringLiteral("line")).toInt() == c.line,
+                      QStringLiteral("parser diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(loc.value(QStringLiteral("column")).toInt() == c.column,
+                      QStringLiteral("parser diagnostic location column matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caught, QStringLiteral("throws DslSyntaxError for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+    }
+
+    // ==================================================================
+    // Parser expectation diagnostics represent unavailable caller-token coordinates explicitly
+    // ==================================================================
+    {
+        struct CoordCase {
+            bool hasLine;
+            QJsonValue lineVal;
+            bool hasCol;
+            QJsonValue colVal;
+            QString expectedMsg;
+        };
+
+        const QVector<CoordCase> coordCases = {
+            {false, QJsonValue(), false, QJsonValue(), QStringLiteral("Expect '(' at line undefined col undefined")},
+            {true, 1, false, QJsonValue(), QStringLiteral("Expect '(' at line 1 col undefined")},
+            {true, 0, true, 1, QStringLiteral("Expect '(' at line 0 col 1")},
+            {true, 1, true, QStringLiteral("NaN"), QStringLiteral("Expect '(' at line 1 col NaN")},
+        };
+
+        for (const auto& cc : coordCases) {
+            const QJsonArray origTokens = nm::lex(QStringLiteral("search synth\nrender o0"));
+            QJsonArray modifiedTokens;
+            for (const QJsonValue& val : origTokens) {
+                QJsonObject tokObj = val.toObject();
+                if (tokObj.value(QStringLiteral("type")).toString() == QStringLiteral("OUTPUT_REF")) {
+                    tokObj.remove(QStringLiteral("line"));
+                    tokObj.remove(QStringLiteral("col"));
+                    if (cc.hasLine) tokObj.insert(QStringLiteral("line"), cc.lineVal);
+                    if (cc.hasCol) tokObj.insert(QStringLiteral("col"), cc.colVal);
+                }
+                modifiedTokens.append(tokObj);
+            }
+
+            bool caught = false;
+            try {
+                nm::parse(modifiedTokens);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == cc.expectedMsg, "parser error message with unavailable coords matches");
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P001"), "diagnostic code P001");
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"), "diagnostic stage parser");
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"), "diagnostic severity error");
+                check(d.value(QStringLiteral("message")).toString() == cc.expectedMsg, "diagnostic message matches");
+                check(d.value(QStringLiteral("location")).isNull(), "diagnostic location is null when coordinates unavailable");
+                check(d.value(QStringLiteral("span")).isNull(), "diagnostic span is null");
+            }
+            check(caught, "throws DslSyntaxError for unavailable coordinates");
+        }
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_parser)\n");
         return 0;
