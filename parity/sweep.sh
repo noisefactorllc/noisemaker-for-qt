@@ -301,7 +301,7 @@ if [ "${SKIP_GOLDEN:-0}" != "1" ]; then
 		read -r _tol _ssim every <<EOF
 $(timed_params "$name")
 EOF
-		SHADE_HEADLESS=1 node "$ROOT/parity/export-and-render.mjs" "$dsl" "$ROOT/parity/out" \
+		SHADE_HEADLESS="${SHADE_HEADLESS:-1}" node "$ROOT/parity/export-and-render.mjs" "$dsl" "$ROOT/parity/out" \
 			--size "$SIZE" --backend webgl2 --run-seconds 30 --sample-every "$every" \
 			|| echo "[sweep] WARNING: golden mint for timed fixture $name exited nonzero"
 	done

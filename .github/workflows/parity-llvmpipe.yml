@@ -1,0 +1,131 @@
+name: Full parity (llvmpipe)
+
+# The whole parity corpus (parity/sweep.sh: every program, goldens minted
+# fresh in the same run, the per-fixture tolerance table) on Linux Mesa
+# llvmpipe. Chromium draws the goldens through ANGLE's GL backend over the
+# same llvmpipe the port renders with (GAP-033), so the reference and the
+# port share one GLSL compiler and one rasterizer. The macOS sweep compares
+# two shader compilers on one GPU; a fixture that still differs here points
+# at the port rather than at compiler rounding (GAP-001).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "qt/**"
+      - "parity/**"
+      - "tools/**"
+      - "STATUS.md"
+      - ".github/workflows/parity-llvmpipe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parity-llvmpipe-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: "6.11.1"
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out the reference at the STATUS.md content pin
+        run: |
+          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
+          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
+          git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
+          git -C "$RUNNER_TEMP/noisemaker" rev-parse HEAD
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the reference engine and Chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          cd "$RUNNER_TEMP/noisemaker"
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Install Linux GL and X11 runtime
+        run: |
+          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Build nm-render
+        run: |
+          cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build qt/build --parallel --target nm-render
+
+      - name: Python compare environment
+        run: |
+          python -m venv parity/.venv
+          parity/.venv/bin/pip install numpy pillow
+
+      - name: Sweep (goldens and candidates on llvmpipe)
+        env:
+          SHADE_HEADLESS: "0"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          NM_GOLDEN_CHROMIUM_ARGS: "--use-gl=angle --use-angle=gl --ignore-gpu-blocklist"
+          QT_QPA_PLATFORM: xcb
+          LEDGER_PATH: ${{ runner.temp }}/ledger-llvmpipe.json
+        run: |
+          export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
+          set +e
+          xvfb-run -a -s "-screen 0 1280x1024x24" bash parity/sweep.sh 2>&1 | tee "$RUNNER_TEMP/sweep.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "golden renderers:"
+          grep -o "golden WebGL renderer: .*" "$RUNNER_TEMP/sweep.log" | sort | uniq -c
+          grep -q "golden WebGL renderer: ANGLE (Mesa, llvmpipe" "$RUNNER_TEMP/sweep.log" \
+            || { echo "no golden renderer was logged"; exit 1; }
+          if grep "golden WebGL renderer: " "$RUNNER_TEMP/sweep.log" | grep -qv "ANGLE (Mesa, llvmpipe"; then
+            echo "a golden was not drawn on Mesa llvmpipe"; exit 1
+          fi
+          exit "$rc"
+
+      - name: Summarize the llvmpipe ledger
+        if: always()
+        run: |
+          python3 - "$RUNNER_TEMP/ledger-llvmpipe.json" <<'PY'
+          import collections, json, sys
+          try:
+              ledger = json.load(open(sys.argv[1]))
+          except OSError:
+              sys.exit("no ledger was written")
+          print(dict(collections.Counter(row["verdict"] for row in ledger)))
+          for row in sorted(ledger, key=lambda r: r["program"]):
+              if row["verdict"] != "PASS":
+                  print(f'{row["verdict"]:5} {row["program"]:40} max {row["max_abs_diff"]:.3f} ssim {row["ssim"]:.6f}')
+          PY
+
+      - name: Upload the sweep
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: parity-llvmpipe
+          path: |
+            ${{ runner.temp }}/ledger-llvmpipe.json
+            ${{ runner.temp }}/sweep.log
+            parity/out/
+          if-no-files-found: warn
+          retention-days: 14
