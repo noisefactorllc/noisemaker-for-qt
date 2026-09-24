@@ -1,6 +1,6 @@
 # Noisemaker for Qt
 
-Desktop OpenGL 3.3 runtime and compiler for the Noisemaker shader platform.
+Desktop OpenGL runtime (4.1 core context, GLSL 330 core shaders) and compiler for the Noisemaker shader platform.
 
 ## Strict Rules
 

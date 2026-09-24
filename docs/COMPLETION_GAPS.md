@@ -337,16 +337,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-015: AGENTS.md states an OpenGL 3.3 runtime
 
-- Status: blocked. Priority: P3. Category: contract.
+- Status: closed. Priority: P3. Category: contract.
 - Affected scope: AGENTS.md line 3.
 - Expected behavior: The instruction file names the OpenGL 4.1 core requirement.
 - Observed behavior: "Desktop OpenGL 3.3 runtime and compiler for the Noisemaker shader platform."
 - Evidence: `grep -n "3\.3" AGENTS.md` returns line 3.
-- Next action: Edit line 3 when the operator approves an instruction-file change.
-- Dependencies: Operator approval. Operator rules restrict instruction-file edits to explicit requests.
+- Next action: None.
+- Dependencies: None. The operator approved the instruction-file edit on 2026-09-24.
 - Acceptance criteria: AGENTS.md names the 4.1 core context and GLSL 330 core.
 - Required checks: grep of AGENTS.md.
-- Last verification: 2026-09-24.
+- Last verification: 2026-09-24. AGENTS.md line 3 now reads "Desktop OpenGL runtime (4.1 core context, GLSL 330 core shaders) and compiler for the Noisemaker shader platform." `grep -n "3\.3" AGENTS.md` returns nothing.
 
 ### GAP-016: bare state values in params raised UnsupportedDsl
 
