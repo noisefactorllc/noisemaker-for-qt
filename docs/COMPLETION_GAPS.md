@@ -253,27 +253,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-011: heightmap3d_landscape exceeds the strict tolerance by one level
 
-- Status: open. Priority: P2. Category: verification.
-- Affected scope: synth3d/heightmap3d and render/renderLandscape3d. Fixture: parity/programs/heightmap3d_landscape.dsl.
+- Status: closed. Priority: P2. Category: verification.
+- Affected scope: render/renderLandscape3d voxel path (FILTERING 1, VIEW_MODE 1) over synth3d/heightmap3d. Fixture: parity/programs/heightmap3d_landscape.dsl. Policy: parity/sweep.sh tol_for().
 - Expected behavior: PASS at 2.001 / 0.98, or a NEAR policy backed by a traced mechanism.
-- Observed behavior: Max diff 3.0000017, mean 3.4e-05, SSIM 1.00000. The result is FAIL at the strict bar.
-- Evidence: Batch and single-fixture goldens were byte-identical (0 differing pixels).
-- Next action: Locate the differing pixels. Trace the rounding mechanism before any tol_for() entry.
+- Observed behavior: 2 of 65536 px differ (max 3, SSIM 1.00000) at top-down row 131, x=53 and x=202. At each, two ray-origin components lie 7.418e-06 (0.49 ulp of nextT) from a voxel-edge tie in exact arithmetic. The left-to-right float32 sum (Apple GL) steps one axis first. The reference's ANGLE Metal compile rounds to a tie and crosses both axes. The two sides select adjacent voxels.
+- Evidence: All landscape-pass inputs and its geo output are bit-identical (intermediate dumps, 8 frames). A CPU float32 model reproduces both colors: 3 of 12 equal orders give the candidate voxel and 9 give the golden voxel. Reassociating only the origin sum in a scratch shader copy made the candidate match the golden (max diff 0); the committed shader stays byte-identical to the reference. Golden and candidate were each bit-exact across 2 runs. Commit in the tol_for() entry for heightmap3d_landscape.
+- Next action: None.
 - Dependencies: None.
-- Acceptance criteria: A PASS, or a NEAR policy with a documented mechanism and a measured bound.
-- Required checks: parity/run.sh with a diff heatmap, then a full sweep.
-- Last verification: 2026-09-24, macOS.
-
-<details><summary>Sweep evidence, 2026-09-24</summary>
-
-- Source: noisemaker-for-qt `5d88cb5` runtime (commit c0f0644 plus the test-only change) built in `qt/build`. Reference checkout `285e50f538371ffa1ed5656821a417fef36e7c5c` (clean). Its shaders and definitions matched the port byte for byte (SHADERS 317/317, DEFINITIONS 210/210).
-- `NM_REFERENCE_ROOT=<reference> bash parity/sweep.sh`: 11 min 29 s. It minted 345 goldens in one browser session plus 2 timed series. Result: 342 pass of 347, FAIL agentsPoints, fibers, heightGrid_billboard_alpha, heightmap3d_landscape, scratches.
-- batch-golden.mjs warned about a pass-count race for agentsPoints, heightGrid_billboard_alpha and julia.
-- The 5 failing fixtures were minted again one at a time with parity/export-and-render.mjs. Batch against single-mint golden differences: agentsPoints 1095 px, heightGrid_billboard_alpha 65536 px, fibers 60 px, scratches 24 px, heightmap3d_landscape 0 px.
-- `SKIP_GOLDEN=1 bash parity/sweep.sh` (new candidates, same goldens): 345 pass of 347. FAIL: heightGrid_billboard_alpha, heightmap3d_landscape. No tolerance changed.
-- Ledger: 347 entries (was 342). The 5 fixtures that had never been graded: heightGrid_billboard PASS, heightGrid_pointsRender_perspective PASS, remap_zone PASS, heightGrid_billboard_alpha FAIL, heightmap3d_landscape FAIL. No verdict changed for the 342 earlier entries.
-
-</details>
+- Acceptance criteria: A PASS, or a NEAR policy with a documented mechanism and a measured bound. Met: tol_for() 3.001 / 0.999, mechanism inline, bound 2 px / max 3.
+- Required checks: parity/run.sh at the tol_for() policy; a full sweep.
+- Last verification: 2026-09-24, macOS (Apple M4). `bash parity/run.sh heightmap3d_landscape 3.001 0.999`: [PASS] max 3.000 ssim 1.00000.
 
 ### GAP-012: hosts had to build MIDI state JSON by hand
 
