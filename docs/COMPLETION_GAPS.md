@@ -485,12 +485,38 @@ These entries record missing qualification. They do not infer implementation def
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
 - Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's.
-- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969.
+- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5.
 - Next action: Re-measure on Linux and Windows. Re-check kerning when Qt applies variation deltas in shaping.
 - Dependencies: Qt font shaping (external).
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
 - Last verification: 2026-09-24, macOS only.
+
+### GAP-028: compileGraph failures did not say what was wrong
+
+- Status: closed. Priority: P2. Category: usability.
+- Affected scope: qt/noisemaker/compiler/dsl_compiler.{h,cpp} (nm::CompilationError); every host that calls nm::compileGraph (nm-render --dsl and --dump-graph, the export-kit host); qt/tests/test_expander.cpp.
+- Expected behavior: A failed compile carries the reference's code and its diagnostics or expand errors. The shown text is compiler.js formatError: error diagnostics as "message (line L, col C)" joined by "; ", or the expand error messages.
+- Observed behavior: Before f53f3d6, compileGraph threw "ERR_COMPILATION_FAILED: validate() reported an error-severity diagnostic" or the fixed ERR_EXPANSION_FAILED equivalent. The user got no code, message, or location.
+- Evidence: what() equals the reference formatError output byte for byte on 7 failing programs (located and unlocated diagnostics, and the no-render-surface expand error). test_expander checks both codes and their text. nm-render --dsl on an undefined variable now prints "Variable used before assignment: 'bogus'" (e073c14 printed the generic text). Commit f53f3d6.
+- Next action: None.
+- Dependencies: None.
+- Acceptance criteria: nm::CompilationError exposes code(), diagnostics(), and errors(). what() equals the reference formatError text for both codes.
+- Required checks: test_expander; ctest.
+- Last verification: 2026-09-24, reference c9ee8a04, macOS arm64.
+
+### GAP-029: nm-render has no usage text
+
+- Status: open. Priority: P3. Category: usability.
+- Affected scope: qt/tools/nm-render/main.cpp; the README nm-render section.
+- Expected behavior: nm-render --help, or a call without a render mode, prints the modes and their flags and exits 0 or 2.
+- Observed behavior: nm-render --help prints "unimplemented: no recognized render mode in arguments". A developer must read main.cpp or the README to find --dsl, --size, --out, --time, --frames, --graph, --samples, --batch-manifest, and the --dump-* modes.
+- Evidence: nm-render built from f53f3d6, macOS arm64, 2026-09-24.
+- Next action: Print a usage block for --help and for unrecognized arguments. Exit 0 for --help and 2 for bad arguments.
+- Dependencies: None.
+- Acceptance criteria: --help lists every mode and flag in main.cpp. An unknown flag names that flag and prints the usage block.
+- Required checks: a CLI test that runs nm-render --help and an unknown flag and checks the exit codes and text.
+- Last verification: 2026-09-24.
 
 ## 5. Ordered next actions
 
