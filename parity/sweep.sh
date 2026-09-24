@@ -234,6 +234,27 @@ tol_for() {
 		# >=100 diff), consistent with the boundary-flip signature, not
 		# a broken image.
 		synth3dFlythrough3d) echo "138.001 0.999" ;; # 1.05% px, ssim=0.99985
+		# --- Isometric voxel-DDA axis-crossing tie (GAP-011). The
+		# renderLandscape3d voxel path (FILTERING 1, VIEW_MODE 1) steps a
+		# fixed (-1,-1,-1) ray and crosses every axis whose nextT equals
+		# the minimum. At 2 px, origin.y-origin.z (x=53) and
+		# origin.y-origin.x (x=202) lie 7.418e-06 from an integer in exact
+		# arithmetic on the float32 inputs: 0.49 ulp of nextT (~129).
+		# Evaluated left to right, the sum `vec3(size*2.5) + right*..*span
+		# + up*..*span` leaves the two nextT 1 ulp apart, so the DDA crosses
+		# one axis first and, at x=53, hits voxel (8,4,55). A CPU float32
+		# model of 12 algebraically equal orders (plain and fused): 3,
+		# including left to right, give (8,4,55); 9, e.g. the two span
+		# terms summed first, round to a tie, cross both axes and hit
+		# (8,4,54). x=202 has the same y/x tie: (57,6,10) against (56,6,10).
+		# Every landscape-pass input (o1, o2, volumeCache, geoBuffer) and
+		# its geo output are bit-identical on both sides; only these 2 color
+		# pixels differ. Reference: ANGLE Metal on the same Apple M4. Controlled
+		# run: parenthesizing the two span terms in a scratch copy of the
+		# shader made the candidate match the golden with max diff 0.
+		# Golden bit-exact across 2 mints; candidate bit-exact across 2
+		# renders. The shader stays byte-identical to the reference.
+		heightmap3d_landscape) echo "3.001 0.999" ;; # 2/65536 px (0.0031%), max 3, ssim=1.00000
 		# --- Feedback-loop sharpen/blur cross-GPU rounding tie (RECLASSIFIED
 		# from CHAOS -- see is_chaos()'s note and docs/CHAOS-GATE.md).
 		# Once the harness's o0-o7 reset closed the real bug (reference-side
@@ -257,6 +278,7 @@ reason_for() {
 		unsharpMask) echo "separable Gaussian subtraction and rescaling amplify isolated sub-LSB residuals" ;;
 		median) echo "quickselect can choose a different equal-valued candidate at packed comparison ties (task-T5-report.md Episode 4: noise() 1-ULP input)" ;;
 		step) echo "step() threshold tie flips at a near-boundary input value" ;;
+		heightmap3d_landscape) echo "isometric voxel DDA: the ray origin lies 0.49 ulp from a voxel-edge tie, so the shader compiler's association of the origin sum selects one of two adjacent voxels" ;;
 		*) echo "strict RGBA8 float round-trip allowance" ;;
 	esac
 }
