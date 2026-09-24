@@ -184,12 +184,12 @@ jobs:
         run: cmake --build build --config Release --parallel
 
   install-workflow:
-    # GAP-002: the README's installed workflow, literally, on each OS: build
-    # and install the library, build the viewer and the Qt Quick example
-    # against the install (the configure log must say it used the installed
-    # package, not the qt/ tree), run their --selfcheck, render with the
-    # installed nm-render from an unrelated directory, then uninstall and
-    # require an empty prefix.
+    # GAP-002: the README's installed workflow on each OS: build and install
+    # the library, build the viewer and the Qt Quick example against the
+    # install (the configure log must say it used the installed package, not
+    # the qt/ tree), run their --selfcheck where the runner has a display
+    # (Linux, Xvfb), render with the installed nm-render from an unrelated
+    # directory, then uninstall and require an empty prefix.
     name: installed workflow (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -264,28 +264,35 @@ jobs:
             grep -q "using installed noisemaker-qt" "$RUNNER_TEMP/configure-$ex.log" \
               || { echo "examples/$ex did not build against the installed package"; exit 1; }
             cmake --build "examples/$ex/build-installed" --config Release --parallel
-            if [ "$RUNNER_OS" = Windows ]; then
-              cp "$RUNNER_TEMP"/mesa/x64/*.dll "examples/$ex/build-installed/Release/"
-            fi
           done
 
-      - name: Self-checks and the installed nm-render
+      - name: Self-checks (Linux, Xvfb)
+        # The examples' --selfcheck needs an exposed window. Hosted macOS and
+        # Windows runners create the window and its GL context but never
+        # paint it (CI run 36070432259: "SELFCHECK FAIL: no frames within
+        # 20000 ms"); Xvfb gives Linux a real display. The macOS self-checks
+        # pass on a desktop session (GAP-002).
+        if: runner.os == 'Linux'
+        env:
+          QT_QPA_PLATFORM: xcb
+          LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
-          gui() {
-            case "$RUNNER_OS" in
-              Linux) QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x1024x24" "$@" ;;
-              Windows) QT_OPENGL=software GALLIUM_DRIVER=llvmpipe "$@" ;;
-              *) "$@" ;;
-            esac
-          }
           for ex in viewer quick; do
-            gui "examples/$ex/build-installed/$CONFIG_DIR$ex$EXE" --selfcheck
+            xvfb-run -a -s "-screen 0 1280x1024x24" "examples/$ex/build-installed/$ex" --selfcheck
           done
+
+      - name: Render with the installed nm-render from another directory
+        run: |
           mkdir -p "$RUNNER_TEMP/elsewhere"
           cd "$RUNNER_TEMP/elsewhere"
-          if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP"/mesa/x64/*.dll .; fi
           printf 'search synth\nnoise(seed: 3).write(o0)\nrender(o0)\n' > program.dsl
-          gui "$PREFIX/bin/nm-render$EXE" --dsl program.dsl --size 64x64 --out out.png
+          case "$RUNNER_OS" in
+            Linux) QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x1024x24" \
+                     "$PREFIX/bin/nm-render" --dsl program.dsl --size 64x64 --out out.png ;;
+            Windows) cp "$RUNNER_TEMP"/mesa/x64/*.dll .
+                     QT_OPENGL=software GALLIUM_DRIVER=llvmpipe "$PREFIX/bin/nm-render.exe" --dsl program.dsl --size 64x64 --out out.png ;;
+            *) "$PREFIX/bin/nm-render" --dsl program.dsl --size 64x64 --out out.png ;;
+          esac
           test -s out.png
 
       - name: Uninstall
