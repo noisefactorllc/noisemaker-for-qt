@@ -101,5 +101,8 @@ noise(octaves: () => (function() { x = 1 /* */ --> comment
 noise(wrap: () => "(" ; } let state = 1 ; { ")").write(o7)
 noise(octaves: () => "(" ; } } ; { ")").write(o0)
 noise(wrap: () => if).write(o1)
+noise(octaves: () => (function() { const x
+of = 1 })).write(o2)
+noise(wrap: () => (function() { for (using x in y) {} })).write(o3)
 
 render(o0)

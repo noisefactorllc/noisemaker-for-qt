@@ -50,7 +50,10 @@
 //     `{`, an identifier or a contextual keyword, or (in sloppy code) a
 //     strict-mode reserved word. Before any other keyword, `let` is an
 //     identifier.
-//   - `using` is never a declaration in a single-statement position.
+//   - `using` is never a declaration in a single-statement position, and
+//     never heads a for-in loop.
+//   - `const` and `using` may omit the initializer only in a for-in/of
+//     head (acorn also allows it before an `of` or `in` on the next line).
 //   - A labelled function declaration binds its name in the enclosing scope.
 
 namespace nm::js {
@@ -1384,6 +1387,10 @@ int Parser::parseFor() {
 
 int Parser::parseForIn(const VarResult* decl, const QString& kind, qsizetype initStart) {
     const bool isForIn = isKw("in");
+    // V8: a using declaration cannot head a for-in loop.
+    if (isForIn && (kind == QStringLiteral("using") || kind == QStringLiteral("await using"))) {
+        raise(initStart, QStringLiteral("Invalid 'using' in for-in loop"));
+    }
     next();
     if (decl && decl->firstHasInit
         && (!isForIn || strict_ || kind != QStringLiteral("var") || !decl->firstIsIdent)) {
@@ -1562,9 +1569,10 @@ VarResult Parser::parseVar(bool isFor, const QString& kind, bool allowMissingIni
         if (eat(Tk::Eq)) {
             parseMaybeAssign(isFor ? 1 : 0);
             hasInit = true;
-        } else if (!allowMissingInitializer && kind == QStringLiteral("const") && !(isKw("in") || isContextual("of"))) {
+        } else if (!allowMissingInitializer && kind == QStringLiteral("const") && !(isFor && (isKw("in") || isContextual("of")))) {
+            // V8 (unlike acorn) exempts `in`/`of` only in a for head.
             unexpected();
-        } else if (!allowMissingInitializer && isUsing && !isKw("in") && !isContextual("of")) {
+        } else if (!allowMissingInitializer && isUsing && !(isFor && (isKw("in") || isContextual("of")))) {
             raise(lastTokEnd_, QStringLiteral("Missing initializer in %1 declaration").arg(kind));
         } else if (!allowMissingInitializer && N(id).kind != NK::Ident && !(isFor && (isKw("in") || isContextual("of")))) {
             raise(lastTokEnd_, QStringLiteral("Complex binding patterns require an initialization value"));
