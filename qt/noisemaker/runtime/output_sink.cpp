@@ -148,6 +148,29 @@ void SinkManager::submit(const GpuSurface& surface, double timestamp) {
     if (m_state->iterationDepth == 0) compact(m_state);
 }
 
+bool SinkManager::shouldDeferRender() {
+    if (m_state->closed) return false;
+    ++m_state->iterationDepth;
+    bool defer = false;
+    const auto registrations = m_state->registrations;
+    for (const auto& registration : registrations) {
+        if (!registration->active) continue;
+        const auto sink = registration->sink;
+        try {
+            if (sink->deferRender()) {
+                defer = true;
+                break;
+            }
+        } catch (...) {
+            ++registration->stats.failed;
+            report(m_state, std::current_exception(), sink);
+        }
+    }
+    --m_state->iterationDepth;
+    if (m_state->iterationDepth == 0) compact(m_state);
+    return defer;
+}
+
 void SinkManager::close(bool backendLost) {
     if (m_state->closed) return;
     m_state->closed = true;

@@ -64,6 +64,21 @@ int main(int argc, char** argv) {
     backend.setup(nullptr, QStringLiteral("qt/noisemaker"), QSize(8, 8));
 
     {
+        check(!backend.shouldDeferRender(), "backend does not defer render without deferring sinks");
+        struct DeferringSink : public nm::OutputSink {
+            void configure(const nm::OutputDescriptor&) override {}
+            bool submit(const nm::GpuSurface&, double) override { return true; }
+            void close(bool) override {}
+            bool deferRender() override { return true; }
+        };
+        auto sink = std::make_shared<DeferringSink>();
+        auto removeSink = backend.addSink(sink);
+        check(backend.shouldDeferRender(), "backend defers render when sink requests deferral");
+        removeSink();
+        check(!backend.shouldDeferRender(), "backend does not defer render after sink removal");
+    }
+
+    {
         nm::FrameExportOptions invalid;
         invalid.slotCount = 1;
         bool threw = false;

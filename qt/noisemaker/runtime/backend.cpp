@@ -1863,6 +1863,10 @@ SinkStats Backend::sinkStats(const OutputSink* sink) const {
     return m_sinkManager.statsFor(sink);
 }
 
+bool Backend::shouldDeferRender() {
+    return m_sinkManager.shouldDeferRender();
+}
+
 std::shared_ptr<FrameExportQueue> Backend::createFrameExportQueue(
     FrameExportOptions options) {
     if (!m_gl) {

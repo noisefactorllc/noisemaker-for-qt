@@ -86,6 +86,7 @@ public:
     std::function<void()> addSink(const std::shared_ptr<OutputSink>& sink);
     void removeSink(OutputSink* sink);
     SinkStats sinkStats(const OutputSink* sink) const;
+    bool shouldDeferRender();
     std::shared_ptr<FrameExportQueue> createFrameExportQueue(
         FrameExportOptions options = {});
 

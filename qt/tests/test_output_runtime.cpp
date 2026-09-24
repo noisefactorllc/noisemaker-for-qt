@@ -24,13 +24,16 @@ class TestSink final : public nm::OutputSink {
 public:
     std::function<void()> onConfigure;
     std::function<bool()> onSubmit;
+    std::function<bool()> onDeferRender;
     nm::OutputDescriptor descriptor;
     int configureCalls = 0;
     int submitCalls = 0;
     int closeCalls = 0;
+    int deferRenderCalls = 0;
     bool throwOnConfigure = false;
     bool throwOnSubmit = false;
     bool throwOnClose = false;
+    bool throwOnDeferRender = false;
 
     void configure(const nm::OutputDescriptor& value) override {
         ++configureCalls;
@@ -48,6 +51,12 @@ public:
     void close(bool) override {
         ++closeCalls;
         if (throwOnClose) throw std::runtime_error("close failed");
+    }
+
+    bool deferRender() override {
+        ++deferRenderCalls;
+        if (throwOnDeferRender) throw std::runtime_error("deferRender failed");
+        return onDeferRender ? onDeferRender() : false;
     }
 };
 
@@ -272,6 +281,53 @@ int main() {
         check(first->closeCalls == 1 && second->closeCalls == 1,
               "close remains terminal and closes every sink once");
         check(addThrew, "a closed manager rejects new sinks");
+    }
+
+    {
+        nm::SinkManager manager;
+        auto nonDeferring = std::make_shared<TestSink>();
+        auto deferring = std::make_shared<TestSink>();
+        deferring->onDeferRender = [] { return true; };
+        manager.add(nonDeferring);
+        check(!manager.shouldDeferRender(), "shouldDeferRender returns false when no sink defers");
+
+        auto removeDeferring = manager.add(deferring);
+        check(manager.shouldDeferRender(), "shouldDeferRender returns true when an active sink defers");
+
+        removeDeferring();
+        check(!manager.shouldDeferRender(), "shouldDeferRender returns false after removing deferring sink");
+
+        manager.add(deferring);
+        manager.close();
+        check(!manager.shouldDeferRender(), "shouldDeferRender returns false when manager is closed");
+    }
+
+    {
+        std::vector<std::string> errors;
+        nm::SinkManager manager([&errors](std::exception_ptr error, const std::shared_ptr<nm::OutputSink>&) {
+            try {
+                std::rethrow_exception(error);
+            } catch (const std::exception& exception) {
+                errors.emplace_back(exception.what());
+            }
+        });
+        auto throwingSink = std::make_shared<TestSink>();
+        throwingSink->throwOnDeferRender = true;
+        auto laterDeferring = std::make_shared<TestSink>();
+        laterDeferring->onDeferRender = [] { return true; };
+
+        manager.add(throwingSink);
+        check(!manager.shouldDeferRender(), "a throwing deferRender does not defer by itself");
+        check(manager.statsFor(throwingSink.get()).failed == 1,
+              "a throwing deferRender increments failed count");
+        check(errors == std::vector<std::string>{"deferRender failed"},
+              "a throwing deferRender reports to onError");
+
+        manager.add(laterDeferring);
+        check(manager.shouldDeferRender(),
+              "a throwing deferRender does not prevent subsequent sinks from deferring");
+        check(manager.statsFor(throwingSink.get()).failed == 2,
+              "second shouldDeferRender call increments failed count again on throwing sink");
     }
 
     if (g_failures == 0) {

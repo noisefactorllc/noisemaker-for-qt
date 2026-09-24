@@ -25,6 +25,7 @@ public:
     virtual void configure(const OutputDescriptor& descriptor) = 0;
     virtual bool submit(const GpuSurface& surface, double timestamp) = 0;
     virtual void close(bool backendLost = false) = 0;
+    virtual bool deferRender() { return false; }
 };
 
 struct SinkStats {
@@ -45,6 +46,7 @@ public:
     void configure(const OutputDescriptor& descriptor);
     void submit(const GpuSurface& surface, double timestamp);
     void close(bool backendLost = false);
+    bool shouldDeferRender();
     SinkStats statsFor(const OutputSink* sink) const;
     bool closed() const;
 
