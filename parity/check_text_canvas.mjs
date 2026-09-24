@@ -1,32 +1,62 @@
 // check_text_canvas.mjs -- filter/text canvas parity gate.
 //
-// Oracle: a Chromium 2D canvas (headless, via the reference checkout's
-// Playwright) drawn with the statements of the reference demo host
-// (demo/shaders/lib/demo-ui.js _renderTextToCanvas) and the font string
-// Noisedeck builds (style label -> weight and italic), with the reference's
-// Nunito (demo/font/Nunito) loaded as a FontFace. Candidate:
-// nm::renderTextTexture (qt/build/tests/text_texture_dump) with the port's
-// bundled copy of the same font file.
+// Oracle: a Chromium 2D canvas (Chromium in its new headless mode, via the
+// reference checkout's Playwright) drawn with the statements of the
+// reference demo host (demo/shaders/lib/demo-ui.js _renderTextToCanvas) and
+// the font string Noisedeck builds (style label -> weight and italic), with
+// the reference's Nunito (demo/font/Nunito) loaded as a FontFace.
+// Candidate: nm::renderTextTexture (qt/build/tests/text_texture_dump) with
+// the port's bundled copy of the same font file.
 //
-// Glyph rasterizers differ, layout must not. Tolerances, per case:
-//   alpha-weighted ink centroid       |dx|, |dy| <= 1.0 px
-//   ink bounding box (alpha > 0)      each edge within 5 px
-//   total ink coverage, qt / chrome   0.70 .. 1.05
-//   fill colour where both alpha 255  exact
-// Measured on macOS arm64, Qt 6.11.1 and Chromium 151, 2026-09-24:
-//   - Chromium's glyph masks are heavier than an exact outline fill: the
-//     port draws 0.76 .. 0.86 of Chromium's coverage at 26 .. 61 px and
-//     0.86 .. 0.95 at 90 .. 205 px.
-//   - Qt shapes a variable font with the default instance's GPOS kerning;
-//     Chromium applies the instance's kerning deltas. Nunito's default
-//     instance is wght 200, so kerned pairs drift with weight: "vy" is
-//     kerned +1.92 px by Chromium at wght 400 and +4.40 px at wght 800
-//     (102 px), and 0 by Qt. Edges along the text direction can move by
-//     that much; the 5 px edge bound covers the cases below and the
-//     centroid bound stays at 1 px.
-//   - The same 10 cases pass on Qt's FreeType engine (the Linux engine;
-//     QT_QPA_PLATFORM=cocoa:fontengine=freetype on macOS). CI runs this
-//     gate on Linux in the render-smoke job.
+// Glyph rasterizers differ, layout must not. Criteria, per case:
+//   glyph runs along the text          each run's ink centroid |d| <= 1.0 px
+//   ink centroid across the text       |d| <= 1.0 px
+//   ink bounding box (alpha > 0)       each edge within 5 px
+//   total ink coverage, qt / chrome    0.70 .. 1.05
+//   fill colour where both alpha 255   exact
+// Runs: each image's alpha is projected onto the rotated text direction
+// through the text origin, in 1 px bins; a run is a stretch of bins with ink
+// in either image, so both images are cut at the same places. For one line
+// of text a run is usually one glyph. A run with ink in only one image fails.
+//
+// Why per glyph (GAP-027). An ink centroid over a whole line mixes layout
+// with rasterization. With w the share of an image's ink in run i and c the
+// run's centroid along the text,
+//   d = sum_i w_qt,i (c_qt,i - c_chrome,i) + sum_i (w_qt,i - w_chrome,i) c_chrome,i:
+// the first term is glyph placement, the second is how the two rasterizers
+// share ink between glyphs. For "Heavy" (wght 800, 102 px, rotated -90),
+// before the renderer applied the kerning variation deltas, the placement
+// term was +1.065 px and the ink term -0.787 px on macOS (CoreText), so the
+// line centroid passed at 0.28 px; on Windows (DirectWrite, CI run
+// 36038944290) the terms were +1.489 and -0.101 px and it failed. With the
+// deltas every glyph is within 0.4 px of Chromium's on macOS, but the terms
+// become -0.333 and -0.782 px and the line centroid fails at 1.11 px:
+// Chromium's glyph masks are heavier on curves (Qt draws 0.943 of
+// Chromium's ink on H, 0.913 .. 0.919 on e, a, v, y), and H sits 112 px from
+// the centre. The run centroids measure placement alone.
+//
+// Why the new headless mode. Playwright's default headless shell places
+// glyphs on whole-pixel advances on Linux: measureText gives "H", "He",
+// ..., "Heavy" at Nunito 800 102 px as 80, 136, 193, 246 and 304 px, against
+// 79.52, 135.47, 192.32, 246.30 and 305.09 on macOS. That moved Linux glyph
+// runs by up to 1.19 px against this renderer's layout. Chromium in the new
+// headless mode (channel "chromium") positions glyphs at subpixel precision
+// on Linux (79.56, 135.56, 192.37, 246.33, 305.10) with no extra switch. The
+// headless shell kept whole-pixel advances with --force-device-scale-factor=2
+// and with a 2x page scale; fontconfig sets hinting, antialiasing and
+// subpixel rendering but not positioning (ui/gfx/font_render_params_linux.cc,
+// ui/gfx/linux/fontconfig_util.cc).
+//
+// Measured 2026-09-24, Chromium 153.0.8010.12, Qt 6.11.1, 10/10 each
+// (largest run |d|, largest |d| across the text, coverage):
+//   - macOS arm64, CoreText: 0.536, 0.451, 0.757 .. 0.943
+//   - macOS arm64, FreeType (QT_QPA_PLATFORM=cocoa:fontengine=freetype):
+//     0.727, 0.443, 0.757 .. 0.942
+//   - Linux arm64 (ubuntu 24.04), FreeType: 0.346, 0.630, 0.953 .. 0.997
+// Chromium's glyph masks are heavier than an exact outline fill, most at
+// small sizes: the port draws 0.76 of Chromium's coverage at 26 px on
+// macOS. CI runs this gate on Linux (render-smoke) and Windows
+// (render-smoke-windows).
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker node parity/check_text_canvas.mjs
 // Env: NM_TEXT_TEXTURE_DUMP  candidate binary (default qt/build/tests/text_texture_dump)
@@ -105,7 +135,7 @@ for (const c of cases) c.u = { ...DEFAULTS, ...c.u }
 
 // ---------------------------------------------------------------- oracle
 
-const browser = await chromium.launch({ headless: true })
+const browser = await chromium.launch({ headless: true, channel: 'chromium' })
 const oracle = new Map()
 try {
     const page = await browser.newPage()
@@ -167,65 +197,81 @@ try {
 // ---------------------------------------------------------------- compare
 
 function ink(rgba, width, height) {
-    let coverage = 0, sx = 0, sy = 0
+    let coverage = 0
     let left = -1, top = -1, right = -1, bottom = -1
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const a = rgba[(y * width + x) * 4 + 3]
             if (a === 0) continue
-            const w = a / 255
-            coverage += w; sx += w * x; sy += w * y
+            coverage += a / 255
             if (left < 0 || x < left) left = x
             if (x > right) right = x
             if (top < 0) top = y
             bottom = y
         }
     }
-    return { coverage, cx: sx / coverage, cy: sy / coverage, left, top, right, bottom }
+    return { coverage, left, top, right, bottom }
 }
 
-// Ink runs along the text direction, for diagnosing a failed case: alpha
-// mass projected onto the rotated text axis through the text origin, in
-// 1 px bins, split where a bin is empty. For one line of text each run is
-// usually one glyph, so the runs show whether glyphs moved or differ in ink.
-function textAxisRuns(rgba, width, height, u) {
+// Per-glyph layout. Each image's alpha is projected onto the rotated text
+// axis through the text origin (pixel centres, 1 px bins) and onto the axis
+// across it. The runs are the maximal stretches of bins with ink in either
+// image, so both images are cut at the same places; for one line of text a
+// run is usually one glyph. Returns each run's ink and alpha-weighted
+// centroid along the text for both images, and each image's centroid
+// across the text.
+function layoutRuns(ref, got, width, height, u) {
     const angle = u.rotation * Math.PI / 180
     const [ux, uy] = [Math.cos(angle), Math.sin(angle)]
     const [ox, oy] = [u.posX * width, u.posY * height]
-    const bins = new Map()
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const a = rgba[(y * width + x) * 4 + 3]
-            if (a === 0) continue
-            const t = Math.floor((x + 0.5 - ox) * ux + (y + 0.5 - oy) * uy)
-            bins.set(t, (bins.get(t) || 0) + a / 255)
+    const project = (rgba) => {
+        const bins = new Map()
+        let mass = 0
+        let across = 0
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const a = rgba[(y * width + x) * 4 + 3]
+                if (a === 0) continue
+                const w = a / 255
+                const [px, py] = [x + 0.5 - ox, y + 0.5 - oy]
+                const t = Math.floor(px * ux + py * uy)
+                bins.set(t, (bins.get(t) || 0) + w)
+                mass += w
+                across += w * (py * ux - px * uy)
+            }
         }
+        return { bins, across: across / mass }
     }
+    const [r, g] = [project(ref), project(got)]
+    const keys = [...new Set([...r.bins.keys(), ...g.bins.keys()])].sort((p, q) => p - q)
     const runs = []
-    for (const t of [...bins.keys()].sort((p, q) => p - q)) {
-        const last = runs[runs.length - 1]
-        if (last && t === last.end + 1) {
-            last.end = t
-        } else {
-            runs.push({ start: t, end: t, mass: 0, moment: 0 })
+    for (const t of keys) {
+        let run = runs[runs.length - 1]
+        if (!run || t !== run.end + 1) {
+            run = { start: t, end: t, chrome: { mass: 0, moment: 0 }, qt: { mass: 0, moment: 0 } }
+            runs.push(run)
         }
-        const run = runs[runs.length - 1]
-        run.mass += bins.get(t)
-        run.moment += bins.get(t) * (t + 0.5)
+        run.end = t
+        for (const [side, bins] of [['chrome', r.bins], ['qt', g.bins]]) {
+            const w = bins.get(t) || 0
+            run[side].mass += w
+            run[side].moment += w * (t + 0.5)
+        }
     }
-    return runs.map(r => ({ start: r.start, end: r.end, mass: r.mass, centroid: r.moment / r.mass }))
+    for (const run of runs) {
+        for (const side of ['chrome', 'qt']) run[side].centroid = run[side].moment / run[side].mass
+        run.shift = run.qt.centroid - run.chrome.centroid
+    }
+    return { runs, across: g.across - r.across }
 }
 
-function printTextAxisRuns(c, ref, got) {
-    const a = textAxisRuns(ref, c.width, c.height, c.u)
-    const b = textAxisRuns(got, c.width, c.height, c.u)
-    const show = runs => runs.map(r => `[${r.start}..${r.end} ink ${r.mass.toFixed(0)} c ${r.centroid.toFixed(2)}]`).join(' ')
-    console.log(`     ink along the text axis, chrome: ${show(a)}`)
-    console.log(`     ink along the text axis, qt:     ${show(b)}`)
-    if (a.length === b.length) {
-        console.log(`     per run, qt - chrome: ${a.map((r, i) =>
-            `c ${(b[i].centroid - r.centroid).toFixed(2)} ink x${(b[i].mass / r.mass).toFixed(3)}`).join('; ')}`)
-    }
+function printLayoutRuns(layout) {
+    const show = side => layout.runs.map(r =>
+        `[${r.start}..${r.end} ink ${r[side].mass.toFixed(0)} c ${r[side].centroid.toFixed(2)}]`).join(' ')
+    console.log(`     ink along the text axis, chrome: ${show('chrome')}`)
+    console.log(`     ink along the text axis, qt:     ${show('qt')}`)
+    console.log(`     per run, qt - chrome: ${layout.runs.map(r =>
+        `c ${r.shift.toFixed(2)} ink x${(r.qt.mass / r.chrome.mass).toFixed(3)}`).join('; ')}`)
 }
 
 let failures = 0
@@ -238,8 +284,8 @@ for (const c of cases) {
     } else {
         const a = ink(ref.rgba, c.width, c.height)
         const b = ink(got, c.width, c.height)
-        const dx = b.cx - a.cx
-        const dy = b.cy - a.cy
+        const layout = layoutRuns(ref.rgba, got, c.width, c.height, c.u)
+        const worstRun = layout.runs.reduce((m, r) => Math.max(m, Math.abs(r.shift)), 0)
         const edges = [b.left - a.left, b.top - a.top, b.right - a.right, b.bottom - a.bottom]
         const ratio = b.coverage / a.coverage
         let colourMismatch = 0
@@ -248,15 +294,17 @@ for (const c of cases) {
             if (ref.rgba[i] !== got[i] || ref.rgba[i + 1] !== got[i + 1] || ref.rgba[i + 2] !== got[i + 2]) colourMismatch++
         }
         if (!(a.coverage > 0)) problems.push('oracle drew nothing')
-        if (Math.abs(dx) > CENTROID_TOLERANCE || Math.abs(dy) > CENTROID_TOLERANCE) problems.push('centroid')
+        if (layout.runs.some(r => !(r.chrome.mass > 0) || !(r.qt.mass > 0))) problems.push('ink run missing in one image')
+        else if (!(worstRun <= CENTROID_TOLERANCE)) problems.push('glyph run position')
+        if (!(Math.abs(layout.across) <= CENTROID_TOLERANCE)) problems.push('position across the text')
         if (edges.some(e => Math.abs(e) > BBOX_TOLERANCE)) problems.push('bounding box')
         if (!(ratio >= COVERAGE_RANGE[0] && ratio <= COVERAGE_RANGE[1])) problems.push('coverage')
         if (colourMismatch) problems.push(`${colourMismatch} opaque pixels differ in colour`)
         console.log(`${problems.length ? 'FAIL' : 'PASS'} ${c.name.padEnd(14)} ${c.width}x${c.height} ` +
-            `font "${ref.font}" centroid d=(${dx.toFixed(3)}, ${dy.toFixed(3)}) ` +
+            `font "${ref.font}" runs ${layout.runs.length} max |d| ${worstRun.toFixed(3)} across d=${layout.across.toFixed(3)} ` +
             `bbox d=[${edges.join(', ')}] coverage qt/chrome=${ratio.toFixed(3)}` +
             (problems.length ? `  <- ${problems.join(', ')}` : ''))
-        if (problems.length) printTextAxisRuns(c, ref.rgba, got)
+        if (problems.length) printLayoutRuns(layout)
     }
     if (problems.length) failures++
 }
