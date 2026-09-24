@@ -751,6 +751,7 @@ QSize Backend::updateTextureFromSource(const QString& texId, const void* rgba8, 
     if (!m_gl) {
         throw std::runtime_error("nm::Backend::updateTextureFromSource: setup must be called first");
     }
+    makeOwnedContextCurrent();
     if (!rgba8 || width <= 0 || height <= 0) return QSize(0, 0);
     const int rowBytes = width * 4;
     if (bytesPerLine < rowBytes) {
@@ -794,6 +795,7 @@ QSize Backend::updateTextureFromSource(const QString& texId, const void* rgba8, 
 }
 
 void Backend::setExternalTexture(const QString& texId, unsigned int glTexture, QSize size) {
+    makeOwnedContextCurrent();
     const auto existing = m_externalTextures.constFind(texId);
     if (existing != m_externalTextures.constEnd() && existing->owned && existing->handle != 0 && m_gl) {
         GLuint handle = existing->handle;
@@ -805,6 +807,7 @@ void Backend::setExternalTexture(const QString& texId, unsigned int glTexture, Q
 void Backend::removeExternalTexture(const QString& texId) {
     const auto existing = m_externalTextures.constFind(texId);
     if (existing == m_externalTextures.constEnd()) return;
+    makeOwnedContextCurrent();
     if (existing->owned && existing->handle != 0 && m_gl) {
         GLuint handle = existing->handle;
         m_gl->glDeleteTextures(1, &handle);
@@ -2401,6 +2404,7 @@ void Backend::renderInternal(
     const Graph& graph,
     double t,
     std::optional<double> presentationTimestamp) {
+    makeOwnedContextCurrent();
     Graph effectiveGraph = graph;
     if (detail::clampGraphVolumeSizes(effectiveGraph, m_maxTextureSize)
         && !m_warnedVolumeClamp) {
@@ -2499,6 +2503,39 @@ const GpuSurface* Backend::currentRenderSurface() const {
     return texId.isEmpty() || !m_surfaces ? nullptr : m_surfaces->find(texId);
 }
 
+// A Backend that created its own context makes it current before touching
+// GL, so several such Backends can take turns on one thread. A host-owned
+// context stays the host's to make current.
+void Backend::makeOwnedContextCurrent() const {
+    if (m_ownedContext && QOpenGLContext::currentContext() != m_ownedContext
+        && !m_ownedContext->makeCurrent(m_ownedSurface)) {
+        throw std::runtime_error("nm::Backend: QOpenGLContext::makeCurrent() failed");
+    }
+}
+
+Backend::SurfaceTexture Backend::renderSurfaceTexture() const {
+    const GpuSurface* surface = currentRenderSurface();
+    if (!surface) return {};
+    return {surface->texture, QSize(surface->width, surface->height)};
+}
+
+void Backend::resize(QSize size) {
+    if (!m_gl) throw std::runtime_error("nm::Backend::resize: setup must be called first");
+    if (size.width() < 1 || size.height() < 1) {
+        throw std::invalid_argument("nm::Backend::resize: size must be at least 1x1");
+    }
+    makeOwnedContextCurrent();
+    m_size = size;
+    // reference createSurfaces + recreateTextures: every surface starts
+    // over; the cache recreates each one at the new size on first use.
+    m_surfaces->releaseAll();
+    m_pingpong = PingPongState();
+    OutputDescriptor descriptor;
+    descriptor.width = size.width();
+    descriptor.height = size.height();
+    m_sinkManager.configure(descriptor);
+}
+
 QImage Backend::readSurface() const {
     if (m_currentRenderSurface.isEmpty()) {
         throw std::runtime_error("nm::Backend::readSurface: graph has no renderSurface");
@@ -2515,6 +2552,7 @@ QImage Backend::readSurface() const {
         throw std::runtime_error(
             ("nm::Backend::readSurface: surface '" + texId + "' was never written").toStdString());
     }
+    makeOwnedContextCurrent();
 
     m_gl->glBindFramebuffer(GL_FRAMEBUFFER, surface->fbo);
     // PORTING-GUIDE.md GL state parity rules: PACK_ALIGNMENT 1 before

@@ -102,10 +102,11 @@ target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_RO
 
 ### Supply host inputs at run time
 
-`nm::Backend` (`qt/noisemaker/runtime/backend.h`) mirrors the reference host APIs. Each call needs the Backend's GL context current, as `render()` does.
+`nm::Backend` (`qt/noisemaker/runtime/backend.h`) mirrors the reference host APIs. When the host passes its own context to `setup()`, that context must be current for each call, as for `render()`. A Backend created with `setup(nullptr, ...)` makes its own context current.
 
 - External textures: `synth/media` reads `imageTex_step_<N>` and `filter/text` reads `textTex_step_<N>`. `Backend::externalTextureIds(graph)` lists them. Upload pixels with `updateTextureFromSource(texId, image, {flipY})`, or bind a host GL texture with `setExternalTexture(texId, glTexture, size)`. The reference demo uploads media with `flipY = false` and text with `flipY = true`. Unsupplied ids sample a transparent-black default. For text, `nm::updateTextTextures(backend, graph, dataRoot, size)` (`qt/noisemaker/runtime/text_texture.h`) draws each `filter/text` step's parameters the way the reference canvas host does and uploads the result. It uses the bundled Nunito font for the default family. `parity/check_text_canvas.mjs` compares it with a Chromium canvas.
 - Live parameters: `applyStepParameterValues(graph, registry, {"step_N": {param: value}})` and `setUniform(graph, name, value)` change uniforms without a recompile. For media, set `imageSize` to the uploaded size. Feedback surfaces persist, because they are keyed by texture id. A recompiled graph with the same structure also keeps them.
+- Size and presentation: `resize(size)` changes the render size, as the reference `Pipeline.resize` does: every surface starts over at the new size. Upload text again after a resize. `renderSurfaceTexture()` returns the GL texture of the presented frame (bottom-up rows) for drawing on the GPU; `readSurface()` reads it back to a top-down `QImage`. `releaseGl()` frees the Backend's GL objects while a host context is still current.
 - Time: `render(graph, t)` takes normalized loop time. `Backend::normalizedLoopTime(elapsedSeconds, 10.0)` derives it. The Backend supplies `deltaTime` and `frame` like the reference, and `syncTime(t)` pauses without a time step.
 
 ## Status, parity, and coverage

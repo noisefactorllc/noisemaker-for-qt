@@ -73,8 +73,9 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize);
 // For every filter/text pass in `graph`: registers the fonts under
 // `dataRoot`, draws the pass's parameters at `canvasSize` and uploads the
 // result as its textTex_step_N with flipY = true, as the reference hosts do.
-// Call after compiling and again after changing a text parameter. The
-// Backend's GL context must be current. Returns the uploaded texture ids.
+// Call after compiling, after Backend::resize() (the canvas has the render
+// size), and after changing a text parameter. A host GL context must be
+// current. Returns the uploaded texture ids.
 QStringList updateTextTextures(Backend& backend, const Graph& graph, const QString& dataRoot,
                                QSize canvasSize);
 

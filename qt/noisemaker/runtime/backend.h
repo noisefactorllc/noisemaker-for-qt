@@ -81,7 +81,10 @@ public:
 
     // `context`: an existing, already-current QOpenGLContext to render
     // through, or nullptr to have the Backend create and own its own
-    // 4.1-core context + QOffscreenSurface. `dataRoot`: filesystem root
+    // 4.1-core context + QOffscreenSurface, which it makes current itself
+    // whenever a call needs GL (so several such Backends can share a
+    // thread). A host context must be current for every such call, as for
+    // render(). `dataRoot`: filesystem root
     // containing `shaders/effects/<ns>/<func>/<prog>.frag` (= "qt/noisemaker").
     // `size`: render target dimensions. Throws std::runtime_error if
     // context/surface creation or function resolution fails.
@@ -244,6 +247,28 @@ public:
     // if no graph has been rendered yet / the surface was never written.
     QImage readSurface() const;
 
+    // The GL texture holding the frame readSurface() reads, for hosts that
+    // draw it on the GPU (a QOpenGLWidget, a Qt Quick item) instead of
+    // reading it back. Rows run bottom-up (GL convention); the format is
+    // the surface's own (usually RGBA16F). {0, 0x0} before the first
+    // render(). The texture belongs to the Backend: it is valid in this
+    // Backend's context (or one sharing with it) until the next render(),
+    // resize() or releaseGl().
+    struct SurfaceTexture {
+        unsigned int texture = 0;
+        QSize size;
+    };
+    SurfaceTexture renderSurfaceTexture() const;
+
+    // Reference Pipeline.resize: changes the render size. Every surface is
+    // recreated, empty, at its new dimensions by the next render(), so
+    // feedback and simulation state starts over, as in the reference; output
+    // sinks see the new size. Graphs, programs, external textures and MIDI
+    // and audio state are kept. Throws std::invalid_argument for an empty
+    // size and std::runtime_error before setup(). A host context must be
+    // current.
+    void resize(QSize size);
+
     // Deletes every GL object this Backend owns (SurfaceCache textures/
     // FBOs, compiled programs + their UBOs, the fullscreen/empty VAOs/VBO)
     // and leaves the object in the same state as a freshly-default-
@@ -284,6 +309,7 @@ private:
         int uboBlockSize = 0;
     };
 
+    void makeOwnedContextCurrent() const;
     void createFullscreenVao();
     void createEmptyVao();
     const CompiledProgram& programFor(const Pass& pass);

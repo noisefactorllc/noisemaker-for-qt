@@ -49,6 +49,11 @@ target_link_libraries(test_text_texture PRIVATE noisemaker-qt Qt6::Core Qt6::Gui
 add_test(NAME test_text_texture COMMAND test_text_texture)
 set_tests_properties(test_text_texture PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_backend_lifecycle test_backend_lifecycle.cpp)
+target_link_libraries(test_backend_lifecycle PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_backend_lifecycle COMMAND test_backend_lifecycle)
+set_tests_properties(test_backend_lifecycle PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 # The export kit's host input code (export-kit/kit/src), built against
 # this tree the way the kit builds it against its vendored engine.
 add_executable(test_export_kit_host test_export_kit_host.cpp
