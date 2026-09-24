@@ -36,6 +36,7 @@
 #include <QString>
 
 #include <cstdio>
+#include <stdexcept>
 
 namespace {
 
@@ -401,15 +402,56 @@ int main() {
         check(threw, description);
     };
 
-    expectUnsupported(QStringLiteral("search synth\nif (1) {\n  noise().write(o0)\n}\nrender(o0)\n"),
-                       "1/7: if/elif/else -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nbreak\n"), "2a/7: break -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\ncontinue\n"), "2b/7: continue -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nreturn\n"), "2c/7: return -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(wrap: () => true).write(o0)\nrender(o0)\n"),
                        "3/7: Func boolean param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(octaves: () => 5).write(o0)\nrender(o0)\n"),
                        "6/7: Func numeric param -> UnsupportedDsl");
+
+    // Control flow compiles to the reference's Branch/Break/Continue/Return
+    // plan entries (oracle-gated by parity/corpus/control_flow_*.dsl).
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth\nlet depth = 4\nnoise().write(o0)\n"
+            "if (depth) {\n  noise().write(o1)\n  break\n} elif (time) {\n  continue\n} elif (bogus) {\n} else {\n  solid().write(o2)\n  return 5\n}\n"
+            "if (0 / 0) {} elif (foo.bar) {}\nreturn\nrender(o0)\n"));
+        const QJsonArray plans = out.value(QStringLiteral("plans")).toArray();
+        check(plans.size() == 4, "control flow: 4 plans (chain, Branch, Branch, Return)");
+        const QJsonObject branch = plans.at(1).toObject();
+        check(branch.value(QStringLiteral("type")).toString() == QStringLiteral("Branch")
+                  && branch.value(QStringLiteral("cond")) == QJsonValue(true),
+              "if (depth): Branch whose cond is true (let-bound Number 4)");
+        const QJsonArray thenBranch = branch.value(QStringLiteral("then")).toArray();
+        check(thenBranch.size() == 2 && thenBranch.at(0).toObject().value(QStringLiteral("final")).toInt() == 3
+                  && thenBranch.at(1).toObject().value(QStringLiteral("type")).toString() == QStringLiteral("Break"),
+              "then block: a chain plan continuing the shared temp counter, then Break");
+        const QJsonArray elif = branch.value(QStringLiteral("elif")).toArray();
+        check(elif.size() == 2 && elif.at(0).toObject().value(QStringLiteral("cond")) == QJsonValue(QJsonObject())
+                  && elif.at(1).toObject().value(QStringLiteral("cond")) == QJsonValue(false),
+              "elif (time) -> {} (reference {fn}); elif (bogus) -> false");
+        const QJsonArray elseBranch = branch.value(QStringLiteral("else")).toArray();
+        check(elseBranch.size() == 2 && elseBranch.at(1).toObject().value(QStringLiteral("value")).toObject()
+                                             .value(QStringLiteral("value")).toDouble() == 5.0,
+              "else block: chain plan, then Return with a Number value");
+        const QJsonObject second = plans.at(2).toObject();
+        check(second.value(QStringLiteral("cond")) == QJsonValue(false)
+                  && second.value(QStringLiteral("else")).toArray().isEmpty(),
+              "if (0 / 0): the clone turns NaN into null, so cond is false; no else -> []");
+        check(plans.at(3).toObject() == QJsonObject{{QStringLiteral("type"), QStringLiteral("Return")}},
+              "bare return -> {type: Return}");
+        const QJsonArray ds = diags(out);
+        check(ds.size() == 2 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                  && ds.at(1).toObject().value(QStringLiteral("message")).toString() == QStringLiteral("Unknown enum path: 'foo.bar'"),
+              "diagnostics: S003 for bogus, S001 'Unknown enum path' for foo.bar, in evaluation order");
+
+        QString letError;
+        try {
+            validateSrc(QStringLiteral("search synth\nif (1) {\n  let x = 1\n}\n"));
+        } catch (const std::runtime_error& e) {
+            letError = QString::fromUtf8(e.what());
+        }
+        check(letError == QStringLiteral("Cannot read properties of undefined (reading '0')"),
+              "let inside a block fails validation with the reference's TypeError text");
+    }
 
     // Bare state values (time/frame/...) compile to the values the reference
     // graph JSON carries: its `{fn}` closures are never called and do not

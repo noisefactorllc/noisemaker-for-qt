@@ -18,6 +18,7 @@
 #include <charconv>
 #include <cmath>
 #include <optional>
+#include <stdexcept>
 
 namespace nm {
 
@@ -69,11 +70,12 @@ namespace {
 //     adds one (an intra-frame ping-pong loop count) that does not exist
 //     anywhere in the JS reference; the parser (T8) does not produce an
 //     `iterations` key on Subchain nodes either. Not ported.
-//   - `evalExpr`/`evalCondition` are UNREACHABLE in this port and are not
-//     implemented at all (matches TD's own omission, for the same
-//     reason): their only call sites are IfStmt's condition and Return's
-//     value, both of which raise UnsupportedDsl before ever reaching
-//     them.
+//   - Control flow (if/elif/else, break, continue, return) compiles to the
+//     reference's Branch/Break/Continue/Return plan entries, including the
+//     shared temp counter, `evalExpr`'s JSON clone (a non-finite Number
+//     condition reads back as null, so it is false) and the TypeError a
+//     `let` inside a block raises. Nothing downstream executes these plans:
+//     the reference expander fails on them, and so does nm::expand.
 //   - `isStarterOp`'s bare-canonical-name fallback branch is
 //     STRUCTURALLY DEAD on this catalog: STARTER_OPS (registerStarterOps)
 //     is only ever populated with NAMESPACED "<ns>.<func>" keys -- by the
@@ -323,6 +325,11 @@ private:
     QJsonValue substitute(const QJsonValue& node, const QStringList& resolving = {});
     void bindVar(const QJsonObject& v);
     static QJsonValue buildNamespaceSnapshot(const QJsonValue& callNamespace);
+
+    // -------------------------------------------------- control flow
+    QJsonValue evalExpr(const QJsonValue& node);
+    QJsonValue evalCondition(const QJsonValue& node);
+    QJsonArray compileBlock(const QJsonValue& body);
 
     // -------------------------------------------------- statement / chain compilation
     QJsonValue compileStmt(const QJsonObject& stmt); // Undefined => produced nothing
@@ -798,43 +805,126 @@ QJsonValue Validator::make3dRef(const QJsonValue& nVal, const QString& defaultKi
     return o;
 }
 
+// ---------------------------------------------------------------- control flow
+
+// Reference evalExpr: substitute(clone(node)), S006 for a starter chain, and
+// enum resolution of a Member (a number becomes a Number node; any other
+// resolved value is returned as is).
+QJsonValue Validator::evalExpr(const QJsonValue& node) {
+    const QJsonValue expr = substitute(node);
+    if (isStarterChain(expr)) {
+        const QJsonValue head = firstChainCall(expr);
+        if (!head.isUndefined()) pushDiag(QStringLiteral("S006"), head);
+    }
+    if (nodeType(expr) == NodeKind::Member) {
+        const QJsonValue resolved = resolveEnum(normalizeMemberPath(expr.toObject().value(QStringLiteral("path"))));
+        if (resolved.isDouble()) return ast::number(resolved.toDouble());
+        if (!resolved.isUndefined()) return resolved;
+    }
+    return expr;
+}
+
+// Reference evalCondition. Returns a boolean, or {} where the reference
+// returns a {fn} closure (JSON drops the function; nothing calls it).
+QJsonValue Validator::evalCondition(const QJsonValue& node) {
+    const QJsonValue expr = evalExpr(node);
+    if (!isTruthy(expr)) return false;
+    const QString t = nodeType(expr);
+    const QJsonObject o = expr.toObject();
+    if (t == NodeKind::Number) {
+        // evalExpr's clone is a JSON round trip, so NaN and Infinity read
+        // back as null, and toBoolean(null) is false.
+        const QJsonValue v = o.value(QStringLiteral("value"));
+        if (v.isDouble()) return std::isfinite(v.toDouble()) && v.toDouble() != 0.0;
+        return isTruthy(v);
+    }
+    if (t == NodeKind::Boolean) return isTruthy(o.value(QStringLiteral("value")));
+    if (t == NodeKind::Func) {
+        throw UnsupportedDsl(QStringLiteral(
+            "Func conditions ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS4.3)."));
+    }
+    if (t == NodeKind::Ident) {
+        const QString name = o.value(QStringLiteral("name")).toString();
+        if (symbols_.contains(name)) return evalCondition(symbols_.value(name));
+        if (stateValues().contains(name)) return QJsonObject();
+        pushDiag(QStringLiteral("S003"), expr);
+        return false;
+    }
+    if (t == NodeKind::Member) {
+        const QJsonValue pathVal = o.value(QStringLiteral("path"));
+        const QJsonValue cur = resolveEnum(normalizeMemberPath(pathVal));
+        if (!cur.isUndefined()) return isTruthy(cur);
+        QStringList segs;
+        for (const QJsonValue& s : pathVal.toArray()) segs.append(s.toString());
+        const QString pathText = segs.join(QLatin1Char('.'));
+        pushDiag(QStringLiteral("S001"), expr,
+                 QStringLiteral("Unknown enum path: '%1'").arg(pathText.isEmpty() ? QStringLiteral("unknown") : pathText));
+        return false;
+    }
+    return false;
+}
+
+QJsonArray Validator::compileBlock(const QJsonValue& body) {
+    QJsonArray result;
+    for (const QJsonValue& s : body.toArray()) {
+        const QJsonValue compiled = compileStmt(s.toObject());
+        if (!compiled.isUndefined()) result.append(compiled);
+    }
+    return result;
+}
+
 // ---------------------------------------------------------------- statement compilation
 
+// Reference compileStmt. Nothing downstream executes Branch, Break,
+// Continue or Return plans: the reference expander iterates `plan.chain`
+// and fails on them, and nm::expand does the same.
 QJsonValue Validator::compileStmt(const QJsonObject& stmt) {
     const QString t = stmt.value(QStringLiteral("type")).toString();
-    // UnsupportedDsl fail-loud points 1-2 of 7 (see validator.h / file
-    // header). NOT "the reference interprets control flow live every
-    // frame" -- verified otherwise (task T7 docs pass): the reference's
-    // OWN validator (validator.js compileStmt) CAN build a Branch plan
-    // node whose `cond` is a `{fn:(state)=>...}` closure (reference/02
-    // SS4.3), but nothing downstream ever calls it -- expander.js only
-    // ever iterates `plan.chain` (line ~155) and has no `Branch`/`Break`/
-    // `Continue`/`Return` handling at all; a full-file grep of
-    // shaders/src/runtime/*.js for `.fn(` (i.e. any call site that would
-    // invoke such a closure) finds none. Branch is therefore inert in the
-    // reference's own render path -- this AOT frontend's fail-loud stance
-    // here matches the sibling ports' contract at this exact point
-    // (validator.h), not a live per-frame mechanism it is declining to
-    // replicate.
     if (t == NodeKind::IfStmt) {
-        throw UnsupportedDsl(QStringLiteral(
-            "if/elif/else branches are not implemented in the first-cut DSL frontend (reference/02 SS4.1)."));
+        const QJsonValue cond = evalCondition(stmt.value(QStringLiteral("condition")));
+        const QJsonArray thenBranch = compileBlock(stmt.value(QStringLiteral("then")));
+        QJsonArray elif;
+        for (const QJsonValue& e : stmt.value(QStringLiteral("elif")).toArray()) {
+            const QJsonObject eo = e.toObject();
+            QJsonObject entry;
+            entry.insert(QStringLiteral("cond"), evalCondition(eo.value(QStringLiteral("condition"))));
+            entry.insert(QStringLiteral("then"), compileBlock(eo.value(QStringLiteral("then"))));
+            elif.append(entry);
+        }
+        const QJsonArray elseBranch = compileBlock(stmt.value(QStringLiteral("else")));
+        QJsonObject branch;
+        branch.insert(QStringLiteral("type"), QStringLiteral("Branch"));
+        branch.insert(QStringLiteral("cond"), cond);
+        branch.insert(QStringLiteral("then"), thenBranch);
+        branch.insert(QStringLiteral("elif"), elif);
+        branch.insert(QStringLiteral("else"), elseBranch);
+        return branch;
     }
-    if (t == NodeKind::Break || t == NodeKind::Continue || t == NodeKind::Return) {
-        throw UnsupportedDsl(
-            QStringLiteral("break/continue/return are not implemented in the first-cut DSL frontend (reference/02 SS4)."));
+    if (t == NodeKind::Break || t == NodeKind::Continue) {
+        QJsonObject node;
+        node.insert(QStringLiteral("type"), t);
+        return node;
     }
-    // The chain-statement wrapper has NO "type" key (identified by the
-    // presence of "chain" alone -- ast.h / parser.cpp T8 convention).
-    if (!stmt.contains(QStringLiteral("type")) && stmt.contains(QStringLiteral("chain"))) {
-        // compileChainStatement returns an EMPTY object as its "null plan"
-        // sentinel (the missing-write() error path -- JS `return null`); a
-        // real plan always has at least a "chain" key, so emptiness alone
-        // distinguishes the two cases.
-        const QJsonObject compiled = compileChainStatement(stmt);
-        return compiled.isEmpty() ? QJsonValue(QJsonValue::Undefined) : QJsonValue(compiled);
+    if (t == NodeKind::Return) {
+        QJsonObject node;
+        node.insert(QStringLiteral("type"), NodeKind::Return);
+        if (isTruthy(stmt.value(QStringLiteral("value")))) {
+            node.insert(QStringLiteral("value"), evalExpr(stmt.value(QStringLiteral("value"))));
+        }
+        return node;
     }
-    return QJsonValue(QJsonValue::Undefined);
+    // Any other statement goes to compileChainStatement. Only a block can
+    // hold a statement with no chain (`let` inside if/elif/else); the
+    // reference then reads `stmt.chain[0]` and raises this TypeError.
+    if (!stmt.value(QStringLiteral("chain")).isArray()) {
+        throw std::runtime_error("Cannot read properties of undefined (reading '0')");
+    }
+    // compileChainStatement returns an EMPTY object as its "null plan"
+    // sentinel (the missing-write() error path -- JS `return null`); a
+    // real plan always has at least a "chain" key, so emptiness alone
+    // distinguishes the two cases.
+    const QJsonObject compiled = compileChainStatement(stmt);
+    return compiled.isEmpty() ? QJsonValue(QJsonValue::Undefined) : QJsonValue(compiled);
 }
 
 QJsonObject Validator::compileChainStatement(const QJsonObject& stmt) {

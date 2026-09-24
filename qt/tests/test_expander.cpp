@@ -35,6 +35,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <stdexcept>
 
 namespace {
 
@@ -256,6 +257,29 @@ int main() {
             isRuntimeError = true;
         }
         check(isRuntimeError, "nm::UnsupportedDsl (expander.h) is nm::UnsupportedDsl (validator.h) -- one shared type");
+    }
+
+    // ======================================================================
+    // Control flow: the reference expander iterates `plan.chain` with
+    // for...of, so a Branch/Break/Continue/Return plan raises a TypeError
+    // (oracle-gated by parity/corpus/control_flow_*.dsl).
+    // ======================================================================
+    {
+        QString error;
+        try {
+            expandSrc(QStringLiteral("search synth\nnoise().write(o0)\nif (1) {\n  noise().write(o1)\n}\nrender(o0)\n"));
+        } catch (const std::runtime_error& e) {
+            error = QString::fromUtf8(e.what());
+        }
+        check(error == QStringLiteral("plan.chain is not iterable"),
+              "a Branch plan fails expansion with the reference's TypeError text");
+        error.clear();
+        try {
+            expandSrc(QStringLiteral("search synth\nnoise().write(o0)\nreturn 3\nrender(o0)\n"));
+        } catch (const std::runtime_error& e) {
+            error = QString::fromUtf8(e.what());
+        }
+        check(error == QStringLiteral("plan.chain is not iterable"), "a Return plan fails expansion the same way");
     }
 
     // ======================================================================

@@ -114,11 +114,13 @@ effect_registry.cpp (loads effects/**.json)   dsl_compiler.cpp (orchestration + 
 AST and graph are `QJsonObject` trees with the same `type` strings and key shapes as the
 reference, so every stage byte-diffs against the reference oracles
 (`parity/check_{lex,parse,validate,expand,graph,registry}.mjs`, key-order-insensitive).
-Unsupported DSL surface fails loudly (`UnsupportedDsl`) exactly where the siblings fail:
-`if/elif/else`, `break/continue/return`, `Func` params, bare state values (`time`, `frame`, ...)
-in boolean, member and numeric params, and compute pass fields (`entryPoint`, `workgroups`,
-`storage*`). `midi()` and `audio()` automation compile and resolve at render time against
-host-fed state (`nm::MidiState`, `nm::AudioState`).
+Unsupported DSL surface fails loudly (`UnsupportedDsl`): `Func` (arrow-function) params and
+conditions, and compute pass fields (`entryPoint`, `workgroups`, `storage*`). Control flow
+(`if/elif/else`, `break/continue/return`) validates to the reference's Branch, Break, Continue and
+Return plans; expansion then fails with the reference's own error ("plan.chain is not iterable"),
+so neither engine renders such a program. Bare state values (`time`, `frame`, ...) compile as the
+reference compiles them. `midi()` and `audio()` automation compile and resolve at render time
+against host-fed state (`nm::MidiState`, `nm::AudioState`).
 
 ## Effects library
 
@@ -182,8 +184,8 @@ External-input effects take host input: `media` and `text` through
 `nm::Backend::updateTextureFromSource`, `scope`, `spectrum` and `roll` through the audio and MIDI
 snapshots. Capture itself (camera, microphone, MIDI devices, text rasterization) stays in the
 host. `meshLoader` mesh input is still staged. The parity harness exercises the no-input
-fallbacks only. DSL control flow and compute-pass fields fail loudly as unsupported, exactly as
-in the Unity and TouchDesigner ports. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
+fallbacks only. DSL control flow fails at expansion, as it does in the reference. Compute-pass
+fields fail loudly as unsupported. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
 
 ## Repo layout
 

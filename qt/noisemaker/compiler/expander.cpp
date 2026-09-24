@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <stdexcept>
 
 namespace nm {
 
@@ -393,6 +394,12 @@ private:
     }
 
     void expandPlan(const QJsonObject& plan, int planIndex) {
+        // The reference iterates `plan.chain` with for...of. Branch, Break,
+        // Continue and Return plans (control flow) have no chain, so the
+        // reference raises this TypeError and expands nothing.
+        if (!plan.value(QStringLiteral("chain")).isArray()) {
+            throw std::runtime_error("plan.chain is not iterable");
+        }
         currentInput_.clear();
         currentInput3d_.clear();
         currentInputGeo_.clear();
