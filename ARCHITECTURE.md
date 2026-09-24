@@ -181,7 +181,8 @@ only on the reference plus capture parameters and are reusable across sibling po
   engine on QOpenGL for the reasons above; Qt Quick on Metal, Vulkan or Direct3D cannot host it.
 - `nm-render` (CLI): `--dsl <file> | --graph <json> | --batch-manifest <json>`, `--size`,
   `--time`, `--frames`, `--samples`, `--out <png>`, plus `--dump-{tokens,ast,validated,graph}`
-  for the compiler gates. Offscreen; requires a GPU but no window session interaction.
+  for the compiler gates, and `--help`. Offscreen; requires a GPU but no window session
+  interaction.
 - `examples/viewer`: a minimal, resizable `QOpenGLWidget` live view (DSL in, animated render
   out) — the smallest honest demonstration of embedding in a Qt Widgets app.
 - `examples/quick`: `NoisemakerItem` in a `QQuickView`, with errors shown in the scene.

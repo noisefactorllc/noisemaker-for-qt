@@ -1,8 +1,9 @@
 // nm-render CLI. Shared file (see qt/CMakeLists.txt header comment and
-// flag_hooks.h) — created ONCE here in T3 with every later flag
-// pre-declared; implementing one of those flags is purely additive (a new
-// translation unit in this directory that registers a handler) and must
-// never require editing this file again.
+// flag_hooks.h): flags other than --graph and --batch-manifest are
+// implemented in their own translation units, which register a handler
+// for a name pre-declared below. A new flag also needs a line in kUsage
+// and kKnownFlags, which --help and the unknown-option check read
+// (qt/tests/test_nm_render_cli.cpp checks both).
 
 #include "flag_hooks.h"
 #include "host_meshes.h"
@@ -44,6 +45,49 @@ const QStringList kPreDeclaredFlags = {
     QStringLiteral("--dump-validated"),
     QStringLiteral("--dump-graph"),
 };
+
+// Every mode and flag nm-render and its flag handlers (flag_hooks.h)
+// accept. Printed by --help, and with any usage error.
+const char* const kUsage =
+    "usage: nm-render MODE [OPTIONS]\n"
+    "\n"
+    "Render modes (write PNG files):\n"
+    "  --dsl FILE --size WxH --out PNG [--time T] [--frames N] [--mesh OBJ]\n"
+    "      Compile a DSL program and render it N times at normalized loop time T,\n"
+    "      0 <= T < 1 (defaults: T 0, N 1). Feedback effects need N > 1.\n"
+    "  --graph FILE --size WxH --out PNG [--time T] [--frames N] [--mesh OBJ]\n"
+    "      Render an exported graph JSON the same way.\n"
+    "  --graph FILE --size WxH --samples TOTAL:EVERY --out PNG [--mesh OBJ]\n"
+    "      Step TOTAL frames 1/60 s apart. Every EVERY frames, write PNG with .tS\n"
+    "      before its extension, S being the elapsed whole seconds (out.t5.png).\n"
+    "  --batch-manifest FILE\n"
+    "      Render each {graph, size, out, time, frames, mesh} object of a JSON array.\n"
+    "\n"
+    "  --mesh OBJ  Load an OBJ file as mesh0 for meshLoader(), replacing the\n"
+    "              default built-in mesh.\n"
+    "\n"
+    "Compiler dumps (JSON on standard output, for the parity gates):\n"
+    "  --dump-tokens FILE  --dump-ast FILE  --dump-validated FILE  --dump-graph FILE\n"
+    "\n"
+    "  --help  Print this text.\n"
+    "\n"
+    "Render modes read shaders/, effects/ and share/ from qt/noisemaker beside the build\n"
+    "directory, else ./qt/noisemaker. Exit status: 0 on success, 1 when compiling or\n"
+    "rendering fails, 2 for a usage error.\n";
+
+const QStringList kKnownFlags = {
+    QStringLiteral("--dsl"),          QStringLiteral("--graph"),      QStringLiteral("--samples"),
+    QStringLiteral("--batch-manifest"), QStringLiteral("--size"),     QStringLiteral("--out"),
+    QStringLiteral("--time"),         QStringLiteral("--frames"),     QStringLiteral("--dump-tokens"),
+    QStringLiteral("--dump-ast"),     QStringLiteral("--dump-validated"), QStringLiteral("--dump-graph"),
+    QStringLiteral("--mesh"),         QStringLiteral("--help"),
+};
+
+int usageError(const QString& message) {
+    if (!message.isEmpty()) std::fprintf(stderr, "ERROR: %s\n\n", message.toUtf8().constData());
+    std::fprintf(stderr, "%s", kUsage);
+    return 2;
+}
 
 QString findValue(const QStringList& args, const QString& flag) {
     const int idx = args.indexOf(flag);
@@ -217,11 +261,15 @@ int main(int argc, char** argv) {
         args.removeFirst(); // program name
     }
 
-    if (args.isEmpty()) {
-        std::fprintf(stderr,
-                      "usage: nm-render --graph <g.json> --size WxH --time T --frames N --out <c.png> [--mesh <m.obj>]\n"
-                      "       nm-render --batch-manifest <m.json>\n");
-        return 2;
+    if (args.contains(QStringLiteral("--help"))) {
+        std::printf("%s", kUsage);
+        return 0;
+    }
+    if (args.isEmpty()) return usageError(QString());
+    for (const QString& arg : args) {
+        if (arg.startsWith(QStringLiteral("--")) && !kKnownFlags.contains(arg)) {
+            return usageError(QStringLiteral("unknown option ") + arg);
+        }
     }
 
     // Pre-declared flags dispatch through the registration hook so
@@ -250,6 +298,5 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::fprintf(stderr, "unimplemented: no recognized render mode in arguments\n");
-    return 2;
+    return usageError(QStringLiteral("no mode: pass --dsl, --graph, --batch-manifest or a --dump-* flag"));
 }
