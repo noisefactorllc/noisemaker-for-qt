@@ -87,7 +87,7 @@ examples/viewer/build/viewer --selfcheck  # renders 30 frames, resizes the windo
 
 ### Build the viewer against an *installed* package instead
 
-`libnoisemaker-qt` supports `find_package`. Installation puts a static library, its public headers, the package config with its version file, the runtime data (`share/noisemaker-qt/noisemaker/`: shaders, effect definitions, the built-in meshes and the bundled font), and the license (`share/doc/noisemaker-qt/LICENSE`) under one prefix. The runtime loads the data from disk; it is never compiled into the library.
+`libnoisemaker-qt` supports `find_package`. Installation puts a static library, its public headers, the package config with its version file, the runtime data (`share/noisemaker-qt/noisemaker/`: shaders, effect definitions, the built-in meshes and the bundled font), the `nm-render` CLI (`bin/nm-render`, which finds that data from any working directory), and the licenses (`share/doc/noisemaker-qt/`) under one prefix. The runtime loads the data from disk; it is never compiled into the library.
 
 ```sh
 cmake --install qt/build --prefix /path/to/some/prefix

@@ -118,6 +118,10 @@ if(NM_QT_INSTALL)
     install(TARGETS noisemaker-qt
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     )
+    if(NM_QT_BUILD_TOOLS)
+        # nm-render finds the installed data at <bindir>/../share/noisemaker-qt/noisemaker.
+        install(TARGETS nm-render RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    endif()
     if(NM_QT_BUILD_QUICK)
         install(TARGETS noisemaker-qt-quick ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
         install(FILES quick/noisemaker_item.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/noisemaker-qt/quick)
