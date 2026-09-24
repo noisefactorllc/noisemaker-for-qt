@@ -39,6 +39,8 @@ beyond a literal port:
     test_runner_passes_saved_host_textures_to_the_renderer (asyncInit
     overlays settle before capture and the reference's host textures reach
     the candidate; GAP-026)
+  - test_timed_golden_mint_starts_from_cleared_graph_state (a timed series
+    starts from zeroed graph state; GAP-034)
 """
 
 import os
@@ -56,13 +58,15 @@ REPO = Path(__file__).resolve().parents[1]
 # Stand-in reference for the golden minters (no browser). compileGraph gives
 # every program one pass; the fake demo gives it one pass too, so batch
 # minting's pass-count check agrees. A program naming "mesh0" reads a mesh
-# texture; one naming "text" samples the host texture textTex_step_1.
+# texture; one naming "text" samples the host texture textTex_step_1; one
+# naming "sim" declares the state texture global_sim_state.
 FAKE_REFERENCE_COMPILER = """
 export function compileGraph (source) {
   const inputs = {}
   if (source.includes('mesh0')) inputs.meshPositions = 'global_mesh0_positions_chain_0'
   if (/ text /.test(source)) inputs.textTex = 'textTex_step_1'
-  return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill', inputs }], programs: {}, renderSurface: 'o0' }
+  const textures = / sim/.test(source) ? { global_sim_state: { width: 1, height: 1 } } : {}
+  return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill', inputs }], programs: {}, textures, renderSurface: 'o0' }
 }
 """
 
@@ -83,8 +87,13 @@ export function compileGraph (source) {
 #   reference pipeline.resize() -> initAsyncEffects().
 # - "text R G B" makes the host upload textTex_step_1 (R G B) TEXT_TICKS
 #   after the swap, at the renderer's size.
+# - "sim" is a stateful solver: each render() adds 1 to its state texture
+#   and fills o0 with (state, 0, 0). Like the paused demo's
+#   renderSingleFrameIfPaused, the load renders the new graph PAUSED_RENDERS
+#   times before the harness takes over.
 FAKE_SHADE_HARNESS = """
 const COMPILE_TICKS = 25
+const PAUSED_RENDERS = 22
 const DEBOUNCE_TICKS = 8
 const TRACE_TICKS = 12
 const TEXT_TICKS = 10
@@ -110,7 +119,8 @@ function makePage (launchArgs = []) {
   const at = (delay, fn) => timers.push({ due: tick + delay, fn })
   const texture = (w, h) => ({ handle: {}, width: w, height: h, glFormat: { type: 'UNSIGNED_BYTE' }, data: new Uint8Array(w * h * 4) })
   const o0 = texture(64, 64)
-  const textures = new Map([['global_o0_read', o0]])
+  const simState = texture(1, 1)
+  const textures = new Map([['global_o0_read', o0], ['global_sim_state_read', simState]])
   let attached = null
   const gl = {
     FRAMEBUFFER: 1, COLOR_ATTACHMENT0: 2, TEXTURE_2D: 3, FRAMEBUFFER_COMPLETE: 4, RGBA: 5,
@@ -141,7 +151,10 @@ function makePage (launchArgs = []) {
     constructor () {
       this.graph = { id: 'default', source: 'fill 255 0 0', passes: [{}, {}, {}], renderSurface: 'o0' }
       this.isCompiling = false
-      this.surfaces = new Map([['o0', { read: 'global_o0_read', write: 'global_o0_read' }]])
+      this.surfaces = new Map([
+        ['o0', { read: 'global_o0_read', write: 'global_o0_read' }],
+        ['sim_state', { read: 'global_sim_state_read', write: 'global_sim_state_read' }]
+      ])
       this.backend = { gl, textures }
       this.overlay = null
       this.generation = 0
@@ -190,6 +203,7 @@ function makePage (launchArgs = []) {
           textures.set('textTex_step_1', t)
         })
       }
+      for (let i = 0; i < PAUSED_RENDERS; i++) this.render()
     }
 
     resize (w, h) {
@@ -202,8 +216,12 @@ function makePage (launchArgs = []) {
     render () {
       const text = textures.get('textTex_step_1')
       const source = this.graph.source.includes('mesh0') ? meshText : this.graph.source
-      const color = text ? Array.from(text.data.subarray(0, 4))
+      let color = text ? Array.from(text.data.subarray(0, 4))
         : (this.overlay || colorAfter('fill', source) || [0, 0, 0, 255])
+      if (/ sim/.test(this.graph.source)) {
+        simState.data[0] += 1
+        color = [simState.data[0], 0, 0, 255]
+      }
       for (let i = 0; i < o0.data.length; i += 4) o0.data.set(color, i)
     }
   }
@@ -962,7 +980,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("0/3 pass", result.stdout)
 
-    def _mint_with_fake_reference(self, script, programs, meshes=None, playwright=False, env=None):
+    def _mint_with_fake_reference(self, script, programs, meshes=None, playwright=False, env=None, extra_args=()):
         parity = self.tmp / "parity"
         tools = self.tmp / "tools"
         reference = self.tmp / "reference"
@@ -992,7 +1010,7 @@ class HarnessContractTests(unittest.TestCase):
         if script == "batch-golden.mjs":
             command = ["node", str(parity / script), str(out), "--size", "8", "--chunk-size", "1", "--"] + paths
         else:
-            command = ["node", str(parity / script), paths[0], str(out), "--size", "8"]
+            command = ["node", str(parity / script), paths[0], str(out), "--size", "8", *extra_args]
         result = subprocess.run(
             command,
             env={**os.environ, "NM_REFERENCE_ROOT": str(reference), **(env or {})},
@@ -1238,6 +1256,17 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(args.count("--external-texture"), 1, args)
         self.assertEqual(args[args.index("--external-texture") + 1], f"textTex_step_1={texture}")
 
+
+    def test_timed_golden_mint_starts_from_cleared_graph_state(self):
+        result, out = self._mint_with_fake_reference(
+            "export-and-render.mjs", {"solver": "fill 0 0 0 sim\n"},
+            extra_args=("--run-seconds", "1", "--sample-every", "1"),
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        # 60 protocol frames from a cleared state; the demo's 22 paused
+        # renders after the load must not carry into the series.
+        self.assertEqual(png_pixel(out / "solver.golden.t1.png", 3, 3), (60, 0, 0, 255))
 
 if __name__ == "__main__":
     unittest.main()

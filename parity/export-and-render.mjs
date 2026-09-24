@@ -798,6 +798,50 @@ async function main () {
       // normalized dt (one 60fps frame in the 10s loop), driving pipeline.render(t)
       // DIRECTLY (NO setPausedTime — let lastTime advance so deltaTime>0 and the sim
       // EVOLVES), capturing every sample_every seconds to <name>.golden.t<sec>.png.
+      //
+      // Start the series from zeroed state, as nm-render --samples starts from
+      // a fresh Backend (GAP-034). After the load, the paused demo renders the
+      // graph about 22 times through renderSingleFrameIfPaused, at the
+      // wall-clock time where it paused, so the state (for example
+      // navierStokes' velocity field, fed by an animated noise input) would
+      // otherwise differ from mint to mint. Every texture the graph declares
+      // and the render surfaces o0-o7 are cleared; a cleared solver
+      // re-seeds itself on its first frame (nsSplat's empty-buffer check).
+      const clearedTimed = await page.evaluate((textureIds) => {
+        const p = window.__noisemakerRenderingPipeline
+        const backend = p?.backend
+        const gl = backend?.gl
+        if (!p || !gl) return { error: 'no pipeline/gl' }
+        const physicalKeys = new Set()
+        const addSurface = (bareId) => {
+          const surf = p.surfaces.get(bareId)
+          if (surf) for (const key of [surf.read, surf.write]) if (key) physicalKeys.add(key)
+        }
+        for (const id of textureIds) {
+          if (id.startsWith('global_')) addSurface(id.slice('global_'.length))
+          else physicalKeys.add(id)
+        }
+        for (const bareId of p.surfaces.keys()) if (/^o\d+$/.test(bareId)) addSurface(bareId)
+        const cleared = []
+        for (const key of physicalKeys) {
+          const info = backend.textures.get(key)
+          if (!info?.handle) continue
+          const fbo = gl.createFramebuffer()
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, info.handle, 0)
+          if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
+            gl.clearColor(0, 0, 0, 0)
+            gl.clear(gl.COLOR_BUFFER_BIT)
+            cleared.push(key)
+          }
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+          gl.deleteFramebuffer(fbo)
+        }
+        gl.finish()
+        return { cleared }
+      }, Object.keys(graph.textures || {}))
+      if (clearedTimed.error) throw new Error(`timed state reset failed: ${clearedTimed.error}`)
+      process.stderr.write(`[parity] reset graph textures before the timed protocol: ${JSON.stringify(clearedTimed.cleared)}\n`)
       const everyFrames = opts.sampleEvery * 60
       const totalFrames = opts.runSeconds * 60
       const numSamples = Math.max(1, Math.floor(totalFrames / everyFrames))
