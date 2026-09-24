@@ -47,27 +47,13 @@
 // same-run "if a mint flakes, re-mint that fixture" rule; never fall back to
 // a stale golden from a previous run).
 //
-// KNOWN FLAKE (task-T6-report.md): one corpus fixture, `scratches` (filter/
-// scratches -- its "overlayTex" appears to be populated by a mechanism not
-// visible in its own single-pass graph, unlike every other fixture checked),
-// has been observed to mint a golden here that differs from the verified
-// single-fixture (export-and-render.mjs) mint by ~0.04% of pixels (24/65536)
-// on one sweep out of three otherwise-identical full-corpus runs -- not
-// reproduced on request (three independent single-fixture mints of the same
-// DSL were bit-identical), and not observed on ANY other fixture cross-
-// checked (all 45 NEAR/CHAOS-classified fixtures from that same run, and a
-// spot-check of PASS fixtures, matched their single-fixture mint exactly).
-// Likely session-history-dependent non-determinism inside the reference's
-// own rendering for this one effect, not a bug in this file's protocol
-// (the CANDIDATE render from the "bad" golden's own graph.json was itself
-// bit-identical to the candidate from a verified-good graph.json -- the
-// divergence is upstream of anything this file controls). Mitigation: after
-// a full sweep, cross-check any NEAR/CHAOS-classified fixture's golden
-// against a fresh single-fixture mint before trusting it for a committed
-// ledger; replace with the single-fixture version on any mismatch. Not
-// automated here (a full N-way cross-check on every run would erase most of
-// the batching speedup); do it by hand for the fixtures a sweep actually
-// classifies as sensitive to the exact number, the way task-T6 did.
+// Former KNOWN FLAKE (task-T6-report.md): a batch-minted `scratches`
+// golden once differed from its single-fixture mint by 24/65536 px. Its
+// overlayTex is not written by a pass: it is the effect's asyncInit
+// overlay, traced on the CPU and uploaded progressively (GAP-025), so each
+// capture landed at a different point of the trace. The minters now wait
+// for every asyncInit trace to finish (GAP-026); fibers and strayHair
+// behave the same way.
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
