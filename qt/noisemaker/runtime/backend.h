@@ -6,6 +6,7 @@
 #include <QJsonValue>
 #include <QSize>
 #include <QString>
+#include <QStringList>
 
 #include <functional>
 #include <memory>
@@ -24,6 +25,16 @@ class QOffscreenSurface;
 class QOpenGLFunctions_4_1_Core;
 
 namespace nm {
+
+class EffectRegistry;
+
+// Options for Backend::updateTextureFromSource (reference backend
+// updateTextureFromSource `options`). flipY defaults to true, as in the
+// reference backends. The reference demo host passes flipY=false for
+// synth/media (its shader flips v itself) and flipY=true for filter/text.
+struct ExternalTextureOptions {
+    bool flipY = true;
+};
 
 // QOpenGL executor for the full render-graph runtime model
 // (ARCHITECTURE.md "Runtime model" table; reference/05-webgl2-backend.md):
@@ -82,6 +93,76 @@ public:
 
     // Capture requirements derived recursively from every pass uniform.
     QJsonObject getAudioInputRequirements(const Graph& graph) const;
+
+    // ------------------------------------------------ external textures
+    // Effects that declare `externalTexture` (synth/media -> imageTex,
+    // filter/text -> textTex) read a host-supplied texture whose id is
+    // "<externalTexture>_step_<stepIndex>" (reference expander.js). Until
+    // the host supplies one, the pass samples the 1x1 transparent-black
+    // default texture, as the reference bindTextures() does.
+    static QString externalTextureId(const QString& externalTexture, int stepIndex);
+    // Every external texture id the graph's passes read, in pass order.
+    static QStringList externalTextureIds(const Graph& graph);
+
+    // Uploads host pixels as the RGBA8 texture `texId` (reference
+    // updateTextureFromSource): LINEAR filtering, CLAMP_TO_EDGE wrap,
+    // straight (non-premultiplied) alpha. flipY=false puts source row 0 at
+    // texture row 0 (v = 0); flipY=true puts it at the top row (v = 1).
+    // Reallocates when the size changes. Returns the uploaded size, or an
+    // empty size (0x0) for an empty source. The Backend's GL context must be
+    // current (the same contract as render()).
+    QSize updateTextureFromSource(const QString& texId, const QImage& source,
+                                  const ExternalTextureOptions& options = {});
+    // Same, from tightly or loosely packed RGBA8 rows. `bytesPerLine` is the
+    // source row stride and must be at least width * 4.
+    QSize updateTextureFromSource(const QString& texId, const void* rgba8, int width, int height,
+                                  int bytesPerLine, const ExternalTextureOptions& options = {});
+    // Zero-copy variant: binds a host-owned GL_TEXTURE_2D (valid in this
+    // Backend's context or a context sharing with it) as `texId`. The
+    // texture is sampled as-is and never deleted by the Backend. Replaces
+    // any previously uploaded texture for the same id.
+    void setExternalTexture(const QString& texId, unsigned int glTexture, QSize size);
+    // Forgets `texId`; the pass returns to the default texture. Deletes the
+    // GL texture only if the Backend created it. Needs a current context
+    // when it deletes.
+    void removeExternalTexture(const QString& texId);
+
+    // ------------------------------------------------ live parameters
+    // Reference canvas.js applyStepParameterValues: `stepParameterValues`
+    // maps "step_N" to {paramName: value}. For each pass of step N, each
+    // param resolves through its effect globals spec (uniform name,
+    // convertParameterForUniform) and overwrites pass.uniforms. It skips
+    // automation values, surface params, colorModeUniform-controlled
+    // uniforms, uniforms the pass does not carry, and inherited volumeSize.
+    // It propagates to scopedParams names across the chain and expands
+    // `palette` params. Returns the number of pass uniform writes. Feedback
+    // and ping-pong surfaces persist because they are keyed by texture id.
+    int applyStepParameterValues(Graph& graph, const EffectRegistry& registry,
+                                 const QJsonObject& stepParameterValues) const;
+
+    // Reference Pipeline.setUniform: stores a global uniform (bound to any
+    // program that declares it and whose pass does not carry it) and writes
+    // `value` into every pass that carries `name`, except automation values.
+    // An unscoped name also updates its _node_N / _chain_N variants.
+    // stateSize is capped at 2048 and volumeSize is clamped to the device.
+    // An integer `palette` expands into the classicNoisedeck palette
+    // uniforms. Engine uniforms (time, resolution, ...) always win.
+    void setUniform(Graph& graph, const QString& name, const QJsonValue& value);
+
+    // ------------------------------------------------ engine time
+    // render(t) takes normalized loop time t in [0, 1). The reference host
+    // derives it as (elapsedSeconds % loopDuration) / loopDuration with a
+    // default loop duration of 10 s.
+    static double normalizedLoopTime(double elapsedSeconds, double loopDurationSeconds = 10.0);
+    // Engine globals per render(t), as reference Pipeline.render:
+    // deltaTime = t - lastTime (0 on the first frame or while lastTime is
+    // 0; 1/600 when t wrapped below lastTime), and frame = number of
+    // render() calls before this one.
+    // Sets lastTime without rendering (reference syncTime), so a paused
+    // host re-rendering at t gets deltaTime 0.
+    void syncTime(double time);
+    double lastTime() const { return m_lastTime; }
+    qint64 frameIndex() const { return m_frameIndex; }
 
     std::function<void()> addSink(const std::shared_ptr<OutputSink>& sink);
     void removeSink(OutputSink* sink);
@@ -186,6 +267,17 @@ private:
     PingPongState m_pingpong;                     // cross-frame ping-pong bookkeeping (pingpong.h)
     QJsonObject m_mergedUniforms;                  // this render()'s graph-wide uniform merge
     QHash<QString, QJsonObject> m_uniformLayoutCache; // "ns/func" -> effect JSON's uniformLayout ({} if none)
+    struct ExternalTexture {
+        unsigned int handle = 0;
+        int width = 0;
+        int height = 0;
+        bool owned = false; // created by updateTextureFromSource (deleted by the Backend)
+    };
+    QHash<QString, ExternalTexture> m_externalTextures;
+    QJsonObject m_globalUniforms;                  // host setUniform() globals; engine values override
+    double m_lastTime = 0.0;
+    double m_deltaTime = 0.0;
+    qint64 m_frameIndex = 0;
     QJsonObject m_midiState;
     QJsonObject m_audioState;
     SinkManager m_sinkManager;

@@ -8,6 +8,23 @@ namespace nm::detail {
 
 namespace {
 
+int colorAttachmentBytes(const QString& format) {
+    if (format == QStringLiteral("rgba32f") || format == QStringLiteral("rgba32float")) {
+        return 16;
+    }
+    if (format == QStringLiteral("rgba8") || format == QStringLiteral("rgba8unorm")) {
+        return 4;
+    }
+    return 8;
+}
+
+struct MrtEntry {
+    QString textureId;
+    int location = -1;
+};
+
+} // namespace
+
 bool isVolumeSizeUniform(const QString& name) {
     return name == QStringLiteral("volumeSize")
         || name.startsWith(QStringLiteral("volumeSize_chain_"))
@@ -26,23 +43,6 @@ double clampVolumeSize(double value, int maxTextureSize) {
     }
     return static_cast<double>(clamped);
 }
-
-int colorAttachmentBytes(const QString& format) {
-    if (format == QStringLiteral("rgba32f") || format == QStringLiteral("rgba32float")) {
-        return 16;
-    }
-    if (format == QStringLiteral("rgba8") || format == QStringLiteral("rgba8unorm")) {
-        return 4;
-    }
-    return 8;
-}
-
-struct MrtEntry {
-    QString textureId;
-    int location = -1;
-};
-
-} // namespace
 
 bool clampGraphVolumeSizes(Graph& graph, int maxTextureSize) {
     if (maxTextureSize <= 0) return false;

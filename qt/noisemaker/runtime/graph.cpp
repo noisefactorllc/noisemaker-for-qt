@@ -83,6 +83,12 @@ Pass parsePass(const QJsonValue& value, int index) {
     pass.count = obj.value(QStringLiteral("count"));
     pass.blend = obj.value(QStringLiteral("blend"));
     pass.conditions = obj.value(QStringLiteral("conditions"));
+    const QJsonValue stepIndex = obj.value(QStringLiteral("stepIndex"));
+    if (stepIndex.isDouble()) {
+        pass.stepIndex = stepIndex.toInt();
+    }
+    pass.inheritsVolumeSize = obj.value(QStringLiteral("inheritsVolumeSize")).toBool(false);
+    pass.scopedParams = obj.value(QStringLiteral("scopedParams")).toObject();
     return pass;
 }
 

@@ -25,4 +25,6 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/backend.cpp
     ${CMAKE_CURRENT_LIST_DIR}/png_io.h
     ${CMAKE_CURRENT_LIST_DIR}/png_io.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/parameters.h
+    ${CMAKE_CURRENT_LIST_DIR}/parameters.cpp
 )

@@ -29,6 +29,11 @@ target_link_libraries(test_frame_export PRIVATE noisemaker-qt Qt6::Core Qt6::Gui
 add_test(NAME test_frame_export COMMAND test_frame_export)
 set_tests_properties(test_frame_export PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_host_inputs test_host_inputs.cpp)
+target_link_libraries(test_host_inputs PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_host_inputs COMMAND test_host_inputs)
+set_tests_properties(test_host_inputs PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
 target_link_libraries(test_lexer PRIVATE noisemaker-qt Qt6::Core)

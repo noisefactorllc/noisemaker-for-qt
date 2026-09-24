@@ -96,6 +96,14 @@ target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_RO
 
 `noisemaker-qt::noisemaker-qt` and `NOISEMAKER_QT_DATA_ROOT` have the same names in the embedded and the installed forms. `NOISEMAKER_QT_DATA_DIR` is an alias, and the target also carries a `NOISEMAKER_QT_DATA_ROOT` property. Pass this directory explicitly to `nm::EffectRegistry::loadAll()` and `nm::Backend::setup()`. `nm::EffectRegistry::defaultDataRoot()` reads the `NOISEMAKER_QT_DATA_ROOT` environment variable, else the working-directory-relative `qt/noisemaker`.
 
+### Supply host inputs at run time
+
+`nm::Backend` (`qt/noisemaker/runtime/backend.h`) mirrors the reference host APIs. Each call needs the Backend's GL context current, as `render()` does.
+
+- External textures: `synth/media` reads `imageTex_step_<N>` and `filter/text` reads `textTex_step_<N>`. `Backend::externalTextureIds(graph)` lists them. Upload pixels with `updateTextureFromSource(texId, image, {flipY})`, or bind a host GL texture with `setExternalTexture(texId, glTexture, size)`. The reference demo uploads media with `flipY = false` and text with `flipY = true`. Unsupplied ids sample a transparent-black default.
+- Live parameters: `applyStepParameterValues(graph, registry, {"step_N": {param: value}})` and `setUniform(graph, name, value)` change uniforms without a recompile. For media, set `imageSize` to the uploaded size. Feedback surfaces persist, because they are keyed by texture id. A recompiled graph with the same structure also keeps them.
+- Time: `render(graph, t)` takes normalized loop time. `Backend::normalizedLoopTime(elapsedSeconds, 10.0)` derives it. The Backend supplies `deltaTime` and `frame` like the reference, and `syncTime(t)` pauses without a time step.
+
 ## Status, parity, and coverage
 
 A from-scratch rebuild and full re-verification produced these results:

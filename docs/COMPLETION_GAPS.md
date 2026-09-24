@@ -157,6 +157,57 @@ These entries record missing qualification. They do not infer implementation def
 
 </details>
 
+### GAP-007: host-supplied external textures
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: tools/convert-definitions.mjs, synth/media, filter/text, nm::Backend, qt/tests/test_host_inputs.cpp.
+- Expected behavior: A host supplies the texture for `imageTex_step_N` and `textTex_step_N`, as the reference `updateTextureFromSource` does.
+- Observed behavior: Before the fix, the converter dropped `externalTexture`. Inputs bound to unaddressable node ids. The Backend had no upload API.
+- Evidence: The converter keeps `externalTexture`. The Backend has `updateTextureFromSource` (QImage and raw RGBA8), `setExternalTexture` (host GL id), `removeExternalTexture`, and `externalTextureIds`.
+- Next action: None for the API. Keep synth/media and filter/text excluded from the export kit. The kit host supplies no media or text pixels.
+- Dependencies: GAP-006 for platforms other than macOS.
+- Acceptance criteria: Media renders an uploaded image upright with flipY false. flipY true reverses rows. The raw stride, GL id, removal, text, and release paths pass.
+- Required checks: test_host_inputs pixel checks, ctest, and the compiler gates.
+- Last verification: 2026-09-24, macOS. Orientation follows the reference demo host convention. A reference-engine render differential was not run.
+
+### GAP-008: live parameter updates without a recompile
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: nm::Pass (stepIndex, inheritsVolumeSize, scopedParams), nm::Backend, qt/noisemaker/runtime/parameters.{h,cpp}.
+- Expected behavior: A host updates step parameters and global uniforms of a compiled graph, as reference applyStepParameterValues and Pipeline.setUniform do.
+- Observed behavior: Before the fix, the only update path was a full recompile. The graph loader dropped stepIndex and scopedParams.
+- Evidence: `applyStepParameterValues` and `setUniform` port the reference rules, palette expansion, and convertParameterForUniform. The feedback surface persisted across a live update and a same-structure recompile.
+- Next action: None. Reference checkAsyncRegen (CPU overlay regeneration) is not ported. This port has no async-init overlay effects.
+- Dependencies: GAP-006 for platforms other than macOS.
+- Acceptance criteria: Pixel checks show updated colors without a recompile. Automation values stay intact. The live update matches the recompiled swap byte for byte.
+- Required checks: test_host_inputs, ctest, and the compiler gates.
+- Last verification: 2026-09-24, macOS.
+
+### GAP-009: engine deltaTime and frame globals were not bound
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: nm::Backend engine uniforms. Readers: synth/cellularAutomata, synth/mnca, synth/roll, points/dla.
+- Expected behavior: deltaTime and frame follow reference Pipeline.render and updateGlobalUniforms.
+- Observed behavior: Before the fix, both uniforms were never set, so the shaders read 0.
+- Evidence: The Backend computes deltaTime with the reference rules (first frame 0, wrap 1/600) and counts frames. syncTime and normalizedLoopTime were added.
+- Next action: Measure timed-sample parity for cellularAutomata and mnca in the GAP-001 sweep.
+- Dependencies: GAP-001 sweep for rendered evidence.
+- Acceptance criteria: Engine values captured during render match the reference rules for first, normal, wrapped, and synced frames.
+- Required checks: test_host_inputs. Fixed-time fixture renders must not change.
+- Last verification: 2026-09-24, macOS. cellularAutomata, mnca, scroll, and text fixture renders were byte-identical before and after.
+
+<details><summary>GAP-007, GAP-008 and GAP-009 evidence</summary>
+
+- `ctest --test-dir qt/build`: 13 of 13 passed. The new test_host_inputs executable reported 40 PASS and 0 FAIL.
+- Media upright check: flipY false gave top (255,0,0,255) and bottom (0,0,255,255) at 64x64. Text check: black input became (255,255,255) with a white textTex.
+- Feedback check: after 4 red frames, a blue swap gave (119,0,128). A fresh Backend gave (0,0,128). The live update gave identical bytes.
+- Release build with `-Wall -Wextra -Wpedantic -Werror`: exit 0, 0 warnings, ctest 13 of 13.
+- Compiler gates, each exit 0: SHADERS 317/317, DEFINITIONS 210/210, REGISTRY 5/5, LEX, PARSE, VALIDATE, EXPAND and GRAPH 357/357.
+- `python -m unittest discover -s parity -p "test_*.py"`: 31 tests OK.
+- Fixed-time renders (256x256, t 0.25, 8 frames) of cellularAutomata, mnca, scroll and text: pre-change and post-change nm-render PNGs were byte-identical (`cmp`).
+
+</details>
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
@@ -172,7 +223,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004 (closed) and GAP-005 (open). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008 and GAP-009 (closed) and GAP-005 (open). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.

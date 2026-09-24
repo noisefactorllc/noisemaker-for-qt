@@ -9,6 +9,8 @@ namespace nm::detail {
 
 // Mutates a render-graph copy so every numeric volumeSize-family uniform
 // produces a slice atlas that fits maxTextureSize.
+bool isVolumeSizeUniform(const QString& name);
+double clampVolumeSize(double value, int maxTextureSize);
 bool clampGraphVolumeSizes(Graph& graph, int maxTextureSize);
 
 // Fits one MRT pass to maxColorBytesPerSample. outputLocations maps graph

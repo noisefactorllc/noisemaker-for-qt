@@ -1,6 +1,8 @@
 #include "backend.h"
 
 #include "device_limits.h"
+#include "parameters.h"
+#include "../compiler/effect_registry.h"
 #include "pingpong.h"
 #include "shader_assembly.h"
 
@@ -12,6 +14,7 @@
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions_4_1_Core>
+#include <QRegularExpression>
 #include <QSurfaceFormat>
 #include <QVector>
 
@@ -654,9 +657,248 @@ void visitAudioRequirements(const QJsonValue& value, QJsonObject& result,
     }
 }
 
+// reference expander.js: an effect's `externalTexture` input binds to the
+// per-step id `${texRef}_step_${step.temp}`; nothing else produces `_step_`.
+bool isExternalTextureId(const QString& texId) {
+    static const QRegularExpression pattern(QStringLiteral("^[A-Za-z][A-Za-z0-9]*_step_\\d+$"));
+    return pattern.match(texId).hasMatch();
+}
+
+// reference pipeline.js setUniform: `_node_N` / `_chain_N` names target one
+// chain or particle pipeline and never fan out.
+bool isScopedUniformName(const QString& name) {
+    static const QRegularExpression pattern(QStringLiteral("_(node|chain)_\\d+$"));
+    return pattern.match(name).hasMatch();
+}
+
+// reference pipeline.js broadcastChainScopedParam.
+void broadcastChainScopedParam(Graph& graph, int sourceIndex, const QString& uniformName,
+                               const QString& scopedName, int maxTextureSize) {
+    Pass& source = graph.passes[sourceIndex];
+    QJsonValue value = source.uniforms.value(uniformName);
+    if (uniformName == QStringLiteral("volumeSize") && value.isDouble()) {
+        const double clamped = detail::clampVolumeSize(value.toDouble(), maxTextureSize);
+        if (clamped != value.toDouble()) {
+            value = clamped;
+            source.uniforms.insert(uniformName, clamped);
+            if (source.uniforms.contains(scopedName)) source.uniforms.insert(scopedName, clamped);
+        }
+    }
+    for (int i = 0; i < graph.passes.size(); ++i) {
+        if (i == sourceIndex) continue;
+        Pass& other = graph.passes[i];
+        if (!other.uniforms.contains(scopedName)) continue;
+        other.uniforms.insert(scopedName, value);
+        if (uniformName == QStringLiteral("volumeSize") && other.inheritsVolumeSize
+            && other.uniforms.contains(uniformName)) {
+            other.uniforms.insert(uniformName, value);
+        }
+    }
+}
+
 } // namespace
 
 Backend::Backend() = default;
+
+QString Backend::externalTextureId(const QString& externalTexture, int stepIndex) {
+    return externalTexture + QStringLiteral("_step_") + QString::number(stepIndex);
+}
+
+QStringList Backend::externalTextureIds(const Graph& graph) {
+    QStringList ids;
+    for (const Pass& pass : graph.passes) {
+        for (auto it = pass.inputs.begin(); it != pass.inputs.end(); ++it) {
+            const QString texId = it.value().toString();
+            if (isExternalTextureId(texId) && !ids.contains(texId)) ids.append(texId);
+        }
+    }
+    return ids;
+}
+
+QSize Backend::updateTextureFromSource(const QString& texId, const QImage& source,
+                                       const ExternalTextureOptions& options) {
+    if (source.isNull() || source.width() <= 0 || source.height() <= 0) return QSize(0, 0);
+    const QImage rgba = source.convertToFormat(QImage::Format_RGBA8888);
+    return updateTextureFromSource(texId, rgba.constBits(), rgba.width(), rgba.height(),
+                                   static_cast<int>(rgba.bytesPerLine()), options);
+}
+
+QSize Backend::updateTextureFromSource(const QString& texId, const void* rgba8, int width, int height,
+                                       int bytesPerLine, const ExternalTextureOptions& options) {
+    if (!m_gl) {
+        throw std::runtime_error("nm::Backend::updateTextureFromSource: setup must be called first");
+    }
+    if (!rgba8 || width <= 0 || height <= 0) return QSize(0, 0);
+    const int rowBytes = width * 4;
+    if (bytesPerLine < rowBytes) {
+        throw std::invalid_argument("nm::Backend::updateTextureFromSource: bytesPerLine < width * 4");
+    }
+
+    // Texture row r receives source row r (flipY false) or height-1-r
+    // (flipY true), matching WebGL UNPACK_FLIP_Y_WEBGL.
+    const auto* src = static_cast<const unsigned char*>(rgba8);
+    QByteArray packed;
+    const void* upload = src;
+    if (options.flipY || bytesPerLine != rowBytes) {
+        packed.resize(static_cast<qsizetype>(rowBytes) * height);
+        for (int row = 0; row < height; ++row) {
+            const int sourceRow = options.flipY ? height - 1 - row : row;
+            std::memcpy(packed.data() + static_cast<qsizetype>(row) * rowBytes,
+                        src + static_cast<qsizetype>(sourceRow) * bytesPerLine, rowBytes);
+        }
+        upload = packed.constData();
+    }
+
+    ExternalTexture& entry = m_externalTextures[texId];
+    m_gl->glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    if (entry.owned && entry.handle != 0 && entry.width == width && entry.height == height) {
+        m_gl->glBindTexture(GL_TEXTURE_2D, entry.handle);
+        m_gl->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, upload);
+    } else {
+        if (entry.owned && entry.handle != 0) m_gl->glDeleteTextures(1, &entry.handle);
+        GLuint handle = 0;
+        m_gl->glGenTextures(1, &handle);
+        m_gl->glBindTexture(GL_TEXTURE_2D, handle);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        m_gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload);
+        entry = ExternalTexture{handle, width, height, true};
+    }
+    m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+    return QSize(width, height);
+}
+
+void Backend::setExternalTexture(const QString& texId, unsigned int glTexture, QSize size) {
+    const auto existing = m_externalTextures.constFind(texId);
+    if (existing != m_externalTextures.constEnd() && existing->owned && existing->handle != 0 && m_gl) {
+        GLuint handle = existing->handle;
+        m_gl->glDeleteTextures(1, &handle);
+    }
+    m_externalTextures.insert(texId, ExternalTexture{glTexture, size.width(), size.height(), false});
+}
+
+void Backend::removeExternalTexture(const QString& texId) {
+    const auto existing = m_externalTextures.constFind(texId);
+    if (existing == m_externalTextures.constEnd()) return;
+    if (existing->owned && existing->handle != 0 && m_gl) {
+        GLuint handle = existing->handle;
+        m_gl->glDeleteTextures(1, &handle);
+    }
+    m_externalTextures.remove(texId);
+}
+
+int Backend::applyStepParameterValues(Graph& graph, const EffectRegistry& registry,
+                                      const QJsonObject& stepParameterValues) const {
+    int writes = 0;
+    for (int passIndex = 0; passIndex < graph.passes.size(); ++passIndex) {
+        Pass& pass = graph.passes[passIndex];
+        if (pass.stepIndex < 0) continue;
+        const QJsonValue stepValue = stepParameterValues.value(QStringLiteral("step_") + QString::number(pass.stepIndex));
+        if (!stepValue.isObject()) continue;
+        const QJsonObject stepParams = stepValue.toObject();
+
+        const QJsonObject effectDef = pass.effectKey.isEmpty() ? QJsonObject() : registry.getEffect(pass.effectKey);
+        const QJsonObject globals = effectDef.value(QStringLiteral("globals")).toObject();
+        if (globals.isEmpty()) continue;
+
+        // Uniforms driven by a surface's colorModeUniform are set by the
+        // expander, never by host parameter values.
+        QStringList colorModeControlled;
+        for (auto it = globals.begin(); it != globals.end(); ++it) {
+            const QString controlled = it.value().toObject().value(QStringLiteral("colorModeUniform")).toString();
+            if (!controlled.isEmpty()) colorModeControlled.append(controlled);
+        }
+
+        QJsonObject paletteExpansion;
+        for (auto it = stepParams.begin(); it != stepParams.end(); ++it) {
+            const QString& paramName = it.key();
+            if (paramName == QStringLiteral("_skip")) continue;
+            if (isAutomationControlled(it.value())) continue;
+            const QJsonObject spec = globals.value(paramName).toObject();
+            if (spec.isEmpty() || spec.value(QStringLiteral("type")).toString() == QStringLiteral("surface")) continue;
+            const QString specUniform = spec.value(QStringLiteral("uniform")).toString();
+            const QString uniformName = specUniform.isEmpty() ? paramName : specUniform;
+            if (colorModeControlled.contains(uniformName)) continue;
+            if (!pass.uniforms.contains(uniformName)) continue;
+            if (uniformName == QStringLiteral("volumeSize") && pass.inheritsVolumeSize) continue;
+
+            const QJsonValue converted = convertParameterForUniform(it.value(), spec, &registry.enums());
+            pass.uniforms.insert(uniformName, converted);
+            ++writes;
+
+            const QString scopedName = pass.scopedParams.value(uniformName).toString();
+            if (!scopedName.isEmpty()) {
+                pass.uniforms.insert(scopedName, pass.uniforms.value(uniformName));
+                broadcastChainScopedParam(graph, passIndex, uniformName, scopedName, m_maxTextureSize);
+            }
+            if (spec.value(QStringLiteral("type")).toString() == QStringLiteral("palette") && converted.isDouble()) {
+                paletteExpansion = expandPalette(converted.toDouble());
+            }
+        }
+        Pass& updated = graph.passes[passIndex];
+        for (auto it = paletteExpansion.begin(); it != paletteExpansion.end(); ++it) {
+            if (updated.uniforms.contains(it.key())) {
+                updated.uniforms.insert(it.key(), it.value());
+                ++writes;
+            }
+        }
+    }
+    return writes;
+}
+
+void Backend::setUniform(Graph& graph, const QString& name, const QJsonValue& input) {
+    QJsonValue value = input;
+    // Desktop maxStateSize (reference webgl2.js capabilities: 2048 unless mobile).
+    constexpr double kMaxStateSize = 2048.0;
+    if ((name == QStringLiteral("stateSize") || name.startsWith(QStringLiteral("stateSize_node_")))
+        && value.isDouble() && value.toDouble() > kMaxStateSize) {
+        qWarning().noquote() << QStringLiteral("nm::Backend: capping %1 from %2 to %3")
+                                    .arg(name).arg(value.toDouble()).arg(kMaxStateSize);
+        value = kMaxStateSize;
+    }
+    if (detail::isVolumeSizeUniform(name) && value.isDouble()) {
+        value = detail::clampVolumeSize(value.toDouble(), m_maxTextureSize);
+    }
+
+    m_globalUniforms.insert(name, value);
+
+    if (name == QStringLiteral("palette") && value.isDouble()) {
+        const QJsonObject expanded = expandPalette(value.toDouble());
+        if (!expanded.isEmpty()) {
+            for (auto it = expanded.begin(); it != expanded.end(); ++it) {
+                setUniform(graph, it.key(), it.value());
+            }
+            return;
+        }
+    }
+
+    const bool scoped = isScopedUniformName(name);
+    const QString nodePrefix = name + QStringLiteral("_node_");
+    const QString chainPrefix = name + QStringLiteral("_chain_");
+    for (Pass& pass : graph.passes) {
+        if (pass.uniforms.contains(name) && !isAutomationValue(pass.uniforms.value(name))) {
+            pass.uniforms.insert(name, value);
+        }
+        if (scoped) continue;
+        const QStringList keys = pass.uniforms.keys();
+        for (const QString& key : keys) {
+            if (!key.startsWith(nodePrefix) && !key.startsWith(chainPrefix)) continue;
+            if (isAutomationValue(pass.uniforms.value(key))) continue;
+            pass.uniforms.insert(key, value);
+            m_globalUniforms.insert(key, value);
+        }
+    }
+}
+
+double Backend::normalizedLoopTime(double elapsedSeconds, double loopDurationSeconds) {
+    return std::fmod(elapsedSeconds, loopDurationSeconds) / loopDurationSeconds;
+}
+
+void Backend::syncTime(double time) {
+    m_lastTime = time;
+}
 
 void Backend::setMidiState(const QJsonObject& state) {
     m_midiState = state;
@@ -722,6 +964,13 @@ void Backend::releaseGl() {
     }
     m_frameExportQueues.clear();
 
+    for (auto it = m_externalTextures.begin(); it != m_externalTextures.end(); ++it) {
+        if (it->owned && it->handle != 0) {
+            GLuint handle = it->handle;
+            m_gl->glDeleteTextures(1, &handle);
+        }
+    }
+    m_externalTextures.clear();
     if (m_surfaces) {
         m_surfaces->releaseAll();
         m_surfaces.reset();
@@ -1170,13 +1419,16 @@ QJsonObject Backend::engineUniforms() const {
     // float->uint8 readback cast). See task report "Fix round 1" for the
     // before/after verification.
     //
-    // Full engine-uniform set: time, resolution, tileOffset, fullResolution,
-    // aspect, aspectRatio, renderScale. (deltaTime/frame/audio/midi are
-    // pipeline bookkeeping or external-input state not read by any
-    // fullscreen-effect-pass shader in this corpus and remain out of T3
-    // scope.)
-    QJsonObject globals;
+    // Engine uniform set: time, deltaTime, frame, resolution, tileOffset,
+    // fullResolution, aspect, aspectRatio, renderScale (reference
+    // updateGlobalUniforms). deltaTime and frame are read by
+    // synth/cellularAutomata, synth/mnca, synth/roll and points/dla. Host
+    // globals from setUniform() come first; engine values overwrite them,
+    // as the reference rewrites them every frame.
+    QJsonObject globals = m_globalUniforms;
     globals.insert(QStringLiteral("time"), m_time);
+    globals.insert(QStringLiteral("deltaTime"), m_deltaTime);
+    globals.insert(QStringLiteral("frame"), m_frameIndex);
     globals.insert(QStringLiteral("resolution"), QJsonArray{m_size.width(), m_size.height()});
     globals.insert(QStringLiteral("tileOffset"), QJsonArray{0, 0});
     globals.insert(QStringLiteral("fullResolution"), QJsonArray{m_size.width(), m_size.height()});
@@ -1428,7 +1680,14 @@ void Backend::bindTextures(const Graph& graph, const CompiledProgram& program, c
     for (auto it = pass.inputs.begin(); it != pass.inputs.end(); ++it) {
         const QString& texId = it.value().toString();
         unsigned int handle = 0;
-        if (!texId.isEmpty() && texId != QStringLiteral("none")) {
+        const auto external = m_externalTextures.constFind(texId);
+        if (external != m_externalTextures.constEnd()) {
+            handle = external->handle;
+        } else if (isExternalTextureId(texId)) {
+            // Not supplied by the host yet: default texture, as the
+            // reference binds for any id absent from its texture map.
+            handle = 0;
+        } else if (!texId.isEmpty() && texId != QStringLiteral("none")) {
             handle = resolveInputSurface(graph, texId).texture;
         }
         if (handle == 0) {
@@ -1817,6 +2076,13 @@ void Backend::renderInternal(
         m_warnedMrtDemotion = true;
     }
 
+    // reference Pipeline.render: t is normalized and wraps, so a backwards
+    // step means a wrap and uses one 60 fps frame of a 10 s loop.
+    double deltaTime = m_lastTime > 0.0 ? t - m_lastTime : 0.0;
+    if (deltaTime < 0.0) deltaTime = 1.0 / 60.0 / 10.0;
+    m_lastTime = t;
+    m_deltaTime = deltaTime;
+
     m_time = t;
     m_currentRenderSurface = effectiveGraph.renderSurface;
     m_mergedUniforms = mergeAllPassUniforms(effectiveGraph);
@@ -1849,6 +2115,7 @@ void Backend::renderInternal(
         }
         m_sinkManager.submit(*surface, *presentationTimestamp);
     }
+    ++m_frameIndex;
 }
 
 std::function<void()> Backend::addSink(const std::shared_ptr<OutputSink>& sink) {

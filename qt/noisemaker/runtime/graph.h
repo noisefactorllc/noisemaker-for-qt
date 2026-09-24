@@ -62,6 +62,9 @@ struct Pass {
     QJsonValue conditions;   // {runIf?:[{uniform,equals}], skipIf?:[...]} | undefined — evaluated
                               // per frame against the pass's resolved uniforms (reference
                               // pipeline.js shouldSkipPass mirror; see Backend::shouldSkipPass).
+    int stepIndex = -1;      // DSL step (node) index; -1 when the graph omits it (final-chain blit)
+    bool inheritsVolumeSize = false; // consumer pass: volumeSize comes from the upstream emitter
+    QJsonObject scopedParams; // uniform -> chain/node-scoped uniform name (e.g. zoom -> zoom_chain_0)
 };
 
 // The compiled render graph consumed by nm::Backend:
