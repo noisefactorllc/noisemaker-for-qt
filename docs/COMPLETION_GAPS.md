@@ -626,12 +626,12 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-038: an overlay trace stalls live hosts
 
-- Status: open. Priority: P2. Category: implementation.
+- Status: closed. Priority: P2. Category: implementation.
 - Affected scope: qt/noisemaker/runtime/async_overlay.{h,cpp}; nm::Backend::render(); live hosts (Sync's render helper, the viewer, the Qt Quick item) running fibers, scratches, or strayHair.
 - Expected behavior: A live host keeps presenting frames while an overlay is traced, as the reference keeps rendering during its progressive asyncInit trace.
-- Observed behavior: Backend::render() traces an overlay to completion before the passes, and traces again after a seed, density, or render size change. At 1920x1080 on an Apple M4 that takes about 2.8 s (fibers), so a Seance edit to one of those parameters, or a resize, stops a live host for that long. Offline hosts (nm-render, the kit, goldens) need the completed trace on frame 1.
-- Evidence: Measured with the GAP-025 implementation: fibers 0.1 s at 256x256 and 2.8 s at 1920x1080. Sync's render-helper qualification record notes the stall.
-- Next action: Trace on a worker thread with a host-selectable mode: synchronous for offline hosts, and for live hosts keep the previous overlay until the new trace completes. Keep the synchronous result byte-identical.
+- Observed behavior: Before 7dcd58d, Backend::render() traced an overlay to completion before the passes, and traced again after a seed, density, or render size change: about 3 s at 1920x1080 on an Apple M4 (fibers), so a Seance edit to one of those parameters, or a resize, stopped a live host for that long. Since 7dcd58d, nm::OverlayTraceMode::Background traces on a worker thread (tracer and canvas only), keeps the previous overlay until the new one completes, uploads it on the render thread, and cancels a superseded trace; a node's first trace at a size shows a transparent overlay. Synchronous stays the default for nm-render, the kit, and goldens. The viewer and NoisemakerItem opt in (eb80948).
+- Evidence: macOS: render() during a 1080p re-trace 0.001 to 0.003 s against 3.0 to 3.5 s synchronous; the completed re-trace is byte-identical to the synchronous frame; supersession, precedence, and teardown mid-trace are tested; TSan (Apple clang) reports 0 warnings for test_async_overlay and test_quick_item. Linux arm64 Docker (GCC 13.3, llvmpipe): ctest 25/25, render during a re-trace 0.025 to 0.033 s against about 5.2 s. The macOS sweep's fibers, scratches, and strayHair candidates are byte-identical to the previous build's; check_async_overlay 13/13.
+- Next action: None. Sync's render helper opts in with Backend::setOverlayTraceMode(nm::OverlayTraceMode::Background).
 - Dependencies: None.
 - Acceptance criteria: In the live mode, render() returns within one frame budget during a 1080p re-trace, and the overlay changes to the completed trace. The synchronous mode's output is unchanged.
 - Required checks: test_async_overlay; a timing test of render() during a re-trace; parity/run.sh for fibers, scratches, and strayHair.
@@ -665,11 +665,10 @@ These entries record missing qualification. They do not infer implementation def
 
 ## 5. Ordered next actions
 
-1. Done for GAP-001: the NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job, 353/353 at the strict tolerance in CI.
-2. GAP-038: trace overlays off the render thread for live hosts.
-3. GAP-002: run the installed workflow on Windows.
-4. GAP-039, GAP-027: rendered Func fixtures; generic font families.
-5. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
+1. Done: GAP-001's NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job (353/353 in CI); GAP-038's background overlay trace.
+2. GAP-002: run the installed workflow on Windows.
+3. GAP-039, GAP-027: rendered Func fixtures; generic font families.
+4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 
