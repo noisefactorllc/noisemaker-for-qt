@@ -636,6 +636,26 @@ int main() {
         }
     }
 
+    // Member paths walk own properties like the reference's
+    // hasOwnProperty check: arrays and strings expose `length` (oracle-gated
+    // by parity/corpus/member_own_properties.dsl).
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth\nlet n = noise(3)\nlet c = #ff8800\nlet label = n.name\n"
+            "noise(octaves: c.value.length, seed: label.length, scaleX: n.args.length).write(o0)\nrender(o0)\n"));
+        check(diags(out).isEmpty(), "member own properties: no diagnostics");
+        check(args(out, 0, 0).value(QStringLiteral("octaves")).toDouble() == 4.0,
+              "array length: c.value.length resolves to 4");
+        check(args(out, 0, 0).value(QStringLiteral("seed")).toDouble() == 5.0,
+              "string length: label.length resolves to 5 (\"noise\")");
+        check(args(out, 0, 0).value(QStringLiteral("scaleX")).toDouble() == 1.0,
+              "array length: n.args.length resolves to 1");
+        const QJsonObject missing = validateSrc(QStringLiteral(
+            "search synth\nlet c = #ff8800\nnoise(octaves: c.value.size).write(o0)\nrender(o0)\n"));
+        check(diags(missing).size() == 1 && diags(missing).first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S001"),
+              "an array has no own `size`: S001, as before");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_validator)\n");
         return 0;

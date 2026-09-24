@@ -267,6 +267,30 @@ double clampValue(double value, const QJsonValue& min, const QJsonValue& max) {
     return value;
 }
 
+// Reference resolveEnum walks a path with
+// `cur && Object.prototype.hasOwnProperty.call(cur, part)`. Arrays and
+// strings have own index properties and an own `length`, so
+// `let c = #ff8800` makes `c.value.length` resolve to 4.
+std::optional<QJsonValue> jsOwnProperty(const QJsonValue& cur, const QString& key) {
+    if (cur.isObject()) {
+        const QJsonObject o = cur.toObject();
+        if (o.contains(key)) return o.value(key);
+        return std::nullopt;
+    }
+    if (!cur.isArray() && !cur.isString()) return std::nullopt;
+    const qsizetype size = cur.isArray() ? cur.toArray().size() : cur.toString().size();
+    if (key == QStringLiteral("length")) return QJsonValue(static_cast<double>(size));
+    // Canonical array index: digits only, no leading zero except "0".
+    bool isIndex = !key.isEmpty() && (key.size() == 1 || key.at(0) != QLatin1Char('0'));
+    for (const QChar c : key) isIndex = isIndex && c >= QLatin1Char('0') && c <= QLatin1Char('9');
+    if (!isIndex) return std::nullopt;
+    bool ok = false;
+    const qlonglong index = key.toLongLong(&ok);
+    if (!ok || index >= size) return std::nullopt;
+    if (cur.isArray()) return cur.toArray().at(static_cast<qsizetype>(index));
+    return QJsonValue(QString(cur.toString().at(static_cast<qsizetype>(index))));
+}
+
 QString nodeType(const QJsonValue& node) { return node.isObject() ? node.toObject().value(QStringLiteral("type")).toString() : QString(); }
 
 // ---------------------------------------------------------------- Validator
@@ -431,11 +455,10 @@ QJsonValue Validator::resolveEnum(const QStringList& path) {
         if (cur.isUndefined()) return QJsonValue(QJsonValue::Undefined);
     }
     for (int i = 1; i < path.size(); ++i) {
-        if (cur.isObject() && cur.toObject().contains(path.at(i))) {
-            cur = cur.toObject().value(path.at(i));
-        } else {
-            return QJsonValue(QJsonValue::Undefined);
-        }
+        if (!isTruthy(cur)) return QJsonValue(QJsonValue::Undefined);
+        const std::optional<QJsonValue> next = jsOwnProperty(cur, path.at(i));
+        if (!next) return QJsonValue(QJsonValue::Undefined);
+        cur = *next;
     }
     if (cur.isObject()) {
         const QString t = cur.toObject().value(QStringLiteral("type")).toString();
