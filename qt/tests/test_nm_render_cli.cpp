@@ -1,5 +1,6 @@
 // nm-render's command line: --help lists every mode and flag and exits 0;
-// an unknown option, no arguments, or no mode print the usage and exit 2.
+// an unknown option, no arguments or no mode print the usage and exit 2; a
+// malformed --external-texture value exits 2.
 // Qt may add its own diagnostics to standard error (for example
 // "XDG_RUNTIME_DIR not set" on Linux), so stderr is searched, not matched
 // from its start.
@@ -52,7 +53,7 @@ int main(int argc, char** argv) {
         QStringLiteral("--batch-manifest"), QStringLiteral("--size"),      QStringLiteral("--out"),
         QStringLiteral("--time"),        QStringLiteral("--frames"),       QStringLiteral("--dump-tokens"),
         QStringLiteral("--dump-ast"),    QStringLiteral("--dump-validated"), QStringLiteral("--dump-graph"),
-        QStringLiteral("--mesh"),        QStringLiteral("--help"),
+        QStringLiteral("--mesh"),        QStringLiteral("--help"),         QStringLiteral("--external-texture"),
     };
 
     const Result help = run(nmRender, {QStringLiteral("--help")});
@@ -83,6 +84,13 @@ int main(int argc, char** argv) {
     const Result missing = run(nmRender, {QStringLiteral("--dsl"), QStringLiteral("x.dsl")});
     check(missing.exitCode == 2 && missing.err.contains(QStringLiteral("--dsl, --size, and --out are required")),
           "a mode without its required options exits 2");
+
+    const Result badTexture = run(nmRender, {QStringLiteral("--graph"), QStringLiteral("x.json"), QStringLiteral("--size"),
+                                             QStringLiteral("8x8"), QStringLiteral("--out"), QStringLiteral("x.png"),
+                                             QStringLiteral("--external-texture"), QStringLiteral("textTex_step_1")});
+    check(badTexture.exitCode == 2
+              && badTexture.err.contains(QStringLiteral("--external-texture expects <texId>=<png>")),
+          "an --external-texture value without ID=PNG exits 2");
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,
                 g_failures == 1 ? "" : "s");

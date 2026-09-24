@@ -17,6 +17,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -28,6 +29,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <exception>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -56,15 +60,19 @@ const char* const kUsage =
     "      Compile a DSL program and render it N times at normalized loop time T,\n"
     "      0 <= T < 1 (defaults: T 0, N 1). Feedback effects need N > 1.\n"
     "  --graph FILE --size WxH --out PNG [--time T] [--frames N] [--mesh OBJ]\n"
+    "        [--external-texture ID=PNG]...\n"
     "      Render an exported graph JSON the same way.\n"
     "  --graph FILE --size WxH --samples TOTAL:EVERY --out PNG [--mesh OBJ]\n"
     "      Step TOTAL frames 1/60 s apart. Every EVERY frames, write PNG with .tS\n"
     "      before its extension, S being the elapsed whole seconds (out.t5.png).\n"
     "  --batch-manifest FILE\n"
-    "      Render each {graph, size, out, time, frames, mesh} object of a JSON array.\n"
+    "      Render each {graph, size, out, time, frames, mesh, externalTextures}\n"
+    "      object of a JSON array (externalTextures maps ID to PNG).\n"
     "\n"
     "  --mesh OBJ  Load an OBJ file as mesh0 for meshLoader(), replacing the\n"
     "              default built-in mesh.\n"
+    "  --external-texture ID=PNG  Upload PNG as the host texture ID that the graph\n"
+    "              samples (for example textTex_step_1), top row first. Repeatable.\n"
     "\n"
     "Compiler dumps (JSON on standard output, for the parity gates):\n"
     "  --dump-tokens FILE  --dump-ast FILE  --dump-validated FILE  --dump-graph FILE\n"
@@ -80,7 +88,7 @@ const QStringList kKnownFlags = {
     QStringLiteral("--batch-manifest"), QStringLiteral("--size"),     QStringLiteral("--out"),
     QStringLiteral("--time"),         QStringLiteral("--frames"),     QStringLiteral("--dump-tokens"),
     QStringLiteral("--dump-ast"),     QStringLiteral("--dump-validated"), QStringLiteral("--dump-graph"),
-    QStringLiteral("--mesh"),         QStringLiteral("--help"),
+    QStringLiteral("--mesh"),         QStringLiteral("--help"),       QStringLiteral("--external-texture"),
 };
 
 int usageError(const QString& message) {
@@ -95,6 +103,30 @@ QString findValue(const QStringList& args, const QString& flag) {
         return QString();
     }
     return args.at(idx + 1);
+}
+
+// Host pixels for an external texture id (for example textTex_step_1): a
+// PNG whose top row is the texture's highest v, as parity/export-and-render
+// saves what the reference sampled. Uploaded with flipY = true, which
+// restores the reference's texel rows exactly.
+using ExternalTextures = std::vector<std::pair<QString, QString>>;
+
+// Every `--external-texture <texId>=<png>` argument, in order.
+ExternalTextures findExternalTextures(const QStringList& args) {
+    ExternalTextures textures;
+    for (int i = 0; i + 1 < args.size(); ++i) {
+        if (args.at(i) != QStringLiteral("--external-texture")) {
+            continue;
+        }
+        const QString value = args.at(i + 1);
+        const qsizetype split = value.indexOf(QLatin1Char('='));
+        if (split <= 0 || split == value.size() - 1) {
+            throw std::invalid_argument(
+                ("--external-texture expects <texId>=<png> (got '" + value + "')").toStdString());
+        }
+        textures.emplace_back(value.left(split), value.mid(split + 1));
+    }
+    return textures;
 }
 
 bool parseSize(const QString& text, QSize* out) {
@@ -143,11 +175,25 @@ nm::Graph loadGraphFile(const QString& path) {
 // iterations — see ARCHITECTURE.md "Runtime model" Time row; T3 does not
 // detect feedback graphs itself, so the caller's --frames value is honored
 // literally) before a single readSurface(). `meshPath` (may be empty) is
-// the host mesh for mesh0 (host_meshes.h). Throws on any failure.
-QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, const QString& meshPath) {
+// the host mesh for mesh0 (host_meshes.h); `externalTextures` are the host
+// pixels for external texture ids. Throws on any failure.
+QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, const QString& meshPath,
+                   const ExternalTextures& externalTextures) {
     nm::Backend backend;
     backend.setup(nullptr, resolveDataRoot(), size);
     nm::loadHostMeshes(backend, graph, meshPath);
+    const QStringList graphExternalIds = nm::Backend::externalTextureIds(graph);
+    for (const auto& [texId, path] : externalTextures) {
+        if (!graphExternalIds.contains(texId)) {
+            throw std::runtime_error(
+                ("external texture '" + texId + "' is not sampled by this graph").toStdString());
+        }
+        const QImage image(path);
+        if (image.isNull()) {
+            throw std::runtime_error(("cannot read external texture '" + path + "'").toStdString());
+        }
+        backend.updateTextureFromSource(texId, image, nm::ExternalTextureOptions{true});
+    }
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
@@ -173,12 +219,20 @@ int runSingleGraph(const QStringList& args) {
         return 2;
     }
 
+    ExternalTextures externalTextures;
+    try {
+        externalTextures = findExternalTextures(args);
+    } catch (const std::invalid_argument& e) {
+        std::fprintf(stderr, "ERROR: %s\n", e.what());
+        return 2;
+    }
+
     const double time = timeText.isEmpty() ? 0.0 : timeText.toDouble();
     const int frames = framesText.isEmpty() ? 1 : std::max(1, framesText.toInt());
 
     try {
         const nm::Graph graph = loadGraphFile(graphPath);
-        const QImage image = renderGraph(graph, size, time, frames, meshPath);
+        const QImage image = renderGraph(graph, size, time, frames, meshPath, externalTextures);
         if (!nm::savePng(image, outPath)) {
             throw std::runtime_error("failed to write PNG");
         }
@@ -231,8 +285,14 @@ int runBatchManifest(const QString& manifestPath) {
                 throw std::runtime_error("manifest item has invalid or missing 'size' (expected WxH)");
             }
 
+            ExternalTextures externalTextures;
+            const QJsonObject externals = item.value(QStringLiteral("externalTextures")).toObject();
+            for (auto it = externals.begin(); it != externals.end(); ++it) {
+                externalTextures.emplace_back(it.key(), it.value().toString());
+            }
+
             const nm::Graph graph = loadGraphFile(graphPath);
-            const QImage image = renderGraph(graph, size, time, frames, meshPath);
+            const QImage image = renderGraph(graph, size, time, frames, meshPath, externalTextures);
             if (!nm::savePng(image, outPath)) {
                 throw std::runtime_error("failed to write PNG");
             }
