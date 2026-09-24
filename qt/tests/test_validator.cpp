@@ -595,8 +595,8 @@ int main() {
             for (const QString& m : noteModes) {
                 for (int ch : {1, 16}) {
                     const auto valid = validateSrc(QStringLiteral("search synth\nnoise(scaleX: midi(%1, midiMode.%2)).write(o0)\nrender(o0)\n").arg(ch).arg(m));
-                    const auto midi = args(valid, 0, 0).value("scaleX").toObject();
-                    check(diags(valid).isEmpty() && midi.value("channel").toInt() == ch && !midi.value("_invalid").toBool(),
+                    const auto validMidi = args(valid, 0, 0).value("scaleX").toObject();
+                    check(diags(valid).isEmpty() && validMidi.value("channel").toInt() == ch && !validMidi.value("_invalid").toBool(),
                           "legacy note mode accepts static channel within 1..16");
                 }
                 for (const QString& badCh : {QStringLiteral("0"), QStringLiteral("17"), QStringLiteral("1.5"), QStringLiteral("true")}) {
