@@ -34,6 +34,10 @@ target_link_libraries(test_host_inputs PRIVATE noisemaker-qt Qt6::Core Qt6::Gui 
 add_test(NAME test_host_inputs COMMAND test_host_inputs)
 set_tests_properties(test_host_inputs PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_midi_state test_midi_state.cpp)
+target_link_libraries(test_midi_state PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_midi_state COMMAND test_midi_state)
+
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
 target_link_libraries(test_lexer PRIVATE noisemaker-qt Qt6::Core)
@@ -94,3 +98,8 @@ add_test(NAME test_resources COMMAND test_resources)
 # precedent exactly).
 add_executable(expand_dump expand_dump.cpp)
 target_link_libraries(expand_dump PRIVATE noisemaker-qt Qt6::Core)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_midi_state.mjs (reference MidiState replay).
+add_executable(midi_state_dump midi_state_dump.cpp)
+target_link_libraries(midi_state_dump PRIVATE noisemaker-qt Qt6::Core)

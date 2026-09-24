@@ -27,4 +27,6 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/png_io.cpp
     ${CMAKE_CURRENT_LIST_DIR}/parameters.h
     ${CMAKE_CURRENT_LIST_DIR}/parameters.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/midi_state.h
+    ${CMAKE_CURRENT_LIST_DIR}/midi_state.cpp
 )

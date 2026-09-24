@@ -438,6 +438,18 @@ private:
             const QJsonObject state = entry.value(QStringLiteral("state")).toObject();
             return state.isEmpty() ? entry : state;
         }
+        // reference getPortState: with a port inventory, a name resolves
+        // through it (null = ambiguous); otherwise it must match exactly one
+        // connected port.
+        if (midiState_.value(QStringLiteral("portInventory")).isObject()) {
+            const QJsonValue inventoryId =
+                midiState_.value(QStringLiteral("portInventory")).toObject().value(name);
+            if (!inventoryId.isString()) return {};
+            const QJsonObject entry = ports.value(inventoryId.toString()).toObject();
+            if (entry.isEmpty() || !entry.value(QStringLiteral("connected")).toBool(true)) return {};
+            const QJsonObject state = entry.value(QStringLiteral("state")).toObject();
+            return state.isEmpty() ? entry : state;
+        }
         QJsonObject match;
         for (const QJsonValue& value : ports) {
             const QJsonObject entry = value.toObject();

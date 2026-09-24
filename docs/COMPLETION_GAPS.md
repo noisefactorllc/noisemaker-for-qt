@@ -267,6 +267,29 @@ These entries record missing qualification. They do not infer implementation def
 
 </details>
 
+### GAP-012: hosts had to build MIDI state JSON by hand
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: qt/noisemaker/runtime/midi_state.{h,cpp}, the Backend midi() evaluator, parity/check_midi_state.mjs, qt/tests/test_midi_state.cpp.
+- Expected behavior: The engine owns the reference MidiState machine. Hosts feed raw bytes with a port identity and pass snapshot() to setMidiState().
+- Observed behavior: Before this change, setMidiState() accepted JSON only, and each host had to port the reference message logic. The evaluator ignored the port inventory.
+- Evidence: nm::MidiState ports MidiChannelState and MidiState. The evaluator now resolves name selectors through `portInventory`, as reference getPortState does.
+- Next action: None. The midiNoteGrid texture and midiClockCount uniform for synth/roll are not bound yet.
+- Dependencies: None.
+- Acceptance criteria: Every state dump matches the reference exactly for handcrafted and fuzzed event streams. The host contract test passes.
+- Required checks: `node parity/check_midi_state.mjs`, test_midi_state, ctest.
+- Last verification: 2026-09-24, macOS.
+
+<details><summary>GAP-012 evidence</summary>
+
+- `NM_REFERENCE_ROOT=<reference 285e50f5> node parity/check_midi_state.mjs`: MIDI_STATE 66/66, exit 0. Scenarios: 1 handcrafted scenario (61 events, 12 dumps) and 3 seeded fuzz scenarios (4569, 4607 and 4556 events). Each dump compares every channel field, per-origin bookkeeping, ports, the unscoped state and the name indexes.
+- Mutation checks on the candidate: MPE other-zone default, CC74 neutral value, CC121 reset copy, and pitch-bend shift each failed the gate (15, 12, 23 and 12 of 66). The restored source passed 66/66.
+- test_midi_state: 15 PASS, 0 FAIL. `snapshot()` plus `setMidiState()` took 1.206 ms per call with 3 ports and the unscoped state.
+- ctest 14 of 14. Release `-Wall -Wextra -Wpedantic -Werror` build: 0 warnings.
+- external-input.js is unchanged between the pin `5b81e04f` and the checkout (`git diff --stat` empty).
+
+</details>
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
@@ -282,7 +305,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008 and GAP-009 (closed) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009 and GAP-012 (closed) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.
