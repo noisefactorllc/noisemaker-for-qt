@@ -5,6 +5,7 @@
 // never require editing this file again.
 
 #include "flag_hooks.h"
+#include "host_meshes.h"
 
 #include "../../noisemaker/runtime/backend.h"
 #include "../../noisemaker/runtime/graph.h"
@@ -97,10 +98,12 @@ nm::Graph loadGraphFile(const QString& path) {
 // Renders `graph` at `size`, calling render(time) `frames` times (settle
 // iterations — see ARCHITECTURE.md "Runtime model" Time row; T3 does not
 // detect feedback graphs itself, so the caller's --frames value is honored
-// literally) before a single readSurface(). Throws on any failure.
-QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames) {
+// literally) before a single readSurface(). `meshPath` (may be empty) is
+// the host mesh for mesh0 (host_meshes.h). Throws on any failure.
+QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, const QString& meshPath) {
     nm::Backend backend;
     backend.setup(nullptr, resolveDataRoot(), size);
+    nm::loadHostMeshes(backend, graph, meshPath);
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
@@ -113,6 +116,7 @@ int runSingleGraph(const QStringList& args) {
     const QString timeText = findValue(args, QStringLiteral("--time"));
     const QString framesText = findValue(args, QStringLiteral("--frames"));
     const QString outPath = findValue(args, QStringLiteral("--out"));
+    const QString meshPath = findValue(args, QStringLiteral("--mesh"));
 
     if (graphPath.isEmpty() || sizeText.isEmpty() || outPath.isEmpty()) {
         std::fprintf(stderr, "ERROR: --graph, --size, and --out are required\n");
@@ -130,7 +134,7 @@ int runSingleGraph(const QStringList& args) {
 
     try {
         const nm::Graph graph = loadGraphFile(graphPath);
-        const QImage image = renderGraph(graph, size, time, frames);
+        const QImage image = renderGraph(graph, size, time, frames, meshPath);
         if (!nm::savePng(image, outPath)) {
             throw std::runtime_error("failed to write PNG");
         }
@@ -171,6 +175,7 @@ int runBatchManifest(const QString& manifestPath) {
         const QString sizeText = item.value(QStringLiteral("size")).toString();
         const double time = item.value(QStringLiteral("time")).toDouble(0.0);
         const int frames = std::max(1, item.value(QStringLiteral("frames")).toInt(1));
+        const QString meshPath = item.value(QStringLiteral("mesh")).toString();
         const QString outLabel = outPath.isEmpty() ? QStringLiteral("<unknown>") : outPath;
 
         try {
@@ -183,7 +188,7 @@ int runBatchManifest(const QString& manifestPath) {
             }
 
             const nm::Graph graph = loadGraphFile(graphPath);
-            const QImage image = renderGraph(graph, size, time, frames);
+            const QImage image = renderGraph(graph, size, time, frames, meshPath);
             if (!nm::savePng(image, outPath)) {
                 throw std::runtime_error("failed to write PNG");
             }
@@ -214,7 +219,7 @@ int main(int argc, char** argv) {
 
     if (args.isEmpty()) {
         std::fprintf(stderr,
-                      "usage: nm-render --graph <g.json> --size WxH --time T --frames N --out <c.png>\n"
+                      "usage: nm-render --graph <g.json> --size WxH --time T --frames N --out <c.png> [--mesh <m.obj>]\n"
                       "       nm-render --batch-manifest <m.json>\n");
         return 2;
     }

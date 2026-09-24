@@ -25,6 +25,7 @@
 // its own local findValue() rather than reaching into main.cpp).
 
 #include "flag_hooks.h"
+#include "host_meshes.h"
 
 #include "../../noisemaker/compiler/dsl_compiler.h"
 #include "../../noisemaker/compiler/effect_registry.h"
@@ -100,9 +101,11 @@ QString readTextFile(const QString& path) {
 
 // Mirrors main.cpp's renderGraph() (same settle-frame contract: caller's
 // --frames value is honored literally, no feedback-graph auto-detection).
-QImage renderGraph(const nm::Graph& graph, const QString& dataRoot, QSize size, double time, int frames) {
+QImage renderGraph(const nm::Graph& graph, const QString& dataRoot, QSize size, double time, int frames,
+                   const QString& meshPath) {
     nm::Backend backend;
     backend.setup(nullptr, dataRoot, size);
+    nm::loadHostMeshes(backend, graph, meshPath);
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
@@ -144,6 +147,7 @@ int handleDsl(const QStringList& args) {
     const QString timeText = findValue(args, QStringLiteral("--time"));
     const QString framesText = findValue(args, QStringLiteral("--frames"));
     const QString outPath = findValue(args, QStringLiteral("--out"));
+    const QString meshPath = findValue(args, QStringLiteral("--mesh"));
 
     if (dslPath.isEmpty() || sizeText.isEmpty() || outPath.isEmpty()) {
         std::fprintf(stderr, "ERROR: --dsl, --size, and --out are required\n");
@@ -165,7 +169,7 @@ int handleDsl(const QStringList& args) {
         nm::EffectRegistry registry;
         registry.loadAll(dataRoot);
         const nm::Graph graph = nm::compileGraph(src, registry);
-        const QImage image = renderGraph(graph, dataRoot, size, time, frames);
+        const QImage image = renderGraph(graph, dataRoot, size, time, frames, meshPath);
         if (!nm::savePng(image, outPath)) {
             throw std::runtime_error("failed to write PNG");
         }

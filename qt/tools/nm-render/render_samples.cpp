@@ -22,6 +22,7 @@
 // file is pure CLI-side looping over the existing render(t)/readSurface().
 
 #include "flag_hooks.h"
+#include "host_meshes.h"
 
 #include "../../noisemaker/runtime/backend.h"
 #include "../../noisemaker/runtime/graph.h"
@@ -107,6 +108,7 @@ int handleSamples(const QStringList& args) {
     const QString sizeText = findValue(args, QStringLiteral("--size"));
     const QString samplesText = findValue(args, QStringLiteral("--samples"));
     const QString outPath = findValue(args, QStringLiteral("--out"));
+    const QString meshPath = findValue(args, QStringLiteral("--mesh"));
 
     if (graphPath.isEmpty() || sizeText.isEmpty() || outPath.isEmpty()) {
         std::fprintf(stderr, "ERROR: --graph, --size, --samples, and --out are required\n");
@@ -138,6 +140,7 @@ int handleSamples(const QStringList& args) {
         const nm::Graph graph = loadGraphFile(graphPath);
         nm::Backend backend;
         backend.setup(nullptr, resolveDataRoot(), size);
+        nm::loadHostMeshes(backend, graph, meshPath);
 
         static const double kDeltaTime = 1.0 / 600.0;
         for (int frame = 1; frame <= totalFrames; ++frame) {
