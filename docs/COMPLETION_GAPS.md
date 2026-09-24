@@ -245,7 +245,8 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: The candidate matches the reference golden at the strict tolerance 2.001 / SSIM 0.98.
 - Observed behavior: Every pixel differs. Max diff 255, mean 64.19, SSIM 0.35693. The same fixture with the default blend mode passes exactly.
 - Evidence: Two single-fixture reference mints were byte-identical, so the golden is deterministic. The first batch mint raced (see sweep evidence).
-- Next action: Compare the alpha blend, depth, and draw-order state of the billboard pass against reference webgl2.js.
+- Diagnosis so far: alpha mode adds depthKeys, 24 depthMerge passes (rgba32f depthOrderA/B) and deposits with blend [ONE, ONE_MINUS_SRC_ALPHA]. Candidate alpha falls between 0 and 166.7 mean where the golden alpha is 255 everywhere. Mean RGB: candidate (83.3, 89.7, 78.0), golden (59.6, 109.2, 117.5).
+- Next action: Compare depthOrder intermediates with parity/compare_intermediates.py. Then check deposit blend and alpha output against reference webgl2.js.
 - Dependencies: None.
 - Acceptance criteria: The fixture passes at 2.001 / 0.98 with no tolerance change. The other heightGrid fixtures stay PASS.
 - Required checks: `bash parity/run.sh heightGrid_billboard_alpha` against a fresh reference golden, then a full sweep.
