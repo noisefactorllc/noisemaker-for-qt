@@ -45,7 +45,9 @@ Unlike the HLSL/GDShader ports, this port shares the reference's shader *languag
 
 ## Requirements
 
-The runtime needs an OpenGL 4.1 core profile context; shaders compile as GLSL 330 core. Qt 6 Core, Gui and OpenGL are required, with CMake 3.21 or later and a C++17 compiler. Rendered parity is verified on macOS (Apple Silicon). CI builds and runs the unit tests on Linux with Mesa llvmpipe. Windows is not yet verified; see [completion gaps](docs/COMPLETION_GAPS.md).
+The runtime needs an OpenGL 4.1 core profile context; shaders compile as GLSL 330 core. Qt 6.9 or later (Core, Gui and OpenGL; Quick for the optional item) is required, with CMake 3.21 or later and a C++17 compiler. Rendered parity is verified on macOS (Apple Silicon). CI builds and runs the unit tests on Linux with Mesa llvmpipe. Windows is not yet verified; see [completion gaps](docs/COMPLETION_GAPS.md).
+
+Qt 6.9 is the first version that can set a variable font's weight axis, which `text()` needs for the bundled Nunito. Measured on 2026-09-24: Qt 6.9.3 on Linux arm64 (gcc 13.3, Mesa llvmpipe) passes all 22 tests. Qt 6.4.2, the Ubuntu 24.04 package, builds and passes all tests except the text weight checks: it draws Nunito at its default ExtraLight weight for every program. CMake warns when it finds a Qt older than 6.9.
 
 ## Quickstart
 

@@ -33,6 +33,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 COMPONENTS Core Gui OpenGL REQUIRED)
+if(Qt6_VERSION VERSION_LESS 6.9)
+    message(WARNING "Qt ${Qt6_VERSION} cannot set a variable font's weight axis (added in Qt 6.9): "
+                    "filter/text draws the bundled Nunito at its default ExtraLight weight. "
+                    "Qt 6.9 or later is supported.")
+endif()
 find_package(Qt6 QUIET OPTIONAL_COMPONENTS Quick)
 set(_nm_quick_default OFF)
 if(PROJECT_IS_TOP_LEVEL AND Qt6Quick_FOUND)

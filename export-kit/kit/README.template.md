@@ -4,7 +4,7 @@ This is a C++17/CMake project using [Noisemaker for Qt](https://github.com/noise
 
 ## Build
 
-Install Qt 6 (Core, Gui and OpenGL), CMake 3.21 or later, and a C++17 compiler. The renderer needs an OpenGL 4.1 core profile context. Point `CMAKE_PREFIX_PATH` at your Qt installation when CMake cannot find it automatically.
+Install Qt 6.9 or later (Core, Gui and OpenGL), CMake 3.21 or later, and a C++17 compiler. Older Qt 6 versions build it, but draw `text()` at the font's default weight. The renderer needs an OpenGL 4.1 core profile context. Point `CMAKE_PREFIX_PATH` at your Qt installation when CMake cannot find it automatically.
 
 ```sh
 cmake -B build -S . -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<platform>

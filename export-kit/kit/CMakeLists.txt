@@ -11,6 +11,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 find_package(Qt6 COMPONENTS Core Gui OpenGL REQUIRED)
+if(Qt6_VERSION VERSION_LESS 6.9)
+    message(WARNING "Qt ${Qt6_VERSION} cannot set a variable font's weight axis (added in Qt 6.9): "
+                    "filter/text draws the bundled Nunito at its default ExtraLight weight. "
+                    "Qt 6.9 or later is supported.")
+endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/engine/noisemaker/runtime/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/engine/noisemaker/compiler/sources.cmake)
