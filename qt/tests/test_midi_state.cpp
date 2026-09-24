@@ -3,10 +3,14 @@
 // with the reference MidiState is gated separately by
 // parity/check_midi_state.mjs; this test checks the host contract.
 
+#include "../noisemaker/compiler/dsl_compiler.h"
+#include "../noisemaker/compiler/effect_registry.h"
 #include "../noisemaker/runtime/backend.h"
 #include "../noisemaker/runtime/midi_state.h"
 
 #include <QElapsedTimer>
+#include <QGuiApplication>
+#include <QImage>
 #include <QJsonArray>
 
 #include <cmath>
@@ -45,7 +49,8 @@ double resolve(nm::Backend& backend, const nm::MidiState& state, const QJsonObje
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    QGuiApplication app(argc, argv);
     nm::Backend backend; // resolveUniformValue needs no GL context
     const nm::MidiPort keys{QStringLiteral("port-a"), QStringLiteral("Keys"), true};
     const nm::MidiPort pads{QStringLiteral("port-b"), QStringLiteral("Pads"), true};
@@ -114,6 +119,41 @@ int main() {
 
     state.reset();
     check(resolve(backend, state, midi({{"channel", 1}, {"mode", 8}})) == 8192 / 16383.0, "reset restores the pitch-bend center");
+
+    // A MIDI-driven parameter through compile, snapshot and render. The
+    // automation min/max are unit values (the reference validator clamps
+    // `max: 90` to 1), then scale into the parameter's range, so gradient
+    // rotation (-180..180) gets CC 0 -> -180 and CC 127 -> +180: the same
+    // angle. Reference Pipeline.resolvePassUniforms on this graph gives
+    // -180, 1.4173228346456597 and 180 for CC 0, 64 and 127. Compare
+    // renders at CC 0 and CC 64; 0 and 127 differ only by trigonometric
+    // rounding (Apple M4: 93 px by 1 level; Apple Software Renderer: 0).
+    {
+        nm::EffectRegistry registry;
+        registry.loadAll(QStringLiteral("qt/noisemaker"));
+        nm::Backend renderer;
+        renderer.setup(nullptr, QStringLiteral("qt/noisemaker"), QSize(64, 48));
+        const nm::Graph graph = nm::compileGraph(QStringLiteral(
+            "search synth\nlet angle = midi(channel: 1, mode: 5, cc: 7, min: 0, max: 90)\n"
+            "gradient(seed: 1, rotation: angle).write(o0)\nrender(o0)\n"), registry);
+        const QJsonValue rotation = graph.passes.first().uniforms.value(QStringLiteral("rotation"));
+        const QJsonObject spec = graph.passes.first().uniformSpecs.value(QStringLiteral("rotation")).toObject();
+        nm::MidiState live;
+        QImage images[3];
+        double angles[3] = {0, 0, 0};
+        const int values[3] = {0, 64, 127};
+        for (int i = 0; i < 3; ++i) {
+            send(live, {0xb0, 7, values[i]});
+            renderer.setMidiState(live.snapshot());
+            angles[i] = renderer.resolveUniformValue(rotation, 0.0, spec).toDouble();
+            renderer.render(graph, 0.0, 0.0);
+            images[i] = renderer.readSurface();
+        }
+        std::printf("  CC7 0/64/127 -> rotation %.17g / %.17g / %.17g\n", angles[0], angles[1], angles[2]);
+        check(angles[0] == -180.0 && angles[1] == 1.4173228346456597 && angles[2] == 180.0,
+              "midi() rotation resolves to the reference values for CC 0, 64 and 127");
+        check(images[0] != images[1], "a CC change to a different angle changes the rendered image");
+    }
 
     std::printf("%d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

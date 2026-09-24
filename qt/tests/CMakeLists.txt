@@ -35,8 +35,9 @@ add_test(NAME test_host_inputs COMMAND test_host_inputs)
 set_tests_properties(test_host_inputs PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 add_executable(test_midi_state test_midi_state.cpp)
-target_link_libraries(test_midi_state PRIVATE noisemaker-qt Qt6::Core)
+target_link_libraries(test_midi_state PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
 add_test(NAME test_midi_state COMMAND test_midi_state)
+set_tests_properties(test_midi_state PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 add_executable(test_audio_input test_audio_input.cpp)
 target_link_libraries(test_audio_input PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)

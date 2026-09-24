@@ -50,8 +50,8 @@ void fft(std::vector<double>& re, std::vector<double>& im) {
 //   - x86_64 Chromium 153 (GitHub ubuntu runner): a separate multiply and
 //     add per term (CI run 35970287679 matched the unfused sum).
 // Scales of 0.5 and 0.25 are exact, so only the 5.1 sqrt(0.5) terms depend
-// on this. qt/CMakeLists.txt builds this file with -ffp-contract=off so the
-// unfused path is never contracted into an FMA.
+// on this. qt/CMakeLists.txt builds the library with -ffp-contract=off so
+// the unfused path is never contracted into an FMA.
 float accumulate(float sum, float sample, float scale) {
 #if defined(__aarch64__) || defined(_M_ARM64)
     return std::fma(sample, scale, sum);

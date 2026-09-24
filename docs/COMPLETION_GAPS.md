@@ -439,6 +439,19 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: check_audio_analyzer.mjs on both architectures.
 - Last verification: 2026-09-24. arm64 local: 570/570, 0 time-domain mismatches. x86_64 unverified.
 
+### GAP-023: fused multiply-add changed automation values against the reference
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: every CPU-side floating-point expression in libnoisemaker-qt, notably the midi()/audio()/osc() evaluator in backend.cpp.
+- Expected behavior: Resolved automation values equal the reference's JavaScript double arithmetic, which never fuses a multiply and add.
+- Observed behavior: Apple Clang on arm64 contracted `min + value * (max - min)` into an FMA. midi() CC 64 on gradient rotation resolved to 1.4173228346456668. Reference Pipeline.resolvePassUniforms gives 1.4173228346456597.
+- Evidence: The library now builds with -ffp-contract=off (GCC, Clang). `otool -tv` finds FMA instructions only in the explicit std::fma of the arm64 down-mix. test_midi_state asserts the reference values -180, 1.4173228346456597 and 180 for CC 0, 64 and 127.
+- Next action: None.
+- Dependencies: None.
+- Acceptance criteria: Exact reference values in test_midi_state. Every parity gate and the rendered ledger unchanged.
+- Required checks: ctest, all 11 parity gates, a SKIP_GOLDEN sweep regrade.
+- Last verification: 2026-09-24. ctest 15/15. Gates exit 0: 317/317, 210/210, 5/5, 358/358 five times, 66/66, 570/570, 93/93. The regrade gave 345 of 347 with the same 2 FAILs; `git diff parity/ledger.json` is empty. `-Werror` build: 0 warnings.
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.

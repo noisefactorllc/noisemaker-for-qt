@@ -35,10 +35,14 @@ target_include_directories(noisemaker-qt PUBLIC
 target_link_libraries(noisemaker-qt PUBLIC Qt6::Core Qt6::Gui Qt6::OpenGL)
 target_compile_features(noisemaker-qt PUBLIC cxx_std_17)
 add_library(noisemaker-qt::noisemaker-qt ALIAS noisemaker-qt)
-# The AnalyserNode down-mix must round exactly like Chromium on each
-# architecture (see audio_analyzer.cpp); forbid implicit FMA contraction.
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/noisemaker/runtime/audio_analyzer.cpp
-    PROPERTIES COMPILE_OPTIONS "$<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-ffp-contract=off>")
+# CPU-side arithmetic mirrors the JavaScript reference, which never fuses a
+# multiply and add. Clang contracts `a + b * c` into one FMA by default on
+# arm64 (measured: midi() CC 64 -> rotation 1.4173228346456668 instead of
+# the reference 1.4173228346456597), and GCC does so with FMA-capable
+# targets. Explicit std::fma (audio_analyzer.cpp, arm64 Chromium down-mix)
+# is unaffected.
+target_compile_options(noisemaker-qt PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-ffp-contract=off>)
 
 # Runtime data tree (shaders/ and effects/) for nm::Backend::setup() and
 # nm::EffectRegistry::loadAll(). Visible to a parent project through the
