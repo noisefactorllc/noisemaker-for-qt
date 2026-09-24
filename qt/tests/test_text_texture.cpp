@@ -19,9 +19,12 @@
 #include <QGuiApplication>
 #include <QImage>
 #include <QJsonArray>
+#include <QPainterPath>
+#include <QRawFont>
 
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 namespace {
 
@@ -247,6 +250,131 @@ void testGenericFamilies() {
     }
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+QFont nunito(int pixelSize, float wght) {
+    QFont font(QStringLiteral("Nunito"));
+    font.setPixelSize(pixelSize);
+    font.setHintingPreference(QFont::PreferNoHinting);
+    font.setKerning(true);
+    font.setVariableAxis(QFont::Tag("wght"), wght);
+    return font;
+}
+
+// Kerning variation deltas in font units, pinned to HarfBuzz (uharfbuzz
+// 0.x shaping at scale upem * 1024: kern advance at wght minus kern advance
+// at the default instance, wght 200) and to a fontTools walk of the same
+// tables; the two agree within 0.0005 units. The pins are the walk values.
+void testKerningVariationDeltas() {
+    nm::registerBundledFonts(kDataRoot);
+    const QRawFont raw = QRawFont::fromFont(nunito(102, 400.0f));
+    struct Pin {
+        const char* pair;
+        double at300, at400, at700, at800;
+    };
+    const Pin pins[] = {
+        {"vy", 9.155273, 18.793945, 40.0, 43.132324},
+        {"Wo", -1.831055, -3.758789, -8.0, -10.192627},
+        {"Te", -0.686646, -1.409546, -3.0, -3.626465},
+        {"th", 2.975464, 6.108032, 13.0, 15.192627},
+        {"wo", -1.144409, -2.349243, -5.0, -6.566162},
+        {"AV", -2.288818, -4.698486, -10.0, -13.132324},
+        {"Bo", 0.0, 0.0, 0.0, 0.0},
+        {"ld", 0.0, 0.0, 0.0, 0.0},
+    };
+    bool pinned = true;
+    for (const Pin& pin : pins) {
+        const QList<quint32> glyphs = raw.glyphIndexesForString(QString::fromLatin1(pin.pair));
+        const double expected[] = {pin.at300, pin.at400, pin.at700, pin.at800};
+        const double weights[] = {300.0, 400.0, 700.0, 800.0};
+        for (int w = 0; w < 4; ++w) {
+            const std::vector<double> d = nm::detail::kerningVariationDeltas(raw, glyphs, weights[w]);
+            const bool ok = d.size() == 2 && std::abs(d[0] - expected[w]) < 0.001 && d[1] == 0.0;
+            if (!ok) {
+                std::printf("  %s at %.0f: got %.6f, %.6f; expected %.6f, 0\n", pin.pair, weights[w],
+                            d.size() > 0 ? d[0] : -1.0, d.size() > 1 ? d[1] : -1.0, expected[w]);
+            }
+            pinned = pinned && ok;
+        }
+    }
+    check(pinned, "kerning variation deltas of Nunito pairs match HarfBuzz at wght 300, 400, 700 and 800");
+
+    const QList<quint32> heavy = raw.glyphIndexesForString(QStringLiteral("Heavy"));
+    const std::vector<double> heavyDeltas = nm::detail::kerningVariationDeltas(raw, heavy, 800.0);
+    check(heavyDeltas.size() == 5 && heavyDeltas[0] == 0.0 && heavyDeltas[1] == 0.0 && heavyDeltas[2] == 0.0
+              && std::abs(heavyDeltas[3] - 43.132324) < 0.001 && heavyDeltas[4] == 0.0,
+          "in \"Heavy\" at wght 800 only the v of the vy pair carries a delta");
+    const std::vector<double> atDefault = nm::detail::kerningVariationDeltas(raw, heavy, 200.0);
+    const std::vector<double> atMaximum = nm::detail::kerningVariationDeltas(raw, heavy, 1000.0);
+    const std::vector<double> beyond = nm::detail::kerningVariationDeltas(raw, heavy, 1400.0);
+    check(atDefault == std::vector<double>(5, 0.0), "the default instance (wght 200) has no deltas");
+    check(beyond == atMaximum && atMaximum[3] > heavyDeltas[3], "wght beyond the axis maximum clamps to it");
+
+    check(nm::detail::kerningVariationDeltas(QRawFont(), heavy, 800.0) == std::vector<double>(5, 0.0)
+              && nm::detail::kerningVariationDeltas(raw, heavy.mid(3, 1), 800.0) == std::vector<double>(1, 0.0),
+          "an invalid font or a single glyph gets zero deltas");
+}
+
+// Elements [from, to) of `a` equal those of `b` moved right by `dx`:
+// exactly when `exact`, else within 1e-9 px (the platform engine may round
+// a glyph's translation differently from a translated QRawFont outline).
+bool sameElements(const QPainterPath& a, const QPainterPath& b, int from, int to, double dx, bool exact) {
+    for (int i = from; i < to; ++i) {
+        const QPainterPath::Element e = a.elementAt(i);
+        const QPainterPath::Element f = b.elementAt(i);
+        if (e.type != f.type) return false;
+        if (exact ? (e.x != f.x + dx || e.y != f.y)
+                  : (std::abs((e.x - f.x) - dx) > 1e-9 || std::abs(e.y - f.y) > 1e-9)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// detail::textLinePath against QPainterPath::addText, element for element.
+void testLinePath() {
+    nm::registerBundledFonts(kDataRoot);
+    const QPointF origins[] = {{0.0, 0.0}, {-71.8046875, 6.3}, {-150.333, -12.40625}, {37.017, 91.99}};
+    bool zeroDeltaEqual = true;
+    for (const QPointF& origin : origins) {
+        const std::pair<QFont, QString> lines[] = {
+            {nunito(102, 700.0f), QStringLiteral("Bold")},
+            {nunito(61, 200.0f), QStringLiteral("Heavy vy AV")},
+            {QFont(), QStringLiteral("Plain text, 12 AV")},
+        };
+        for (const auto& [font, text] : lines) {
+            QPainterPath expected;
+            expected.addText(origin, font, text);
+            double delta = -1.0;
+            const QPainterPath got = nm::detail::textLinePath(font, text, origin, &delta);
+            zeroDeltaEqual = zeroDeltaEqual && delta == 0.0 && got.elementCount() == expected.elementCount()
+                && sameElements(got, expected, 0, got.elementCount(), 0.0, true);
+        }
+    }
+    check(zeroDeltaEqual, "without kerning deltas the line outline equals QPainterPath::addText exactly");
+
+    // "Heavy" at wght 800: H, e, a and v stay where addText puts them (the
+    // glyph-run construction truncates the origin to 1/64 px as addText
+    // does); y moves right by the vy delta, 43.132324 units at 102 px =
+    // 4.39950 px.
+    const QFont heavy = nunito(102, 800.0f);
+    const QString text = QStringLiteral("Heavy");
+    const QPointF origin(-150.337, 11.1234);
+    QPainterPath expected;
+    expected.addText(origin, heavy, text);
+    double delta = 0.0;
+    const QPainterPath got = nm::detail::textLinePath(heavy, text, origin, &delta);
+    const QRawFont raw = QRawFont::fromFont(heavy);
+    const int yElements = raw.pathForGlyph(raw.glyphIndexesForString(QStringLiteral("y")).first()).elementCount();
+    const int count = expected.elementCount();
+    const double shift = 43.132324 * 102.0 / raw.unitsPerEm();
+    std::printf("  Heavy: elements=%d y elements=%d delta=%.5f px\n", count, yElements, delta);
+    check(std::abs(delta - shift) < 1e-6, "the line advance grows by the vy delta in pixels");
+    check(got.elementCount() == count && sameElements(got, expected, 0, count - yElements, 0.0, false)
+              && sameElements(got, expected, count - yElements, count, delta, false),
+          "only the glyph after the kerned pair moves, by the delta (within 1e-9 px)");
+}
+#endif
+
 void testGraphUpload(nm::EffectRegistry& registry) {
     const QSize size(128, 128);
     nm::Backend backend;
@@ -301,6 +429,10 @@ int main(int argc, char** argv) {
     testLayout();
     testStyles();
     testGenericFamilies();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    testKerningVariationDeltas();
+    testLinePath();
+#endif
     testGraphUpload(registry);
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,

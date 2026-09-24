@@ -19,7 +19,10 @@
 //     maps it ("Bold" -> 700, "ExtraLight" -> 200, "... Italic" -> italic).
 //
 // Glyphs are filled as outlines (QPainterPath) without hinting, so the same
-// font file rasterizes the same way on every platform. Pixel differences
+// font file rasterizes the same way on every platform. Qt shapes a variable
+// font with the default instance's GPOS kerning; a browser (HarfBuzz)
+// applies the kerning's variation deltas for the requested weight as well.
+// The renderer adds those deltas itself (detail::kerningVariationDeltas). Pixel differences
 // from a browser canvas remain at glyph edges: browsers rasterize glyph
 // masks with the platform scaler. parity/check_text_canvas.mjs measures them
 // against Chromium.
@@ -32,11 +35,18 @@
 // system family when the name is not installed.
 
 #include <QColor>
+#include <QFont>
 #include <QImage>
 #include <QJsonObject>
+#include <QList>
+#include <QPainterPath>
+#include <QPointF>
+#include <QRawFont>
 #include <QSize>
 #include <QString>
 #include <QStringList>
+
+#include <vector>
 
 namespace nm {
 
@@ -78,5 +88,27 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize);
 // current. Returns the uploaded texture ids.
 QStringList updateTextTextures(Backend& backend, const Graph& graph, const QString& dataRoot,
                                QSize canvasSize);
+
+namespace detail {
+// Kerning variation deltas, in font design units, for `glyphs` in logical
+// order at the user-space wght axis value `wght`: for each glyph, the change
+// of its GPOS 'kern' pair adjustment (the XAdvance VariationIndex device of
+// the pair's value records) between the default instance and `wght`. This
+// is what HarfBuzz adds and Qt's shaping leaves out. Supports PairPos
+// formats 1 and 2 (also inside Extension lookups), the IgnoreBaseGlyphs,
+// IgnoreLigatures and IgnoreMarks lookup flags, the fvar/avar
+// normalization and the GDEF ItemVariationStore, as HarfBuzz evaluates
+// them. Returns zeros for a font without fvar, GPOS or GDEF variation data,
+// and skips lookups that use mark attachment classes or mark filtering sets.
+std::vector<double> kerningVariationDeltas(const QRawFont& font, const QList<quint32>& glyphs, double wght);
+
+// One line of text as renderTextTexture draws it: the glyphs of a
+// design-metrics QTextLayout (the layout QPainterPath::addText uses), each
+// advance increased by its kerning variation delta for the font's wght axis
+// value, with the left end of the baseline at `origin` truncated to 1/64 px
+// as QPainterPath::addText does. `deltaAdvance` receives the added advance
+// in pixels. Without deltas the path equals addText(origin, font, line).
+QPainterPath textLinePath(const QFont& font, const QString& line, QPointF origin, double* deltaAdvance = nullptr);
+} // namespace detail
 
 } // namespace nm
