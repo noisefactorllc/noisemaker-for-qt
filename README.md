@@ -44,23 +44,20 @@ The runtime needs an OpenGL 4.1 core profile context; shaders compile as GLSL 33
 
 ## Quickstart
 
-Every command below was verified by literally running it before it was written down here.
-The commands below use the core library's canonical build directory, `qt/build` (gitignored). Any out-of-tree build directory works the same way. T7's verification used identical commands with a scratch build directory: the same flags, but a different `-B`/`--prefix` path. See the task report for the literal transcript. The
-`examples/viewer` commands further down were verified against these exact literal paths, no
-substitution needed.
+Run the commands from the repository root. Each was run as written on macOS 26.5 with Homebrew Qt 6.11.1 and CMake 4.4 on 2026-09-24. Replace `/opt/homebrew/opt/qt` with your Qt installation (for example `~/Qt/6.11.1/macos`, `~/Qt/6.11.1/gcc_64` or `C:\Qt\6.11.1\msvc2022_64`). Any CMake generator works; add `-G Ninja` if you have Ninja. With a multi-configuration generator (Visual Studio, Xcode), add `--config Release` to the build commands and find the programs under `Release/`.
 
 ### Build the library, CLI, and tests
 
 ```sh
-cmake -B qt/build -S qt -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
-cmake --build qt/build
+cmake -B qt/build -S qt -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
+cmake --build qt/build --parallel
 ctest --test-dir qt/build --output-on-failure
 ```
 
 ### Render a DSL program to a PNG
 
 ```sh
-qt/build/nm-render --dsl parity/corpus/weird_mandala.dsl --size 512x512 --time 0.5 --frames 1 --out /tmp/out.png
+qt/build/nm-render --dsl parity/corpus/weird_mandala.dsl --size 512x512 --time 0.5 --frames 1 --out out.png
 ```
 
 ### Build and run the live viewer example
@@ -69,8 +66,8 @@ With no installed `noisemaker-qt` package on `CMAKE_PREFIX_PATH`, this builds ag
 `qt/` tree directly (`add_subdirectory`):
 
 ```sh
-cmake -B examples/viewer/build -S examples/viewer -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
-cmake --build examples/viewer/build
+cmake -B examples/viewer/build -S examples/viewer -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
+cmake --build examples/viewer/build --parallel
 examples/viewer/build/viewer              # opens a resizable window with a live animated render
 examples/viewer/build/viewer --selfcheck  # renders 30 frames, resizes the window to 640x360 and
                                            # renders 30 more; each grab must match the window's
@@ -81,14 +78,32 @@ examples/viewer/build/viewer --selfcheck  # renders 30 frames, resizes the windo
 
 ### Build the viewer against an *installed* package instead
 
-`libnoisemaker-qt` supports `find_package`. Installation exports a static library, its public headers, and its runtime shader/effect data under one prefix. The runtime loads this data from disk. The data is never compiled into the library.
+`libnoisemaker-qt` supports `find_package`. Installation puts a static library, its public headers, the package config with its version file, the runtime data (`share/noisemaker-qt/noisemaker/`: shaders, effect definitions and the bundled font), and the license (`share/doc/noisemaker-qt/LICENSE`) under one prefix. The runtime loads the data from disk; it is never compiled into the library.
 
 ```sh
 cmake --install qt/build --prefix /path/to/some/prefix
-cmake -B examples/viewer/build2 -S examples/viewer -G Ninja \
+cmake -B examples/viewer/build2 -S examples/viewer -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/qt;/path/to/some/prefix"
-cmake --build examples/viewer/build2
+cmake --build examples/viewer/build2 --parallel
 examples/viewer/build2/viewer --selfcheck
+```
+
+A consumer asks for the release series it was written against. The package is `0.x`, so a new minor version may change the API; `find_package` accepts only the same minor version:
+
+```cmake
+find_package(noisemaker-qt 0.1 CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE noisemaker-qt::noisemaker-qt)
+target_compile_definitions(my_app PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_ROOT}")
+```
+
+Pass `NOISEMAKER_QT_DATA_ROOT` (the installed `share/noisemaker-qt/noisemaker`) to `nm::EffectRegistry::loadAll()` and `nm::Backend::setup()`. Moving the prefix moves the data root with it: the package config derives every path from its own location.
+
+To uninstall, remove the files that `cmake --install` recorded in `qt/build/install_manifest.txt`, then the package's directories, which are empty after that:
+
+```sh
+while IFS= read -r file; do rm -f "$file"; done < qt/build/install_manifest.txt
+rm -r /path/to/some/prefix/include/noisemaker-qt /path/to/some/prefix/lib/cmake/noisemaker-qt \
+  /path/to/some/prefix/share/noisemaker-qt /path/to/some/prefix/share/doc/noisemaker-qt
 ```
 
 ### Embed the library in another CMake project

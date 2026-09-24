@@ -9,11 +9,23 @@
 # library as noisemaker-qt::noisemaker-qt, the same name the installed
 # package exports.
 cmake_minimum_required(VERSION 3.21)
-project(noisemaker-qt CXX)
+# The version is the port's release series; export-kit/kit.config.json
+# "series" states the same series for the export kit releases
+# (kit-qt-v<series>.<n>), checked below.
+project(noisemaker-qt VERSION 0.1 LANGUAGES CXX)
 
 option(NM_QT_BUILD_TOOLS "Build the nm-render CLI" ${PROJECT_IS_TOP_LEVEL})
 option(NM_QT_BUILD_TESTS "Build the unit tests and register them with ctest" ${PROJECT_IS_TOP_LEVEL})
 option(NM_QT_INSTALL "Generate install rules and the package config" ${PROJECT_IS_TOP_LEVEL})
+
+set(_nm_kit_config "${CMAKE_CURRENT_SOURCE_DIR}/../export-kit/kit.config.json")
+if(EXISTS "${_nm_kit_config}")
+    file(READ "${_nm_kit_config}" _nm_kit_json)
+    string(JSON _nm_kit_series GET "${_nm_kit_json}" series)
+    if(NOT _nm_kit_series STREQUAL PROJECT_VERSION)
+        message(FATAL_ERROR "project VERSION ${PROJECT_VERSION} differs from export-kit/kit.config.json series ${_nm_kit_series}")
+    endif()
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -120,7 +132,17 @@ if(NM_QT_INSTALL)
         ${CMAKE_CURRENT_BINARY_DIR}/noisemaker-qt-config.cmake
         @ONLY
     )
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/noisemaker-qt-config.cmake
+    # 0.x series: a new minor version may break the API.
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/noisemaker-qt-config-version.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMinorVersion
+    )
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/noisemaker-qt-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/noisemaker-qt-config-version.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/noisemaker-qt
     )
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif()
