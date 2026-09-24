@@ -176,3 +176,13 @@ set_tests_properties(test_mesh_render PROPERTIES WORKING_DIRECTORY ${PROJECT_SOU
 # parity/check_obj_parser.mjs (reference obj-parser.js oracle).
 add_executable(obj_parser_dump obj_parser_dump.cpp)
 target_link_libraries(obj_parser_dump PRIVATE noisemaker-qt Qt6::Core)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_async_overlay.mjs (Chromium asyncInit overlay oracle).
+add_executable(async_overlay_dump async_overlay_dump.cpp)
+target_link_libraries(async_overlay_dump PRIVATE noisemaker-qt Qt6::Core)
+
+add_executable(test_async_overlay test_async_overlay.cpp)
+target_link_libraries(test_async_overlay PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_async_overlay COMMAND test_async_overlay)
+set_tests_properties(test_async_overlay PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
