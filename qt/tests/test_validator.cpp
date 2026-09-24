@@ -384,7 +384,7 @@ int main() {
     }
 
     // ==================================================================
-    // UnsupportedDsl: every one of the 7 logical fail-loud sites throws, even
+    // UnsupportedDsl: the remaining fail-loud sites throw, even
     // though the reference itself fully resolves/interprets all of them
     // (verified: every one of these probes is `ok:true` against the live
     // oracle -- these are deliberate AOT-frontend divergences, not gaps).
@@ -408,14 +408,25 @@ int main() {
     expectUnsupported(QStringLiteral("search synth\nreturn\n"), "2c/7: return -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(wrap: () => true).write(o0)\nrender(o0)\n"),
                        "3/7: Func boolean param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nnoise(wrap: time).write(o0)\nrender(o0)\n"),
-                       "4/7: state-value boolean param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nnoise(type: time).write(o0)\nrender(o0)\n"),
-                       "5/7: state-value member param -> UnsupportedDsl");
     expectUnsupported(QStringLiteral("search synth\nnoise(octaves: () => 5).write(o0)\nrender(o0)\n"),
                        "6/7: Func numeric param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nnoise(octaves: time).write(o0)\nrender(o0)\n"),
-                       "7/7: state-value numeric param -> UnsupportedDsl");
+
+    // Bare state values (time/frame/...) compile to the values the reference
+    // graph JSON carries: its `{fn}` closures are never called and do not
+    // serialize (oracle-gated by parity/corpus/state_values.dsl).
+    {
+        const QJsonObject boolean = validateSrc(QStringLiteral("search synth\nnoise(wrap: time).write(o0)\nrender(o0)\n"));
+        check(args(boolean, 0, 0).value(QStringLiteral("wrap")) == QJsonValue(QJsonObject()),
+              "state-value boolean param compiles to {} (reference {fn})");
+        const QJsonObject member = validateSrc(QStringLiteral("search synth\nosc2d(oscType: time).write(o0)\nrender(o0)\n"));
+        check(args(member, 0, 0).value(QStringLiteral("oscType")) == QJsonValue(QJsonObject()),
+              "state-value member param compiles to {} (reference {fn})");
+        const QJsonObject numeric = validateSrc(QStringLiteral("search synth\nnoise(octaves: frame).write(o0)\nrender(o0)\n"));
+        const QJsonObject octaves = args(numeric, 0, 0).value(QStringLiteral("octaves")).toObject();
+        check(octaves.value(QStringLiteral("min")).toDouble() == 1.0 && octaves.value(QStringLiteral("max")).toDouble() == 8.0
+                  && octaves.value(QStringLiteral("_ast")).toObject().value(QStringLiteral("name")).toString() == QStringLiteral("frame"),
+              "state-value numeric param compiles to {min, max, _ast} (reference {fn, min, max, _ast})");
+    }
 
     // Oscillator (osc()) is explicitly NOT in the UnsupportedDsl set --
     // its descriptor is compiled for deterministic runtime evaluation.

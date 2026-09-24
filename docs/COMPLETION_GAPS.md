@@ -347,6 +347,71 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: grep of AGENTS.md.
 - Last verification: 2026-09-24.
 
+### GAP-016: bare state values in params raised UnsupportedDsl
+
+- Status: closed. Priority: P2. Category: contract.
+- Affected scope: qt/noisemaker/compiler/validator.cpp (boolean, member, numeric params), qt/tests/test_validator.cpp, parity/corpus/state_values.dsl.
+- Expected behavior: `noise(octaves: frame, ridges: time)` compiles to the graph the reference produces.
+- Observed behavior: Before this change, Qt threw UnsupportedDsl. The reference compiled to `{}` (boolean, member) and `{min, max, _ast}` (numeric), because its `{fn}` closures are never called or serialized.
+- Evidence: New corpus fixture parity/corpus/state_values.dsl covers all three positions. VALIDATE, EXPAND and GRAPH gates are 1/1 on it and 358/358 on the full pool.
+- Next action: None. The runtime binds these objects as 0, as WebGL2 does for a non-numeric uniform.
+- Dependencies: None.
+- Acceptance criteria: Byte-identical validate, expand and graph output against the reference for every state-value position.
+- Required checks: check_validate, check_expand, check_graph; test_validator; ctest.
+- Last verification: 2026-09-24. ctest 15 of 15; LEX, PARSE, VALIDATE, EXPAND and GRAPH each 358/358; `-Werror` build 0 warnings.
+
+### GAP-017: arrow-function params raise UnsupportedDsl
+
+- Status: open. Priority: P2. Category: contract.
+- Affected scope: validator.cpp Func branches (boolean and numeric params).
+- Expected behavior: `noise(octaves: () => time * 4)` compiles like the reference: `{min, max}` numeric, `{}` boolean, or S001 for invalid JavaScript.
+- Observed behavior: Qt throws UnsupportedDsl. The reference graph for that program carries `octaves: {min: 1, max: 8}` and `ridges: {}` (probe with tools/dump-graph.mjs).
+- Evidence: The reference decides validity with `new Function(...)`, a JavaScript parse. This port has no JavaScript expression parser to reproduce S001.
+- Next action: Port a JavaScript expression syntax check for arrow bodies, then emit the reference values. Gate with corpus fixtures, including invalid bodies.
+- Dependencies: A JavaScript expression grammar check that matches V8 for the DSL's arrow-body subset.
+- Acceptance criteria: check_validate and check_graph byte-identical on valid and invalid arrow bodies.
+- Required checks: new corpus fixtures, compiler gates, test_validator.
+- Last verification: 2026-09-24.
+
+### GAP-018: if/elif/else, break, continue and return raise UnsupportedDsl
+
+- Status: open. Priority: P3. Category: contract.
+- Affected scope: validator.cpp control-flow statements.
+- Expected behavior: Match the reference at each stage.
+- Observed behavior: The reference validator returns Branch/Break/Continue/Return plans. Its compileGraph then fails ("plan.chain is not iterable"), so the reference cannot render these programs either. Qt fails earlier with UnsupportedDsl.
+- Evidence: `tools/dump-graph.mjs` on `if (1) { noise().write(o0) } else { solid().write(o0) }` returned `{"ok":false,"error":"plan.chain is not iterable"}`.
+- Next action: Emit the reference Branch plan shapes from validate() for check_validate parity. Keep compileGraph failing as the reference does.
+- Dependencies: None.
+- Acceptance criteria: check_validate byte-identical on control-flow fixtures. compileGraph fails for the same programs.
+- Required checks: corpus fixtures with control flow, check_validate, check_graph.
+- Last verification: 2026-09-24.
+
+### GAP-019: triangle mesh rendering and meshLoader are not implemented
+
+- Status: open. Priority: P2. Category: implementation.
+- Affected scope: render/meshRender (`drawMode: "triangles"`), render/meshLoader, nm::Backend.
+- Expected behavior: Draw triangles from the mesh textures that the reference fills through its mesh upload and OBJ parser (webgl2.js drawMode triangles; obj-parser.js).
+- Observed behavior: Backend throws for `drawMode: "triangles"`. It has no mesh upload API. Both effects stay excluded from the export kit.
+- Evidence: backend executePass `drawMode` handling; export-kit/kit.config.json compat exclusions.
+- Next action: Port the mesh upload and the triangles draw path, then add fixtures with reference-minted goldens.
+- Dependencies: A host API for mesh data (OBJ text or position, normal and UV arrays).
+- Acceptance criteria: meshRender fixtures pass at the strict tolerance against reference goldens.
+- Required checks: parity/run.sh on the new fixtures, then a full sweep.
+- Last verification: 2026-09-24.
+
+### GAP-020: compute pass fields raise UnsupportedDsl
+
+- Status: open. Priority: P3. Category: contract.
+- Affected scope: expander.cpp (`entryPoint`, `workgroups`, `storageBuffers`, `storageTextures`).
+- Expected behavior: The reference WebGL2 backend runs such passes as fullscreen render passes (webgl2.js, around line 1093).
+- Observed behavior: Qt throws when a definition declares these fields. No current definition declares them (`grep -rl entryPoint shaders/effects` in the reference returns no definition.js).
+- Evidence: The expander throw site and the empty reference grep.
+- Next action: None until a definition uses these fields. Then port the WebGL2 conversion.
+- Dependencies: A reference definition with these fields.
+- Acceptance criteria: Graph and render parity for the first such definition.
+- Required checks: compiler gates and a render fixture.
+- Last verification: 2026-09-24.
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
@@ -362,7 +427,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012, GAP-013 and GAP-014 (closed), GAP-015 (blocked) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012, GAP-013 and GAP-014 and GAP-016 (closed), GAP-015 (blocked), GAP-017 to GAP-020 (open) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.

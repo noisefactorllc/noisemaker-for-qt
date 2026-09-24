@@ -1454,12 +1454,13 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
             "Func boolean params ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS6.5)."));
     }
     const QString identName = node.toObject().value(QStringLiteral("name")).toString();
-    // UnsupportedDsl 4/7: a bare state-value ident (time/frame/...) reads a
-    // LIVE per-frame value; this AOT frontend resolves args once, ahead of
-    // time.
+    // A bare state-value ident (time/frame/...): the reference stores
+    // `{fn: (state) => !!state[key]}`. No runtime calls fn, and graph JSON
+    // drops it, so the compiled value is the empty object (reference
+    // validator.js boolean branch).
     if (t == NodeKind::Ident && stateValues().contains(identName)) {
-        throw UnsupportedDsl(QStringLiteral(
-            "state-value boolean params are not implemented in the first-cut DSL frontend (reference/02 SS6.5)."));
+        args.insert(argKey, QJsonObject());
+        return;
     }
     if (t == NodeKind::Ident) {
         pushDiag(QStringLiteral("S003"), node);
@@ -1493,9 +1494,10 @@ void Validator::resolveMemberArg(const ParamDef& def, const QJsonValue& node, co
                                                      : n.value(QStringLiteral("value")));
         return;
     } else if (t == NodeKind::Ident && stateValues().contains(node.toObject().value(QStringLiteral("name")).toString())) {
-        // UnsupportedDsl 5/7.
-        throw UnsupportedDsl(QStringLiteral(
-            "state-value member params are not implemented in the first-cut DSL frontend (reference/02 SS6.6)."));
+        // reference member branch: `{fn: (state) => state[key]}`, which
+        // serializes to the empty object (fn is never called).
+        args.insert(argKey, QJsonObject());
+        return;
     } else if (t == NodeKind::Ident) {
         path = {node.toObject().value(QStringLiteral("name")).toString()};
     }
@@ -1699,11 +1701,16 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
         return;
     }
     const QString identName = node.toObject().value(QStringLiteral("name")).toString();
-    // UnsupportedDsl 7/7: a bare state-value ident in numeric position.
+    // A bare state-value ident in numeric position: the reference stores
+    // `{fn, min: def.min, max: def.max, _ast: node}`; fn is never called and
+    // graph JSON drops it, as it drops an undefined min or max.
     if (t == NodeKind::Ident && stateValues().contains(identName)) {
-        throw UnsupportedDsl(QStringLiteral(
-            "state-value numeric params (time/frame/...) are not implemented in the first-cut DSL frontend "
-            "(reference/02 SS6.10)."));
+        QJsonObject value;
+        if (def.hasMin()) value.insert(QStringLiteral("min"), def.minValue);
+        if (def.hasMax()) value.insert(QStringLiteral("max"), def.maxValue);
+        value.insert(QStringLiteral("_ast"), node);
+        args.insert(argKey, value);
+        return;
     }
     if (t == NodeKind::Ident && def.hasEnumPath()) {
         const QStringList prefix = normalizeMemberPath(def.enumPath);
