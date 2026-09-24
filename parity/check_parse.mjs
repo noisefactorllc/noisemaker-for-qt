@@ -119,14 +119,15 @@ for (const f of files) {
     const rel = f.replace(REPO + '/', '')
     if (!o) { fail++; failed.push(`${rel}: missing from oracle`); continue }
     if (!o.ok) {
-        // Reference rejected this file as a syntax error; candidate should
-        // too (the valid corpus should never land here). Agreement on
-        // rejection counts as a pass; the exact error TEXT is not diffed
-        // (see task report -- DslSyntaxError message parity is a design
-        // goal but not machine-gated by this script, matching dump-ast.mjs's
-        // own ok:true/false-only comparison contract).
-        if (!c.ok) { pass++; continue }
-        fail++; failed.push(`${rel}: ref rejected (syntax error) but candidate accepted`); continue
+        // Reference rejected this file as a syntax error; the candidate must
+        // reject it with the same message and the same structured diagnostic
+        // (code, stage, severity, message, location, span), or none when the
+        // reference attaches none.
+        if (c.ok) { fail++; failed.push(`${rel}: ref rejected (syntax error) but candidate accepted`); continue }
+        if (o.error !== c.error) { fail++; failed.push(`${rel}: error ref=${JSON.stringify(o.error)} mine=${JSON.stringify(c.error)}`); continue }
+        const d = firstDiff(o.diagnostic ?? null, c.diagnostic ?? null, 'diagnostic')
+        if (d) { fail++; failed.push(`${rel}: ${d}`); continue }
+        pass++; continue
     }
     if (!c.ok) { fail++; failed.push(`${rel}: candidate rejected (${c.error}) but ref accepted`); continue }
     if (eq(o.ast, c.ast)) { pass++; continue }

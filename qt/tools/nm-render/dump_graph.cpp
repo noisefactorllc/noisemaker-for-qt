@@ -75,7 +75,7 @@ bool parseSize(const QString& text, QSize* out) {
 
 QString readTextFile(const QString& path) {
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly)) {
         throw std::runtime_error(("cannot open '" + path + "'").toStdString());
     }
     return QString::fromUtf8(file.readAll());

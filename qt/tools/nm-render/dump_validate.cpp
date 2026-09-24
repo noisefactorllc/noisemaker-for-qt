@@ -62,7 +62,7 @@ int handleDumpValidated(const QStringList& args) {
     }
 
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly)) {
         std::fprintf(stderr, "ERROR: cannot open '%s'\n", path.toUtf8().constData());
         return 1;
     }

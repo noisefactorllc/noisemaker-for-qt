@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     const QString dataRoot = (argc > 2) ? QString::fromLocal8Bit(argv[2]) : nm::EffectRegistry::defaultDataRoot();
 
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly)) {
         std::fprintf(stderr, "ERROR: cannot open '%s'\n", path.toUtf8().constData());
         return 1;
     }

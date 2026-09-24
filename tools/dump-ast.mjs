@@ -20,9 +20,9 @@ for (const f of files) {
     try {
         out[f] = { ok: true, ast: parse(lex(readFileSync(f, 'utf8'))) }
     } catch (e) {
-        // Syntax error — record it so the candidate can be checked for the same (valid corpus
-        // should never land here).
-        out[f] = { ok: false, error: String(e && e.message || e) }
+        // Syntax error — record its message and the structured diagnostic the reference attaches
+        // to lexer and parser errors (a non-enumerable `diagnostic` property; null when absent).
+        out[f] = { ok: false, error: String(e && e.message || e), diagnostic: (e && e.diagnostic) || null }
     }
 }
 process.stdout.write(JSON.stringify(out))
