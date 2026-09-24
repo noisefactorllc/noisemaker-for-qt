@@ -335,6 +335,10 @@ void Viewer::initializeGL() {
         // "QOpenGLWidget subclass driving nm::Backend with the widget's
         // context."
         m_backend->setup(context(), dataRoot, pixelSize());
+        // A live host: asyncInit overlays (fibers, scratches, strayHair)
+        // trace on a worker thread, so a resize never stalls the window.
+        // The timer renders every frame, which uploads a completed trace.
+        m_backend->setOverlayTraceMode(nm::OverlayTraceMode::Background);
         m_renderSize = pixelSize();
     } catch (const std::exception& e) {
         std::fprintf(stderr, "viewer: initialization failed: %s\n", e.what());

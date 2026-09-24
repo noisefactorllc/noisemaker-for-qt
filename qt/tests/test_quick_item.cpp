@@ -119,6 +119,7 @@ public:
     }
 
     nm::NoisemakerItem* item() { return m_item.get(); }
+    QQuickRenderControl* control() { return &m_control; }
     unsigned int lastGlError() const { return m_lastGlError; }
 
 private:
@@ -232,6 +233,56 @@ void testItem() {
           "running false renders at `time`, matching a Backend render (float-to-8-bit rounding: 1 level)");
 }
 
+// fibers traces its overlay on a worker thread (GAP-038): the first frame
+// shows the transparent overlay, the paused item keeps asking for frames
+// while the trace runs, and the completed overlay equals a synchronous
+// Backend render.
+void testBackgroundOverlay() {
+    Scene scene;
+    if (!scene.create(QSize(96, 40))) {
+        check(false, "the offscreen QML scene initializes");
+        return;
+    }
+    nm::NoisemakerItem* item = scene.item();
+    int requests = 0;
+    QObject::connect(scene.control(), &QQuickRenderControl::renderRequested, [&] { ++requests; });
+    QObject::connect(scene.control(), &QQuickRenderControl::sceneChanged, [&] { ++requests; });
+    const QString fibers = QStringLiteral("search filter, synth\nsolid(color: #000000).fibers(density: 1).write(o0)\nrender(o0)");
+    item->setProgram(fibers);
+    item->setRunning(false);
+    item->setTime(0.25);
+    QImage image = scene.frame();
+    const bool placeholder = item->errorString().isEmpty() && uniform(image, qRgba(0, 0, 0, 255));
+    int frames = 1;
+    while (uniform(image, qRgba(0, 0, 0, 255)) && requests > 0 && frames < 100000) {
+        requests = 0;
+        image = scene.frame();
+        ++frames;
+    }
+    std::printf("  fibers overlay appeared after %d frames\n", frames);
+
+    nm::EffectRegistry registry;
+    registry.loadAll(item->dataRoot());
+    const nm::Graph graph = nm::compileGraph(fibers, registry);
+    nm::Backend backend;
+    backend.setup(nullptr, item->dataRoot(), QSize(96, 40));
+    backend.render(graph, 0.25);
+    const QImage expected = backend.readSurface();
+    int worst = 0;
+    for (int y = 0; y < 40; ++y) {
+        for (int x = 0; x < 96; ++x) {
+            const QRgb a = image.pixel(x, y);
+            const QRgb b = expected.pixel(x, y);
+            worst = std::max({worst, std::abs(qRed(a) - qRed(b)), std::abs(qGreen(a) - qGreen(b)), std::abs(qBlue(a) - qBlue(b))});
+        }
+    }
+    check(placeholder && frames > 1 && worst <= 1,
+          "a paused item shows the transparent overlay, renders until the background trace uploads, then matches a synchronous Backend render");
+    requests = 0;
+    scene.frame();
+    check(requests == 0, "a paused item stops requesting frames once the overlay is uploaded");
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -247,6 +298,7 @@ int main(int argc, char** argv) {
         std::printf("round %d\n", round + 1);
         testItem(); // three full create / use / destroy cycles
     }
+    testBackgroundOverlay();
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,
                 g_failures == 1 ? "" : "s");

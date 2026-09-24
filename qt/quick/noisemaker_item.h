@@ -24,7 +24,11 @@
 // root starts the program's surfaces over, as the reference
 // Pipeline.resize does. filter/text steps are drawn with
 // nm::updateTextTextures, and each render/meshLoader step starts with its
-// effect's first built-in mesh, as in the reference demo host. Compile and setup errors appear in
+// effect's first built-in mesh, as in the reference demo host. The CPU
+// overlays of filter/fibers, filter/scratches and filter/strayHair trace on
+// a worker thread (nm::OverlayTraceMode::Background), so an edit or resize
+// never stalls the scene; a paused item keeps rendering until a trace's
+// overlay appears. Compile and setup errors appear in
 // `errorString`, and the item then shows transparent pixels. Like the
 // reference canvas, the output is composited as premultiplied alpha.
 

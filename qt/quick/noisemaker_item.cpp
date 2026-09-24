@@ -107,7 +107,9 @@ public:
                                       Q_ARG(quint64, m_compiledGeneration),
                                       Q_ARG(QString, rendered ? QString() : m_error));
         }
-        if (rendered && m_running) update();
+        // A paused item renders again while a background overlay trace
+        // runs, so the completed overlay appears without another change.
+        if (rendered && (m_running || m_backend->overlayTracesPending())) update();
     }
 
 private:
@@ -145,6 +147,9 @@ private:
                 m_registry->loadAll(m_dataRoot);
                 auto backend = std::make_unique<Backend>();
                 backend->setup(context, m_dataRoot, m_size);
+                // A live host: asyncInit overlays trace on a worker thread
+                // (render() below keeps frames coming until they upload).
+                backend->setOverlayTraceMode(OverlayTraceMode::Background);
                 m_backend = std::move(backend);
                 m_backendRoot = m_dataRoot;
                 m_backendSize = m_size;
