@@ -136,13 +136,11 @@ public:
     // failure check emptiness themselves).
     void loadAll(const QString& dataRoot);
 
-    // CWD-relative resolution of the default dataRoot ("qt/noisemaker",
-    // when run from the repo root) -- sufficient for the parity-gate
-    // helper tools (registry_dump, dump_validate.cpp), which are always
-    // invoked from the repo root by their driving parity/*.mjs scripts.
-    // Does NOT replicate main.cpp's fuller executable-relative resolution
-    // (that helper is anonymous-namespace-local to main.cpp, a frozen
-    // shared file -- see PORTING-GUIDE.md file ownership rules).
+    // Default dataRoot for repo-root tools: the NOISEMAKER_QT_DATA_ROOT
+    // environment variable when set, else CWD-relative "qt/noisemaker".
+    // Embedding hosts should pass an explicit dataRoot to loadAll() (the
+    // CMake variable NOISEMAKER_QT_DATA_ROOT names the tree) instead of
+    // relying on this.
     static QString defaultDataRoot();
 
     // Op-spec lookup (the validator's ops[name]). Namespaced keys only

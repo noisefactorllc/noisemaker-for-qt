@@ -13,7 +13,7 @@ add_test(NAME test_graph_load COMMAND test_graph_load)
 add_executable(test_device_limits test_device_limits.cpp)
 target_link_libraries(test_device_limits PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
 add_test(NAME test_device_limits COMMAND test_device_limits)
-set_tests_properties(test_device_limits PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+set_tests_properties(test_device_limits PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 add_executable(test_output_runtime test_output_runtime.cpp)
 target_link_libraries(test_output_runtime PRIVATE noisemaker-qt Qt6::Core)
@@ -22,12 +22,12 @@ add_test(NAME test_output_runtime COMMAND test_output_runtime)
 add_executable(test_automation test_automation.cpp)
 target_link_libraries(test_automation PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_automation COMMAND test_automation)
-set_tests_properties(test_automation PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+set_tests_properties(test_automation PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 add_executable(test_frame_export test_frame_export.cpp)
 target_link_libraries(test_frame_export PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
 add_test(NAME test_frame_export COMMAND test_frame_export)
-set_tests_properties(test_frame_export PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+set_tests_properties(test_frame_export PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
@@ -55,12 +55,12 @@ add_test(NAME test_parser COMMAND test_parser)
 add_executable(test_registry test_registry.cpp)
 target_link_libraries(test_registry PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_registry COMMAND test_registry)
-set_tests_properties(test_registry PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+set_tests_properties(test_registry PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 add_executable(test_validator test_validator.cpp)
 target_link_libraries(test_validator PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_validator COMMAND test_validator)
-set_tests_properties(test_validator PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+set_tests_properties(test_validator PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 # Parity-gate helper (NOT a ctest case -- like dump_lex.cpp/dump_parse.cpp,
 # this is CLI plumbing consumed by parity/check_registry.mjs, not a
@@ -76,7 +76,7 @@ target_link_libraries(registry_dump PRIVATE noisemaker-qt Qt6::Core)
 add_executable(test_expander test_expander.cpp)
 target_link_libraries(test_expander PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_expander COMMAND test_expander)
-set_tests_properties(test_expander PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..)
+set_tests_properties(test_expander PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
 add_executable(test_resources test_resources.cpp)
 target_link_libraries(test_resources PRIVATE noisemaker-qt Qt6::Core)

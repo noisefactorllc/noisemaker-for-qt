@@ -83,6 +83,19 @@ cmake --build examples/viewer/build2
 examples/viewer/build2/viewer --selfcheck
 ```
 
+### Embed the library in another CMake project
+
+A host project can add `qt/` with `add_subdirectory` or `FetchContent`. Then only the library builds. `nm-render`, the tests, and the install rules default ON only for a top-level build. Override them with `NM_QT_BUILD_TOOLS`, `NM_QT_BUILD_TESTS`, and `NM_QT_INSTALL`.
+
+```cmake
+find_package(Qt6 COMPONENTS Core Gui OpenGL REQUIRED)
+add_subdirectory(path/to/noisemaker-for-qt/qt ${CMAKE_BINARY_DIR}/noisemaker-qt)
+target_link_libraries(my_host PRIVATE noisemaker-qt::noisemaker-qt)
+target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_ROOT}")
+```
+
+`noisemaker-qt::noisemaker-qt` and `NOISEMAKER_QT_DATA_ROOT` have the same names in the embedded and the installed forms. `NOISEMAKER_QT_DATA_DIR` is an alias, and the target also carries a `NOISEMAKER_QT_DATA_ROOT` property. Pass this directory explicitly to `nm::EffectRegistry::loadAll()` and `nm::Backend::setup()`. `nm::EffectRegistry::defaultDataRoot()` reads the `NOISEMAKER_QT_DATA_ROOT` environment variable, else the working-directory-relative `qt/noisemaker`.
+
 ## Status, parity, and coverage
 
 A from-scratch rebuild and full re-verification produced these results:

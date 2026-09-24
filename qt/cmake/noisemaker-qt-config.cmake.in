@@ -35,6 +35,9 @@ if(NOT TARGET noisemaker-qt::noisemaker-qt)
 endif()
 
 set(NOISEMAKER_QT_DATA_ROOT "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_DATADIR@/noisemaker-qt/noisemaker")
+set(NOISEMAKER_QT_DATA_DIR "${NOISEMAKER_QT_DATA_ROOT}")
+set_target_properties(noisemaker-qt::noisemaker-qt PROPERTIES
+    NOISEMAKER_QT_DATA_ROOT "${NOISEMAKER_QT_DATA_ROOT}")
 unset(_noisemaker_qt_prefix)
 
 set(noisemaker-qt_FOUND TRUE)

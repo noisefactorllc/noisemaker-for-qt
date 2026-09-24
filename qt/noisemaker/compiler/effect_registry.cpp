@@ -156,6 +156,8 @@ QStringList objectKeyOrder(const QString& text, const QString& key) {
 } // namespace
 
 QString EffectRegistry::defaultDataRoot() {
+    const QString fromEnv = qEnvironmentVariable("NOISEMAKER_QT_DATA_ROOT");
+    if (!fromEnv.isEmpty()) return fromEnv;
     QDir d(QStringLiteral("qt/noisemaker"));
     if (d.exists(QStringLiteral("effects"))) return d.absolutePath();
     return QStringLiteral("qt/noisemaker");
