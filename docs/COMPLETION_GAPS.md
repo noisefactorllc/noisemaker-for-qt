@@ -403,16 +403,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-021: RGBA16F recreation check assumed the driver reports RGBA16F
 
-- Status: open. Priority: P2. Category: verification.
-- Affected scope: qt/tests/test_device_limits.cpp; macOS runners without a GPU.
+- Status: closed. Priority: P2. Category: verification.
+- Affected scope: qt/tests/test_device_limits.cpp, .github/workflows/ci.yml (ctest (macOS) step); macOS runners without a GPU.
 - Expected behavior: The test checks that a format change recreates the surface with the driver's storage for the requested format.
-- Observed behavior: CI run 35970287679 (macos-latest) failed "recreated texture has GL_RGBA16F internal format". The test took 78.27 s, which suggests a software renderer.
-- Evidence: A CGL probe on this Mac: Apple M4 reports RGBA16F as 0x881a. The Apple Software Renderer (4.1 APPLE-23.1.1) reports it as 0x8814 (RGBA32F), also after delete and reallocation. This is driver storage, not a SurfaceCache bug.
-- Next action: Run test_device_limits with its output shown on macos-latest (ctest -V -R test_device_limits) so the log carries GL_RENDERER and both formats.
-- Dependencies: A pushed CI run.
-- Acceptance criteria: macos-latest test_device_limits passes. The log shows GL_RENDERER and matching probe and recreated formats.
-- Required checks: `gh run view` log of test_device_limits on macos-latest.
-- Last verification: 2026-09-24. Local Apple M4: probe 0x881a, recreated 0x881a, test passes. CI run 35974199816 (12c1d1c), macos-latest: test_device_limits passed in 88.58 s, consistent with the software renderer. ctest hides a passing test's output, so the log does not show GL_RENDERER or the formats yet.
+- Observed behavior: CI run 35970287679 (macos-latest) failed "recreated texture has GL_RGBA16F internal format". The test now compares against a fresh RGBA16F probe. CI run 36025136332 (dc70409), macos-latest: "GL_RENDERER Apple Software Renderer: RGBA16F probe reports 0x8814, recreated texture 0x8814", ALL PASS in 81.63 s.
+- Evidence: The hosted macOS runner uses the Apple Software Renderer, which stores a requested RGBA16F texture as RGBA32F (0x8814); the Apple M4 reports RGBA16F (0x881a). On both, the recreated surface reports exactly the probe's format. This is driver storage, not a SurfaceCache bug. The macOS ctest step runs test_device_limits with -V so the renderer and formats are in the log.
+- Next action: None.
+- Dependencies: None.
+- Acceptance criteria: macos-latest test_device_limits passes. The log shows GL_RENDERER and matching probe and recreated formats. Met in CI run 36025136332.
+- Required checks: `gh run view <run> --log` for the macos-latest build-test job, "ctest (macOS)" step.
+- Last verification: 2026-09-24. CI run 36025136332: Apple Software Renderer, probe 0x8814, recreated 0x8814, pass. Local Apple M4: probe 0x881a, recreated 0x881a, pass.
 
 ### GAP-022: AnalyserNode 5.1 down-mix rounding differs by CPU architecture
 
