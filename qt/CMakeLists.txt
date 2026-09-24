@@ -109,6 +109,8 @@ if(NM_QT_INSTALL)
     # not merely link.
     install(DIRECTORY noisemaker/shaders DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
     install(DIRECTORY noisemaker/effects DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
+    # filter/text's default family (nm::registerBundledFonts), with its OFL.
+    install(DIRECTORY noisemaker/fonts DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
 
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/noisemaker-qt-config.cmake.in

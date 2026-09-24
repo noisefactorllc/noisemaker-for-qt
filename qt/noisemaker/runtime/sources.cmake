@@ -33,4 +33,6 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/audio_analyzer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/audio_state.h
     ${CMAKE_CURRENT_LIST_DIR}/audio_state.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/text_texture.h
+    ${CMAKE_CURRENT_LIST_DIR}/text_texture.cpp
 )

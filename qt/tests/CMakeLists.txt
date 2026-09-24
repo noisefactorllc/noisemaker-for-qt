@@ -44,6 +44,11 @@ target_link_libraries(test_audio_input PRIVATE noisemaker-qt Qt6::Core Qt6::Gui 
 add_test(NAME test_audio_input COMMAND test_audio_input)
 set_tests_properties(test_audio_input PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_text_texture test_text_texture.cpp)
+target_link_libraries(test_text_texture PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_text_texture COMMAND test_text_texture)
+set_tests_properties(test_text_texture PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
 target_link_libraries(test_lexer PRIVATE noisemaker-qt Qt6::Core)
@@ -119,3 +124,8 @@ target_link_libraries(audio_analyzer_dump PRIVATE noisemaker-qt Qt6::Core)
 # parity/check_audio_state.mjs (reference AudioState replay).
 add_executable(audio_state_dump audio_state_dump.cpp)
 target_link_libraries(audio_state_dump PRIVATE noisemaker-qt Qt6::Core)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_text_canvas.mjs (Chromium 2D canvas text oracle).
+add_executable(text_texture_dump text_texture_dump.cpp)
+target_link_libraries(text_texture_dump PRIVATE noisemaker-qt Qt6::Core Qt6::Gui)

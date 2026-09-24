@@ -104,7 +104,7 @@ target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_RO
 
 `nm::Backend` (`qt/noisemaker/runtime/backend.h`) mirrors the reference host APIs. Each call needs the Backend's GL context current, as `render()` does.
 
-- External textures: `synth/media` reads `imageTex_step_<N>` and `filter/text` reads `textTex_step_<N>`. `Backend::externalTextureIds(graph)` lists them. Upload pixels with `updateTextureFromSource(texId, image, {flipY})`, or bind a host GL texture with `setExternalTexture(texId, glTexture, size)`. The reference demo uploads media with `flipY = false` and text with `flipY = true`. Unsupplied ids sample a transparent-black default.
+- External textures: `synth/media` reads `imageTex_step_<N>` and `filter/text` reads `textTex_step_<N>`. `Backend::externalTextureIds(graph)` lists them. Upload pixels with `updateTextureFromSource(texId, image, {flipY})`, or bind a host GL texture with `setExternalTexture(texId, glTexture, size)`. The reference demo uploads media with `flipY = false` and text with `flipY = true`. Unsupplied ids sample a transparent-black default. For text, `nm::updateTextTextures(backend, graph, dataRoot, size)` (`qt/noisemaker/runtime/text_texture.h`) draws each `filter/text` step's parameters the way the reference canvas host does and uploads the result. It uses the bundled Nunito font for the default family. `parity/check_text_canvas.mjs` compares it with a Chromium canvas.
 - Live parameters: `applyStepParameterValues(graph, registry, {"step_N": {param: value}})` and `setUniform(graph, name, value)` change uniforms without a recompile. For media, set `imageSize` to the uploaded size. Feedback surfaces persist, because they are keyed by texture id. A recompiled graph with the same structure also keeps them.
 - Time: `render(graph, t)` takes normalized loop time. `Backend::normalizedLoopTime(elapsedSeconds, 10.0)` derives it. The Backend supplies `deltaTime` and `frame` like the reference, and `syncTime(t)` pauses without a time step.
 
@@ -126,4 +126,6 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the render-graph seam, OpenGL-vs-
 
 ## License and trademark
 
-Code is MIT-licensed. See [LICENSE](LICENSE). [TRADEMARK.md](TRADEMARK.md) governs use of the "Noisemaker" and "Noise Factor" names. Read it before using either name for a derivative product.
+Code is MIT-licensed. See [LICENSE](LICENSE). The MIT license does not cover the bundled font:
+
+- `qt/noisemaker/fonts/Nunito/Nunito-VariableFont_wght.ttf` is Nunito Version 3.602, Copyright 2014 The Nunito Project Authors ([googlefonts/nunito](https://github.com/googlefonts/nunito)), licensed under the SIL Open Font License 1.1 ([OFL.txt](qt/noisemaker/fonts/Nunito/OFL.txt)). It is an unmodified copy of the reference's `demo/font/Nunito/Nunito-VariableFont_wght.ttf` (added in `noisefactorllc/noisemaker` commit `9f23756d`, identical at `c9ee8a04`). SHA-256: `707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08`. [TRADEMARK.md](TRADEMARK.md) governs use of the "Noisemaker" and "Noise Factor" names. Read it before using either name for a derivative product.
