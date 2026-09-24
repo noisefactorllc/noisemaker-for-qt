@@ -193,12 +193,12 @@ These entries record missing qualification. They do not infer implementation def
 - Affected scope: tools/convert-definitions.mjs, synth/media, filter/text, nm::Backend, qt/tests/test_host_inputs.cpp.
 - Expected behavior: A host supplies the texture for `imageTex_step_N` and `textTex_step_N`, as the reference `updateTextureFromSource` does.
 - Observed behavior: Before the fix, the converter dropped `externalTexture`. Inputs bound to unaddressable node ids. The Backend had no upload API.
-- Evidence: The converter keeps `externalTexture`. The Backend has `updateTextureFromSource` (QImage and raw RGBA8), `setExternalTexture` (host GL id), `removeExternalTexture`, and `externalTextureIds`.
-- Next action: None for the API. Keep synth/media and filter/text excluded from the export kit. The kit host supplies no media or text pixels.
+- Evidence: The converter keeps `externalTexture`. The Backend has `updateTextureFromSource` (QImage and raw RGBA8), `setExternalTexture` (host GL id), `removeExternalTexture`, and `externalTextureIds`. The kit's media() output with the reference testcard matches a reference golden at 256x256 with max difference 0. test_text_texture checks the textTex upload, orientation and matte through a compiled graph (ccf0969, ebb21bf).
+- Next action: None. The export kit supplies media and text: `--media FILE` uploads an image with flipY false and sets imageSize; nm::updateTextTextures draws filter/text on the CPU and uploads it with flipY true.
 - Dependencies: GAP-006 for platforms other than macOS.
 - Acceptance criteria: Media renders an uploaded image upright with flipY false. flipY true reverses rows. The raw stride, GL id, removal, text, and release paths pass.
 - Required checks: test_host_inputs pixel checks, ctest, and the compiler gates.
-- Last verification: 2026-09-24, macOS. Orientation follows the reference demo host convention. A reference-engine render differential was not run.
+- Last verification: 2026-09-24, macOS. ctest 17/17. check_text_canvas 10/10.
 
 ### GAP-008: live parameter updates without a recompile
 
@@ -478,6 +478,19 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: Repeated mints of each affected fixture are byte-identical across quiet and loaded runs, and the text fixture exercises real text.
 - Required checks: Three mints per affected fixture compared with cmp, one under load; parity/run.sh.
 - Last verification: 2026-09-24. Open.
+
+### GAP-027: filter/text rasterization differs from a browser canvas
+
+- Status: open. Priority: P3. Category: ecosystem.
+- Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
+- Expected behavior: Text pixels match the reference host's Chromium canvas.
+- Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's.
+- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969.
+- Next action: Re-measure on Linux and Windows. Re-check kerning when Qt applies variation deltas in shaping.
+- Dependencies: Qt font shaping (external).
+- Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
+- Required checks: check_text_canvas.mjs, test_text_texture.
+- Last verification: 2026-09-24, macOS only.
 
 ## 5. Ordered next actions
 
