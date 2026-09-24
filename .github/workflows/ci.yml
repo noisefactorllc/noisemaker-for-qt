@@ -205,7 +205,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
-          for gate in shaders definitions registry lex parse validate expand graph midi_state audio_state; do
+          for gate in shaders definitions registry lex parse validate expand graph midi_state audio_state obj_parser; do
             echo "::group::check_$gate"
             node "parity/check_$gate.mjs"
             echo "::endgroup::"

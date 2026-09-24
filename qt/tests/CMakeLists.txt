@@ -139,3 +139,13 @@ target_link_libraries(audio_state_dump PRIVATE noisemaker-qt Qt6::Core)
 # parity/check_text_canvas.mjs (Chromium 2D canvas text oracle).
 add_executable(text_texture_dump text_texture_dump.cpp)
 target_link_libraries(text_texture_dump PRIVATE noisemaker-qt Qt6::Core Qt6::Gui)
+
+add_executable(test_obj_parser test_obj_parser.cpp)
+target_link_libraries(test_obj_parser PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_obj_parser COMMAND test_obj_parser)
+set_tests_properties(test_obj_parser PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_obj_parser.mjs (reference obj-parser.js oracle).
+add_executable(obj_parser_dump obj_parser_dump.cpp)
+target_link_libraries(obj_parser_dump PRIVATE noisemaker-qt Qt6::Core)
