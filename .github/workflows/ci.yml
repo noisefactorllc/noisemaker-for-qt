@@ -17,11 +17,11 @@ name: CI
 #                 (parity/check_*.mjs) against the reference checkout at the
 #                 content pin in STATUS.md.
 #   render-smoke  Mints goldens for a few fixtures with the reference engine
-#                 (headless Chromium, WebGL2), renders candidates with
-#                 nm-render on llvmpipe, and grades them with parity/run.sh at
-#                 the strict default tolerance. Software-rasterizer NEAR
-#                 results must be derived from this job's own evidence. It
-#                 also runs the AnalyserNode gate against the same Chromium.
+#                 (Chromium, WebGL2 on ANGLE's GL backend over the job's Mesa
+#                 llvmpipe, the candidate's rasterizer: GAP-033), renders
+#                 candidates with nm-render on llvmpipe, and grades them with
+#                 parity/run.sh at the strict default tolerance. It also runs
+#                 the AnalyserNode gate against the same Chromium.
 #   render-smoke-windows
 #                 The same golden minting and grading on Windows (Chromium on
 #                 Windows, nm-render on the Mesa llvmpipe opengl32sw.dll), and
@@ -240,7 +240,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install the reference engine and headless Chromium
+      - name: Install the reference engine and Chromium
         run: |
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
           cd "$RUNNER_TEMP/noisemaker"
@@ -279,14 +279,25 @@ jobs:
           python -m venv parity/.venv
           parity/.venv/bin/pip install numpy pillow
 
-      - name: Mint goldens with the reference engine
+      - name: Mint goldens with the reference engine (ANGLE GL on llvmpipe)
         env:
-          SHADE_HEADLESS: "1"
+          # GAP-033: goldens come from the candidate's rasterizer. Headless
+          # Chromium ignores --use-angle=gl and draws on SwiftShader, whose
+          # edge coverage differs from llvmpipe (meshRenderCustom: 16
+          # silhouette pixels). Headed Chromium under Xvfb runs WebGL on
+          # ANGLE's GL backend over this job's Mesa llvmpipe.
+          SHADE_HEADLESS: "0"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          NM_GOLDEN_CHROMIUM_ARGS: "--use-gl=angle --use-angle=gl --ignore-gpu-blocklist"
         run: |
           export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
           mkdir -p parity/out
           for name in $SMOKE_FIXTURES; do
-            node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2
+            xvfb-run -a -s "-screen 0 1280x1024x24" \
+              node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2 \
+              2>&1 | tee "$RUNNER_TEMP/mint-$name.log"
+            grep -q "golden WebGL renderer: ANGLE (Mesa, llvmpipe" "$RUNNER_TEMP/mint-$name.log" \
+              || { echo "$name: the golden was not rendered on Mesa llvmpipe"; exit 1; }
           done
 
       - name: Render and grade candidates (strict tolerance, llvmpipe)
