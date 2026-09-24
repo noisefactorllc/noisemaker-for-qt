@@ -321,7 +321,6 @@ private:
     QJsonObject textureSpecs_;
     QMap<QString, QString> textureMap_;
     QString lastWrittenSurface_;
-    bool blitEnsured_ = false;
 
     // per-plan state (reset in expandPlan)
     QString currentInput_;
@@ -563,7 +562,7 @@ private:
         // verified GLOBAL-name sort (not define-name).
         QJsonObject compileTimeDefines;
         QString programDefineSuffix;
-        collectDefines(effectDef, stepArgs, effectName, compileTimeDefines, programDefineSuffix);
+        collectDefines(effectDef, stepArgs, compileTimeDefines, programDefineSuffix);
 
         // 3. Program collection (§4.6). The reference keys this off `effectDef.shaders`, an
         // effect-instance field its live browser runtime populates by FETCHING each pass's
@@ -618,7 +617,7 @@ private:
 
     // reference/03 §4.5. Sorted by GLOBAL name (verified against the live
     // JS source — see file header "PARITY-CRITICAL DEVIATION").
-    void collectDefines(const QJsonObject& effectDef, const QJsonObject& stepArgs, const QString& effectName,
+    void collectDefines(const QJsonObject& effectDef, const QJsonObject& stepArgs,
                          QJsonObject& outDefines, QString& outSuffix) {
         const QJsonObject globals = effectDef.value(QStringLiteral("globals")).toObject();
         if (globals.isEmpty()) return;

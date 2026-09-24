@@ -141,7 +141,7 @@ QString deriveProgName(const ExpandedPass& pass) {
     return s;
 }
 
-QJsonObject normalizePass(const ExpandedPass& pass, const QJsonObject& programs, const QJsonObject& defineMap) {
+QJsonObject normalizePass(const ExpandedPass& pass, const QJsonObject& defineMap) {
     const bool isBlit = pass.isBlit;
     QJsonObject out;
     out.insert(QStringLiteral("id"), pass.id);
@@ -246,7 +246,7 @@ QJsonObject normalizeGraph(const QString& id, const QString& source, const QJson
                                                      ? QJsonValue(QJsonValue::Null)
                                                      : renderSurface);
     QJsonArray normPasses;
-    for (const ExpandedPass& p : passes) normPasses.append(normalizePass(p, programs, defineMap));
+    for (const ExpandedPass& p : passes) normPasses.append(normalizePass(p, defineMap));
     out.insert(QStringLiteral("passes"), normPasses);
     out.insert(QStringLiteral("allocations"), allocations);
     out.insert(QStringLiteral("textures"), textures);

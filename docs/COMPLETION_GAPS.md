@@ -131,7 +131,29 @@ These entries record missing qualification. They do not infer implementation def
 - Embedded consumer, default options: a throwaway project under /private/tmp used `add_subdirectory(qt)`. Configure exit 0 without nm-render or test_lexer targets. Its ctest listed 1 test only, its own.
 - The consumer compiled `search synth` / `noise().write(o0)` / `render(o0)` against `NOISEMAKER_QT_DATA_ROOT`. It rendered 64x64 from working directory /private/tmp. Exit 0. Pixel (10,10) = `ff3d837b`.
 - Embedded consumer with `NM_QT_BUILD_TESTS=ON NM_QT_BUILD_TOOLS=ON`: build exit 0. ctest 13 of 13 passed (12 port tests and the consumer test).
+- FetchContent consumer: `FetchContent_Declare(noisemaker_qt GIT_REPOSITORY <this checkout> GIT_TAG 6bfda22 SOURCE_SUBDIR qt)`. Configure and build exit 0, no tool or test targets. ctest 1 of 1. Pixel `ff3d837b`.
 - Installed consumer: `cmake --install` exit 0. `find_package(noisemaker-qt CONFIG)` exposed the same target, variable, and property names. The same render produced pixel `ff3d837b`. Exit 0.
+
+</details>
+
+### GAP-005: compiler warnings break hosts that build with warnings as errors
+
+- Status: open. Priority: P2. Category: ecosystem.
+- Affected scope: qt/noisemaker/compiler/lexer.cpp, validator.cpp, expander.cpp, dsl_compiler.cpp, qt/tests/test_output_runtime.cpp.
+- Expected behavior: The library and tests build without warnings under `-Wall -Wextra -Wpedantic` (Clang, GCC) and `/W4` (MSVC).
+- Observed behavior: Apple Clang reported 8 warnings. Causes were unused functions, an unused field, unused parameters, and partial aggregate initializers.
+- Evidence: Unused code was removed, not suppressed. Token and GpuSurface initializers now set every field. Checks are listed below.
+- Next action: Run the warnings-as-errors CI job on Linux GCC and Windows MSVC.
+- Dependencies: GAP-006 CI workflow.
+- Acceptance criteria: Zero warnings with warnings as errors on macOS Clang, Linux GCC, and Windows MSVC `/W4 /WX`.
+- Required checks: Warnings-as-errors build of the library, nm-render, and tests. ctest and the compiler gates on the same source.
+- Last verification: 2026-09-24. macOS Clang passes. GCC and MSVC are unverified.
+
+<details><summary>GAP-005 evidence</summary>
+
+- Before: `cmake --build` with `-DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic"` (Debug) listed 8 warnings: lexer.cpp:89 and :424, expander.cpp:324 and :621, validator.cpp:238 and :271, dsl_compiler.cpp:144, test_output_runtime.cpp:66.
+- After: the same Debug build reported 0 warnings. A Release build with `-Wall -Wextra -Wpedantic -Werror` exited 0. Its ctest passed 12 of 12.
+- `qt/build` rebuild exit 0, ctest 12 of 12. Compiler gates, each exit 0: SHADERS 317/317, DEFINITIONS 210/210, REGISTRY 5/5, LEX 357/357, PARSE 357/357, VALIDATE 357/357, EXPAND 357/357, GRAPH 357/357.
 
 </details>
 
@@ -150,7 +172,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004 (closed). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004 (closed) and GAP-005 (open). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.

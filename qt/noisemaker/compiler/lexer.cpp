@@ -86,7 +86,12 @@ QJsonArray lex(const QString& src) {
     int col = 1;
 
     auto add = [&](const QString& type, const QString& lexeme, int tokLine, int tokCol) {
-        tokens.push_back(Token{type, lexeme, tokLine, tokCol});
+        Token token;
+        token.type = type;
+        token.lexeme = lexeme;
+        token.line = tokLine;
+        token.col = tokCol;
+        tokens.push_back(token);
     };
 
     // Only scan source coordinates on failure. Successful tokens and legacy
@@ -421,7 +426,11 @@ QJsonArray lex(const QString& src) {
              i, i + 1);
     }
 
-    tokens.push_back(Token{TokenType::EOF_, QString(), line, col});
+    Token eof;
+    eof.type = TokenType::EOF_;
+    eof.line = line;
+    eof.col = col;
+    tokens.push_back(eof);
 
     QJsonArray out;
     for (const Token& t : tokens) {

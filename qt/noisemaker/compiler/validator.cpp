@@ -235,7 +235,6 @@ QStringList normalizeMemberPath(const QJsonValue& value) {
     }
     return {};
 }
-QStringList normalizeMemberPath(const QStringList& value) { return value; } // already normalized
 
 bool pathStartsWith(const QStringList& path, const QStringList& prefix) {
     if (prefix.isEmpty()) return true;
@@ -266,11 +265,6 @@ double clampValue(double value, const QJsonValue& min, const QJsonValue& max) {
     if (min.isDouble() && value < min.toDouble()) return min.toDouble();
     if (max.isDouble() && value > max.toDouble()) return max.toDouble();
     return value;
-}
-
-bool toBoolean(const QJsonValue& v) {
-    if (v.isDouble()) return v.toDouble() != 0.0;
-    return isTruthy(v);
 }
 
 QString nodeType(const QJsonValue& node) { return node.isObject() ? node.toObject().value(QStringLiteral("type")).toString() : QString(); }

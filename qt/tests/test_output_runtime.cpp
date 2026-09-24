@@ -63,7 +63,7 @@ public:
 } // namespace
 
 int main() {
-    const nm::GpuSurface surface{17, 23, 2, 3};
+    const nm::GpuSurface surface{17, 23, 2, 3, QString()};
     const nm::OutputDescriptor descriptor{
         2, 3, QStringLiteral("rgba8unorm"), QStringLiteral("srgb"),
         QStringLiteral("straight"), 60.0
