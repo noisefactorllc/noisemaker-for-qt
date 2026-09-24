@@ -412,6 +412,17 @@ int main() {
         check(nm::diagDefaultMessage(QStringLiteral("L004")) == QStringLiteral("Output surface reference out of range"), "diagDefaultMessage L004");
     }
 
+    // --- FUNC lexeme trimming is JS String.prototype.trim ----------------
+    // (oracle-gated by parity/corpus/func_trim.dsl): U+FEFF and the Zs
+    // spaces are trimmed; U+0085, which QString::trimmed strips, is kept.
+    {
+        const QJsonArray toks = nm::lex(QString::fromUtf16(u"f(a: () => \uFEFF\u00A0time\u0085, b: () => \u3000x\u2028)"));
+        check(at(toks, 4).type == nm::TokenType::FUNC && at(toks, 4).lexeme == QString::fromUtf16(u"time\u0085"),
+              "FUNC trims U+FEFF and U+00A0 but keeps U+0085");
+        check(at(toks, 8).type == nm::TokenType::FUNC && at(toks, 8).lexeme == QStringLiteral("x"),
+              "FUNC trims U+3000 and U+2028");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_lexer)\n");
         return 0;

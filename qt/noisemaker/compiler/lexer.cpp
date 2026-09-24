@@ -1,6 +1,7 @@
 #include "lexer.h"
 
 #include "diagnostics.h"
+#include "js_unicode.h"
 #include "tokens.h"
 
 #include <QChar>
@@ -36,6 +37,17 @@ namespace {
 //   - String escapes are NOT decoded: the lexeme is the raw
 //     inter-delimiter text (backslash kept, next char just skipped over
 //     so an escaped delimiter doesn't end the string early).
+
+// JS String.prototype.trim: strips WhiteSpace and LineTerminator code
+// units. QString::trimmed differs (it strips U+0085 and keeps U+FEFF).
+QString jsTrim(const QString& s) {
+    auto isTrimmed = [](QChar c) { return js::isWhiteSpace(c.unicode()) || js::isLineTerminator(c.unicode()); };
+    qsizetype start = 0;
+    qsizetype end = s.size();
+    while (start < end && isTrimmed(s.at(start))) ++start;
+    while (end > start && isTrimmed(s.at(end - 1))) --end;
+    return s.mid(start, end - start);
+}
 
 bool isDigit(QChar c) {
     return c >= QLatin1Char('0') && c <= QLatin1Char('9');
@@ -305,7 +317,7 @@ QJsonArray lex(const QString& src) {
                     }
                     j++;
                 }
-                const QString expr = src.mid(exprStart, j - exprStart).trimmed();
+                const QString expr = jsTrim(src.mid(exprStart, j - exprStart));
                 add(TokenType::FUNC, expr, startLine, startCol);
                 col += j - i;
                 i = j;
