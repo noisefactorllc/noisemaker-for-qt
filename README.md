@@ -103,10 +103,10 @@ target_compile_definitions(my_app PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_ROO
 
 Pass `NOISEMAKER_QT_DATA_ROOT` (the installed `share/noisemaker-qt/noisemaker`) to `nm::EffectRegistry::loadAll()` and `nm::Backend::setup()`. Moving the prefix moves the data root with it: the package config derives every path from its own location.
 
-To uninstall, remove the files that `cmake --install` recorded in `qt/build/install_manifest.txt`, then the package's directories, which are empty after that:
+To uninstall, remove the files that `cmake --install` recorded in `qt/build/install_manifest.txt` (its last line has no newline), then the package's directories, which are empty after that:
 
 ```sh
-while IFS= read -r file; do rm -f "$file"; done < qt/build/install_manifest.txt
+while IFS= read -r file || [ -n "$file" ]; do rm -f "$file"; done < qt/build/install_manifest.txt
 rm -r /path/to/some/prefix/include/noisemaker-qt /path/to/some/prefix/lib/cmake/noisemaker-qt \
   /path/to/some/prefix/share/noisemaker-qt /path/to/some/prefix/share/doc/noisemaker-qt
 ```
