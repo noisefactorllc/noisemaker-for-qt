@@ -32,7 +32,7 @@
     "mode": "list",
     "fromDefs": "qt/noisemaker/effects",
     "excludeNames": ["media", "scope", "spectrum"],
-    "excludeIds": ["filter/text", "render/meshLoader", "render/meshRender", "synth/roll"]
+    "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair", "filter/text", "render/meshLoader", "render/meshRender", "synth/roll"]
   },
   "engineBytesFrom": ["engine/", "effects/"]
 }
