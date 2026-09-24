@@ -196,6 +196,16 @@ void testItem() {
     image = scene.frame();
     check(item->errorString().isEmpty() && uniform(image, qRgba(255, 0, 0, 255)), "restoring the data root recovers");
 
+    // meshLoader starts with the built-in sphere: the lit mesh covers the
+    // middle of the frame, over meshRender's background.
+    item->setProgram(QStringLiteral("search render\nmeshLoader().meshRender().write(o0)\nrender(o0)"));
+    image = scene.frame();
+    const QRgb middle = image.pixel(48, 20);
+    const QRgb corner = image.pixel(1, 1);
+    std::printf("  mesh middle=(%d,%d,%d) corner=(%d,%d,%d)\n", qRed(middle), qGreen(middle), qBlue(middle),
+                qRed(corner), qGreen(corner), qBlue(corner));
+    check(item->errorString().isEmpty() && middle != corner, "a meshLoader step renders the built-in mesh");
+
     // Paused at a time: the frame equals a Backend render at that time.
     const QString noise = QStringLiteral("search synth\nnoise(seed: 7).write(o0)\nrender(o0)");
     item->setProgram(noise);

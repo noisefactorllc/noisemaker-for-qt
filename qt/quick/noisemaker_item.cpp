@@ -154,6 +154,13 @@ private:
             }
             m_graph = compileGraph(m_program, *m_registry);
             updateTextTextures(*m_backend, *m_graph, m_backendRoot, m_size);
+            // As the reference demo host does: each meshLoader-style step
+            // starts with its effect's first built-in mesh.
+            for (const ExternalMeshInput& input : m_backend->externalMeshes(*m_graph)) {
+                if (input.builtinMeshes.isEmpty()) continue;
+                const MeshLoadResult mesh = m_backend->loadOBJFromFile(input.builtinMeshes.first().path, input.meshId);
+                if (!mesh.success) throw std::runtime_error(mesh.error.toStdString());
+            }
         } catch (const std::exception& error) {
             fail(error.what());
         }
