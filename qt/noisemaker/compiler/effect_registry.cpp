@@ -8,6 +8,8 @@
 #include <QJsonParseError>
 #include <QLatin1Char>
 
+#include <stdexcept>
+
 namespace nm {
 
 namespace {
@@ -164,8 +166,8 @@ QString EffectRegistry::defaultDataRoot() {
 }
 
 void EffectRegistry::loadAll(const QString& dataRoot) {
-    QDir effectsDir(dataRoot + QStringLiteral("/effects"));
-    if (!effectsDir.exists()) return;
+    const QString effectsPath = QDir::cleanPath(QDir(dataRoot).absoluteFilePath(QStringLiteral("effects")));
+    QDir effectsDir(effectsPath);
 
     // gather "<ns>/<file>.json", then sort -- matches dump-registry.mjs's
     // `rels.sort()` (a single alphabetical sort over the full relative
@@ -183,6 +185,15 @@ void EffectRegistry::loadAll(const QString& dataRoot) {
         }
     }
     relFiles.sort();
+    // A wrong data root would otherwise surface later as "Unknown effect"
+    // for every effect in the program.
+    if (relFiles.isEmpty()) {
+        throw std::runtime_error(QStringLiteral("no effect definitions (<namespace>/<func>.json) in '%1'; the data root "
+                                                "'%2' must be the noisemaker data directory (qt/noisemaker in the source "
+                                                "tree, share/noisemaker-qt/noisemaker when installed)")
+                                     .arg(effectsPath, dataRoot)
+                                     .toStdString());
+    }
 
     for (const QString& rel : relFiles) {
         QFile file(effectsDir.filePath(rel));

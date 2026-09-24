@@ -130,10 +130,9 @@ public:
     // Loads every qt/noisemaker/effects/<ns>/<func>.json under
     // `<dataRoot>/effects` (dataRoot is the SAME concept
     // nm::Backend::setup()/main.cpp's resolveDataRoot() use -- the
-    // "qt/noisemaker" directory, not the effects dir itself). Silently
-    // registers nothing if the directory is absent (matches the reference
-    // ports' graceful-degradation behavior; callers that need a hard
-    // failure check emptiness themselves).
+    // "qt/noisemaker" directory, not the effects dir itself). Throws
+    // std::runtime_error naming that directory when it holds no
+    // definitions (missing, or not a data root).
     void loadAll(const QString& dataRoot);
 
     // Default dataRoot for repo-root tools: the NOISEMAKER_QT_DATA_ROOT

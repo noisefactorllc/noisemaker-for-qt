@@ -8,8 +8,13 @@
 //   test_nm_render_cli <path to nm-render>
 
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QIODevice>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QStringList>
+#include <QTemporaryDir>
 
 #include <cstdio>
 
@@ -91,6 +96,27 @@ int main(int argc, char** argv) {
     check(badTexture.exitCode == 2
               && badTexture.err.contains(QStringLiteral("--external-texture expects <texId>=<png>")),
           "an --external-texture value without ID=PNG exits 2");
+
+    // A data root without effect definitions names its effects directory
+    // (the compiler dumps read NOISEMAKER_QT_DATA_ROOT).
+    {
+        QTemporaryDir scratch;
+        const QString program = scratch.path() + QStringLiteral("/p.dsl");
+        QFile file(program);
+        const bool written = file.open(QIODevice::WriteOnly) && file.write("search synth\nnoise().write(o0)\n") > 0;
+        file.close();
+        const QString badRoot = scratch.path() + QStringLiteral("/no-data-root");
+        QProcess process;
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert(QStringLiteral("NOISEMAKER_QT_DATA_ROOT"), badRoot);
+        process.setProcessEnvironment(env);
+        process.start(nmRender, {QStringLiteral("--dump-graph"), program});
+        const bool finished = process.waitForFinished(60000);
+        const QString out = QString::fromUtf8(process.readAllStandardOutput());
+        check(written && finished && out.contains(QStringLiteral("\"ok\":false"))
+                  && out.contains(QDir::cleanPath(badRoot + QStringLiteral("/effects"))),
+              "a wrong data root names <root>/effects instead of reporting unknown effects");
+    }
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,
                 g_failures == 1 ? "" : "s");

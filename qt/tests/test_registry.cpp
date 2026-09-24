@@ -22,12 +22,15 @@
 
 #include "../noisemaker/compiler/effect_registry.h"
 
+#include <QDir>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QString>
+#include <QTemporaryDir>
 
 #include <cstdio>
+#include <stdexcept>
 
 namespace {
 
@@ -325,6 +328,29 @@ int main() {
         check(dump.value(QStringLiteral("effectKeys")).toObject().value(QStringLiteral("synth.noise")).toString()
                   == QStringLiteral("synth.noise"),
               "effectKeys['synth.noise'] fingerprints to 'synth.noise'");
+    }
+
+    // A data root without effect definitions fails loudly, naming the
+    // effects directory, instead of loading nothing (every effect would
+    // otherwise report as unknown later).
+    {
+        QTemporaryDir root;
+        const QString effectsDir = QDir::cleanPath(root.path() + QStringLiteral("/effects"));
+        auto loadError = [](const QString& dataRoot) {
+            try {
+                nm::EffectRegistry reg;
+                reg.loadAll(dataRoot);
+            } catch (const std::runtime_error& e) {
+                return QString::fromUtf8(e.what());
+            }
+            return QString();
+        };
+        const QString missing = loadError(root.path());
+        check(root.isValid() && missing.contains(effectsDir), "a root without effects/ throws, naming <root>/effects");
+        const bool made = QDir(root.path()).mkpath(QStringLiteral("effects/synth"));
+        const QString empty = loadError(root.path());
+        check(made && empty.contains(effectsDir), "an effects/ directory with no <ns>/<func>.json throws the same way");
+        check(loadError(nm::EffectRegistry::defaultDataRoot()).isEmpty(), "the real data root still loads");
     }
 
     if (g_failures == 0) {

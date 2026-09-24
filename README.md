@@ -166,7 +166,7 @@ target_link_libraries(my_host PRIVATE noisemaker-qt::noisemaker-qt)
 target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_ROOT}")
 ```
 
-`noisemaker-qt::noisemaker-qt` and `NOISEMAKER_QT_DATA_ROOT` have the same names in the embedded and the installed forms. `NOISEMAKER_QT_DATA_DIR` is an alias, and the target also carries a `NOISEMAKER_QT_DATA_ROOT` property. Pass this directory explicitly to `nm::EffectRegistry::loadAll()` and `nm::Backend::setup()`. `nm::EffectRegistry::defaultDataRoot()` reads the `NOISEMAKER_QT_DATA_ROOT` environment variable, else the working-directory-relative `qt/noisemaker`.
+`noisemaker-qt::noisemaker-qt` and `NOISEMAKER_QT_DATA_ROOT` have the same names in the embedded and the installed forms. `NOISEMAKER_QT_DATA_DIR` is an alias, and the target also carries a `NOISEMAKER_QT_DATA_ROOT` property. Pass this directory explicitly to `nm::EffectRegistry::loadAll()` and `nm::Backend::setup()`; `loadAll()` throws, naming the directory, when it holds no effect definitions. `nm::EffectRegistry::defaultDataRoot()` reads the `NOISEMAKER_QT_DATA_ROOT` environment variable, else the working-directory-relative `qt/noisemaker`.
 
 ### Supply host inputs at run time
 
