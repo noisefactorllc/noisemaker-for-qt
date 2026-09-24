@@ -33,6 +33,7 @@ That reads `program.dsl` from this project and writes `output.png` in the curren
 | `--media FILE` | Image for every `media()` step: PNG, JPEG, BMP, GIF or any format your Qt build reads. |
 | `--audio FILE` | WAV file for `scope()`, `spectrum()` and `audio()`: integer PCM of 8, 16, 24 or 32 bits, or 32 or 64-bit float. |
 | `--midi FILE` | Standard MIDI File for `roll()` and `midi()`. |
+| `--mesh FILE` | OBJ file for `meshLoader()`. |
 | `--help` | Print the options. |
 
 The program exits with status 0 after writing the PNG, 1 when the program, an input file or rendering fails, and 2 for a command-line error. Messages go to standard error.
@@ -45,6 +46,7 @@ Noisedeck exports the program, not the media or the live devices it ran with. Su
 - **Text.** `text()` steps draw their text on the CPU the way Noisedeck's text canvas does, with the font, size, position, rotation, colour, alignment and style in the program. The default font, Nunito, ships in `fonts/`. Generic families (`serif`, `sans-serif`, `monospace`, `cursive`, `fantasy`) and other font names resolve through your system's fonts, so they can differ from the font your browser picked. Glyph edges differ slightly from a browser canvas.
 - **Audio.** `--audio` plays the WAV from the start of the loop, so the output frame at `--time 0.5` hears the file at 5 seconds. Without `--audio`, a program that uses audio hears silence: `scope()` draws a flat line through the middle and `spectrum()` draws only its baseline.
 - **MIDI.** `--midi` plays the file's notes, controllers and pitch bends from the start of the loop. Without it no notes are held. `roll()` scrolls with time, so render enough `--frames` to see its history.
+- **Meshes.** A `meshLoader()` step starts with its built-in mesh (a sphere), as in the Noisemaker demo. `--mesh` loads an OBJ file instead. The built-in meshes ship in `share/meshes/`.
 
 ## Effects
 
@@ -52,7 +54,6 @@ Noisedeck exports the program, not the media or the live devices it ran with. Su
 
 ## What this export cannot do
 
-- 3D meshes: `meshLoader()` and `meshRender()` are not in this port's supported set yet.
 - Video files, cameras, live microphones and live MIDI ports. The renderer takes still images, WAV files and MIDI files.
 - It writes one PNG per run. For an animation, run it once per frame with increasing `--time`.
 
@@ -64,15 +65,15 @@ Noisedeck exports the program, not the media or the live devices it ran with. Su
 | `noisedeck-export.json` | What was exported, when, and from which port commit (`kitSha`). |
 | `CMakeLists.txt`, `src/` | The renderer: command line, input files and the render loop. |
 | `engine/` | The Noisemaker for Qt compiler and runtime. Present if you kept **include engine code** checked. |
-| `effects/`, `fonts/` | Effect definitions and the bundled Nunito font, read at run time. Present with the engine code. |
+| `effects/`, `fonts/`, `share/` | Effect definitions, the bundled Nunito font and the built-in meshes, read at run time. Present with the engine code. |
 | `shaders/` | The desktop GLSL `.frag` and `.vert` stages the engine loads at run time. Present if you kept **include shader code** checked. |
 | `LICENSES/` | Licenses for everything shipped here. |
 
-The export includes no WebGPU, Unity, Godot or TouchDesigner shaders. The renderer reads `effects/`, `fonts/` and `shaders/` from this folder at run time, so keep them beside `CMakeLists.txt`.
+The export includes no WebGPU, Unity, Godot or TouchDesigner shaders. The renderer reads `effects/`, `fonts/`, `share/` and `shaders/` from this folder at run time, so keep them beside `CMakeLists.txt`.
 
 ## Export options
 
-The default export includes both the pinned `noisemaker-for-qt` C++ engine and effect catalog and its matching shader corpus. If you omitted either source-code option in Noisedeck, copy the same files from a checkout of the Qt port at the commit that `kitSha` in `noisedeck-export.json` names: `qt/noisemaker/compiler/` and `qt/noisemaker/runtime/` to `engine/noisemaker/`, and `qt/noisemaker/effects/`, `qt/noisemaker/fonts/` and `qt/noisemaker/shaders/` to `effects/`, `fonts/` and `shaders/`.
+The default export includes both the pinned `noisemaker-for-qt` C++ engine and effect catalog and its matching shader corpus. If you omitted either source-code option in Noisedeck, copy the same files from a checkout of the Qt port at the commit that `kitSha` in `noisedeck-export.json` names: `qt/noisemaker/compiler/` and `qt/noisemaker/runtime/` to `engine/noisemaker/`, and `qt/noisemaker/effects/`, `qt/noisemaker/fonts/`, `qt/noisemaker/share/` and `qt/noisemaker/shaders/` to `effects/`, `fonts/`, `share/` and `shaders/`.
 
 ## License
 

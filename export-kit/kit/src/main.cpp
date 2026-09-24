@@ -44,6 +44,7 @@ const char* const kUsage =
     "  --media FILE     image for every media() step (PNG, JPEG, BMP, GIF, ...)\n"
     "  --audio FILE     WAV file for scope(), spectrum() and audio(); without it they see silence\n"
     "  --midi FILE      Standard MIDI File for roll() and midi(); without it no notes are held\n"
+    "  --mesh FILE      OBJ file for meshLoader() (mesh0); without it the effect's built-in mesh\n"
     "  --help           show this text\n";
 
 struct Options {
@@ -55,6 +56,7 @@ struct Options {
     QString media;
     QString audio;
     QString midi;
+    QString mesh;
 };
 
 struct UsageError : std::runtime_error {
@@ -93,6 +95,8 @@ Options parseOptions(const QStringList& args) {
             options.audio = value();
         } else if (arg == QStringLiteral("--midi")) {
             options.midi = value();
+        } else if (arg == QStringLiteral("--mesh")) {
+            options.mesh = value();
         } else if (arg.startsWith(QStringLiteral("--"))) {
             usageError(QStringLiteral("unknown option ") + arg);
         } else if (positional == 0) {
@@ -173,6 +177,23 @@ void supplyMedia(nm::Backend& backend, nm::Graph& graph, const nm::EffectRegistr
     }
 }
 
+// meshLoader(): as the reference demo host does, each externalMesh step
+// starts with its effect's first built-in mesh; --mesh then replaces mesh0.
+void supplyMeshes(nm::Backend& backend, const nm::Graph& graph, const QString& path) {
+    for (const nm::ExternalMeshInput& input : backend.externalMeshes(graph)) {
+        if (input.builtinMeshes.isEmpty()) continue;
+        const nm::MeshLoadResult result = backend.loadOBJFromFile(input.builtinMeshes.first().path, input.meshId);
+        if (!result.success) {
+            throw std::runtime_error(("built-in mesh '" + input.builtinMeshes.first().name + "': " + result.error)
+                                         .toStdString());
+        }
+    }
+    if (!path.isEmpty()) {
+        const nm::MeshLoadResult result = backend.loadOBJFromFile(path, QStringLiteral("mesh0"));
+        if (!result.success) throw std::runtime_error(("'" + path + "': " + result.error).toStdString());
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -200,6 +221,7 @@ int main(int argc, char** argv) {
         nm::Backend backend;
         backend.setup(nullptr, dataRoot, options.size);
         supplyMedia(backend, graph, registry, options.media);
+        supplyMeshes(backend, graph, options.mesh);
         nm::updateTextTextures(backend, graph, dataRoot, options.size);
 
         const QJsonObject audioNeeds = backend.getAudioInputRequirements(graph);

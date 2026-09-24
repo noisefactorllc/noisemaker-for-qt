@@ -9,6 +9,7 @@
     "engine": "engine",
     "effects": "engine",
     "fonts": "engine",
+    "share": "engine",
     "shaders": "shaders"
   },
   "subtrees": [
@@ -16,6 +17,7 @@
     { "from": "qt/noisemaker/runtime", "to": "engine/noisemaker/runtime" },
     { "from": "qt/noisemaker/effects", "to": "effects" },
     { "from": "qt/noisemaker/fonts", "to": "fonts" },
+    { "from": "qt/noisemaker/share", "to": "share" },
     { "from": "qt/noisemaker/shaders", "to": "shaders" }
   ],
   "licenses": [
@@ -27,7 +29,8 @@
     "src/host_inputs.cpp",
     "fonts/Nunito/Nunito-VariableFont_wght.ttf",
     "fonts/Nunito/OFL.txt",
-    "LICENSES/Nunito-OFL.txt"
+    "LICENSES/Nunito-OFL.txt",
+    "share/meshes/sphere.obj"
   ],
   "shaderLayout": {
     "root": "shaders",
@@ -44,5 +47,5 @@
     "excludeNames": [],
     "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair", "render/meshLoader", "render/meshRender"]
   },
-  "engineBytesFrom": ["engine/", "effects/", "fonts/"]
+  "engineBytesFrom": ["engine/", "effects/", "fonts/", "share/"]
 }
