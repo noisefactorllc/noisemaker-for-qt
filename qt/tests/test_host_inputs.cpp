@@ -166,6 +166,46 @@ void testMediaUpload(nm::EffectRegistry& registry) {
     check(true, "releaseGl frees owned external textures without error");
 }
 
+// Port of the reference shaders/tests/test_external_texture_upload.mjs
+// case 2: a 2:1 white source in a square frame letterboxes (full width,
+// about half the height) instead of stretching to fill.
+void testMediaLetterbox(nm::EffectRegistry& registry) {
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, QSize(128, 128));
+    nm::Graph graph = compile(registry, "search synth\n\nmedia(bgColor: #000000, bgAlpha: 1)\n  .write(o0)\n\nrender(o0)");
+    const int stepIndex = graph.passes.first().stepIndex;
+    QImage source(128, 64, QImage::Format_RGBA8888);
+    source.fill(qRgba(255, 255, 255, 255));
+    const QSize uploaded = backend.updateTextureFromSource(
+        nm::Backend::externalTextureId(QStringLiteral("imageTex"), stepIndex), source, nm::ExternalTextureOptions{false});
+    check(uploaded == QSize(128, 64), "reference upload contract: returns the source width and height");
+    backend.applyStepParameterValues(graph, registry,
+        QJsonObject{{QStringLiteral("step_") + QString::number(stepIndex),
+                     QJsonObject{{QStringLiteral("imageSize"), QJsonArray{uploaded.width(), uploaded.height()}}}}});
+    backend.render(graph, 0.0);
+    const QImage image = backend.readSurface();
+    auto lit = [&](int x, int y) {
+        const Rgba p = pixel(image, x, y);
+        return p.r > 100 || p.g > 100 || p.b > 100;
+    };
+    int litRows = 0;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            if (lit(x, y)) { ++litRows; break; }
+        }
+    }
+    int litCols = 0;
+    for (int x = 0; x < image.width(); ++x) {
+        for (int y = 0; y < image.height(); ++y) {
+            if (lit(x, y)) { ++litCols; break; }
+        }
+    }
+    const double rows = double(litRows) / image.height();
+    const double cols = double(litCols) / image.width();
+    std::printf("  letterbox lit rows=%.1f%% cols=%.1f%%\n", rows * 100.0, cols * 100.0);
+    check(cols > 0.9 && rows > 0.35 && rows < 0.65, "a 2:1 source letterboxes: full width, about half the height");
+}
+
 void testTextUpload(nm::EffectRegistry& registry) {
     nm::Backend backend;
     backend.setup(nullptr, kDataRoot, QSize(64, 64));
@@ -336,6 +376,7 @@ int main(int argc, char** argv) {
 
     testExternalTextureIds(registry);
     testMediaUpload(registry);
+    testMediaLetterbox(registry);
     testTextUpload(registry);
     testLiveParameters(registry);
     testFeedbackPersistsAcrossUpdates(registry);
