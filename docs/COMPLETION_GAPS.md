@@ -207,7 +207,7 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: A host updates step parameters and global uniforms of a compiled graph, as reference applyStepParameterValues and Pipeline.setUniform do.
 - Observed behavior: Before the fix, the only update path was a full recompile. The graph loader dropped stepIndex and scopedParams.
 - Evidence: `applyStepParameterValues` and `setUniform` port the reference rules, palette expansion, and convertParameterForUniform. The feedback surface persisted across a live update and a same-structure recompile.
-- Next action: None. Reference checkAsyncRegen (CPU overlay regeneration) is not ported. This port has no async-init overlay effects.
+- Next action: None for live parameters. Correction (2026-09-24): reference checkAsyncRegen and asyncInit are not ported, and three effects do use them (fibers, scratches, strayHair); tracked as GAP-025.
 - Dependencies: GAP-006 for platforms other than macOS.
 - Acceptance criteria: Pixel checks show updated colors without a recompile. Automation values stay intact. The live update matches the recompiled swap byte for byte.
 - Required checks: test_host_inputs, ctest, and the compiler gates.
@@ -452,6 +452,32 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: validate, expand and graph byte-identical on the fixture.
 - Required checks: check_validate, check_expand, check_graph; test_validator.
 - Last verification: 2026-09-24, reference c9ee8a04.
+
+### GAP-025: async-init overlay effects render without their overlay
+
+- Status: open. Priority: P1. Category: implementation.
+- Affected scope: filter/fibers, filter/scratches and filter/strayHair (the three definitions with asyncInit at reference c9ee8a04); qt/noisemaker/runtime (no asyncInit, overlayTex or CPU worm tracing); parity/sweep.sh tol_for() entries for the three; the export kit, which ships them.
+- Expected behavior: As in the reference, each effect's asyncInit traces its overlay on the CPU (traceWorms into a canvas) and uploads it as overlayTex, progressively through onProgress, and regenerates it when its inputs change (ProgramState.checkAsyncRegen, 300 ms debounce).
+- Observed behavior: The overlay is never generated. The fibers candidate is one colour (0,0,0,255) over all 65536 px; the scratches candidate is one colour (43,43,43,255). The tol_for() NEAR entries (fibers 122.001/0.93, scratches 147.001/0.75, strayHair 79.001/0.998) were labelled as a near-zero Sobel singularity; they absorbed the difference between an absent overlay and a partly traced one. The GAP-010 minter race hid this by capturing before the traces drew. This was false completion.
+- Evidence: GAP-001 sweep 1 at pin c9ee8a04 (HEAD 130540a) with the fixed minter: fibers FAIL max 122 ssim 0.9206, scratches FAIL max 147 ssim 0.7291. No Qt runtime source mentions overlayTex, traceWorms or asyncInit.
+- Next action: Port the reference asyncInit contract and the three effects' CPU overlay generation (traceWorms and its RNG) to the engine, with an oracle test of the traced overlay against the reference under Node, and remove the three mislabelled tol_for() entries in the same change.
+- Dependencies: GAP-026 for stable goldens of progressive overlays.
+- Acceptance criteria: The overlay is generated and uploaded as the reference does; the CPU overlay matches the reference bit for bit for fixed inputs; the three fixtures pass at strict tolerance, or at a NEAR entry backed by a traced mechanism; the export kit renders them.
+- Required checks: An overlay oracle test; parity/run.sh for the three fixtures against deterministic goldens; ctest.
+- Last verification: 2026-09-24. Open.
+
+### GAP-026: goldens of async and host inputs depend on capture timing
+
+- Status: open. Priority: P2. Category: verification.
+- Affected scope: parity/export-and-render.mjs, parity/batch-golden.mjs; fixtures with asyncInit overlays (fibers, scratches, strayHair) and with host text (text).
+- Expected behavior: A golden captures a defined state: async overlays complete and quiescent, and host inputs identical to what the candidate receives.
+- Observed behavior: Three single fixed-harness mints of fibers gave mint1 == mint2 while mint3 differed by 28 px: the capture lands at an arbitrary point of the progressive trace. The reference demo UI draws "Hello World" into textTex 50 ms after creating the controls (setTimeout), so under load the sweep golden for text included it (2944 px differ from the candidate) while quiet mints did not (4 px). nm-render supplies no textTex, so the text fixture only tests an empty-text passthrough.
+- Evidence: GAP-001 sweep 1 (load average about 96): text FAIL max 204 ssim 0.972. Three quiet single mints of text at load average 8 were byte-identical.
+- Next action: Make minting wait for asyncInit completion and debounce quiescence before the 8-frame protocol; give the text fixture a defined text input on both sides (the same rasterized textTex fed to nm-render, or the host text cleared on the reference side).
+- Dependencies: None.
+- Acceptance criteria: Repeated mints of each affected fixture are byte-identical across quiet and loaded runs, and the text fixture exercises real text.
+- Required checks: Three mints per affected fixture compared with cmp, one under load; parity/run.sh.
+- Last verification: 2026-09-24. Open.
 
 ## 5. Ordered next actions
 
