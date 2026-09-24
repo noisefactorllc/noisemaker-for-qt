@@ -51,7 +51,7 @@ env:
   # pal1000/mesa-dist-win release-msvc archive (llvmpipe opengl32.dll).
   MESA_WIN_URL: https://github.com/pal1000/mesa-dist-win/releases/download/26.2.1/mesa3d-26.2.1-release-msvc.7z
   MESA_WIN_SHA256: 78a0305844074535e73dfb6dcb5eb2a65f1d9dc445102e1f4c3c3e97dace19bf
-  SMOKE_FIXTURES: "adjust blendMode cell feedback"
+  SMOKE_FIXTURES: "adjust blendMode cell feedback meshLoaderDefault meshRenderCustom"
 
 jobs:
   build-test:
