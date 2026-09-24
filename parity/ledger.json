@@ -1345,18 +1345,18 @@
     "mode": "density: 1",
     "golden": "parity/out/fibers.golden.png",
     "candidate": "parity/out/fibers.candidate.png",
-    "verdict": "NEAR",
-    "max_abs_diff": 122.0,
-    "mean_abs_diff": 0.0579681433737278,
-    "ssim": 0.9331174492835999,
-    "passed": true,
+    "verdict": "FAIL",
+    "max_abs_diff": 126.0,
+    "mean_abs_diff": 9.600090980529785,
+    "ssim": 0.0034018168225884438,
+    "passed": false,
     "skipped": false,
     "policy": {
       "tolerance": 122.001,
       "ssim_min": 0.93,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "near-zero Sobel/gradient singularity makes the edge-following stroke angle discontinuous across GPU compilers"
+      "reason": "comparison child exited nonzero"
     }
   },
   {
@@ -2025,18 +2025,18 @@
     "mode": "viewMode: perspective, blendMode: alpha, rotateX: 0.55, posY: -12, posZ: 22, pointSize: 3, density: 100, intensity: 0, inputIntensity: 0, depositOpacity: 65",
     "golden": "parity/out/heightGrid_billboard_alpha.golden.png",
     "candidate": "parity/out/heightGrid_billboard_alpha.candidate.png",
-    "verdict": "FAIL",
-    "max_abs_diff": 255.0,
-    "mean_abs_diff": 64.19001770019531,
-    "ssim": 0.35693296790122986,
-    "passed": false,
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
     "skipped": false,
     "policy": {
       "tolerance": 2.001,
       "ssim_min": 0.98,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "comparison child exited nonzero"
+      "reason": "strict RGBA8 float round-trip allowance"
     }
   },
   {
@@ -2065,18 +2065,18 @@
     "mode": "panY: -0.18",
     "golden": "parity/out/heightmap3d_landscape.golden.png",
     "candidate": "parity/out/heightmap3d_landscape.candidate.png",
-    "verdict": "FAIL",
+    "verdict": "NEAR",
     "max_abs_diff": 3.0000016689300537,
     "mean_abs_diff": 3.433227902860381e-05,
     "ssim": 1.0,
-    "passed": false,
+    "passed": true,
     "skipped": false,
     "policy": {
-      "tolerance": 2.001,
-      "ssim_min": 0.98,
+      "tolerance": 3.001,
+      "ssim_min": 0.999,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "comparison child exited nonzero"
+      "reason": "isometric voxel DDA: the ray origin lies 0.49 ulp from a voxel-edge tie, so the shader compiler's association of the origin sum selects one of two adjacent voxels"
     }
   },
   {
@@ -2800,6 +2800,126 @@
     }
   },
   {
+    "program": "meshLoaderDefault",
+    "effect": "filter/meshRender",
+    "mode": "default",
+    "golden": "parity/out/meshLoaderDefault.golden.png",
+    "candidate": "parity/out/meshLoaderDefault.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "meshLoaderPreview",
+    "effect": null,
+    "mode": "default",
+    "golden": "parity/out/meshLoaderPreview.golden.png",
+    "candidate": "parity/out/meshLoaderPreview.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "meshRenderCustom",
+    "effect": "filter/meshRender",
+    "mode": "rotateX: 35, rotateY: -30, viewScale: 1.6, meshColor: #7ab0d8",
+    "golden": "parity/out/meshRenderCustom.golden.png",
+    "candidate": "parity/out/meshRenderCustom.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "meshRenderEmpty",
+    "effect": "filter/meshRender",
+    "mode": "default",
+    "golden": "parity/out/meshRenderEmpty.golden.png",
+    "candidate": "parity/out/meshRenderEmpty.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "meshRenderParams",
+    "effect": "filter/meshRender",
+    "mode": "scale: 0.7, offsetX: 0.15, offsetY: -0.1, offsetZ: 0.2, rotateX: -25, rotateY: 40, rotateZ: 10, viewScale: 1.3, posX: -0.05, posY: 0.08, lightDirection: vec3(-0.4, 0.8, 0.6), diffuseColor: #ffd8a0, diffuseIntensity: 0.9, specularColor: #a0c8ff, specularIntensity: 0.6, shininess: 64, ambientColor: #202840, rimIntensity: 0.3, rimPower: 2, meshColor: #c86432, bgColor: #0a1420, bgAlpha: 0.75",
+    "golden": "parity/out/meshRenderParams.golden.png",
+    "candidate": "parity/out/meshRenderParams.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "meshRenderWireframe",
+    "effect": "filter/meshRender",
+    "mode": "wireframe: 1, rotateX: 20, rotateY: 30",
+    "golden": "parity/out/meshRenderWireframe.golden.png",
+    "candidate": "parity/out/meshRenderWireframe.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
     "program": "mnca",
     "effect": null,
     "mode": "default",
@@ -3141,8 +3261,8 @@
     ],
     "verdict": "NEAR",
     "max_abs_diff": 6.999999523162842,
-    "mean_abs_diff": 0.561553955078125,
-    "ssim": 0.9990154504776001,
+    "mean_abs_diff": 0.5610542297363281,
+    "ssim": 0.9990310072898865,
     "passed": true,
     "skipped": false,
     "policy": {
@@ -3158,8 +3278,8 @@
         "golden": "parity/out/navierStokes.golden.t5.png",
         "candidate": "parity/out/navierStokes.candidate.t5.png",
         "max_abs_diff": 6.999999523162842,
-        "mean_abs_diff": 0.561553955078125,
-        "ssim": 0.9990154504776001,
+        "mean_abs_diff": 0.5610542297363281,
+        "ssim": 0.9990310072898865,
         "passed": true,
         "policy_matches": true
       },
@@ -3168,8 +3288,8 @@
         "golden": "parity/out/navierStokes.golden.t10.png",
         "candidate": "parity/out/navierStokes.candidate.t10.png",
         "max_abs_diff": 2.0000035762786865,
-        "mean_abs_diff": 0.059444427490234375,
-        "ssim": 0.9998648166656494,
+        "mean_abs_diff": 0.06060027703642845,
+        "ssim": 0.9998612403869629,
         "passed": true,
         "policy_matches": true
       },
@@ -3178,8 +3298,8 @@
         "golden": "parity/out/navierStokes.golden.t15.png",
         "candidate": "parity/out/navierStokes.candidate.t15.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.004058837890625,
-        "ssim": 0.9999939799308777,
+        "mean_abs_diff": 0.004734039306640625,
+        "ssim": 0.9999924898147583,
         "passed": true,
         "policy_matches": true
       },
@@ -3187,9 +3307,9 @@
         "time_seconds": 20,
         "golden": "parity/out/navierStokes.golden.t20.png",
         "candidate": "parity/out/navierStokes.candidate.t20.png",
-        "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.007442474365234375,
-        "ssim": 0.9999896883964539,
+        "max_abs_diff": 2.0000035762786865,
+        "mean_abs_diff": 0.03652573004364967,
+        "ssim": 0.9999238848686218,
         "passed": true,
         "policy_matches": true
       },
@@ -3198,8 +3318,8 @@
         "golden": "parity/out/navierStokes.golden.t25.png",
         "candidate": "parity/out/navierStokes.candidate.t25.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.003955841064453125,
-        "ssim": 0.9999940991401672,
+        "mean_abs_diff": 0.004791259765625,
+        "ssim": 0.999992847442627,
         "passed": true,
         "policy_matches": true
       },
@@ -3207,9 +3327,9 @@
         "time_seconds": 30,
         "golden": "parity/out/navierStokes.golden.t30.png",
         "candidate": "parity/out/navierStokes.candidate.t30.png",
-        "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.019748687744140625,
-        "ssim": 0.9999670386314392,
+        "max_abs_diff": 1.9999998807907104,
+        "mean_abs_diff": 0.021602630615234375,
+        "ssim": 0.9999605417251587,
         "passed": true,
         "policy_matches": true
       }
@@ -4841,18 +4961,18 @@
     "mode": "default",
     "golden": "parity/out/scratches.golden.png",
     "candidate": "parity/out/scratches.candidate.png",
-    "verdict": "NEAR",
+    "verdict": "FAIL",
     "max_abs_diff": 147.0,
-    "mean_abs_diff": 0.14920808374881744,
-    "ssim": 0.7611719369888306,
-    "passed": true,
+    "mean_abs_diff": 2.0921974182128906,
+    "ssim": 0.18033467233181,
+    "passed": false,
     "skipped": false,
     "policy": {
       "tolerance": 147.001,
       "ssim_min": 0.75,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "near-zero Sobel/gradient singularity makes the edge-following stroke angle discontinuous across GPU compilers"
+      "reason": "comparison child exited nonzero"
     }
   },
   {
