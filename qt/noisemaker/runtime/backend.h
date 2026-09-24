@@ -82,6 +82,11 @@ public:
     // defaultChannels keyed "1".."32" (or a zero-based array). Channel band
     // states carry low/mid/high/vol/raw/rawReady; unavailable channels are
     // omitted. The host owns capture, connection state and snapshot resets.
+    // nm::MidiState::snapshot() (midi_state.h) and nm::AudioState /
+    // nm::AudioInput::snapshot() (audio_state.h) produce these objects from
+    // raw MIDI bytes and audio samples. Their clockCount, keys, waveform and
+    // spectrum also feed the midiClockCount, midiNoteGrid, audioWaveform and
+    // audioSpectrum engine inputs, as reference updateGlobalUniforms does.
     void setMidiState(const QJsonObject& state);
     void setAudioState(const QJsonObject& state);
 
@@ -242,6 +247,7 @@ private:
     QString currentRenderSurfaceId() const;
     const GpuSurface* currentRenderSurface() const;
     QJsonObject loadEffectUniformLayout(const QString& ns, const QString& func);
+    void uploadMidiNoteGrid();
 
     QOpenGLContext* m_context = nullptr;
     QOpenGLContext* m_ownedContext = nullptr;
@@ -274,6 +280,7 @@ private:
         bool owned = false; // created by updateTextureFromSource (deleted by the Backend)
     };
     QHash<QString, ExternalTexture> m_externalTextures;
+    unsigned int m_midiNoteGridTexture = 0;        // 128x16 RGBA32F, created when a pass reads midiNoteGrid
     QJsonObject m_globalUniforms;                  // host setUniform() globals; engine values override
     double m_lastTime = 0.0;
     double m_deltaTime = 0.0;

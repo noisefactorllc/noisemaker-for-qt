@@ -38,6 +38,11 @@ add_executable(test_midi_state test_midi_state.cpp)
 target_link_libraries(test_midi_state PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_midi_state COMMAND test_midi_state)
 
+add_executable(test_audio_input test_audio_input.cpp)
+target_link_libraries(test_audio_input PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_audio_input COMMAND test_audio_input)
+set_tests_properties(test_audio_input PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
 target_link_libraries(test_lexer PRIVATE noisemaker-qt Qt6::Core)
@@ -103,3 +108,13 @@ target_link_libraries(expand_dump PRIVATE noisemaker-qt Qt6::Core)
 # parity/check_midi_state.mjs (reference MidiState replay).
 add_executable(midi_state_dump midi_state_dump.cpp)
 target_link_libraries(midi_state_dump PRIVATE noisemaker-qt Qt6::Core)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_audio_analyzer.mjs (Chromium AnalyserNode oracle).
+add_executable(audio_analyzer_dump audio_analyzer_dump.cpp)
+target_link_libraries(audio_analyzer_dump PRIVATE noisemaker-qt Qt6::Core)
+
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_audio_state.mjs (reference AudioState replay).
+add_executable(audio_state_dump audio_state_dump.cpp)
+target_link_libraries(audio_state_dump PRIVATE noisemaker-qt Qt6::Core)

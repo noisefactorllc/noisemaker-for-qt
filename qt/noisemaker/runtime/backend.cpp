@@ -574,6 +574,13 @@ private:
         QJsonObject entry;
         if (!id.isEmpty()) {
             entry = devices.value(id).toObject();
+        } else if (audioState_.value(QStringLiteral("deviceInventory")).isObject()) {
+            // reference getDeviceChannelState: with a device inventory, a
+            // name resolves through it (null = ambiguous).
+            const QJsonValue inventoryId =
+                audioState_.value(QStringLiteral("deviceInventory")).toObject().value(name);
+            if (!inventoryId.isString()) return {};
+            entry = devices.value(inventoryId.toString()).toObject();
         } else if (!name.isEmpty()) {
             for (const QJsonValue& value : devices) {
                 const QJsonObject candidate = value.toObject();
@@ -920,6 +927,37 @@ void Backend::setAudioState(const QJsonObject& state) {
     m_audioState = state;
 }
 
+void Backend::uploadMidiNoteGrid() {
+    // reference MidiState.updateNoteGrid + uploadDataTexture('midiNoteGrid',
+    // 128 x 16 RGBA32F): row n-1 holds channel n; R = velocity / 127 and
+    // G = gate for every held key; B and A stay 0. Without MIDI state the
+    // grid is all zeros.
+    std::vector<float> grid(128 * 16 * 4, 0.0f);
+    const QJsonValue channels = m_midiState.value(QStringLiteral("channels"));
+    for (int ch = 0; ch < 16; ++ch) {
+        const QJsonArray keys = indexedValue(channels, ch + 1, 1).toObject().value(QStringLiteral("keys")).toArray();
+        for (int k = 0; k < 128 && k < keys.size(); ++k) {
+            const double v = keys.at(k).toDouble();
+            float* texel = grid.data() + (ch * 128 + k) * 4;
+            texel[0] = v > 0 ? static_cast<float>(v / 127.0) : 0.0f;
+            texel[1] = v > 0 ? 1.0f : 0.0f;
+        }
+    }
+    if (m_midiNoteGridTexture == 0) {
+        m_gl->glGenTextures(1, &m_midiNoteGridTexture);
+        m_gl->glBindTexture(GL_TEXTURE_2D, m_midiNoteGridTexture);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        m_gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 128, 16, 0, GL_RGBA, GL_FLOAT, grid.data());
+    } else {
+        m_gl->glBindTexture(GL_TEXTURE_2D, m_midiNoteGridTexture);
+        m_gl->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 16, GL_RGBA, GL_FLOAT, grid.data());
+    }
+    m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 QJsonValue Backend::resolveUniformValue(const QJsonValue& value, double normalizedTime,
                                         const QJsonObject& paramSpec) const {
     if (!isAutomationValue(value)) return value;
@@ -983,6 +1021,10 @@ void Backend::releaseGl() {
         }
     }
     m_externalTextures.clear();
+    if (m_midiNoteGridTexture != 0) {
+        m_gl->glDeleteTextures(1, &m_midiNoteGridTexture);
+        m_midiNoteGridTexture = 0;
+    }
     if (m_surfaces) {
         m_surfaces->releaseAll();
         m_surfaces.reset();
@@ -1441,6 +1483,14 @@ QJsonObject Backend::engineUniforms() const {
     globals.insert(QStringLiteral("time"), m_time);
     globals.insert(QStringLiteral("deltaTime"), m_deltaTime);
     globals.insert(QStringLiteral("frame"), m_frameIndex);
+    // reference updateGlobalUniforms external-input globals: waveform and
+    // spectrum (128 floats each) when the audio state carries them, and the
+    // MIDI clock (0 without MIDI state).
+    const QJsonValue waveform = m_audioState.value(QStringLiteral("waveform"));
+    if (waveform.isArray()) globals.insert(QStringLiteral("audioWaveform"), waveform);
+    const QJsonValue spectrum = m_audioState.value(QStringLiteral("spectrum"));
+    if (spectrum.isArray()) globals.insert(QStringLiteral("audioSpectrum"), spectrum);
+    globals.insert(QStringLiteral("midiClockCount"), m_midiState.value(QStringLiteral("clockCount")).toDouble(0.0));
     globals.insert(QStringLiteral("resolution"), QJsonArray{m_size.width(), m_size.height()});
     globals.insert(QStringLiteral("tileOffset"), QJsonArray{0, 0});
     globals.insert(QStringLiteral("fullResolution"), QJsonArray{m_size.width(), m_size.height()});
@@ -1695,6 +1745,9 @@ void Backend::bindTextures(const Graph& graph, const CompiledProgram& program, c
         const auto external = m_externalTextures.constFind(texId);
         if (external != m_externalTextures.constEnd()) {
             handle = external->handle;
+        } else if (texId == QStringLiteral("midiNoteGrid")) {
+            if (m_midiNoteGridTexture == 0) uploadMidiNoteGrid();
+            handle = m_midiNoteGridTexture;
         } else if (isExternalTextureId(texId)) {
             // Not supplied by the host yet: default texture, as the
             // reference binds for any id absent from its texture map.
@@ -2100,6 +2153,7 @@ void Backend::renderInternal(
     m_mergedUniforms = mergeAllPassUniforms(effectiveGraph);
     m_pingpong.syncGraph(effectiveGraph);
     m_pingpong.beginFrame();
+    if (m_midiNoteGridTexture != 0) uploadMidiNoteGrid();
 
     for (const Pass& pass : effectiveGraph.passes) {
         if (shouldSkipPass(pass)) continue;

@@ -274,7 +274,7 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: The engine owns the reference MidiState machine. Hosts feed raw bytes with a port identity and pass snapshot() to setMidiState().
 - Observed behavior: Before this change, setMidiState() accepted JSON only, and each host had to port the reference message logic. The evaluator ignored the port inventory.
 - Evidence: nm::MidiState ports MidiChannelState and MidiState. The evaluator now resolves name selectors through `portInventory`, as reference getPortState does.
-- Next action: None. The midiNoteGrid texture and midiClockCount uniform for synth/roll are not bound yet.
+- Next action: None. The midiNoteGrid texture and midiClockCount uniform are bound as of GAP-013.
 - Dependencies: None.
 - Acceptance criteria: Every state dump matches the reference exactly for handcrafted and fuzzed event streams. The host contract test passes.
 - Required checks: `node parity/check_midi_state.mjs`, test_midi_state, ctest.
@@ -287,6 +287,29 @@ These entries record missing qualification. They do not infer implementation def
 - test_midi_state: 15 PASS, 0 FAIL. `snapshot()` plus `setMidiState()` took 1.206 ms per call with 3 ports and the unscoped state.
 - ctest 14 of 14. Release `-Wall -Wextra -Wpedantic -Werror` build: 0 warnings.
 - external-input.js is unchanged between the pin `5b81e04f` and the checkout (`git diff --stat` empty).
+
+</details>
+
+### GAP-013: hosts had to analyze audio and build audio state JSON by hand
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: qt/noisemaker/runtime/audio_analyzer.{h,cpp}, audio_state.{h,cpp}, the Backend audio() evaluator and engine inputs, parity/check_audio_*.mjs, qt/tests/test_audio_input.cpp.
+- Expected behavior: The engine owns AnalyserNode analysis and the reference AudioState. Hosts feed interleaved float samples; snapshot() feeds setAudioState().
+- Observed behavior: Before this change, setAudioState() accepted JSON only. audioWaveform, audioSpectrum, midiClockCount and midiNoteGrid were never bound, so synth/scope, synth/spectrum and synth/roll saw no input.
+- Evidence: nm::AudioAnalyzer follows Chromium AnalyserNode. nm::AudioState ports the reference class. nm::AudioInput reproduces the Noisedeck wiring (FFT 256, smoothing 0.5, -80 to -30 dB, 3-frame bands, quantum-mean raw).
+- Next action: None. The AudioInput composition has unit tests only; Noisedeck's pump is host code and has no importable oracle.
+- Dependencies: None.
+- Acceptance criteria: Analyser outputs match Chromium within the documented tolerance. AudioState dumps match the reference exactly. The end-to-end test passes.
+- Required checks: `node parity/check_audio_analyzer.mjs`, `node parity/check_audio_state.mjs`, test_audio_input, ctest.
+- Last verification: 2026-09-24, macOS arm64, Chromium 151.0.7922.34.
+
+<details><summary>GAP-013 evidence</summary>
+
+- check_audio_analyzer.mjs: AUDIO_ANALYZER 570/570, exit 0. 6 cases (mono, stereo, quad, 5.1; FFT 256 to 2048; several smoothing and dB ranges), 570 reads at render-quantum boundaries from an OfflineAudioContext. Tolerance: byte frequency within 1, float frequency within 0.05 dB, time domain exact. Measured: 1 byte difference of 1 in 186,368 byte values; largest dB difference 1.28e-3; 0 time-domain mismatches.
+- Chromium measured facts built into the port: byte time-domain data adds 1 in float before scaling; the 5.1 down-mix accumulates with fused multiply-add on arm64 (a sequential non-fused sum mismatched 171 of 1920 frames; the fused chain mismatched 0).
+- check_audio_state.mjs: AUDIO_STATE 93/93, exit 0. 3 seeded scenarios of 3031 events, exact comparison including smoothing buffers, device registry, inventory and default channels. Mutation checks failed the gate (4, 32, 0 and 66 of 93).
+- test_audio_input: 13 PASS, 0 FAIL. It covers the aggregate and per-channel bands, raw DC, device selection by name, inventory and id, disconnects, and synth/scope and synth/roll pixel changes.
+- ctest 15 of 15; `-Werror` build 0 warnings; all 11 parity gates exit 0; 31 Python harness tests OK.
 
 </details>
 
@@ -305,7 +328,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009 and GAP-012 (closed) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012 and GAP-013 (closed) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.

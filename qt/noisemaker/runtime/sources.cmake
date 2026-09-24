@@ -29,4 +29,8 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/parameters.cpp
     ${CMAKE_CURRENT_LIST_DIR}/midi_state.h
     ${CMAKE_CURRENT_LIST_DIR}/midi_state.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/audio_analyzer.h
+    ${CMAKE_CURRENT_LIST_DIR}/audio_analyzer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/audio_state.h
+    ${CMAKE_CURRENT_LIST_DIR}/audio_state.cpp
 )
