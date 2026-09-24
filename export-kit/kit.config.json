@@ -45,7 +45,7 @@
     "mode": "list",
     "fromDefs": "qt/noisemaker/effects",
     "excludeNames": [],
-    "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair", "render/meshLoader", "render/meshRender"]
+    "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair"]
   },
   "engineBytesFrom": ["engine/", "effects/", "fonts/", "share/"]
 }
