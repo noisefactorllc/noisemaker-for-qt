@@ -156,6 +156,12 @@ void testLayout() {
     QFont font(QStringLiteral("Nunito"));
     font.setPixelSize(fontSize);
     font.setHintingPreference(QFont::PreferNoHinting);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    // The bundled Nunito's wght axis defaults to 200 (ExtraLight), and
+    // FreeType draws an unset axis at that default. The renderer sets the
+    // CSS weight 400 on the axis, so the reference advance must too.
+    font.setVariableAxis(QFont::Tag("wght"), 400.0f);
+#endif
     const double advance = QFontMetricsF(font).horizontalAdvance(QStringLiteral("Hello"));
 
     nm::TextTextureParams p = params(QStringLiteral("Hello"));
