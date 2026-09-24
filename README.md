@@ -62,7 +62,7 @@ ctest --test-dir qt/build --output-on-failure
 ### Render a DSL program to a PNG
 
 ```sh
-qt/build/nm-render --dsl parity/corpus/weird_mandala.dsl --size 512x512 --time 0.5 --frames 1 --out out.png
+qt/build/nm-render --dsl parity/corpus/weird_mandala.dsl --size 512x512 --time 0.5 --frames 1 --out qt/build/out.png
 ```
 
 ### Build and run the live viewer example
