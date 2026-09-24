@@ -30,7 +30,7 @@
 // and the reference repo at $NM_REFERENCE_ROOT (its shaders/ and demo/ trees).
 // See parity/README.md.
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -104,18 +104,23 @@ const VIEWER_PATH = '/demo/shaders/'
 const EFFECTS_DIR = join(REFERENCE_ROOT, 'shaders', 'effects')
 const GLOBALS_PREFIX = '__noisemaker'
 const STATUS_TIMEOUT = 300000
+// Host-supplied texture ids, "<externalTexture>_step_<stepIndex>" (the same
+// pattern as nm::Backend::externalTextureIds).
+const EXTERNAL_TEXTURE_ID = /^[A-Za-z][A-Za-z0-9]*_step_\d+$/
 
-// Read back the presented render surface as LINEAR FLOAT, quantize to 8-bit, flip
-// to top-down, and encode a PNG buffer. Shared by single-frame + timed-sample modes.
-async function capture (page, globals) {
-  const result = await page.evaluate(({ g }) => {
+// Read back the presented render surface (or, given `textureId`, that backend
+// texture) as LINEAR FLOAT, quantize to 8-bit, flip to top-down, and encode a
+// PNG buffer. Shared by single-frame + timed-sample modes and the external
+// texture export.
+async function capture (page, globals, textureId = null) {
+  const result = await page.evaluate(({ g, textureId }) => {
     const pipeline = window[g.renderingPipeline]
     if (!pipeline) return { status: 'error', error: 'no pipeline' }
     const backend = pipeline.backend
     const gl = backend?.gl
     const surface = pipeline.surfaces?.get(pipeline.graph?.renderSurface || 'o0')
-    if (!gl || !surface) return { status: 'error', error: 'no GL surface' }
-    const info = backend.textures?.get(surface.read)
+    if (!gl || (!surface && !textureId)) return { status: 'error', error: 'no GL surface' }
+    const info = backend.textures?.get(textureId || surface.read)
     if (!info?.handle) return { status: 'error', error: 'no texture handle' }
     const { handle, width, height, glFormat } = info
     const fbo = gl.createFramebuffer()
@@ -144,7 +149,7 @@ async function capture (page, globals) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.deleteFramebuffer(fbo)
     return { status: 'ok', width, height, pixels: rgba8 }
-  }, { g: globals })
+  }, { g: globals, textureId })
   if (result.status === 'error') throw new Error(`readback failed: ${result.error}`)
   // GL textures are bottom-left origin; flip vertically so the PNG is top-down (the
   // single Y-flip reconciliation point, mirrored by the Qt renderer's own save).
@@ -377,6 +382,15 @@ async function main () {
   writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
   process.stderr.write(`[parity] wrote ${graphPath}\n`)
   const meshes = await meshPlan(graph, opts.programPath)
+  // Drop external textures saved by an earlier mint of this program; this
+  // mint writes the ones its graph samples.
+  for (const file of readdirSync(opts.outDir)) {
+    const prefix = `${programName}.`
+    if (file.startsWith(prefix) && file.endsWith('.png') &&
+        EXTERNAL_TEXTURE_ID.test(file.slice(prefix.length, -'.png'.length))) {
+      unlinkSync(join(opts.outDir, file))
+    }
+  }
 
   // ---- 2. Render the golden frame via the Playwright harness ---------------
   // Configure the harness via SHADE_* env (read by BrowserSession.getConfig()).
@@ -407,37 +421,12 @@ async function main () {
       !!document.getElementById('dsl-editor') && !!document.getElementById('dsl-run-btn'),
     null, { timeout: STATUS_TIMEOUT })
 
-    // Load OUR DSL via the editor + run button, then wait until the presented
-    // pipeline runs exactly this program with its shaders compiled. The demo
-    // compiles `editor.value.trim()`, so graph.source must equal the trimmed
-    // DSL. This wait once passed its options object in the page-argument
-    // slot, so it returned true on its first poll; a slow compile was then
-    // captured from the demo's default filter/adjust program (GAP-010).
-    // Polling only the status text races the default-effect "compiled"
-    // message and reads the wrong surface (the bug that produced identical
-    // default goldens).
-    await page.evaluate(({ src, resetStatus }) => {
-      const editor = document.getElementById('dsl-editor')
-      const runBtn = document.getElementById('dsl-run-btn')
-      if (resetStatus) document.getElementById('status').textContent = ''
-      editor.value = src
-      editor.dispatchEvent(new Event('input', { bubbles: true }))
-      runBtn.click()
-    }, { src: dsl, resetStatus: meshes !== null })
-    await page.waitForFunction((src) => {
-      const s = (document.getElementById('status')?.textContent || '').toLowerCase()
-      if (s.includes('error') || s.includes('failed')) {
-        throw new Error('DSL compile failed: ' + document.getElementById('status')?.textContent)
-      }
-      const p = window.__noisemakerRenderingPipeline
-      return !!(p && p.graph && p.graph.source === src.trim() && !p.isCompiling)
-    }, dsl, { timeout: STATUS_TIMEOUT })
-
-    if (meshes) {
-      const loaded = await applyMeshPlan(page, meshes)
-      process.stderr.write(`[parity] mesh inputs: ${JSON.stringify(loaded)}\n`)
-    }
-
+    // Pause and size the demo BEFORE loading our DSL (GAP-026). A resize runs
+    // pipeline.initAsyncEffects(), which cancels in-flight asyncInit overlays
+    // and drops the host's pending parameter regeneration, and the demo host
+    // draws text canvases at the renderer size. Sizing first lets the load
+    // settle at the final size with nothing left to perturb it.
+    //
     // PAUSE FIRST so the demo's requestAnimationFrame loop stops re-syncing the
     // canvas to its (small, letterboxed) layout size — that auto-resize is what
     // intermittently reverted our resize to ~90px.
@@ -483,7 +472,10 @@ async function main () {
         pin('width'); pin('height')
         if (canvas.style) { canvas.style.width = size + 'px'; canvas.style.height = size + 'px' }
       }
-      if (p && typeof p.resize === 'function') p.resize(size, size)
+      // The renderer's resize also sets the size at which the demo host draws
+      // its text canvases (renderer._width).
+      if (r && typeof r.resize === 'function') r.resize(size, size)
+      else if (p && typeof p.resize === 'function') p.resize(size, size)
     }, opts.size)
 
     // Poll until the presented o0 surface texture is stably at the requested size.
@@ -504,6 +496,114 @@ async function main () {
       }
       return true
     }, opts.size, { timeout: STATUS_TIMEOUT })
+
+    // Track every asyncInit overlay the pipeline starts from here on
+    // (GAP-026). Pipeline._startAsyncInit calls effectDef.asyncInit(context)
+    // without keeping the promise, so the wrapper counts each call until its
+    // promise settles. Installed on the prototype, it also covers a pipeline
+    // the demo rebuilds when a recompile fails.
+    await page.evaluate(() => {
+      const proto = Object.getPrototypeOf(window.__noisemakerRenderingPipeline)
+      if (proto.__nmTracksAsyncInit) return
+      if (typeof proto._startAsyncInit !== 'function') {
+        throw new Error('reference pipeline has no _startAsyncInit; the asyncInit quiescence wait needs updating')
+      }
+      window.__nmAsyncInitPending = 0
+      const start = proto._startAsyncInit
+      proto._startAsyncInit = function (nodeId, effectDef, options) {
+        if (options && options.debounce) return start.call(this, nodeId, effectDef, options)
+        const ownAsyncInit = Object.prototype.hasOwnProperty.call(effectDef, 'asyncInit')
+        const asyncInit = effectDef.asyncInit
+        effectDef.asyncInit = function (context) {
+          let pending
+          try {
+            pending = Promise.resolve(asyncInit.call(this, context))
+          } catch (err) {
+            pending = Promise.reject(err)
+          }
+          window.__nmAsyncInitPending++
+          const settle = () => { window.__nmAsyncInitPending-- }
+          pending.then(settle, settle)
+          return pending
+        }
+        try {
+          return start.call(this, nodeId, effectDef, options)
+        } finally {
+          if (ownAsyncInit) effectDef.asyncInit = asyncInit
+          else delete effectDef.asyncInit
+        }
+      }
+      proto.__nmTracksAsyncInit = true
+    })
+
+    // Load OUR DSL via the editor + run button, then wait until the presented
+    // pipeline runs exactly this program with its shaders compiled. The demo
+    // compiles `editor.value.trim()`, so graph.source must equal the trimmed
+    // DSL. This wait once passed its options object in the page-argument
+    // slot, so it returned true on its first poll; a slow compile was then
+    // captured from the demo's default filter/adjust program (GAP-010).
+    // Polling only the status text races the default-effect "compiled"
+    // message and reads the wrong surface (the bug that produced identical
+    // default goldens).
+    await page.evaluate(({ src, resetStatus }) => {
+      const editor = document.getElementById('dsl-editor')
+      const runBtn = document.getElementById('dsl-run-btn')
+      if (resetStatus) document.getElementById('status').textContent = ''
+      editor.value = src
+      editor.dispatchEvent(new Event('input', { bubbles: true }))
+      runBtn.click()
+    }, { src: dsl, resetStatus: meshes !== null })
+    await page.waitForFunction((src) => {
+      const s = (document.getElementById('status')?.textContent || '').toLowerCase()
+      if (s.includes('error') || s.includes('failed')) {
+        throw new Error('DSL compile failed: ' + document.getElementById('status')?.textContent)
+      }
+      const p = window.__noisemakerRenderingPipeline
+      return !!(p && p.graph && p.graph.source === src.trim() && !p.isCompiling)
+    }, dsl, { timeout: STATUS_TIMEOUT })
+
+    if (meshes) {
+      const loaded = await applyMeshPlan(page, meshes)
+      process.stderr.write(`[parity] mesh inputs: ${JSON.stringify(loaded)}\n`)
+    }
+
+    // The load recreated the surfaces at the size set above. Resizing again
+    // here would restart the asyncInit overlays with the pipeline's global
+    // uniforms and drop the host's pending regeneration with the step's own
+    // parameters, so a wrong size fails instead.
+    const loadedSize = await page.evaluate(() => {
+      const p = window.__noisemakerRenderingPipeline
+      const surf = p.surfaces && p.surfaces.get(p.graph?.renderSurface || 'o0')
+      const info = surf && p.backend?.textures?.get(surf.read)
+      return info ? [info.width, info.height] : null
+    })
+    if (!loadedSize || loadedSize[0] !== opts.size || loadedSize[1] !== opts.size) {
+      throw new Error(`render surface is ${JSON.stringify(loadedSize)} after the DSL load, expected ${opts.size}x${opts.size}`)
+    }
+
+    // Wait until the host has settled every asynchronous input (GAP-026):
+    // no pending asyncInit regeneration (ProgramState.checkAsyncRegen
+    // debounces it by 300 ms), no asyncInit overlay still tracing, and every
+    // external texture the graph samples (the demo draws filter/text's
+    // canvas 50 ms after building its controls) uploaded.
+    const externalIds = [...new Set(graph.passes.flatMap((pass) =>
+      Object.values(pass.inputs || {}).filter((id) => EXTERNAL_TEXTURE_ID.test(id))))]
+    await page.waitForFunction((ids) => {
+      const p = window.__noisemakerRenderingPipeline
+      if (!p) return false
+      if (p._asyncDebounceTimers && p._asyncDebounceTimers.size > 0) return false
+      if (window.__nmAsyncInitPending > 0) return false
+      return ids.every((id) => !!p.backend?.textures?.get(id)?.handle)
+    }, externalIds, { timeout: STATUS_TIMEOUT })
+
+    // Save each external texture exactly as the reference sampled it, top row
+    // first, as <program>.<textureId>.png. nm-render uploads it with flipY, so
+    // both sides sample identical texels (parity/run.sh --external-texture).
+    for (const id of externalIds) {
+      const texturePath = join(opts.outDir, `${programName}.${id}.png`)
+      writeFileSync(texturePath, await capture(page, globals, id))
+      process.stderr.write(`[parity] wrote ${texturePath}\n`)
+    }
 
     if (opts.runSeconds === 0) {
       // ROOT-CAUSE FIX (round 3, task-T5 physarum agent-state parity

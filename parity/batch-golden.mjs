@@ -69,7 +69,7 @@
 // the batching speedup); do it by hand for the fixtures a sweep actually
 // classifies as sensitive to the exact number, the way task-T6 did.
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { deflateSync } from 'node:zlib'
@@ -122,17 +122,19 @@ const VIEWER_PATH = '/demo/shaders/'
 const EFFECTS_DIR = join(REFERENCE_ROOT, 'shaders', 'effects')
 const GLOBALS_PREFIX = '__noisemaker'
 const STATUS_TIMEOUT = 300000
+// Host-supplied texture ids (see export-and-render.mjs).
+const EXTERNAL_TEXTURE_ID = /^[A-Za-z][A-Za-z0-9]*_step_\d+$/
 
 // capture() — verbatim copy of export-and-render.mjs's own.
-async function capture (page, globals) {
-  const result = await page.evaluate(({ g }) => {
+async function capture (page, globals, textureId = null) {
+  const result = await page.evaluate(({ g, textureId }) => {
     const pipeline = window[g.renderingPipeline]
     if (!pipeline) return { status: 'error', error: 'no pipeline' }
     const backend = pipeline.backend
     const gl = backend?.gl
     const surface = pipeline.surfaces?.get(pipeline.graph?.renderSurface || 'o0')
-    if (!gl || !surface) return { status: 'error', error: 'no GL surface' }
-    const info = backend.textures?.get(surface.read)
+    if (!gl || (!surface && !textureId)) return { status: 'error', error: 'no GL surface' }
+    const info = backend.textures?.get(textureId || surface.read)
     if (!info?.handle) return { status: 'error', error: 'no texture handle' }
     const { handle, width, height, glFormat } = info
     const fbo = gl.createFramebuffer()
@@ -161,7 +163,7 @@ async function capture (page, globals) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.deleteFramebuffer(fbo)
     return { status: 'ok', width, height, pixels: rgba8 }
-  }, { g: globals })
+  }, { g: globals, textureId })
   if (result.status === 'error') throw new Error(`readback failed: ${result.error}`)
   const { width, height, pixels } = result
   const topDown = Buffer.alloc(width * height * 4)
@@ -258,7 +260,91 @@ async function applyMeshPlan (page, plan) {
 // GAP-010: that golden was byte-identical to a mint of the default program).
 // The wait now requires graph.source === the trimmed DSL (the demo compiles
 // `editor.value.trim()`) and !isCompiling, with the arguments in order.
-async function mintOne (page, globals, opts, dsl, expectedPassCount, programName, meshes) {
+async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
+  const expectedPassCount = graph.passes?.length
+  // Pause and size the demo BEFORE loading the DSL (GAP-026), as
+  // export-and-render.mjs does: a resize restarts asyncInit overlays with the
+  // pipeline's global uniforms and drops the host's pending regeneration, and
+  // the demo host draws text canvases at the renderer size. After the first
+  // fixture of a session these calls find the page already paused and sized.
+  await page.evaluate(() => {
+    if (window.__noisemakerSetPaused) window.__noisemakerSetPaused(true)
+  })
+
+  await page.evaluate((size) => {
+    const r = window.__noisemakerCanvasRenderer
+    const p = window.__noisemakerRenderingPipeline
+    const canvas = r && r.canvas
+    if (canvas) {
+      const pin = (prop) => {
+        Object.defineProperty(canvas, prop, {
+          configurable: true,
+          enumerable: true,
+          get () { return size },
+          set () { /* locked to `size` for deterministic capture */ }
+        })
+      }
+      const proto = Object.getPrototypeOf(canvas)
+      const wd = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'width')
+      const hd = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'height')
+      if (wd && wd.set) wd.set.call(canvas, size)
+      if (hd && hd.set) hd.set.call(canvas, size)
+      void proto
+      pin('width'); pin('height')
+      if (canvas.style) { canvas.style.width = size + 'px'; canvas.style.height = size + 'px' }
+    }
+    if (r && typeof r.resize === 'function') r.resize(size, size)
+    else if (p && typeof p.resize === 'function') p.resize(size, size)
+  }, opts.size)
+
+  await page.waitForFunction((size) => {
+    const p = window.__noisemakerRenderingPipeline
+    if (!p || typeof p.resize !== 'function') return false
+    const surf = p.surfaces && p.surfaces.get(p.graph?.renderSurface || 'o0')
+    const info = surf && p.backend?.textures?.get(surf.read)
+    if (!info) return false
+    if (info.width !== size || info.height !== size) {
+      p.resize(size, size)
+      return false
+    }
+    return true
+  }, opts.size, { timeout: STATUS_TIMEOUT })
+
+  // Verbatim copy of export-and-render.mjs's asyncInit tracker (GAP-026).
+  await page.evaluate(() => {
+    const proto = Object.getPrototypeOf(window.__noisemakerRenderingPipeline)
+    if (proto.__nmTracksAsyncInit) return
+    if (typeof proto._startAsyncInit !== 'function') {
+      throw new Error('reference pipeline has no _startAsyncInit; the asyncInit quiescence wait needs updating')
+    }
+    window.__nmAsyncInitPending = 0
+    const start = proto._startAsyncInit
+    proto._startAsyncInit = function (nodeId, effectDef, options) {
+      if (options && options.debounce) return start.call(this, nodeId, effectDef, options)
+      const ownAsyncInit = Object.prototype.hasOwnProperty.call(effectDef, 'asyncInit')
+      const asyncInit = effectDef.asyncInit
+      effectDef.asyncInit = function (context) {
+        let pending
+        try {
+          pending = Promise.resolve(asyncInit.call(this, context))
+        } catch (err) {
+          pending = Promise.reject(err)
+        }
+        window.__nmAsyncInitPending++
+        const settle = () => { window.__nmAsyncInitPending-- }
+        pending.then(settle, settle)
+        return pending
+      }
+      try {
+        return start.call(this, nodeId, effectDef, options)
+      } finally {
+        if (ownAsyncInit) effectDef.asyncInit = asyncInit
+        else delete effectDef.asyncInit
+      }
+    }
+    proto.__nmTracksAsyncInit = true
+  })
+
   await page.evaluate(({ src, resetStatus }) => {
     const editor = document.getElementById('dsl-editor')
     const runBtn = document.getElementById('dsl-run-btn')
@@ -295,47 +381,29 @@ async function mintOne (page, globals, opts, dsl, expectedPassCount, programName
 
   if (meshes) await applyMeshPlan(page, meshes)
 
-  await page.evaluate(() => {
-    if (window.__noisemakerSetPaused) window.__noisemakerSetPaused(true)
-  })
-
-  await page.evaluate((size) => {
-    const r = window.__noisemakerCanvasRenderer
+  // Verbatim copy of export-and-render.mjs's post-load size check, host
+  // quiescence wait and external texture export (GAP-026).
+  const loadedSize = await page.evaluate(() => {
     const p = window.__noisemakerRenderingPipeline
-    const canvas = r && r.canvas
-    if (canvas) {
-      const pin = (prop) => {
-        Object.defineProperty(canvas, prop, {
-          configurable: true,
-          enumerable: true,
-          get () { return size },
-          set () { /* locked to `size` for deterministic capture */ }
-        })
-      }
-      const proto = Object.getPrototypeOf(canvas)
-      const wd = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'width')
-      const hd = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'height')
-      if (wd && wd.set) wd.set.call(canvas, size)
-      if (hd && hd.set) hd.set.call(canvas, size)
-      void proto
-      pin('width'); pin('height')
-      if (canvas.style) { canvas.style.width = size + 'px'; canvas.style.height = size + 'px' }
-    }
-    if (p && typeof p.resize === 'function') p.resize(size, size)
-  }, opts.size)
-
-  await page.waitForFunction((size) => {
-    const p = window.__noisemakerRenderingPipeline
-    if (!p || typeof p.resize !== 'function') return false
     const surf = p.surfaces && p.surfaces.get(p.graph?.renderSurface || 'o0')
     const info = surf && p.backend?.textures?.get(surf.read)
-    if (!info) return false
-    if (info.width !== size || info.height !== size) {
-      p.resize(size, size)
-      return false
-    }
-    return true
-  }, opts.size, { timeout: STATUS_TIMEOUT })
+    return info ? [info.width, info.height] : null
+  })
+  if (!loadedSize || loadedSize[0] !== opts.size || loadedSize[1] !== opts.size) {
+    throw new Error(`render surface is ${JSON.stringify(loadedSize)} after the DSL load, expected ${opts.size}x${opts.size}`)
+  }
+  const externalIds = [...new Set(graph.passes.flatMap((pass) =>
+    Object.values(pass.inputs || {}).filter((id) => EXTERNAL_TEXTURE_ID.test(id))))]
+  await page.waitForFunction((ids) => {
+    const p = window.__noisemakerRenderingPipeline
+    if (!p) return false
+    if (p._asyncDebounceTimers && p._asyncDebounceTimers.size > 0) return false
+    if (window.__nmAsyncInitPending > 0) return false
+    return ids.every((id) => !!p.backend?.textures?.get(id)?.handle)
+  }, externalIds, { timeout: STATUS_TIMEOUT })
+  for (const id of externalIds) {
+    writeFileSync(join(opts.outDir, `${programName}.${id}.png`), await capture(page, globals, id))
+  }
 
   // Round-3 root-cause fix (task-T5-report.md): respawn every stateful
   // surface from a genuine clean slate immediately before the 8-frame
@@ -493,7 +561,15 @@ async function main () {
           writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
 
           const meshes = await meshPlan(graph, dslPath)
-          const pngBuffer = await mintOne(page, globals, opts, dsl, graph.passes?.length, programName, meshes)
+          // Drop external textures saved by an earlier mint of this program.
+          for (const file of readdirSync(opts.outDir)) {
+            const prefix = `${programName}.`
+            if (file.startsWith(prefix) && file.endsWith('.png') &&
+                EXTERNAL_TEXTURE_ID.test(file.slice(prefix.length, -'.png'.length))) {
+              unlinkSync(join(opts.outDir, file))
+            }
+          }
+          const pngBuffer = await mintOne(page, globals, opts, dsl, graph, programName, meshes)
           const pngPath = join(opts.outDir, `${programName}.golden.png`)
           writeFileSync(pngPath, pngBuffer)
 

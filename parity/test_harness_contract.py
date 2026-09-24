@@ -33,6 +33,12 @@ beyond a literal port:
     and test_batch_golden_mint_captures_each_loaded_program_after_a_slow_compile
     (the golden minters wait for the loaded DSL, not the demo's previous
     program; GAP-010)
+  - test_single_golden_mint_waits_for_the_host_overlay_regeneration,
+    test_single_golden_mint_exports_the_host_texture_it_sampled,
+    test_batch_golden_mint_settles_host_inputs_and_drops_stale_textures and
+    test_runner_passes_saved_host_textures_to_the_renderer (asyncInit
+    overlays settle before capture and the reference's host textures reach
+    the candidate; GAP-026)
 """
 
 import os
@@ -49,27 +55,44 @@ REPO = Path(__file__).resolve().parents[1]
 
 # Stand-in reference for the golden minters (no browser). compileGraph gives
 # every program one pass; the fake demo gives it one pass too, so batch
-# minting's pass-count check agrees.
+# minting's pass-count check agrees. A program naming "mesh0" reads a mesh
+# texture; one naming "text" samples the host texture textTex_step_1.
 FAKE_REFERENCE_COMPILER = """
 export function compileGraph (source) {
-  const inputs = source.includes('mesh0') ? { meshPositions: 'global_mesh0_positions_chain_0' } : {}
+  const inputs = {}
+  if (source.includes('mesh0')) inputs.meshPositions = 'global_mesh0_positions_chain_0'
+  if (/ text /.test(source)) inputs.textTex = 'textTex_step_1'
   return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill', inputs }], programs: {}, renderSurface: 'o0' }
 }
 """
 
 # Stand-in shade-mcp BrowserSession. Its page follows Playwright's argument
 # order (evaluate(fn, arg), waitForFunction(fn, arg, options)) and simulates
-# the demo: a run click swaps the presented graph only after COMPILE_TICKS
-# further page calls, like a slow effect load and compile. Until then the
-# default program stays presented. render() fills o0 with the color that
-# the presented program's source names ("fill R G B"), or, for a program
-# that names mesh0, the color its loaded mesh text names (black if empty).
+# the demo, counting page calls as ticks:
+# - A run click swaps the presented graph COMPILE_TICKS later, like a slow
+#   effect load and compile. Until then the previous program stays presented.
+# - render() fills o0 with the color the presented source names
+#   ("fill R G B"), or, for a program that names mesh0, the color its loaded
+#   mesh text names (black if empty); replaced by its overlay once traced and
+#   by the host text texture once uploaded.
+# - "overlay R G B" is an asyncInit overlay. The load traces it with the
+#   pipeline's global parameters (gray) and schedules the host's regeneration
+#   with the step's own parameters (R G B) DEBOUNCE_TICKS later. Each trace
+#   takes TRACE_TICKS; a newer trace cancels an older one. resize() cancels
+#   the traces and the pending regeneration and traces gray again, like the
+#   reference pipeline.resize() -> initAsyncEffects().
+# - "text R G B" makes the host upload textTex_step_1 (R G B) TEXT_TICKS
+#   after the swap, at the renderer's size.
 FAKE_SHADE_HARNESS = """
 const COMPILE_TICKS = 25
+const DEBOUNCE_TICKS = 8
+const TRACE_TICKS = 12
+const TEXT_TICKS = 10
+const GLOBAL_OVERLAY = [128, 128, 128, 255]
 
-function colorOf (source) {
-  const m = /fill (\\d+) (\\d+) (\\d+)/.exec(source)
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3]), 255] : [0, 0, 0, 255]
+function colorAfter (word, source) {
+  const m = new RegExp(word + ' (\\\\d+) (\\\\d+) (\\\\d+)').exec(source)
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3]), 255] : null
 }
 
 class FakeCanvasElement {
@@ -83,7 +106,10 @@ function makePage () {
   let tick = 0
   let pending = null
   let meshText = ''
-  const o0 = { handle: {}, width: 64, height: 64, glFormat: { type: 'UNSIGNED_BYTE' }, data: new Uint8Array(64 * 64 * 4) }
+  const timers = []
+  const at = (delay, fn) => timers.push({ due: tick + delay, fn })
+  const texture = (w, h) => ({ handle: {}, width: w, height: h, glFormat: { type: 'UNSIGNED_BYTE' }, data: new Uint8Array(w * h * 4) })
+  const o0 = texture(64, 64)
   const textures = new Map([['global_o0_read', o0]])
   let attached = null
   const gl = {
@@ -102,42 +128,116 @@ function makePage () {
     clear () { attached.data.fill(0) },
     readPixels (x, y, w, h, format, type, buf) { buf.set(attached.data) }
   }
-  const pipeline = {
-    graph: { id: 'default', source: 'fill 255 0 0', passes: [{}, {}, {}], renderSurface: 'o0' },
-    isCompiling: false,
-    surfaces: new Map([['o0', { read: 'global_o0_read', write: 'global_o0_read' }]]),
-    backend: { gl, textures },
+  const overlayEffect = {
+    asyncInit ({ params, draw, isCancelled }) {
+      return new Promise((resolve) => at(TRACE_TICKS, () => {
+        if (!isCancelled()) draw(params.color)
+        resolve()
+      }))
+    }
+  }
+  class FakePipeline {
+    constructor () {
+      this.graph = { id: 'default', source: 'fill 255 0 0', passes: [{}, {}, {}], renderSurface: 'o0' }
+      this.isCompiling = false
+      this.surfaces = new Map([['o0', { read: 'global_o0_read', write: 'global_o0_read' }]])
+      this.backend = { gl, textures }
+      this.overlay = null
+      this.generation = 0
+      this._asyncDebounceTimers = new Map()
+    }
+
+    _startAsyncInit (nodeId, effectDef, options = {}) {
+      if (options.debounce) {
+        const timer = { cancelled: false }
+        this._asyncDebounceTimers.set(nodeId, timer)
+        at(DEBOUNCE_TICKS, () => {
+          if (timer.cancelled) return
+          this._asyncDebounceTimers.delete(nodeId)
+          this._startAsyncInit(nodeId, effectDef, { params: options.params })
+        })
+        return
+      }
+      const generation = ++this.generation
+      this.overlay = null
+      effectDef.asyncInit({
+        params: options.params,
+        draw: (color) => { this.overlay = color },
+        isCancelled: () => generation !== this.generation
+      })
+    }
+
+    initAsyncEffects () {
+      for (const timer of this._asyncDebounceTimers.values()) timer.cancelled = true
+      this._asyncDebounceTimers.clear()
+      if (colorAfter('overlay', this.graph.source)) {
+        this._startAsyncInit('node_1', overlayEffect, { params: { color: GLOBAL_OVERLAY } })
+      }
+    }
+
+    load (source) {
+      this.graph = { id: `loaded${tick}`, source, passes: [{}], renderSurface: 'o0' }
+      textures.delete('textTex_step_1')
+      this.initAsyncEffects()
+      const overlay = colorAfter('overlay', source)
+      if (overlay) this._startAsyncInit('node_1', overlayEffect, { debounce: true, params: { color: overlay } })
+      const text = colorAfter('text', source)
+      if (text) {
+        at(TEXT_TICKS, () => {
+          const t = texture(renderer.width, renderer.width)
+          for (let i = 0; i < t.data.length; i += 4) t.data.set(text, i)
+          textures.set('textTex_step_1', t)
+        })
+      }
+    }
+
     resize (w, h) {
       o0.width = w
       o0.height = h
       o0.data = new Uint8Array(w * h * 4)
-    },
+      this.initAsyncEffects()
+    }
+
     render () {
-      const color = colorOf(this.graph.source.includes('mesh0') ? meshText : this.graph.source)
+      const text = textures.get('textTex_step_1')
+      const source = this.graph.source.includes('mesh0') ? meshText : this.graph.source
+      const color = text ? Array.from(text.data.subarray(0, 4))
+        : (this.overlay || colorAfter('fill', source) || [0, 0, 0, 255])
       for (let i = 0; i < o0.data.length; i += 4) o0.data.set(color, i)
     }
   }
+  const pipeline = new FakePipeline()
   const status = { textContent: 'pipeline loaded successfully' }
   const editor = { value: '', dispatchEvent () {} }
   const runButton = {
     click () { pending = { source: editor.value.trim(), at: tick + COMPILE_TICKS } }
   }
+  const renderer = {
+    width: 64,
+    canvas: Object.assign(new FakeCanvasElement(), { style: {} }),
+    resize (w, h) {
+      this.width = w
+      pipeline.resize(w, h)
+    },
+    async loadOBJFromString (text) { meshText = text; return { success: true, vertexCount: 0 } }
+  }
   const elements = { 'dsl-editor': editor, 'dsl-run-btn': runButton, status }
   const pageWindow = {
     __noisemakerRenderingPipeline: pipeline,
-    __noisemakerCanvasRenderer: {
-      canvas: Object.assign(new FakeCanvasElement(), { style: {} }),
-      async loadOBJFromString (text) { meshText = text; return { success: true, vertexCount: 0 } }
-    },
+    __noisemakerCanvasRenderer: renderer,
     __noisemakerSetPaused () {},
     __noisemakerSetPausedTime () {}
   }
   const step = () => {
     tick++
     if (pending && tick >= pending.at) {
-      pipeline.graph = { id: `loaded${tick}`, source: pending.source, passes: [{}], renderSurface: 'o0' }
+      pipeline.load(pending.source)
       pending = null
       status.textContent = 'compiled successfully'
+    }
+    for (const timer of timers.filter((t) => t.due <= tick)) {
+      timers.splice(timers.indexOf(timer), 1)
+      timer.fn()
     }
     globalThis.window = pageWindow
     globalThis.document = { getElementById: (id) => elements[id] ?? null, querySelectorAll: () => [] }
@@ -439,6 +539,8 @@ class HarnessContractTests(unittest.TestCase):
         (parity / "programs" / "noGraph.dsl").write_text("noise().chrome().write(o0)\n")
         (parity / "out" / "withGraph.graph.json").write_text("{}")
         (parity / "out" / "withGraph.candidate.png").write_text("stale")
+        (parity / "out" / "withGraph.golden.png").write_text("golden")
+        (parity / "out" / "withGraph.textTex_step_1.png").write_text("host pixels")
         names_file = self.tmp / "names.txt"
         names_file.write_text("withGraph\nnoGraph\n")
         manifest_path = self.tmp / "batch.json"
@@ -459,6 +561,10 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(entry["size"], "256x256")
         self.assertEqual(entry["time"], 0.25)
         self.assertEqual(entry["frames"], 8)
+        # The host pixels the reference sampled travel with the entry; other
+        # PNGs of the same program are not external textures.
+        self.assertEqual(entry["externalTextures"],
+                         {"textTex_step_1": str(parity / "out" / "withGraph.textTex_step_1.png")})
         # noGraph has no graph.json -- excluded, reported, not silently dropped.
         self.assertIn("noGraph", result.stdout)
         # The stale candidate for the INCLUDED entry must be cleared so a
@@ -1001,6 +1107,73 @@ class HarnessContractTests(unittest.TestCase):
         result = self._run_with_venv_layout({"bin/python": "PASS", "Scripts/python.exe": "FAIL"})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("[PASS] bin/python", result.stdout)
+
+
+    def test_single_golden_mint_waits_for_the_host_overlay_regeneration(self):
+        result, out = self._mint_with_fake_reference(
+            "export-and-render.mjs", {"overlay": "fill 0 255 0 overlay 0 0 255\n"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "overlay.golden.png", 3, 3), (0, 0, 255, 255))
+
+    def test_single_golden_mint_exports_the_host_texture_it_sampled(self):
+        result, out = self._mint_with_fake_reference(
+            "export-and-render.mjs", {"hostText": "fill 0 255 0 text 255 255 0\n"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "hostText.golden.png", 3, 3), (255, 255, 0, 255))
+        self.assertEqual(png_pixel(out / "hostText.textTex_step_1.png", 7, 7), (255, 255, 0, 255))
+
+    def test_batch_golden_mint_settles_host_inputs_and_drops_stale_textures(self):
+        out = self.tmp / "out"
+        out.mkdir()
+        (out / "first.textTex_step_1.png").write_text("from an earlier mint")
+        result, out = self._mint_with_fake_reference(
+            "batch-golden.mjs",
+            {"first": "fill 0 255 0 overlay 0 0 255\n", "second": "fill 0 0 0 text 255 0 255\n"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "first.golden.png", 3, 3), (0, 0, 255, 255))
+        self.assertFalse((out / "first.textTex_step_1.png").exists())
+        self.assertEqual(png_pixel(out / "second.golden.png", 3, 3), (255, 0, 255, 255))
+        self.assertEqual(png_pixel(out / "second.textTex_step_1.png", 7, 7), (255, 0, 255, 255))
+
+    def test_runner_passes_saved_host_textures_to_the_renderer(self):
+        parity = self.tmp / "parity"
+        (parity / "out").mkdir(parents=True)
+        (parity / ".venv" / "bin").mkdir(parents=True)
+        shutil.copy2(REPO / "parity" / "run.sh", parity / "run.sh")
+        for suffix in ("graph.json", "golden.png", "textTex_step_1.png"):
+            (parity / "out" / f"text.{suffix}").touch()
+        (parity / "out" / "textSecond.textTex_step_1.png").touch()
+        (parity / "compare.py").write_text("# comparator stub\n")
+        python = parity / ".venv" / "bin" / "python"
+        python.write_text("#!/usr/bin/env bash\necho '[PASS] synthetic'\n")
+        python.chmod(0o755)
+        args_file = self.tmp / "renderer-args.txt"
+        renderer = self.tmp / "fake-nm-render-args"
+        renderer.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$@\" > '{args_file}'\n"
+            "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
+        )
+        renderer.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(parity / "run.sh"), "text"],
+            env={**os.environ, "NM_RENDER": str(renderer)},
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        args = args_file.read_text().splitlines()
+        texture = str(parity / "out" / "text.textTex_step_1.png")
+        self.assertEqual(args.count("--external-texture"), 1, args)
+        self.assertEqual(args[args.index("--external-texture") + 1], f"textTex_step_1={texture}")
 
 
 if __name__ == "__main__":

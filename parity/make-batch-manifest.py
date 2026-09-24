@@ -4,7 +4,7 @@
 Adapted from the Godot sibling's make-batch-manifest.py, but the manifest
 SHAPE here matches THIS repo's actual candidate: nm-render's own
 `runBatchManifest()` (qt/tools/nm-render/main.cpp), which reads a flat JSON
-ARRAY of {graph, out, size, time, frames[, mesh]} objects -- not Godot's
+ARRAY of {graph, out, size, time, frames[, mesh][, externalTextures]} objects -- not Godot's
 {"entries": [...]} object with run_seconds/sample_every fields (this port's
 nm-render has no batch-manifest timed-sampling mode; timed fixtures are
 rendered separately via parity/run_samples.sh's own `--samples` flag, one
@@ -17,11 +17,27 @@ the exact candidate set via --names-file (one program name per line); this
 script only turns that list into a manifest, using each name's already-
 exported parity/out/<name>.graph.json (written by the golden-minting step
 that must run before this script, in the same sweep).
+
+externalTextures maps each external texture id to the host pixels the
+reference sampled, parity/out/<name>.<texId>.png (written by the golden
+minter; see nm-render --external-texture).
 """
 
 import argparse
 import json
+import re
 from pathlib import Path
+
+EXTERNAL_TEXTURE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9]*_step_\d+$")
+
+
+def external_textures(out_dir, name):
+    textures = {}
+    for path in sorted(out_dir.glob(f"{name}.*.png")):
+        texture_id = path.name[len(name) + 1:-len(".png")]
+        if EXTERNAL_TEXTURE_ID.match(texture_id):
+            textures[texture_id] = str(path)
+    return textures
 
 
 def main():
@@ -62,6 +78,9 @@ def main():
         mesh = args.root / "parity" / "programs" / f"{name}.obj"
         if mesh.exists():
             entry["mesh"] = str(mesh)
+        textures = external_textures(out_dir, name)
+        if textures:
+            entry["externalTextures"] = textures
         entries.append(entry)
 
     args.output.write_text(json.dumps(entries, indent=2) + "\n")

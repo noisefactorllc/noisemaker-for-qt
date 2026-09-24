@@ -34,6 +34,17 @@ CAND="$ROOT/parity/out/$NAME.candidate.png"
 MESH="$ROOT/parity/programs/$NAME.obj"
 MESH_ARGS=()
 [ -f "$MESH" ] && MESH_ARGS=(--mesh "$MESH")
+# Host pixels the reference sampled for each external texture id
+# (<name>.<texId>.png, written by the golden minter).
+EXTERNAL_ARGS=()
+for texture in "$ROOT/parity/out/$NAME".*_step_*.png; do
+	[ -f "$texture" ] || continue
+	texture_id="${texture##*/}"
+	texture_id="${texture_id#"$NAME".}"
+	texture_id="${texture_id%.png}"
+	[[ "$texture_id" =~ ^[A-Za-z][A-Za-z0-9]*_step_[0-9]+$ ]] || continue
+	EXTERNAL_ARGS+=(--external-texture "$texture_id=$texture")
+done
 
 [ -f "$GRAPH" ] || { echo "missing graph: $GRAPH (run: node parity/export-and-render.mjs parity/programs/$NAME.dsl parity/out)"; exit 2; }
 [ -f "$GOLD" ]  || { echo "missing golden: $GOLD (run the reference harness)"; exit 2; }
@@ -41,7 +52,7 @@ MESH_ARGS=()
 if [ "${SKIP_RENDER:-0}" != "1" ]; then
 	rm -f "$CAND"
 	set +e
-	render_log=$("$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" ${MESH_ARGS[@]+"${MESH_ARGS[@]}"} 2>&1)
+	render_log=$("$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" ${MESH_ARGS[@]+"${MESH_ARGS[@]}"} ${EXTERNAL_ARGS[@]+"${EXTERNAL_ARGS[@]}"} 2>&1)
 	render_rc=$?
 	set -e
 	printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
