@@ -797,6 +797,28 @@ QSize Backend::updateTextureFromSource(const QString& texId, const void* rgba8, 
     return QSize(width, height);
 }
 
+AsyncOverlays& Backend::asyncOverlays() {
+    if (!m_asyncOverlays) m_asyncOverlays = std::make_unique<AsyncOverlays>();
+    return *m_asyncOverlays;
+}
+
+void Backend::setOverlayTraceMode(OverlayTraceMode mode) {
+    asyncOverlays().setBackground(mode == OverlayTraceMode::Background);
+}
+
+OverlayTraceMode Backend::overlayTraceMode() const {
+    return m_asyncOverlays && m_asyncOverlays->background() ? OverlayTraceMode::Background
+                                                            : OverlayTraceMode::Synchronous;
+}
+
+bool Backend::overlayTracesPending() const {
+    return m_asyncOverlays && m_asyncOverlays->pending();
+}
+
+void Backend::waitForOverlayTraces() {
+    if (m_asyncOverlays) m_asyncOverlays->wait();
+}
+
 void Backend::uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size) {
     ExternalTextureOptions options;
     options.flipY = true; // reference Pipeline._startAsyncInit updateTexture
@@ -2466,10 +2488,10 @@ void Backend::renderInternal(
     m_deltaTime = deltaTime;
 
     // reference Pipeline.initAsyncEffects / checkAsyncRegen: the CPU-traced
-    // overlay textures of asyncInit effects, generated to completion before
-    // the passes that sample them (async_overlay.h explains the choice).
-    if (!m_asyncOverlays) m_asyncOverlays = std::make_unique<AsyncOverlays>();
-    m_asyncOverlays->sync(*this, effectiveGraph, m_size, m_globalUniforms);
+    // overlay textures of asyncInit effects, traced to completion before the
+    // passes that sample them, or on worker threads in the background mode
+    // (async_overlay.h explains both).
+    asyncOverlays().sync(*this, effectiveGraph, m_size, m_globalUniforms);
 
     m_time = t;
     m_currentRenderSurface = effectiveGraph.renderSurface;

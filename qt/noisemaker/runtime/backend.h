@@ -64,6 +64,22 @@ struct ExternalMeshInput {
     QVector<BuiltinMesh> builtinMeshes;
 };
 
+// How Backend::render() produces the overlays of asyncInit effects
+// (filter/fibers, filter/scratches, filter/strayHair; async_overlay.h).
+enum class OverlayTraceMode {
+    // render() traces a changed overlay to completion before its passes, so
+    // every frame shows the completed overlay. Offline hosts, nm-render, the
+    // export kit and the parity goldens use it. The default.
+    Synchronous,
+    // For live hosts: render() never waits for a trace. The trace runs on a
+    // worker thread, and the node keeps its previous overlay until the next
+    // render() after the trace completes uploads the new one. Before the
+    // first trace of a node at the current size completes, the node shows
+    // a transparent overlay. The completed overlay is byte-identical to the
+    // synchronous one.
+    Background,
+};
+
 // QOpenGL executor for the full render-graph runtime model
 // (ARCHITECTURE.md "Runtime model" table; reference/05-webgl2-backend.md):
 // fullscreen-triangle effect passes, `passType:"blit"`, MRT, agent points/
@@ -97,13 +113,31 @@ public:
     // aspectRatio/renderScale) are recomputed from `t` and `size` on every
     // call. Does not internally loop for settle frames — callers that need
     // N settle iterations call this N times (see nm-render `--frames`).
-    // Before the passes run, render() generates and uploads the CPU overlay
-    // of every asyncInit effect (filter/fibers, filter/scratches,
-    // filter/strayHair) whose seed, density or render size changed since
-    // its last upload, so the first frame already shows the completed
-    // overlay (async_overlay.h).
+    // Before the passes run, render() brings the CPU overlay of every
+    // asyncInit effect (filter/fibers, filter/scratches, filter/strayHair)
+    // up to date with its seed, density and the render size: traced to
+    // completion by default, so the first frame already shows the completed
+    // overlay, or on a worker thread in OverlayTraceMode::Background
+    // (setOverlayTraceMode(); async_overlay.h).
     void render(const Graph& graph, double t);
     void render(const Graph& graph, double t, double presentationTimestamp);
+
+    // Selects how render() traces asyncInit overlays (OverlayTraceMode).
+    // A live host (a widget or Qt Quick item that re-renders every frame)
+    // selects Background so a seed, density or size change does not stall
+    // it (a 1920x1080 fibers trace takes seconds). After a switch to
+    // Synchronous, the next render() cancels running traces and traces what
+    // it needs to completion.
+    void setOverlayTraceMode(OverlayTraceMode mode);
+    OverlayTraceMode overlayTraceMode() const;
+    // Background mode: true while a trace runs or its completed overlay
+    // awaits the next render(). A host that renders only on demand renders
+    // again while this is true, so the completed overlay appears.
+    bool overlayTracesPending() const;
+    // Background mode: blocks until every running trace has finished; the
+    // next render() shows the completed overlays. For hosts that need a
+    // settled frame (a still export) and for tests.
+    void waitForOverlayTraces();
 
     // Host-owned external-input snapshots consumed by midi()/audio()
     // automation descriptors. The JSON shape mirrors the reference runtime:
@@ -419,6 +453,7 @@ private:
     SinkManager m_sinkManager;
     std::vector<std::weak_ptr<FrameExportQueue>> m_frameExportQueues;
     std::unique_ptr<AsyncOverlays> m_asyncOverlays; // asyncInit overlay uploads (async_overlay.h)
+    AsyncOverlays& asyncOverlays();
 };
 
 } // namespace nm

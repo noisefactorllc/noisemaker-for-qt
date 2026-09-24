@@ -9,8 +9,10 @@
 #include <QSet>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
+#include <thread>
 
 namespace nm {
 
@@ -22,8 +24,8 @@ constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 // are NaN here; JavaScript also reads 0x, 0o and 0b integer strings, which
 // the DSL does not produce for seed or density.
 double stringToNumber(const QString& text) {
-    static const QRegularExpression decimal(
-        QStringLiteral("^[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?$"));
+    // Not static: background traces call this from worker threads.
+    const QRegularExpression decimal(QStringLiteral("^[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?$"));
     const QString trimmed = text.trimmed();
     if (trimmed.isEmpty()) return 0.0;
     if (trimmed == QStringLiteral("Infinity") || trimmed == QStringLiteral("+Infinity")) {
@@ -272,8 +274,100 @@ QStringList asyncOverlayTextureIds(const Graph& graph) {
     return ids;
 }
 
+// A background trace. effectKey, size and params belong to the render
+// thread; the worker thread traces its own deep copies of them. The worker
+// writes only pixels, completed and done, and the render thread reads pixels
+// and completed only after it sees done.
+struct AsyncOverlays::Job {
+    QString effectKey;
+    QSize size;
+    QJsonObject params;
+    std::atomic<bool> cancelled{false};
+    std::atomic<bool> done{false};
+    bool completed = false; // traced to the end (not cancelled)
+    std::vector<std::uint8_t> pixels;
+    std::thread thread;
+
+    bool matches(const QString& key, QSize s, const QJsonObject& p) const {
+        return effectKey == key && size == s && params == p;
+    }
+    void join() {
+        if (thread.joinable()) thread.join();
+    }
+    ~Job() {
+        cancelled.store(true, std::memory_order_relaxed);
+        join();
+    }
+};
+
+namespace {
+
+// A copy that shares no implicitly shared data with `value`. Every value
+// stays exact, NaN and the infinities included (a JSON text round trip
+// would turn them into null).
+QJsonValue detachedCopy(const QJsonValue& value) {
+    switch (value.type()) {
+    case QJsonValue::String: {
+        const QString text = value.toString();
+        return QString(text.constData(), text.size());
+    }
+    case QJsonValue::Array: {
+        QJsonArray copy;
+        for (const QJsonValue& element : value.toArray()) copy.append(detachedCopy(element));
+        return copy;
+    }
+    case QJsonValue::Object: {
+        const QJsonObject object = value.toObject();
+        QJsonObject copy;
+        for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
+            copy.insert(QString(it.key().constData(), it.key().size()), detachedCopy(it.value()));
+        }
+        return copy;
+    }
+    default:
+        return value; // null, bool, number, undefined: held by value
+    }
+}
+
+} // namespace
+
+AsyncOverlays::AsyncOverlays() = default;
+
+AsyncOverlays::~AsyncOverlays() {
+    clear();
+}
+
+void AsyncOverlays::startJob(Job& job) {
+    Job* const target = &job; // the Job joins this thread before it is destroyed
+    // Deep copies, so no implicitly shared data crosses to the worker thread.
+    QString effectKey = QString::fromUtf8(job.effectKey.toUtf8());
+    QJsonObject params = detachedCopy(QJsonValue(job.params)).toObject();
+    const QSize size = job.size;
+    job.thread = std::thread([target, effectKey = std::move(effectKey), params = std::move(params), size] {
+        StrokeCanvas canvas(size.width(), size.height());
+        const TraceResult result = runAsyncInit(effectKey, canvas, params,
+                                                [target] { return target->cancelled.load(std::memory_order_relaxed); });
+        if (result != TraceResult::Cancelled) {
+            target->pixels = canvas.unpremultipliedRgba8();
+            target->completed = true;
+        }
+        target->done.store(true, std::memory_order_release);
+    });
+}
+
+void AsyncOverlays::retire(std::unique_ptr<Job> job) {
+    if (!job) return;
+    job->cancelled.store(true, std::memory_order_relaxed);
+    m_retired.push_back(std::move(job));
+}
+
 int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const QJsonObject& globalUniforms) {
-    int generated = 0;
+    // Cancelled traces that have ended can be joined without waiting.
+    m_retired.erase(std::remove_if(m_retired.begin(), m_retired.end(),
+                                   [](const std::unique_ptr<Job>& job) { return job->done.load(std::memory_order_acquire); }),
+                    m_retired.end());
+
+    int uploads = 0;
     QSet<QString> seen;
     QSet<QString> current; // async nodes whose overlay this object keeps
     for (const Pass& pass : graph.passes) {
@@ -294,44 +388,97 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
 
         current.insert(pass.nodeId);
         const QJsonObject params = asyncInitParams(pass.effectKey, pass.uniforms, globalUniforms);
-        const auto existing = m_nodes.constFind(pass.nodeId);
-        bool uploaded = true;
+        Node& node = m_nodes[pass.nodeId];
+        bool uploaded = !node.textureIds.isEmpty();
         for (const QString& texId : textureIds) uploaded = uploaded && backend.hasGeneratedTexture(texId);
-        if (uploaded && existing != m_nodes.constEnd() && existing->effectKey == pass.effectKey
-            && existing->size == size && existing->params == params) {
+        const bool upToDate = uploaded && !node.placeholder && node.effectKey == pass.effectKey
+            && node.size == size && node.params == params;
+
+        const auto upload = [&](const std::vector<std::uint8_t>& pixels, bool placeholder) {
+            for (const QString& texId : node.textureIds) {
+                if (!textureIds.contains(texId)) backend.removeGeneratedTexture(texId);
+            }
+            for (const QString& texId : textureIds) backend.uploadGeneratedTexture(texId, pixels, size);
+            node.effectKey = pass.effectKey;
+            node.size = size;
+            node.params = params;
+            node.placeholder = placeholder;
+            node.textureIds = textureIds;
+        };
+
+        if (!m_background) {
+            retire(std::move(node.job)); // left over from the background mode
+            if (upToDate) continue;
+            upload(generateAsyncOverlay(pass.effectKey, size, params), false);
+            ++uploads;
             continue;
         }
 
-        const std::vector<std::uint8_t> pixels = generateAsyncOverlay(pass.effectKey, size, params);
-        Node node;
-        node.effectKey = pass.effectKey;
-        node.size = size;
-        node.params = params;
-        node.textureIds = textureIds;
-        for (const QString& texId : textureIds) backend.uploadGeneratedTexture(texId, pixels, size);
-        if (existing != m_nodes.constEnd()) {
-            for (const QString& texId : existing->textureIds) {
-                if (!textureIds.contains(texId)) backend.removeGeneratedTexture(texId);
+        if (node.job && node.job->matches(pass.effectKey, size, params)) {
+            if (!node.job->done.load(std::memory_order_acquire)) continue; // keep the uploaded overlay
+            std::unique_ptr<Job> job = std::move(node.job);
+            job->join();
+            if (job->completed) {
+                upload(job->pixels, false);
+                ++uploads;
+                continue;
             }
+            // Only a cancelled trace ends incomplete, and a node's current
+            // trace is never cancelled; trace again below if it ever is.
         }
-        m_nodes.insert(pass.nodeId, node);
-        ++generated;
+        retire(std::move(node.job)); // superseded: its pixels are never uploaded
+        if (upToDate) continue;
+        // Before the first trace at this size (or of this effect) completes,
+        // show a transparent overlay, the reference's cleared canvas, rather
+        // than another size's texels.
+        if (!uploaded || node.size != size || node.effectKey != pass.effectKey) {
+            upload(std::vector<std::uint8_t>(static_cast<size_t>(size.width()) * static_cast<size_t>(size.height()) * 4, 0),
+                   true);
+        }
+        auto job = std::make_unique<Job>();
+        job->effectKey = pass.effectKey;
+        job->size = size;
+        job->params = params;
+        startJob(*job);
+        node.job = std::move(job);
     }
 
     for (auto it = m_nodes.begin(); it != m_nodes.end();) {
-        if (current.contains(it.key())) {
+        if (current.contains(it->first)) {
             ++it;
             continue;
         }
-        for (const QString& texId : it->textureIds) backend.removeGeneratedTexture(texId);
+        retire(std::move(it->second.job));
+        for (const QString& texId : it->second.textureIds) backend.removeGeneratedTexture(texId);
         it = m_nodes.erase(it);
     }
-    return generated;
+    return uploads;
+}
+
+bool AsyncOverlays::pending() const {
+    for (const auto& entry : m_nodes) {
+        if (entry.second.job) return true;
+    }
+    return false;
+}
+
+void AsyncOverlays::wait() {
+    for (auto& entry : m_nodes) {
+        if (entry.second.job) entry.second.job->join();
+    }
+}
+
+void AsyncOverlays::clear() {
+    for (auto& entry : m_nodes) {
+        if (entry.second.job) entry.second.job->cancelled.store(true, std::memory_order_relaxed);
+    }
+    m_nodes.clear();   // each Job joins its thread
+    m_retired.clear();
 }
 
 QStringList AsyncOverlays::textureIds() const {
     QStringList ids;
-    for (const Node& node : m_nodes) ids.append(node.textureIds);
+    for (const auto& entry : m_nodes) ids.append(entry.second.textureIds);
     return ids;
 }
 

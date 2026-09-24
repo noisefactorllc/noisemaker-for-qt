@@ -15,16 +15,19 @@
 #include "../noisemaker/runtime/stroke_canvas.h"
 #include "../noisemaker/runtime/worm_tracer.h"
 
+#include <QColor>
 #include <QCryptographicHash>
 #include <QGuiApplication>
-#include <QColor>
 #include <QImage>
 #include <QJsonArray>
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <memory>
 #include <vector>
 
 namespace {
@@ -456,6 +459,214 @@ void testHostOverlay(nm::EffectRegistry& registry) {
           "a graph without the node leaves the host texture in place");
 }
 
+const char* const kFibers = "search filter, synth\nsolid(color: #000000).fibers(density: 1).write(o0)\nrender(o0)";
+
+double secondsSince(std::chrono::steady_clock::time_point start) {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+}
+
+void setSeed(nm::Backend& backend, nm::Graph& graph, nm::EffectRegistry& registry, int seed) {
+    backend.applyStepParameterValues(graph, registry,
+        QJsonObject{{QStringLiteral("step_1"), QJsonObject{{QStringLiteral("seed"), seed}}}});
+}
+
+// True when every pixel of `frame` is opaque black: fibers over black with
+// a transparent overlay.
+bool blackFrame(const QImage& frame) {
+    const QImage rgba = frame.convertToFormat(QImage::Format_RGBA8888);
+    for (int y = 0; y < rgba.height(); ++y) {
+        const uchar* row = rgba.constScanLine(y);
+        for (int x = 0; x < rgba.width(); ++x) {
+            if (row[x * 4] || row[x * 4 + 1] || row[x * 4 + 2]) return false;
+        }
+    }
+    return true;
+}
+
+// OverlayTraceMode::Background at 1920x1080 (GAP-038): render() returns
+// while the trace runs, keeps the previous overlay, and the completed frame
+// equals the synchronous mode's byte for byte. Returns the seconds of a
+// synchronous 1920x1080 re-trace render.
+double testBackgroundTrace(nm::EffectRegistry& registry) {
+    const QSize size(1920, 1080);
+    nm::Graph graph = nm::compileGraph(QString::fromUtf8(kFibers), registry);
+
+    nm::Backend synchronous;
+    synchronous.setup(nullptr, kDataRoot, size);
+    auto start = std::chrono::steady_clock::now();
+    synchronous.render(graph, 0.25);
+    const double syncFirst = secondsSince(start);
+    const QImage syncSeed1 = synchronous.readSurface();
+    nm::Graph syncGraph = graph;
+    setSeed(synchronous, syncGraph, registry, 2);
+    start = std::chrono::steady_clock::now();
+    synchronous.render(syncGraph, 0.25);
+    const double syncRetrace = secondsSince(start);
+    const QImage syncSeed2 = synchronous.readSurface();
+    std::printf("  synchronous 1920x1080 fibers: first render %.3f s, re-trace render %.3f s\n", syncFirst, syncRetrace);
+
+    nm::Backend background;
+    background.setup(nullptr, kDataRoot, size);
+    background.setOverlayTraceMode(nm::OverlayTraceMode::Background);
+    check(background.overlayTraceMode() == nm::OverlayTraceMode::Background
+              && synchronous.overlayTraceMode() == nm::OverlayTraceMode::Synchronous,
+          "the trace mode defaults to Synchronous and is selectable");
+    start = std::chrono::steady_clock::now();
+    background.render(graph, 0.25);
+    const double firstRender = secondsSince(start);
+    const bool pendingAfterFirst = background.overlayTracesPending();
+    check(pendingAfterFirst && blackFrame(background.readSurface()),
+          "a first trace runs after render() returns, and the node shows a transparent overlay meanwhile");
+    background.waitForOverlayTraces();
+    background.render(graph, 0.25);
+    check(!background.overlayTracesPending() && background.readSurface() == syncSeed1,
+          "the next render() after the trace uploads it: the frame equals the synchronous frame byte for byte");
+
+    // A frame with nothing to trace sets the host's frame time on this machine.
+    double steady = 0.0;
+    for (int i = 0; i < 3; ++i) {
+        start = std::chrono::steady_clock::now();
+        background.render(graph, 0.25);
+        steady = std::max(steady, secondsSince(start));
+    }
+    setSeed(background, graph, registry, 2);
+    start = std::chrono::steady_clock::now();
+    background.render(graph, 0.25);
+    const double retraceRender = secondsSince(start);
+    const bool pendingAfterRetrace = background.overlayTracesPending();
+    const QImage duringRetrace = background.readSurface();
+    std::printf("  background: first render %.3f s, steady frame %.3f s, render during re-trace %.3f s\n",
+                firstRender, steady, retraceRender);
+    check(pendingAfterRetrace && retraceRender <= 4.0 * steady + 0.05 && retraceRender < 0.5 * syncRetrace,
+          "during a 1920x1080 re-trace render() takes a frame's time, not the trace's");
+    check(duringRetrace == syncSeed1, "the previous overlay keeps rendering until the new trace completes");
+    background.waitForOverlayTraces();
+    background.render(graph, 0.25);
+    check(background.readSurface() == syncSeed2, "the completed re-trace equals the synchronous frame byte for byte");
+    return syncRetrace;
+}
+
+// A newer change supersedes an older trace, which never uploads.
+void testSupersession(nm::EffectRegistry& registry) {
+    const QSize size(256, 256);
+    nm::Graph graph = nm::compileGraph(QString::fromUtf8(kFibers), registry);
+    nm::Backend reference;
+    reference.setup(nullptr, kDataRoot, size);
+    const auto referenceFrame = [&](int seed) {
+        nm::Graph g = graph;
+        setSeed(reference, g, registry, seed);
+        reference.render(g, 0.25);
+        return reference.readSurface();
+    };
+    const QImage seed3 = referenceFrame(3);
+    const QImage seed4 = referenceFrame(4);
+
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, size);
+    backend.setOverlayTraceMode(nm::OverlayTraceMode::Background);
+    setSeed(backend, graph, registry, 1);
+    backend.render(graph, 0.25);
+    bool onlyPlaceholder = blackFrame(backend.readSurface());
+    backend.waitForOverlayTraces(); // seed 1 completed, not yet uploaded
+    setSeed(backend, graph, registry, 2);
+    backend.render(graph, 0.25);    // seed 1 is stale: discarded
+    onlyPlaceholder = onlyPlaceholder && blackFrame(backend.readSurface());
+    setSeed(backend, graph, registry, 3);
+    backend.render(graph, 0.25);    // seed 2 is cancelled, running or not
+    onlyPlaceholder = onlyPlaceholder && blackFrame(backend.readSurface());
+    backend.waitForOverlayTraces();
+    backend.render(graph, 0.25);
+    check(onlyPlaceholder && backend.readSurface() == seed3,
+          "two quick seed changes: only the newest trace (seed 3) ever appears");
+
+    setSeed(backend, graph, registry, 4);
+    backend.render(graph, 0.25);
+    const bool kept = backend.readSurface() == seed3;
+    backend.waitForOverlayTraces();
+    backend.render(graph, 0.25);
+    check(kept && backend.readSurface() == seed4, "a later change keeps seed 3 until seed 4 completes");
+
+    setSeed(backend, graph, registry, 5);
+    backend.render(graph, 0.25);
+    setSeed(backend, graph, registry, 4);
+    backend.render(graph, 0.25);
+    check(!backend.overlayTracesPending() && backend.readSurface() == seed4,
+          "returning to the uploaded seed cancels the trace in flight and keeps the frame");
+
+    setSeed(backend, graph, registry, 3);
+    backend.render(graph, 0.25);
+    backend.setOverlayTraceMode(nm::OverlayTraceMode::Synchronous);
+    backend.render(graph, 0.25);
+    check(!backend.overlayTracesPending() && backend.readSurface() == seed3,
+          "switching to Synchronous mid-trace renders the completed overlay on the next frame");
+}
+
+// Destroying or releasing a Backend while a trace runs cancels and joins it.
+// `traceSeconds` is a synchronous render of the same trace on this machine:
+// the bound scales with the runner and with sanitizer builds.
+void testTeardownMidTrace(nm::EffectRegistry& registry, double traceSeconds) {
+    const QSize size(1920, 1080);
+    const nm::Graph graph = nm::compileGraph(QString::fromUtf8(kFibers), registry);
+
+    auto owned = std::make_unique<nm::Backend>();
+    owned->setup(nullptr, kDataRoot, size);
+    owned->setOverlayTraceMode(nm::OverlayTraceMode::Background);
+    owned->render(graph, 0.25);
+    const bool running = owned->overlayTracesPending();
+    auto start = std::chrono::steady_clock::now();
+    owned.reset();
+    const double destroy = secondsSince(start);
+
+    nm::Backend released;
+    released.setup(nullptr, kDataRoot, size);
+    released.setOverlayTraceMode(nm::OverlayTraceMode::Background);
+    released.render(graph, 0.25);
+    start = std::chrono::steady_clock::now();
+    released.releaseGl();
+    const double release = secondsSince(start);
+    std::printf("  teardown mid-trace: destructor %.3f s, releaseGl %.3f s\n", destroy, release);
+    check(running && !released.overlayTracesPending() && destroy < 0.25 * traceSeconds && release < 0.25 * traceSeconds,
+          "the destructor and releaseGl() cancel and join a running 1920x1080 trace in a fraction of its time");
+}
+
+// The host-texture precedence rule holds in the background mode.
+void testBackgroundHostOverlay(nm::EffectRegistry& registry) {
+    const QSize size(64, 64);
+    const QString overlayId = QStringLiteral("node_1_overlayTex");
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, size);
+    backend.setOverlayTraceMode(nm::OverlayTraceMode::Background);
+    nm::Graph graph = nm::compileGraph(QString::fromUtf8(kFibers), registry);
+    QImage host(size, QImage::Format_RGBA8888);
+    host.fill(QColor(200, 100, 50, 255));
+    const std::vector<std::uint8_t> hostPixels(host.constBits(), host.constBits() + host.sizeInBytes());
+    const auto render = [&] {
+        backend.render(graph, 0.25);
+        return backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
+    };
+    int inked = 0;
+
+    backend.updateTextureFromSource(overlayId, host);
+    const bool hostFirst = blendError(render(), size, hostPixels, inked) <= 1 && !backend.overlayTracesPending();
+    check(hostFirst, "background mode: a host texture replaces the overlay and starts no trace");
+
+    backend.removeExternalTexture(overlayId);
+    const bool placeholder = blackFrame(render()) && backend.overlayTracesPending();
+    backend.updateTextureFromSource(overlayId, host); // while the trace runs
+    backend.waitForOverlayTraces();
+    const bool hostKept = blendError(render(), size, hostPixels, inked) <= 1;
+    backend.render(graph, 0.25);
+    check(placeholder && hostKept && !backend.overlayTracesPending()
+              && blendError(render(), size, hostPixels, inked) <= 1,
+          "background mode: a host texture set during a trace is never overwritten by its result");
+
+    backend.removeExternalTexture(overlayId);
+    render();
+    backend.waitForOverlayTraces();
+    check(blendError(render(), size, fibersOverlay(size, 1), inked) <= 1 && inked > 500,
+          "background mode: removing the host texture traces the overlay again");
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -472,6 +683,10 @@ int main(int argc, char** argv) {
     testSync(registry);
     testRender(registry);
     testHostOverlay(registry);
+    const double traceSeconds = testBackgroundTrace(registry);
+    testSupersession(registry);
+    testTeardownMidTrace(registry, traceSeconds);
+    testBackgroundHostOverlay(registry);
 
     std::printf("%d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
