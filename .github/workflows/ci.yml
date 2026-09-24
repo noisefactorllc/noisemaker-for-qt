@@ -12,13 +12,15 @@ name: CI
 #   warnings      Warnings-as-errors build (Clang/GCC -Wall -Wextra
 #                 -Wpedantic -Werror, MSVC /W4 /WX), for hosts that embed the
 #                 library under those flags.
-#   gates         Compiler and byte gates (parity/check_*.mjs) against the
-#                 reference checkout at the content pin in STATUS.md.
+#   gates         Compiler, byte, MIDI-state and audio-state gates
+#                 (parity/check_*.mjs) against the reference checkout at the
+#                 content pin in STATUS.md.
 #   render-smoke  Mints goldens for a few fixtures with the reference engine
 #                 (headless Chromium, WebGL2), renders candidates with
 #                 nm-render on llvmpipe, and grades them with parity/run.sh at
 #                 the strict default tolerance. Software-rasterizer NEAR
-#                 results must be derived from this job's own evidence.
+#                 results must be derived from this job's own evidence. It
+#                 also runs the AnalyserNode gate against the same Chromium.
 
 on:
   push:
@@ -175,7 +177,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
-          for gate in shaders definitions registry lex parse validate expand graph; do
+          for gate in shaders definitions registry lex parse validate expand graph midi_state audio_state; do
             echo "::group::check_$gate"
             node "parity/check_$gate.mjs"
             echo "::endgroup::"
@@ -225,7 +227,10 @@ jobs:
       - name: Build nm-render
         run: |
           cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build qt/build --parallel --target nm-render
+          cmake --build qt/build --parallel --target nm-render audio_analyzer_dump
+
+      - name: AnalyserNode gate (Chromium oracle)
+        run: NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" node parity/check_audio_analyzer.mjs
 
       - name: Python compare environment
         run: |
