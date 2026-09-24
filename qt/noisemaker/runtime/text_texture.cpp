@@ -18,6 +18,7 @@
 #include <QRawFont>
 #include <QRegularExpression>
 #include <QSet>
+#include <QTransform>
 #include <QtEndian>
 #include <QtGlobal>
 
@@ -88,6 +89,20 @@ int weightFromStyle(const QString& style) {
 
 bool isItalicStyle(const QString& style) {
     return style.contains(QStringLiteral("italic"), Qt::CaseInsensitive);
+}
+
+// Chromium draws italic text in a family without an italic face as a
+// synthetic oblique: SkFont skewX -1/4 about the baseline
+// (FontPlatformData::SetupSkFont). Font engines slant by their own amounts
+// (Qt's CoreText engine by tan 14 degrees, FreeType by about 12), so the
+// renderer applies the browser's skew itself.
+constexpr double kSyntheticItalicSkew = 0.25;
+
+bool hasItalicFace(const QFont& font) {
+    const QString family = QFontInfo(font).family();
+    const QStringList styles = QFontDatabase::styles(family);
+    return std::any_of(styles.begin(), styles.end(),
+                       [&family](const QString& style) { return QFontDatabase::italic(family, style); });
 }
 
 // CSS generic families, which a canvas font string leaves unquoted.
@@ -219,7 +234,9 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize) {
     const int fontSize = static_cast<int>(
         std::round(params.size * std::min(canvasSize.width(), canvasSize.height())));
     if (fontSize > 0 && !params.text.isEmpty()) {
-        const QFont font = fontFor(params, fontSize);
+        QFont font = fontFor(params, fontSize);
+        const bool syntheticItalic = font.italic() && !hasItalicFace(font);
+        if (syntheticItalic) font.setItalic(false);
         const QFontMetricsF metrics(font);
         const double middle = middleBaselineOffset(font, fontSize);
         const QStringList lines = params.text.split(QLatin1Char('\n'));
@@ -237,7 +254,16 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize) {
             } else if (params.justify == QStringLiteral("right") || params.justify == QStringLiteral("end")) {
                 x = -width;
             }
-            path.addText(QPointF(x, startY + i * lineHeight + middle), font, line);
+            const double baseline = startY + i * lineHeight + middle;
+            if (syntheticItalic) {
+                QPainterPath upright;
+                upright.addText(QPointF(0.0, 0.0), font, line);
+                path.addPath(QTransform(1.0, 0.0, -kSyntheticItalicSkew, 1.0, 0.0, 0.0)
+                                 .map(upright)
+                                 .translated(x, baseline));
+            } else {
+                path.addText(QPointF(x, baseline), font, line);
+            }
         }
 
         QPainter painter(&canvas);
