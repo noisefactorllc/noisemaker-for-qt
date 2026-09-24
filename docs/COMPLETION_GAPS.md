@@ -104,13 +104,13 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: release.
 - Affected scope: Actual artifact, dependencies, notices, version promises, and release evidence.
 - Expected behavior: The delivered artifact supports its documented installation and first useful result.
-- Observed behavior: Complete artifact reproduction, installation, upgrade, and removal remain unverified.
-- Evidence: [Distribution instructions](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md), section 1, and exact-source CI in section 2.
-- Next action: Install to a private prefix and build an independent CMake consumer. Check shader/data relocation, deployment dependencies, and removal.
-- Dependencies: Complete GAP-002 for the candidate. Distinguish source CI from downstream publication and native rendering.
-- Acceptance criteria: Match artifact bytes to their inventory. Check notices and dependencies. Pass installation, examples, upgrade, and removal.
-- Required checks: Inspect exact-source CI jobs and actual render legs. Count skips and errors rather than trusting green summaries.
-- Last verification: 2026-09-24. This register does not approve a release.
+- Observed behavior: The served kit 0.1.29 reproduces byte for byte from its source commit. Every served file matches kit.json. Its contents carry the port, reference, and font licenses, with no development files or secrets. The README now states the release model (e521037). The repo and the installed package do not carry the reference's 2017-2025 copyright line. There are no release notes. The scaffold release gate checks the Qt kit's structure but does not build or render it.
+- Evidence: Earlier pass: [Distribution instructions](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md), section 1, and exact-source CI in section 2. This pass: a local build at 217ac1e with scaffold's builder equals the served kit.json; a sequential fetch matched 601/601 files; two builds of one commit are byte-identical. FetchContent of kit-qt-v0.1.29 renders output identical to nm-render. An upgrade install over kit-qt-v0.1.22 leaves no stale files. A secret scan (self-tested on planted strings) found nothing.
+- Next action: Decide the LICENSE copyright line and per-release notes. Add a kit build-and-render test to the scaffold release job for Qt (needs Qt 6.9 or later and an OpenGL 4.1 context on the runner).
+- Dependencies: Owner decision on the notices; a scaffold change for the release gate.
+- Acceptance criteria: The installed package and the repo carry every required notice. Each kit release has notes or a documented change list. The release gate builds and renders the kit before it publishes.
+- Required checks: The kit build-and-render suite in the release job; kit.json reproduction from the tagged commit.
+- Last verification: 2026-09-24, served kit 0.1.29. This register does not approve a release.
 
 ### GAP-004: embedded CMake build pollutes the host project
 
@@ -351,16 +351,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-017: arrow-function params raise UnsupportedDsl
 
-- Status: open. Priority: P2. Category: contract.
-- Affected scope: validator.cpp Func branches (boolean and numeric params); Func conditions in if/elif (the same check).
-- Expected behavior: `noise(octaves: () => time * 4)` compiles like the reference: `{min, max}` numeric, `{}` boolean, or S001 for invalid JavaScript.
-- Observed behavior: Qt throws UnsupportedDsl. The reference graph for that program carries `octaves: {min: 1, max: 8}` and `ridges: {}` (probe with tools/dump-graph.mjs).
-- Evidence: The reference decides validity with `new Function(...)`, a JavaScript parse. This port has no JavaScript expression parser to reproduce S001.
-- Next action: Port a JavaScript expression syntax check for arrow bodies, then emit the reference values. Gate with corpus fixtures, including invalid bodies.
-- Dependencies: A JavaScript expression grammar check that matches V8 for the DSL's arrow-body subset.
-- Acceptance criteria: check_validate and check_graph byte-identical on valid and invalid arrow bodies.
-- Required checks: new corpus fixtures, compiler gates, test_validator.
-- Last verification: 2026-09-24.
+- Status: closed. Priority: P2. Category: contract.
+- Affected scope: qt/noisemaker/compiler/js_syntax.{h,cpp}, js_regexp.{h,cpp}, js_unicode.{h,cpp}; validator.cpp Func branches (numeric and boolean params, if/elif conditions); lexer.cpp FUNC trim; parity/corpus/func_*.dsl; test_js_syntax, test_validator, test_lexer.
+- Expected behavior: A Func value compiles as the reference compiles it: `{min, max}` for a numeric param, or `{}` for a boolean param or condition, when V8's `new Function('state', 'with(state){ return SRC; }')` accepts the body. Otherwise S001 and the default (false for a condition).
+- Observed behavior: Before 25df3e1, every Func param and condition threw UnsupportedDsl, and the FUNC lexeme was trimmed with QString rules. The port now decides the body with a V8-equivalent parser (a C++ port of acorn 8.16 plus V8's differences) and matches the reference output. A body nested deeper than about 100 parentheses (or 400 regex groups) still throws UnsupportedDsl, for stack safety on 512 KB threads.
+- Evidence: 0 disagreements with V8 (node 24.21.0 and 26.10.0) on 3,626,668 generated and real-code bodies. With 217ac1e binaries the 6 new fixtures gave VALIDATE 0/6. After the change, LEX, PARSE, VALIDATE, EXPAND, and GRAPH are each 376/376 on the full pool. test_js_syntax pins 187 V8 verdicts. Integration build: 0 warnings, ctest 23/23. Acorn's MIT notice ships in the sources, the install, and the kit (acorn-LICENSE.txt, dfc811f). Commits 25df3e1, 6b9d2df, b7e6b22.
+- Next action: None. Raise the depth threshold only if a host needs bodies nested deeper than about 100 levels.
+- Dependencies: None.
+- Acceptance criteria: check_validate and check_graph byte-identical on valid and invalid arrow bodies; the differential corpus shows no disagreement with V8 under both the CI and the local node majors.
+- Required checks: check_lex, check_parse, check_validate, check_expand, check_graph on parity/corpus/func_*.dsl; test_js_syntax; test_validator; test_lexer; ctest.
+- Last verification: 2026-09-24, reference c9ee8a04, macOS arm64.
 
 ### GAP-018: if/elif/else, break, continue and return raise UnsupportedDsl
 
@@ -369,7 +369,7 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: Match the reference at each stage. Lex and parse succeed. Validate returns Branch, Break, Continue and Return plans. Expand fails with "plan.chain is not iterable", so compileGraph fails.
 - Observed behavior: Before this change, validate threw UnsupportedDsl, and nm::expand silently expanded nothing for a plan without a chain. The port now returns the reference plans and fails at expand with the reference text.
 - Evidence: With the previous binaries, VALIDATE was 0/3 on the 3 fixtures the reference validates. After the change, LEX, PARSE, VALIDATE, EXPAND and GRAPH are each 5/5 on the control-flow fixtures and 364/364 on the full pool. The fixtures cover conditions (numbers, NaN/Infinity via the clone, booleans, let-bound values, state values, unknown identifiers, resolved and unresolved members, strings, colors, refs, calls, chains, osc), nested blocks with the shared temp counter, every Return value form, the `let`-in-block TypeError, and the parse failures. Commit ff10380.
-- Next action: None. Func conditions (`if (() => ...)`) use the same check as Func params and are tracked under GAP-017.
+- Next action: None. Func conditions (`if (() => ...)`) compile with the same check as Func params since GAP-017 closed (6b9d2df).
 - Dependencies: None.
 - Acceptance criteria: check_validate byte-identical on the control-flow fixtures. Expand and compileGraph fail for the same programs.
 - Required checks: check_lex, check_parse, check_validate, check_expand, check_graph; test_validator; test_expander; ctest.
