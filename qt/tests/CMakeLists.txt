@@ -110,6 +110,10 @@ target_link_libraries(test_validator PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_validator COMMAND test_validator)
 set_tests_properties(test_validator PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_js_syntax test_js_syntax.cpp)
+target_link_libraries(test_js_syntax PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_js_syntax COMMAND test_js_syntax)
+
 # Parity-gate helper (NOT a ctest case -- like dump_lex.cpp/dump_parse.cpp,
 # this is CLI plumbing consumed by parity/check_registry.mjs, not a
 # pass/fail assertion binary). Prints EffectRegistry::dumpSummary() as
