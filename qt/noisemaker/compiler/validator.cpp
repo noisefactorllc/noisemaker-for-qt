@@ -4,6 +4,7 @@
 #include "diagnostics.h"
 #include "effect_registry.h"
 #include "enums.h"
+#include "js_syntax.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -292,6 +293,22 @@ std::optional<QJsonValue> jsOwnProperty(const QJsonValue& cur, const QString& ke
     if (cur.isArray()) return cur.toArray().at(static_cast<qsizetype>(index));
     return QJsonValue(QString(cur.toString().at(static_cast<qsizetype>(index))));
 }
+
+// The reference compiles a Func (`() => expr`) value with
+// `new Function('state', `with(state){ return ${src}; }`)` and reports S001
+// when that throws. nm::js::checkFunctionBody decides the same question for
+// V8; input it cannot decide fails loud.
+bool funcCompiles(const QString& src) {
+    const js::CheckResult result =
+        js::checkFunctionBody(QStringLiteral("state"), QStringLiteral("with(state){ return ") + src + QStringLiteral("; }"));
+    if (result.verdict == js::Verdict::Unsupported) {
+        throw UnsupportedDsl(QStringLiteral("Func body not decided (%1): () => %2").arg(result.detail, src.left(50)));
+    }
+    return result.verdict == js::Verdict::Valid;
+}
+
+// `${src?.slice(0, 50) || 'unknown'}` in the reference S001 messages.
+QString funcSnippet(const QString& src) { return src.isEmpty() ? QStringLiteral("unknown") : src.left(50); }
 
 QString nodeType(const QJsonValue& node) { return node.isObject() ? node.toObject().value(QStringLiteral("type")).toString() : QString(); }
 
@@ -840,8 +857,10 @@ QJsonValue Validator::evalCondition(const QJsonValue& node) {
     }
     if (t == NodeKind::Boolean) return isTruthy(o.value(QStringLiteral("value")));
     if (t == NodeKind::Func) {
-        throw UnsupportedDsl(QStringLiteral(
-            "Func conditions ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS4.3)."));
+        const QString src = o.value(QStringLiteral("src")).toString();
+        if (funcCompiles(src)) return QJsonObject();
+        pushDiag(QStringLiteral("S001"), expr, QStringLiteral("Invalid function expression: '%1'").arg(funcSnippet(src)));
+        return false;
     }
     if (t == NodeKind::Ident) {
         const QString name = o.value(QStringLiteral("name")).toString();
@@ -1556,15 +1575,19 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
         args.insert(argKey, node.toObject().value(QStringLiteral("value")).toDouble() != 0.0);
         return;
     }
-    // UnsupportedDsl 3/7: `(state) => ...` compiles to a `{fn}` closure in
-    // the reference validator, same dead end as Branch above -- nothing
-    // downstream ever calls it (verified: no `.fn(` call site anywhere in
-    // shaders/src/runtime/*.js). Not a live interpreter this AOT frontend
-    // is declining to replicate; fails loud here to match the sibling
-    // ports' contract at this point instead.
+    // `() => expr`: the reference keeps `{fn}` when `new Function` accepts
+    // the body (graph JSON drops the closure; nothing calls it), else S001
+    // and the default.
     if (t == NodeKind::Func) {
-        throw UnsupportedDsl(QStringLiteral(
-            "Func boolean params ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS6.5)."));
+        const QString src = node.toObject().value(QStringLiteral("src")).toString();
+        if (funcCompiles(src)) {
+            args.insert(argKey, QJsonObject());
+        } else {
+            pushDiag(QStringLiteral("S001"), node,
+                     QStringLiteral("Invalid function for '%1': '%2'").arg(def.name, funcSnippet(src)));
+            args.insert(argKey, defaultBool());
+        }
+        return;
     }
     const QString identName = node.toObject().value(QStringLiteral("name")).toString();
     // A bare state-value ident (time/frame/...): the reference stores
@@ -1777,10 +1800,22 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
         }
         return;
     }
-    // UnsupportedDsl 6/7: Func numeric automation.
+    // `() => expr`: the reference stores `{fn, min: def.min, max: def.max}`
+    // when `new Function` accepts the body (graph JSON drops fn and an
+    // undefined bound), else S001 and the default.
     if (t == NodeKind::Func) {
-        throw UnsupportedDsl(QStringLiteral(
-            "Func numeric params ((state)=>...) are not implemented in the first-cut DSL frontend (reference/02 SS6.10)."));
+        const QString src = node.toObject().value(QStringLiteral("src")).toString();
+        if (funcCompiles(src)) {
+            QJsonObject value;
+            if (def.hasMin()) value.insert(QStringLiteral("min"), def.minValue);
+            if (def.hasMax()) value.insert(QStringLiteral("max"), def.maxValue);
+            args.insert(argKey, value);
+        } else {
+            pushDiag(QStringLiteral("S001"), node,
+                     QStringLiteral("Invalid function for '%1': '%2'").arg(def.name, funcSnippet(src)));
+            args.insert(argKey, def.defaultValue);
+        }
+        return;
     }
     if (automationFields().contains(t)) {
         args.insert(argKey, compileAutomationDescriptor(node.toObject()));

@@ -115,8 +115,11 @@ effect_registry.cpp (loads effects/**.json)   dsl_compiler.cpp (orchestration + 
 AST and graph are `QJsonObject` trees with the same `type` strings and key shapes as the
 reference, so every stage byte-diffs against the reference oracles
 (`parity/check_{lex,parse,validate,expand,graph,registry}.mjs`, key-order-insensitive).
-Unsupported DSL surface fails loudly (`UnsupportedDsl`): `Func` (arrow-function) params and
-conditions. Compute pass fields (`entryPoint`, `workgroups`, `storage*`) are copied onto expanded
+`Func` (arrow-function) values compile as the reference compiles them: it keeps the value when
+V8's ``new Function('state', `with(state){ return ${src}; }`)`` accepts the body and reports S001
+when V8 rejects it. `nm::js::checkFunctionBody` (`js_syntax.cpp`, a port of acorn's parser with
+V8's differences) makes that decision; a body nested deeper than it follows raises
+`UnsupportedDsl`. Compute pass fields (`entryPoint`, `workgroups`, `storage*`) are copied onto expanded
 passes as the reference expander copies them; no catalog definition declares them. Control flow
 (`if/elif/else`, `break/continue/return`) validates to the reference's Branch, Break, Continue and
 Return plans; expansion then fails with the reference's own error ("plan.chain is not iterable"),

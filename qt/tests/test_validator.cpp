@@ -385,27 +385,55 @@ int main() {
     }
 
     // ==================================================================
-    // UnsupportedDsl: the remaining fail-loud sites throw, even
-    // though the reference itself fully resolves/interprets all of them
-    // (verified: every one of these probes is `ok:true` against the live
-    // oracle -- these are deliberate AOT-frontend divergences, not gaps).
+    // Func (`() => expr`) values: the reference compiles the body with
+    // `new Function('state', `with(state){ return ${src}; }`)`. Accepted
+    // bodies compile to {min, max} (numeric) or {} (boolean, condition);
+    // rejected ones push S001 and keep the default (oracle-gated by
+    // parity/corpus/func_*.dsl). Body verdicts here were checked in V8.
     // ==================================================================
-    auto expectUnsupported = [](const QString& src, const char* description) {
+    {
+        const QJsonObject valid = validateSrc(QStringLiteral(
+            "search synth\nnoise(octaves: () => Math.sin(time) * 4, wrap: () => frame > 3).write(o0)\nrender(o0)\n"));
+        check(diags(valid).isEmpty(), "valid Func bodies: no diagnostics");
+        check(args(valid, 0, 0).value(QStringLiteral("octaves")).toObject()
+                  == QJsonObject{{QStringLiteral("min"), 1}, {QStringLiteral("max"), 8}},
+              "valid numeric Func -> {min, max} (reference {fn, min, max})");
+        check(args(valid, 0, 0).value(QStringLiteral("wrap")) == QJsonValue(QJsonObject()),
+              "valid boolean Func -> {} (reference {fn})");
+
+        const QJsonObject invalid = validateSrc(QStringLiteral(
+            "search synth\nnoise(octaves: () => time +, wrap: () => time // note\n).write(o0)\nrender(o0)\n"));
+        const QJsonArray ds = diags(invalid);
+        check(ds.size() == 2 && ds.at(0).toObject().value(QStringLiteral("message")).toString()
+                                    == QStringLiteral("Invalid function for 'octaves': 'time +'"),
+              "invalid numeric Func -> S001 \"Invalid function for 'octaves': 'time +'\"");
+        check(args(invalid, 0, 0).value(QStringLiteral("octaves")).toDouble() == 2.0
+                  && args(invalid, 0, 0).value(QStringLiteral("wrap")) == QJsonValue(true),
+              "invalid Func keeps the defaults (octaves 2, wrap true)");
+        check(ds.size() == 2 && ds.at(1).toObject().value(QStringLiteral("identifier")).toString()
+                                    == QStringLiteral("{time // note}"),
+              "a trailing // comment joins the body and swallows the reference's `; }`: S001");
+
+        const QJsonObject cond = validateSrc(QStringLiteral(
+            "search synth\nif (() => time > 1) {\n  noise().write(o0)\n} elif (() => time >) {\n}\n"));
+        const QJsonObject branch = cond.value(QStringLiteral("plans")).toArray().first().toObject();
+        check(branch.value(QStringLiteral("cond")) == QJsonValue(QJsonObject()),
+              "valid Func condition -> {} (reference {fn})");
+        check(branch.value(QStringLiteral("elif")).toArray().first().toObject().value(QStringLiteral("cond")) == QJsonValue(false)
+                  && diags(cond).size() == 1
+                  && diags(cond).first().toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("Invalid function expression: 'time >'"),
+              "invalid Func condition -> false and S001 \"Invalid function expression\"");
+
         bool threw = false;
         try {
-            validateSrc(src);
+            validateSrc(QStringLiteral("search synth\nnoise(octaves: () => ") + QString(200, QLatin1Char('('))
+                        + QStringLiteral("1") + QString(200, QLatin1Char(')')) + QStringLiteral(").write(o0)\n"));
         } catch (const nm::UnsupportedDsl&) {
             threw = true;
-        } catch (...) {
-            threw = false;
         }
-        check(threw, description);
-    };
-
-    expectUnsupported(QStringLiteral("search synth\nnoise(wrap: () => true).write(o0)\nrender(o0)\n"),
-                       "3/7: Func boolean param -> UnsupportedDsl");
-    expectUnsupported(QStringLiteral("search synth\nnoise(octaves: () => 5).write(o0)\nrender(o0)\n"),
-                       "6/7: Func numeric param -> UnsupportedDsl");
+        check(threw, "a Func body nested deeper than the checker follows -> UnsupportedDsl");
+    }
 
     // Control flow compiles to the reference's Branch/Break/Continue/Return
     // plan entries (oracle-gated by parity/corpus/control_flow_*.dsl).

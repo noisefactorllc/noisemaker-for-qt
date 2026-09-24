@@ -6,11 +6,10 @@
 // class shape; UnsupportedDsl fail-loud points) and
 // godot/addons/noisemaker/compiler/lang/validator.gd (full argument-
 // resolution fidelity). Control flow (if/elif/else, break/continue/return)
-// compiles to the reference's Branch/Break/Continue/Return plans; this
-// port follows TD's fail-loud contract only for Func (arrow-function)
-// values -- see ARCHITECTURE.md "The compiler" and PORTING-GUIDE.md
-// "Compiler porting rules" rule 4. See validator.cpp for the
-// PARITY-CRITICAL details.
+// compiles to the reference's Branch/Break/Continue/Return plans, and Func
+// (arrow-function) values are checked with nm::js::checkFunctionBody, the
+// V8 syntax check the reference gets from `new Function`. See validator.cpp
+// for the PARITY-CRITICAL details.
 //
 // Produces {plans, diagnostics, render, vars, searchNamespaces} where each
 // plan is {chain:[step], write, write3d, final, states} and each step is
@@ -26,12 +25,11 @@ namespace nm {
 
 class EffectRegistry;
 
-// A DSL feature this first-cut AOT frontend does not implement. Never
-// silently wrong -- mirrors the sibling ports' NotImplementedException /
-// UnsupportedDsl (TD's validator.py). Thrown where the reference compiles
-// a Func (arrow-function) value with `new Function(...)`: boolean and
-// numeric params and if/elif conditions. See validator.cpp for each site
-// and its reference/02 section reference.
+// DSL input this AOT frontend cannot compile exactly. Never silently
+// wrong -- mirrors the sibling ports' NotImplementedException /
+// UnsupportedDsl (TD's validator.py). Thrown for a Func (arrow-function)
+// body that nm::js::checkFunctionBody cannot decide (nesting deeper than it
+// follows); see js_syntax.h.
 class UnsupportedDsl : public std::runtime_error {
 public:
     explicit UnsupportedDsl(const QString& message) : std::runtime_error(message.toStdString()) {}
