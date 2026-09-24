@@ -1,0 +1,262 @@
+name: CI
+
+# Builds and tests libnoisemaker-qt, nm-render and the unit tests on
+# GitHub-hosted macOS, Linux and Windows runners. GitHub-hosted runners only:
+# this workflow never targets self-hosted runners.
+#
+# Jobs:
+#   build-test    Configure, build and ctest on all three operating systems.
+#                 Linux renders through Mesa llvmpipe under Xvfb; Windows
+#                 renders through a checksum-pinned Mesa llvmpipe
+#                 opengl32.dll placed next to the executables.
+#   warnings      Warnings-as-errors build (Clang/GCC -Wall -Wextra
+#                 -Wpedantic -Werror, MSVC /W4 /WX), for hosts that embed the
+#                 library under those flags.
+#   gates         Compiler and byte gates (parity/check_*.mjs) against the
+#                 reference checkout at the content pin in STATUS.md.
+#   render-smoke  Mints goldens for a few fixtures with the reference engine
+#                 (headless Chromium, WebGL2), renders candidates with
+#                 nm-render on llvmpipe, and grades them with parity/run.sh at
+#                 the strict default tolerance. Software-rasterizer NEAR
+#                 results must be derived from this job's own evidence.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: "6.8.3"
+  # pal1000/mesa-dist-win release-msvc archive (llvmpipe opengl32.dll).
+  MESA_WIN_URL: https://github.com/pal1000/mesa-dist-win/releases/download/26.2.1/mesa3d-26.2.1-release-msvc.7z
+  MESA_WIN_SHA256: 78a0305844074535e73dfb6dcb5eb2a65f1d9dc445102e1f4c3c3e97dace19bf
+  SMOKE_FIXTURES: "adjust blendMode cell feedback"
+
+jobs:
+  build-test:
+    name: build-test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Install Linux GL and X11 runtime
+        if: runner.os == 'Linux'
+        run: |
+          # Runner images carry third-party apt sources whose stale indexes
+          # can fail apt-get update; only Ubuntu archives are needed here.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
+
+      - name: Configure
+        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Install Mesa llvmpipe opengl32.dll (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
+          $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
+          7z x mesa.7z -omesa | Out-Null
+          foreach ($dir in @("build/Release", "build/tests/Release")) {
+            Copy-Item mesa/x64/*.dll $dir
+          }
+          Get-ChildItem build/Release/*.dll | Select-Object Name, Length
+
+      - name: GL renderer (Linux)
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a -s "-screen 0 1280x1024x24" glxinfo -B
+
+      - name: ctest (Linux, Xvfb + llvmpipe)
+        if: runner.os == 'Linux'
+        env:
+          QT_QPA_PLATFORM: xcb
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a -s "-screen 0 1280x1024x24" ctest --test-dir build --output-on-failure
+
+      - name: ctest (Windows, llvmpipe)
+        if: runner.os == 'Windows'
+        env:
+          GALLIUM_DRIVER: llvmpipe
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: ctest (macOS)
+        if: runner.os == 'macOS'
+        run: ctest --test-dir build --output-on-failure
+
+  warnings:
+    name: warnings-as-errors (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            flags: -Wall -Wextra -Wpedantic -Werror
+          - os: ubuntu-latest
+            flags: -Wall -Wextra -Wpedantic -Werror
+          - os: windows-latest
+            flags: /DWIN32 /D_WINDOWS /GR /EHsc /W4 /WX
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure
+        shell: bash
+        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_CXX_FLAGS=${{ matrix.flags }}"
+
+      - name: Build library, nm-render and tests
+        run: cmake --build build --config Release --parallel
+
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out the reference at the STATUS.md content pin
+        run: |
+          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
+          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          echo "reference pin: $pin"
+          git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
+          git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
+          git -C "$RUNNER_TEMP/noisemaker" rev-parse HEAD
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Build nm-render and gate helpers
+        run: |
+          cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build qt/build --parallel
+
+      - name: Compiler and byte gates
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
+          for gate in shaders definitions registry lex parse validate expand graph; do
+            echo "::group::check_$gate"
+            node "parity/check_$gate.mjs"
+            echo "::endgroup::"
+          done
+
+  render-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out the reference at the STATUS.md content pin
+        run: |
+          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
+          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
+          git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
+          git -C "$RUNNER_TEMP/noisemaker" rev-parse HEAD
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the reference engine and headless Chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          cd "$RUNNER_TEMP/noisemaker"
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Install Linux GL and X11 runtime
+        run: |
+          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Build nm-render
+        run: |
+          cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build qt/build --parallel --target nm-render
+
+      - name: Python compare environment
+        run: |
+          python -m venv parity/.venv
+          parity/.venv/bin/pip install numpy pillow
+
+      - name: Mint goldens with the reference engine
+        env:
+          SHADE_HEADLESS: "1"
+        run: |
+          export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
+          mkdir -p parity/out
+          for name in $SMOKE_FIXTURES; do
+            node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2
+          done
+
+      - name: Render and grade candidates (strict tolerance, llvmpipe)
+        env:
+          QT_QPA_PLATFORM: xcb
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          status=0
+          for name in $SMOKE_FIXTURES; do
+            xvfb-run -a -s "-screen 0 1280x1024x24" bash parity/run.sh "$name" || status=1
+          done
+          exit $status
+
+      - name: Upload smoke images
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: render-smoke
+          path: parity/out/
+          if-no-files-found: warn

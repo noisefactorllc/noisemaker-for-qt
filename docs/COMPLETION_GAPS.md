@@ -157,6 +157,28 @@ These entries record missing qualification. They do not infer implementation def
 
 </details>
 
+### GAP-006: no CI builds or tests the library
+
+- Status: open. Priority: P2. Category: verification.
+- Affected scope: .github/workflows/ci.yml, all C++ sources, parity/check_*.mjs, parity/run.sh.
+- Expected behavior: Every push builds and tests the library on macOS, Linux, and Windows. The compiler gates and a render smoke run against the reference pin.
+- Observed behavior: Before this change, the only workflow was export-kit.yml. macOS was the only platform ever built.
+- Evidence: ci.yml has jobs build-test, warnings, gates, and render-smoke on GitHub-hosted runners. Actions are pinned by commit SHA. The Windows Mesa archive is pinned by SHA-256.
+- Next action: Push, then read each job with `gh run view`. Record GL renderers, ctest counts, and smoke results per platform.
+- Dependencies: Operator approval to push. Remote execution cannot be observed before a push.
+- Acceptance criteria: All four jobs pass on the pushed SHA. Linux and Windows ctest report 13 of 13 on llvmpipe. Smoke results stay at the strict tolerance.
+- Required checks: `gh run view` job logs for the exact SHA. Count skips and failures in the logs; do not rely on the summary.
+- Last verification: 2026-09-24. actionlint passed. The macOS steps were reproduced locally. Remote execution is unverified.
+
+<details><summary>GAP-006 evidence</summary>
+
+- `actionlint .github/workflows/ci.yml` (1.7.12): exit 0.
+- Gates job, reproduced locally: the STATUS.md pin parse gave `5b81e04f`. A clean `git clone --filter=blob:none` checked out `5b81e04f8a4b53c2be43b8e328cee0c3365f352f` with no npm install. All 8 gates exited 0: 317/317, 210/210, 5/5, and 357/357 for the other 5.
+- Build-test and warnings jobs: the macOS commands passed locally (ctest 13 of 13; `-Werror` build with 0 warnings). The Linux Xvfb/llvmpipe and Windows Mesa opengl32.dll paths are untested.
+- The Windows /W4 /WX build is untested. GAP-005 depends on it.
+
+</details>
+
 ### GAP-007: host-supplied external textures
 
 - Status: closed. Priority: P2. Category: implementation.
@@ -223,7 +245,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008 and GAP-009 (closed) and GAP-005 (open). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008 and GAP-009 (closed) and GAP-005 and GAP-006 (open). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.
