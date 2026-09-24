@@ -333,22 +333,29 @@ void testRender(nm::EffectRegistry& registry) {
     backend.render(graph, 0.25);
     const QImage first = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
 
-    const std::vector<std::uint8_t> overlay = nm::generateAsyncOverlay(
-        QStringLiteral("filter.fibers"), size, QJsonObject{{QStringLiteral("seed"), 1}, {QStringLiteral("density"), 1}});
-    int worst = 0;
-    int inked = 0;
-    for (int y = 0; y < size.height(); ++y) {
-        const uchar* row = first.constScanLine(y);
-        for (int x = 0; x < size.width(); ++x) {
-            const size_t o = static_cast<size_t>(y * size.width() + x) * 4;
-            const double a = overlay[o + 3] / 255.0 * 0.5;
-            if (overlay[o + 3]) ++inked;
-            for (int c = 0; c < 3; ++c) {
-                const int expected = static_cast<int>(std::lround(overlay[o + static_cast<size_t>(c)] / 255.0 * a * 255.0));
-                worst = std::max(worst, std::abs(expected - static_cast<int>(row[x * 4 + c])));
+    // Largest difference between a frame and the blend of the port's overlay
+    // at `frameSize`; `inked` counts the overlay's non-transparent pixels.
+    const auto blendError = [](const QImage& frame, QSize frameSize, int& inked) {
+        const std::vector<std::uint8_t> overlay = nm::generateAsyncOverlay(
+            QStringLiteral("filter.fibers"), frameSize, QJsonObject{{QStringLiteral("seed"), 1}, {QStringLiteral("density"), 1}});
+        int worst = frame.size() == frameSize ? 0 : 255;
+        inked = 0;
+        for (int y = 0; y < frameSize.height() && worst < 255; ++y) {
+            const uchar* row = frame.constScanLine(y);
+            for (int x = 0; x < frameSize.width(); ++x) {
+                const size_t o = static_cast<size_t>(y * frameSize.width() + x) * 4;
+                const double a = overlay[o + 3] / 255.0 * 0.5;
+                if (overlay[o + 3]) ++inked;
+                for (int c = 0; c < 3; ++c) {
+                    const int expected = static_cast<int>(std::lround(overlay[o + static_cast<size_t>(c)] / 255.0 * a * 255.0));
+                    worst = std::max(worst, std::abs(expected - static_cast<int>(row[x * 4 + c])));
+                }
             }
         }
-    }
+        return worst;
+    };
+    int inked = 0;
+    const int worst = blendError(first, size, inked);
     check(inked > 500 && worst <= 1,
           "the first rendered frame blends the completed overlay, upright (within 1 level, fp16 intermediates)");
 
@@ -362,6 +369,13 @@ void testRender(nm::EffectRegistry& registry) {
     const QImage restored = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
     check(reseeded != first && restored == first, "a seed change re-traces on the next render; restoring it restores the frame");
 
+    const QSize resized(48, 40);
+    backend.resize(resized);
+    backend.render(graph, 0.25);
+    int resizedInked = 0;
+    const int resizedWorst = blendError(backend.readSurface().convertToFormat(QImage::Format_RGBA8888), resized, resizedInked);
+    check(resizedInked > 200 && resizedWorst <= 1, "Backend::resize re-traces the overlay at the new size");
+
     nm::Graph blank = graph;
     for (nm::Pass& pass : blank.passes) {
         if (pass.effectKey == QStringLiteral("filter.fibers")) {
@@ -370,10 +384,10 @@ void testRender(nm::EffectRegistry& registry) {
     }
     backend.render(blank, 0.25);
     const QImage cleared = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
-    bool black = true;
-    for (int y = 0; y < size.height() && black; ++y) {
+    bool black = !cleared.isNull();
+    for (int y = 0; y < cleared.height() && black; ++y) {
         const uchar* row = cleared.constScanLine(y);
-        for (int x = 0; x < size.width(); ++x) {
+        for (int x = 0; x < cleared.width(); ++x) {
             if (row[x * 4] || row[x * 4 + 1] || row[x * 4 + 2]) {
                 black = false;
                 break;
