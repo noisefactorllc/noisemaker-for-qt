@@ -102,7 +102,7 @@ class FakeCanvasElement {
   set height (value) { this._height = value }
 }
 
-function makePage () {
+function makePage (launchArgs = []) {
   let tick = 0
   let pending = null
   let meshText = ''
@@ -122,7 +122,8 @@ function makePage () {
       attached = [...textures.values()].find((t) => t.handle === handle)
     },
     checkFramebufferStatus: () => 4,
-    getExtension: () => null,
+    getExtension: (name) => name === 'WEBGL_debug_renderer_info' ? { UNMASKED_RENDERER_WEBGL: 'renderer' } : null,
+    getParameter: (name) => name === 'renderer' ? `fake renderer ${launchArgs.join(' ')}` : null,
     finish () {},
     clearColor () {},
     clear () { attached.data.fill(0) },
@@ -260,10 +261,25 @@ function makePage () {
   }
 }
 
+// Like the real harness, launch Chromium through the reference's Playwright
+// when it is installed (a test writes a stub), unless the test makes the
+// harness bypass it.
+async function launchArgs () {
+  if (process.env.FAKE_HARNESS_BYPASS_PLAYWRIGHT === '1') return []
+  let playwright
+  try {
+    playwright = await import(new URL('../../../node_modules/playwright/index.mjs', import.meta.url))
+  } catch {
+    return []
+  }
+  const browser = await playwright.chromium.launch({ headless: true, args: ['--harness-arg'] })
+  return browser.args
+}
+
 export class BrowserSession {
   async setup () {
     if (process.env.FAKE_HARNESS_SETUP_FAILS === '1') throw new Error('fake session setup failure')
-    this.page = makePage()
+    this.page = makePage(await launchArgs())
   }
   async setBackend () {}
   get globals () { return { renderingPipeline: '__noisemakerRenderingPipeline' } }
@@ -946,7 +962,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("0/3 pass", result.stdout)
 
-    def _mint_with_fake_reference(self, script, programs, meshes=None, env=None):
+    def _mint_with_fake_reference(self, script, programs, meshes=None, playwright=False, env=None):
         parity = self.tmp / "parity"
         tools = self.tmp / "tools"
         reference = self.tmp / "reference"
@@ -960,6 +976,11 @@ class HarnessContractTests(unittest.TestCase):
         (reference / "vendor" / "shade-mcp" / "harness").mkdir(parents=True)
         (reference / "vendor" / "shade-mcp" / "harness" / "index.js").write_text(FAKE_SHADE_HARNESS)
         (reference / "package.json").write_text('{"type": "module"}\n')
+        if playwright:
+            (reference / "node_modules" / "playwright").mkdir(parents=True)
+            (reference / "node_modules" / "playwright" / "index.mjs").write_text(
+                "export const chromium = { async launch (options) { return { args: options.args } } }\n"
+            )
         paths = []
         for name, source in programs.items():
             path = parity / f"{name}.dsl"
@@ -969,7 +990,7 @@ class HarnessContractTests(unittest.TestCase):
             (parity / f"{name}.obj").write_text(obj_text)
         out = self.tmp / "out"
         if script == "batch-golden.mjs":
-            command = ["node", str(parity / script), str(out), "--size", "8", "--"] + paths
+            command = ["node", str(parity / script), str(out), "--size", "8", "--chunk-size", "1", "--"] + paths
         else:
             command = ["node", str(parity / script), paths[0], str(out), "--size", "8"]
         result = subprocess.run(
@@ -981,6 +1002,22 @@ class HarnessContractTests(unittest.TestCase):
         )
         return result, out
 
+    def test_golden_chromium_args_reach_every_harness_launch(self):
+        extra = {"NM_GOLDEN_CHROMIUM_ARGS": " --use-gl=angle  --use-angle=gl "}
+        for script, programs in (
+            ("export-and-render.mjs", {"single": "fill 0 255 0\n"}),
+            ("batch-golden.mjs", {"first": "fill 0 255 0\n", "second": "fill 0 0 255\n"}),
+        ):
+            with self.subTest(script=script):
+                result, _ = self._mint_with_fake_reference(script, programs, playwright=True, env=extra)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                lines = [l for l in result.stderr.splitlines() if "golden WebGL renderer" in l]
+                self.assertEqual(len(lines), len(programs) if script == "batch-golden.mjs" else 1, result.stderr)
+                for line in lines:
+                    self.assertTrue(line.endswith("fake renderer --harness-arg --use-gl=angle --use-angle=gl"), line)
+                shutil.rmtree(self.tmp)
+                self.tmp.mkdir()
+
     def test_batch_golden_counts_fixtures_of_an_aborted_chunk_as_failed(self):
         result, out = self._mint_with_fake_reference(
             "batch-golden.mjs", {"first": "fill 0 255 0\n", "second": "fill 0 0 255\n"},
@@ -990,6 +1027,19 @@ class HarnessContractTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("BATCH-GOLDEN: minted=0 failed=2 total=2", result.stdout)
         self.assertIn("FAILED: first second", result.stderr)
+
+    def test_golden_chromium_args_fail_when_the_harness_bypasses_them(self):
+        for script in ("export-and-render.mjs", "batch-golden.mjs"):
+            with self.subTest(script=script):
+                result, out = self._mint_with_fake_reference(
+                    script, {"bypassed": "fill 0 255 0\n"}, playwright=True,
+                    env={"NM_GOLDEN_CHROMIUM_ARGS": "--use-angle=gl", "FAKE_HARNESS_BYPASS_PLAYWRIGHT": "1"},
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("NM_GOLDEN_CHROMIUM_ARGS is set", result.stderr)
+                self.assertFalse((out / "bypassed.golden.png").exists())
+                shutil.rmtree(self.tmp)
+                self.tmp.mkdir()
 
     def test_single_golden_mint_captures_the_loaded_program_after_a_slow_compile(self):
         result, out = self._mint_with_fake_reference(

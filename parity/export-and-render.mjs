@@ -168,6 +168,47 @@ async function capture (page, globals, textureId = null) {
   return encodePng(width, height, topDown)
 }
 
+// ---- Golden browser switches (GAP-033) -------------------------------------
+// NM_GOLDEN_CHROMIUM_ARGS: whitespace-separated Chromium switches appended to
+// the switches the vendored harness launches the golden browser with. The
+// harness has no launch-argument option, so this wraps launch() on the
+// reference's Playwright chromium object, which the harness imports as well.
+// CI uses it to mint goldens on the rasterizer that renders the candidate:
+// ANGLE's GL backend over the job's Mesa llvmpipe. When the variable is set
+// and the harness launched Chromium some other way, the run fails.
+// Keep this block identical in export-and-render.mjs and batch-golden.mjs.
+const GOLDEN_CHROMIUM_ARGS = (process.env.NM_GOLDEN_CHROMIUM_ARGS || '').split(/\s+/).filter(Boolean)
+let goldenLaunchWrapped = false
+let goldenLaunchCount = 0
+
+async function applyGoldenChromiumArgs () {
+  if (GOLDEN_CHROMIUM_ARGS.length === 0 || goldenLaunchWrapped) return
+  const { chromium } = await import(pathToFileURL(join(REFERENCE_ROOT, 'node_modules', 'playwright', 'index.mjs')).href)
+  const launch = chromium.launch.bind(chromium)
+  chromium.launch = (options = {}) => {
+    goldenLaunchCount++
+    return launch({ ...options, args: [...(options.args || []), ...GOLDEN_CHROMIUM_ARGS] })
+  }
+  goldenLaunchWrapped = true
+}
+
+function assertGoldenChromiumArgsApplied (launchesBefore) {
+  if (GOLDEN_CHROMIUM_ARGS.length > 0 && goldenLaunchCount === launchesBefore) {
+    throw new Error('NM_GOLDEN_CHROMIUM_ARGS is set, but the harness did not launch Chromium ' +
+      'through the reference Playwright chromium.launch()')
+  }
+}
+
+// Logs the renderer of the golden pipeline's own WebGL context.
+async function logGoldenRenderer (page) {
+  const renderer = await page.evaluate(() => {
+    const gl = window.__noisemakerRenderingPipeline?.backend?.gl
+    const info = gl?.getExtension?.('WEBGL_debug_renderer_info')
+    return info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : null
+  })
+  process.stderr.write(`[parity] golden WebGL renderer: ${renderer ?? 'unavailable'}\n`)
+}
+
 // ---- Mesh inputs (render/meshLoader, render/meshRender) -------------------
 // The reference ENGINE starts every mesh surface at zero. The reference DEMO
 // HOST loads the first `builtinMeshes` entry of each step whose effect
@@ -407,7 +448,10 @@ async function main () {
   let pngBuffer
   let sampled = false
   try {
+    await applyGoldenChromiumArgs()
+    const launchesBefore = goldenLaunchCount
     await session.setup()
+    assertGoldenChromiumArgsApplied(launchesBefore)
     const page = session.page
     await session.setBackend(opts.backend)
     const globals = session.globals
@@ -420,6 +464,7 @@ async function main () {
     await page.waitForFunction(() => !!window.__noisemakerRenderingPipeline &&
       !!document.getElementById('dsl-editor') && !!document.getElementById('dsl-run-btn'),
     null, { timeout: STATUS_TIMEOUT })
+    await logGoldenRenderer(page)
 
     // Pause and size the demo BEFORE loading our DSL (GAP-026). A resize runs
     // pipeline.initAsyncEffects(), which cancels in-flight asyncInit overlays
