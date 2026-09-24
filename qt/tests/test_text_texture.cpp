@@ -22,6 +22,7 @@
 #include <QPainterPath>
 #include <QRawFont>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -314,18 +315,13 @@ void testKerningVariationDeltas() {
           "an invalid font or a single glyph gets zero deltas");
 }
 
-// Elements [from, to) of `a` equal those of `b` moved right by `dx`:
-// exactly when `exact`, else within 1e-9 px (the platform engine may round
-// a glyph's translation differently from a translated QRawFont outline).
-bool sameElements(const QPainterPath& a, const QPainterPath& b, int from, int to, double dx, bool exact) {
-    for (int i = from; i < to; ++i) {
+// `a` and `b` have the same elements, exactly.
+bool identicalElements(const QPainterPath& a, const QPainterPath& b) {
+    if (a.elementCount() != b.elementCount()) return false;
+    for (int i = 0; i < a.elementCount(); ++i) {
         const QPainterPath::Element e = a.elementAt(i);
         const QPainterPath::Element f = b.elementAt(i);
-        if (e.type != f.type) return false;
-        if (exact ? (e.x != f.x + dx || e.y != f.y)
-                  : (std::abs((e.x - f.x) - dx) > 1e-9 || std::abs(e.y - f.y) > 1e-9)) {
-            return false;
-        }
+        if (e.type != f.type || e.x != f.x || e.y != f.y) return false;
     }
     return true;
 }
@@ -346,8 +342,7 @@ void testLinePath() {
             expected.addText(origin, font, text);
             double delta = -1.0;
             const QPainterPath got = nm::detail::textLinePath(font, text, origin, &delta);
-            zeroDeltaEqual = zeroDeltaEqual && delta == 0.0 && got.elementCount() == expected.elementCount()
-                && sameElements(got, expected, 0, got.elementCount(), 0.0, true);
+            zeroDeltaEqual = zeroDeltaEqual && delta == 0.0 && identicalElements(got, expected);
         }
     }
     check(zeroDeltaEqual, "without kerning deltas the line outline equals QPainterPath::addText exactly");
@@ -364,14 +359,82 @@ void testLinePath() {
     double delta = 0.0;
     const QPainterPath got = nm::detail::textLinePath(heavy, text, origin, &delta);
     const QRawFont raw = QRawFont::fromFont(heavy);
-    const int yElements = raw.pathForGlyph(raw.glyphIndexesForString(QStringLiteral("y")).first()).elementCount();
-    const int count = expected.elementCount();
     const double shift = 43.132324 * 102.0 / raw.unitsPerEm();
-    std::printf("  Heavy: elements=%d y elements=%d delta=%.5f px\n", count, yElements, delta);
+    std::printf("  Heavy: elements=%d delta=%.5f px\n", expected.elementCount(), delta);
     check(std::abs(delta - shift) < 1e-6, "the line advance grows by the vy delta in pixels");
-    check(got.elementCount() == count && sameElements(got, expected, 0, count - yElements, 0.0, false)
-              && sameElements(got, expected, count - yElements, count, delta, false),
-          "only the glyph after the kerned pair moves, by the delta (within 1e-9 px)");
+
+    // Where each glyph's elements end, and the largest coordinate involved.
+    const QList<quint32> glyphs = raw.glyphIndexesForString(text);
+    std::vector<int> glyphEnd;
+    double magnitude = 0.0;
+    for (const quint32 glyph : glyphs) {
+        const QPainterPath local = raw.pathForGlyph(glyph);
+        glyphEnd.push_back((glyphEnd.empty() ? 0 : glyphEnd.back()) + local.elementCount());
+        for (int i = 0; i < local.elementCount(); ++i) {
+            magnitude = std::max({magnitude, std::abs(local.elementAt(i).x), std::abs(local.elementAt(i).y)});
+        }
+    }
+    bool singlePrecision = true;
+    for (int i = 0; i < expected.elementCount(); ++i) {
+        const QPainterPath::Element e = expected.elementAt(i);
+        singlePrecision = singlePrecision && double(float(e.x)) == e.x && double(float(e.y)) == e.y;
+        magnitude = std::max({magnitude, std::abs(e.x), std::abs(e.y)});
+    }
+
+    // Both paths hold the font engine's outlines: addText asks the engine for
+    // each glyph at its position, the renderer asks for each glyph at the
+    // origin and translates that outline in double precision. CoreText and
+    // FreeType compute outlines in double precision; the paths agree within
+    // 3e-14 px on macOS. DirectWrite returns them as D2D1_POINT_2F, single
+    // precision (Qt 6.10 QWindowsFontEngineDirectWrite::addGlyphsToPath passes
+    // the glyph positions to GetGlyphRunOutline as FLOAT offsets), so one path
+    // rounds a point at its position on the line and the other at its
+    // position in the glyph. Allowing each path two roundings to single
+    // precision (the scaled point, then the point plus its offset), each
+    // within half a unit in the last place of a value below 2^k px, the paths
+    // agree within 4 * 2^(k - 25) = 2^(k - 23) px: 2^-15 = 3.05e-5 px here,
+    // where every coordinate is below 256 px. A glyph moved by one QFixed
+    // step (1/64 px) would be 512 times that. The engine is single precision
+    // when every coordinate addText returns is a float.
+    const double tolerance = singlePrecision ? std::ldexp(1.0, std::ilogb(magnitude) + 1 - 23) : 1e-9;
+    struct Worst {
+        double deviation = 0.0;
+        int element = -1;
+    };
+    Worst others;
+    Worst moved;
+    const int count = expected.elementCount();
+    const bool sameStructure = glyphs.size() == text.size() && got.elementCount() == count
+        && glyphEnd.back() == count;
+    const int yFirst = sameStructure ? glyphEnd[glyphEnd.size() - 2] : count;
+    bool sameTypes = sameStructure;
+    for (int i = 0; sameStructure && i < count; ++i) {
+        const QPainterPath::Element e = expected.elementAt(i);
+        const QPainterPath::Element f = got.elementAt(i);
+        sameTypes = sameTypes && e.type == f.type;
+        const double deviation = std::max(std::abs(f.x - e.x - (i >= yFirst ? delta : 0.0)), std::abs(f.y - e.y));
+        Worst& worst = i >= yFirst ? moved : others;
+        if (deviation > worst.deviation) worst = {deviation, i};
+    }
+    const auto glyphOf = [&](int element) {
+        int g = 0;
+        while (g + 1 < static_cast<int>(glyphEnd.size()) && element >= glyphEnd[static_cast<std::size_t>(g)]) ++g;
+        return text.at(g).toLatin1();
+    };
+    std::printf("  Heavy: got elements=%d, glyph elements=%d, element types %s\n", got.elementCount(),
+                glyphEnd.empty() ? 0 : glyphEnd.back(), sameTypes ? "equal" : "differ");
+    std::printf("  Heavy: outline coordinates %s precision, largest |coordinate| %.3f px, tolerance %.3g px\n",
+                singlePrecision ? "single" : "double", magnitude, tolerance);
+    if (sameStructure) {
+        const QPainterPath::Element o = expected.elementAt(std::max(others.element, 0));
+        const QPainterPath::Element m = expected.elementAt(std::max(moved.element, 0));
+        std::printf("  Heavy: H, e, a, v largest |shift| %.3g px at element %d (%c, %.4f, %.4f); "
+                    "y largest |shift - delta| %.3g px at element %d (%c, %.4f, %.4f)\n",
+                    others.deviation, others.element, glyphOf(std::max(others.element, 0)), o.x, o.y,
+                    moved.deviation, moved.element, glyphOf(std::max(moved.element, 0)), m.x, m.y);
+    }
+    check(sameStructure && sameTypes && others.deviation <= tolerance && moved.deviation <= tolerance,
+          "only the glyph after the kerned pair moves, by the delta (within the engine's outline precision)");
 }
 #endif
 
