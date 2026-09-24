@@ -377,16 +377,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-019: triangle mesh rendering and meshLoader are not implemented
 
-- Status: open. Priority: P2. Category: implementation.
-- Affected scope: render/meshRender (`drawMode: "triangles"`), render/meshLoader, nm::Backend.
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: render/meshRender (`drawMode: "triangles"`), render/meshLoader, nm::Backend, qt/noisemaker/runtime/obj_parser.{h,cpp}, qt/noisemaker/share/meshes, nm-render, the golden and candidate harness.
 - Expected behavior: Draw triangles from the mesh textures that the reference fills through its mesh upload and OBJ parser (webgl2.js drawMode triangles; obj-parser.js).
-- Observed behavior: Backend throws for `drawMode: "triangles"`. It has no mesh upload API. Both effects stay excluded from the export kit.
-- Evidence: backend executePass `drawMode` handling; export-kit/kit.config.json compat exclusions.
-- Next action: Port the mesh upload and the triangles draw path, then add fixtures with reference-minted goldens.
-- Dependencies: A host API for mesh data (OBJ text or position, normal and UV arrays).
+- Observed behavior: Backend draws `drawMode: "triangles"` with the reference state: the pass's own vertex stage, a DEPTH_COMPONENT24 depth buffer cleared per pass, LESS, back-face culling with CCW front faces, gl_VertexID draws, and the count from the mesh position texture. Hosts supply meshes through loadOBJFromFile, loadOBJFromString, and uploadMeshData. externalMeshes(graph) lists meshLoader steps and their built-in meshes. The engine loads no default mesh, as the reference engine does. nm-render loads the first built-in mesh (sphere), as the reference demo host does. The parser is bit-identical to obj-parser.js.
+- Evidence: parity/run.sh at 2.001/0.98: meshLoaderDefault, meshLoaderPreview, meshRenderEmpty, meshRenderParams, meshRenderWireframe, and meshRenderCustom pass with max-abs-diff 0 and ssim 1.0, also through --dsl and the sweep's batch render. Full sweep: 350/353 pass; the 3 failures (fibers, scratches, text) read no mesh and are GAP-025/GAP-026 cases. check_obj_parser.mjs: 443/443 inputs bit-identical (5043/5043 with 5000 fuzz cases); built-in meshes 7/7 byte-identical. Compiler gates 370/370; ctest 19/19; pytest parity 37/37. Independent integration check: goldens minted again from the reference for meshLoaderDefault and meshRenderCustom match with max-abs-diff 0; the mesh covers 19.5% and 61% of those frames. Commits f0d9eef, f58f1c1, 0ef82d1, ed509df, 79b356a. macOS arm64, Qt 6.11.1, reference c9ee8a04.
+- Next action: The export kit ships qt/noisemaker/share, drops the meshLoader and meshRender exclusions, and loads host meshes. Record the first Linux and Windows CI results for test_mesh_render and check_obj_parser.
+- Dependencies: None.
 - Acceptance criteria: meshRender fixtures pass at the strict tolerance against reference goldens.
-- Required checks: parity/run.sh on the new fixtures, then a full sweep.
-- Last verification: 2026-09-24.
+- Required checks: parity/run.sh on the mesh fixtures, check_obj_parser.mjs, test_obj_parser, test_mesh_render, then a full sweep.
+- Last verification: 2026-09-24, reference c9ee8a04, macOS arm64.
 
 ### GAP-020: compute pass fields raise UnsupportedDsl
 
@@ -485,12 +485,12 @@ These entries record missing qualification. They do not infer implementation def
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
 - Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's. Before 167a62c, FreeType slanted synthetic italic by about 12 degrees, not Chromium's skew of 1/4; the italic case missed the centroid bound by 0.38 px.
-- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3.
-- Next action: Record the first Linux render-smoke result. Measure on Windows (DirectWrite). Re-check kerning when Qt applies variation deltas in shaping.
+- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996.
+- Next action: Measure on Windows (DirectWrite). Re-check kerning when Qt applies variation deltas in shaping.
 - Dependencies: Qt font shaping (external).
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
-- Last verification: 2026-09-24, macOS CoreText and FreeType engines.
+- Last verification: 2026-09-24, macOS (CoreText and FreeType engines) and Linux CI.
 
 ### GAP-028: compileGraph failures did not say what was wrong
 
@@ -516,6 +516,32 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: None.
 - Acceptance criteria: --help lists every mode and flag in main.cpp. An unknown flag names that flag and prints the usage block.
 - Required checks: a CLI test that runs nm-render --help and an unknown flag and checks the exit codes and text.
+- Last verification: 2026-09-24.
+
+### GAP-030: the reference loses the first mesh draw into a new FBO
+
+- Status: open. Priority: P3. Category: authority.
+- Affected scope: reference webgl2.js ensureDepthBuffer() and the executePass triangles branch; render/meshRender on the first frame after its output FBO is created (compile, resize).
+- Expected behavior: Every frame draws the mesh into the pass output.
+- Observed behavior: ensureDepthBuffer() binds the default framebuffer after it creates a depth buffer. The reference's first mesh draw into a new FBO goes to the canvas. The port draws into the FBO on every frame, so its first frame differs from the reference's.
+- Evidence: Reference probe at c9ee8a04 (Chromium WebGL2): after pipeline.resize(200, 200), the frame 1 centre pixel is (25, 25, 38, 255) (background) and frame 2 is (163, 163, 163, 255). Goldens render 8 frames and are unaffected.
+- Next action: Fix the reference: bind the pass FBO again after ensureDepthBuffer(). The reference repository owns this change.
+- Dependencies: The reference repository.
+- Acceptance criteria: The reference draws the mesh on frame 1, or this divergence stays recorded.
+- Required checks: The 1-frame reference probe after a resize.
+- Last verification: 2026-09-24.
+
+### GAP-031: triangle passes ignore countUniform
+
+- Status: open. Priority: P3. Category: contract.
+- Affected scope: nm::Graph (graph.cpp does not parse countUniform); the Backend triangles count.
+- Expected behavior: A triangles pass with countUniform draws that uniform's positive value (webgl2.js executePass).
+- Observed behavior: The expander emits countUniform, but the runtime ignores it and uses count. No definition declares countUniform at c9ee8a04.
+- Evidence: grep -rn countUniform shaders/effects in the reference returns nothing. qt/noisemaker/runtime/graph.cpp has no countUniform field.
+- Next action: None until a definition uses it. Then parse it and port the lookup (pass uniforms, then globals).
+- Dependencies: A reference definition with countUniform.
+- Acceptance criteria: A render fixture for the first such definition passes at strict tolerance.
+- Required checks: check_graph and parity/run.sh on that fixture.
 - Last verification: 2026-09-24.
 
 ## 5. Ordered next actions

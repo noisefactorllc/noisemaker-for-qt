@@ -198,10 +198,10 @@ audio.
   T3-era runtime (which does implement the fullscreen/MRT/points machinery this family actually
   needs — there is no separate "3D backend" to be missing) grew past whatever state made it true,
   if it ever was. Direct evidence: all 7 `synth3d` + 2 `filter3d` effects render correctly, gated
-  in the coverage table above. `read3d()`/`mesh()` (a mesh-geometry DSL surface distinct from the
-  volume-atlas path `render3d()`/`synth3d`/`filter3d` use) were not part of this investigation and
-  their status is genuinely unknown — not claimed working, not claimed `UnsupportedDsl`, just
-  unverified either way pending someone actually testing them.
+  in the coverage table above. `read3d()` was not part of this investigation, and no fixture uses
+  it, so its status is unverified. Mesh geometry (the `mesh0`..`mesh7` surfaces that
+  `meshLoader()` fills and `meshRender()` draws with `drawMode: "triangles"`) renders since GAP-019:
+  6 mesh fixtures pass bit-exact against reference goldens (2026-09-24, macOS arm64).
 - **Billboards are partly gate-verified.** `drawMode:"billboards"` (`pointsBillboardRender`):
   `heightGrid_billboard` PASSes exactly (2026-09-24 sweep), while `heightGrid_billboard_alpha`
   (`blendMode: alpha`) FAILs across the whole frame (GAP-010).
