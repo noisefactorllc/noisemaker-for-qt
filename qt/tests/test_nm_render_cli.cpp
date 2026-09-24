@@ -1,5 +1,8 @@
 // nm-render's command line: --help lists every mode and flag and exits 0;
 // an unknown option, no arguments, or no mode print the usage and exit 2.
+// Qt may add its own diagnostics to standard error (for example
+// "XDG_RUNTIME_DIR not set" on Linux), so stderr is searched, not matched
+// from its start.
 //
 //   test_nm_render_cli <path to nm-render>
 
@@ -60,16 +63,16 @@ int main(int argc, char** argv) {
             listsAll = false;
         }
     }
-    check(help.exitCode == 0 && listsAll && help.err.isEmpty(),
+    check(help.exitCode == 0 && listsAll && !help.err.contains(QStringLiteral("usage: nm-render")),
           "--help prints every mode and flag on standard output and exits 0");
 
     const Result unknown = run(nmRender, {QStringLiteral("--dsl"), QStringLiteral("x.dsl"), QStringLiteral("--bogus")});
-    check(unknown.exitCode == 2 && unknown.err.startsWith(QStringLiteral("ERROR: unknown option --bogus"))
+    check(unknown.exitCode == 2 && unknown.err.contains(QStringLiteral("ERROR: unknown option --bogus"))
               && unknown.err.contains(QStringLiteral("usage: nm-render")) && unknown.out.isEmpty(),
           "an unknown option is named, the usage follows, and the exit status is 2");
 
     const Result none = run(nmRender, {});
-    check(none.exitCode == 2 && none.err.startsWith(QStringLiteral("usage: nm-render")),
+    check(none.exitCode == 2 && none.err.contains(QStringLiteral("usage: nm-render")) && none.out.isEmpty(),
           "no arguments print the usage and exit 2");
 
     const Result noMode = run(nmRender, {QStringLiteral("--size"), QStringLiteral("8x8")});
