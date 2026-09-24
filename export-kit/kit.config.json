@@ -8,16 +8,26 @@
   "gatedTopLevelDirs": {
     "engine": "engine",
     "effects": "engine",
+    "fonts": "engine",
     "shaders": "shaders"
   },
   "subtrees": [
     { "from": "qt/noisemaker/compiler", "to": "engine/noisemaker/compiler" },
     { "from": "qt/noisemaker/runtime", "to": "engine/noisemaker/runtime" },
     { "from": "qt/noisemaker/effects", "to": "effects" },
+    { "from": "qt/noisemaker/fonts", "to": "fonts" },
     { "from": "qt/noisemaker/shaders", "to": "shaders" }
   ],
   "licenses": [
-    { "from": "LICENSE", "to": "LICENSES/noisemaker-for-qt-LICENSE.txt" }
+    { "from": "LICENSE", "to": "LICENSES/noisemaker-for-qt-LICENSE.txt" },
+    { "from": "qt/noisemaker/fonts/Nunito/OFL.txt", "to": "LICENSES/Nunito-OFL.txt" }
+  ],
+  "requireFiles": [
+    "src/main.cpp",
+    "src/host_inputs.cpp",
+    "fonts/Nunito/Nunito-VariableFont_wght.ttf",
+    "fonts/Nunito/OFL.txt",
+    "LICENSES/Nunito-OFL.txt"
   ],
   "shaderLayout": {
     "root": "shaders",
@@ -34,5 +44,5 @@
     "excludeNames": ["media", "scope", "spectrum"],
     "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair", "filter/text", "render/meshLoader", "render/meshRender", "synth/roll"]
   },
-  "engineBytesFrom": ["engine/", "effects/"]
+  "engineBytesFrom": ["engine/", "effects/", "fonts/"]
 }

@@ -49,6 +49,16 @@ target_link_libraries(test_text_texture PRIVATE noisemaker-qt Qt6::Core Qt6::Gui
 add_test(NAME test_text_texture COMMAND test_text_texture)
 set_tests_properties(test_text_texture PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+# The export kit's host input code (export-kit/kit/src), built against
+# this tree the way the kit builds it against its vendored engine.
+add_executable(test_export_kit_host test_export_kit_host.cpp
+    ${PROJECT_SOURCE_DIR}/../export-kit/kit/src/host_inputs.h
+    ${PROJECT_SOURCE_DIR}/../export-kit/kit/src/host_inputs.cpp)
+target_include_directories(test_export_kit_host PRIVATE ${PROJECT_SOURCE_DIR}/../export-kit/kit/src)
+target_link_libraries(test_export_kit_host PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_export_kit_host COMMAND test_export_kit_host)
+set_tests_properties(test_export_kit_host PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 # Compiler track (T8-T10) tests, same plain-executable convention.
 add_executable(test_lexer test_lexer.cpp)
 target_link_libraries(test_lexer PRIVATE noisemaker-qt Qt6::Core)
