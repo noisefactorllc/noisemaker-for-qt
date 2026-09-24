@@ -89,15 +89,15 @@ These entries record missing qualification. They do not infer implementation def
 ### GAP-002: installed developer workflow qualification
 
 - Status: open. Priority: P2. Category: usability.
-- Affected scope: Public API, examples, supported hosts, errors, recovery, and lifecycle.
+- Affected scope: Public API, examples (viewer, Qt Quick), the installed CMake package, supported hosts, errors, recovery, and lifecycle.
 - Expected behavior: Developers can install, produce useful output, integrate it, recover from errors, and remove the package.
-- Observed behavior: This pass did not exercise the complete installed workflow or supported-version matrix.
-- Evidence: [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md), [official reference](https://doc.qt.io/qt-6/qopenglwidget.html), and section 3.
-- Next action: Build and install under a private prefix. Load with find_package, render DSL to PNG, run viewer --selfcheck, then test resize and teardown.
-- Dependencies: Use an isolated consumer. Identify host, GPU, licensing, and input requirements before execution.
-- Acceptance criteria: Retain artifact hashes, steps, meaningful output, error diagnostics, recovery results, and cleanup results.
-- Required checks: Test minimum and current supported versions. Check cancellation and file preservation where relevant. Keep unavailable platforms explicit.
-- Last verification: 2026-09-24. Source inspection does not close this gap.
+- Observed behavior: On macOS the installed workflow passes: build, install, versioned find_package consumer, nm-render, the viewer and Qt Quick examples from the tree and the install, resize and teardown cycles, error recovery, relocation, and uninstall. Before this pass the viewer could not resize, the Backend had no resize, --selfcheck wrote /tmp/viewer.png, the quick start needed Ninja, find_package with a version failed, no license was installed, uninstall was undocumented, and there was no Qt Quick integration. A wrong data root still reports every effect as unknown (GAP-032).
+- Evidence: Earlier pass: [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md), [official reference](https://doc.qt.io/qt-6/qopenglwidget.html), and section 3. This pass: a literal README run in a fresh clone at the candidate commit (exit codes, hashes, and grabs retained in the run record). A find_package(noisemaker-qt 0.1) consumer renders byte-identical to nm-render; versions 0.2 and 1.0 are refused. The uninstall leaves 0 files. ctest 22/22, including test_backend_lifecycle, test_quick_item, and test_nm_render_cli. Commits ed3eb58 to 6a70ee0. macOS arm64, Qt 6.11.1.
+- Next action: Run the same workflow on Linux and Windows (CI covers the new tests). Make EffectRegistry::loadAll reject a data root without effects/ (GAP-032). Test the oldest supported Qt 6 minor and state it in the README.
+- Dependencies: CI results for the three operating systems; GAP-032.
+- Acceptance criteria: The README commands pass as written on each supported OS. A wrong data root names the directory. The minimum Qt version is stated and built.
+- Required checks: ctest on all three OSes, viewer and quick --selfcheck, a consumer build against an installed prefix, and an uninstall that leaves no files.
+- Last verification: 2026-09-24, macOS arm64, Qt 6.11.1.
 
 ### GAP-003: distribution and release qualification
 
@@ -381,12 +381,12 @@ These entries record missing qualification. They do not infer implementation def
 - Affected scope: render/meshRender (`drawMode: "triangles"`), render/meshLoader, nm::Backend, qt/noisemaker/runtime/obj_parser.{h,cpp}, qt/noisemaker/share/meshes, nm-render, the golden and candidate harness.
 - Expected behavior: Draw triangles from the mesh textures that the reference fills through its mesh upload and OBJ parser (webgl2.js drawMode triangles; obj-parser.js).
 - Observed behavior: Backend draws `drawMode: "triangles"` with the reference state: the pass's own vertex stage, a DEPTH_COMPONENT24 depth buffer cleared per pass, LESS, back-face culling with CCW front faces, gl_VertexID draws, and the count from the mesh position texture. Hosts supply meshes through loadOBJFromFile, loadOBJFromString, and uploadMeshData. externalMeshes(graph) lists meshLoader steps and their built-in meshes. The engine loads no default mesh, as the reference engine does. nm-render loads the first built-in mesh (sphere), as the reference demo host does. The parser is bit-identical to obj-parser.js.
-- Evidence: parity/run.sh at 2.001/0.98: meshLoaderDefault, meshLoaderPreview, meshRenderEmpty, meshRenderParams, meshRenderWireframe, and meshRenderCustom pass with max-abs-diff 0 and ssim 1.0, also through --dsl and the sweep's batch render. Full sweep: 350/353 pass; the 3 failures (fibers, scratches, text) read no mesh and are GAP-025/GAP-026 cases. check_obj_parser.mjs: 443/443 inputs bit-identical (5043/5043 with 5000 fuzz cases); built-in meshes 7/7 byte-identical. Compiler gates 370/370; ctest 19/19; pytest parity 37/37. Independent integration check: goldens minted again from the reference for meshLoaderDefault and meshRenderCustom match with max-abs-diff 0; the mesh covers 19.5% and 61% of those frames. Commits f0d9eef, f58f1c1, 0ef82d1, ed509df, 79b356a. macOS arm64, Qt 6.11.1, reference c9ee8a04.
-- Next action: The export kit ships qt/noisemaker/share, drops the meshLoader and meshRender exclusions, and loads host meshes. Record the first Linux and Windows CI results for test_mesh_render and check_obj_parser.
+- Evidence: parity/run.sh at 2.001/0.98: meshLoaderDefault, meshLoaderPreview, meshRenderEmpty, meshRenderParams, meshRenderWireframe, and meshRenderCustom pass with max-abs-diff 0 and ssim 1.0, also through --dsl and the sweep's batch render. Full sweep: 350/353 pass; the 3 failures (fibers, scratches, text) read no mesh and are GAP-025/GAP-026 cases. check_obj_parser.mjs: 443/443 inputs bit-identical (5043/5043 with 5000 fuzz cases); built-in meshes 7/7 byte-identical. Compiler gates 370/370; ctest 19/19; pytest parity 37/37. Independent integration check: goldens minted again from the reference for meshLoaderDefault and meshRenderCustom match with max-abs-diff 0; the mesh covers 19.5% and 61% of those frames. Commits f0d9eef, f58f1c1, 0ef82d1, ed509df, 79b356a. macOS arm64, Qt 6.11.1, reference c9ee8a04. CI run 36031919085 (e6c8f72): test_obj_parser and test_mesh_render pass on Linux llvmpipe, Windows llvmpipe, and macOS; check_obj_parser BUILTIN MESHES 7/7. The export kit ships the meshes since 3a470b6 and 31b8e2f: an assembled kit renders the default sphere (19.5% of the frame, centre 161), renders --mesh share/meshes/cube.obj differently, and exits 1 naming a missing OBJ.
+- Next action: Grade mesh fixtures in CI render-smoke.
 - Dependencies: None.
 - Acceptance criteria: meshRender fixtures pass at the strict tolerance against reference goldens.
 - Required checks: parity/run.sh on the mesh fixtures, check_obj_parser.mjs, test_obj_parser, test_mesh_render, then a full sweep.
-- Last verification: 2026-09-24, reference c9ee8a04, macOS arm64.
+- Last verification: 2026-09-24, reference c9ee8a04, macOS arm64 renders; Linux and Windows CI tests.
 
 ### GAP-020: compute pass fields raise UnsupportedDsl
 
@@ -507,12 +507,12 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-029: nm-render has no usage text
 
-- Status: open. Priority: P3. Category: usability.
+- Status: closed. Priority: P3. Category: usability.
 - Affected scope: qt/tools/nm-render/main.cpp; the README nm-render section.
 - Expected behavior: nm-render --help, or a call without a render mode, prints the modes and their flags and exits 0 or 2.
-- Observed behavior: nm-render --help prints "unimplemented: no recognized render mode in arguments". A developer must read main.cpp or the README to find --dsl, --size, --out, --time, --frames, --graph, --samples, --batch-manifest, and the --dump-* modes.
-- Evidence: nm-render built from f53f3d6, macOS arm64, 2026-09-24.
-- Next action: Print a usage block for --help and for unrecognized arguments. Exit 0 for --help and 2 for bad arguments.
+- Observed behavior: Fixed in c24cf7a. --help prints every mode and flag (--dsl, --graph, --samples, --batch-manifest, --size, --out, --time, --frames, --mesh, the --dump-* modes, --help), the data root, and exit statuses, and exits 0. An unknown option, no arguments, or no mode print the usage with the problem named and exit 2. Before the fix, nm-render --help printed "unimplemented: no recognized render mode in arguments". A developer must read main.cpp or the README to find --dsl, --size, --out, --time, --frames, --graph, --samples, --batch-manifest, and the --dump-* modes.
+- Evidence: Before: nm-render built from f53f3d6. After: test_nm_render_cli (5 checks) in ctest; check_lex and check_graph 364/364 and check_parse and check_validate 370/370 still pass. Integration check: --help exits 0; --bogus prints "ERROR: unknown option --bogus" and the usage and exits 2.
+- Next action: None.
 - Dependencies: None.
 - Acceptance criteria: --help lists every mode and flag in main.cpp. An unknown flag names that flag and prints the usage block.
 - Required checks: a CLI test that runs nm-render --help and an unknown flag and checks the exit codes and text.
@@ -543,6 +543,19 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: A render fixture for the first such definition passes at strict tolerance.
 - Required checks: check_graph and parity/run.sh on that fixture.
 - Last verification: 2026-09-24.
+
+### GAP-032: a wrong data root reports every effect as unknown
+
+- Status: open. Priority: P2. Category: usability.
+- Affected scope: qt/noisemaker/compiler/effect_registry.cpp (EffectRegistry::loadAll); every library host that passes a data root.
+- Expected behavior: A data root without effect definitions fails with a message that names the directory.
+- Observed behavior: EffectRegistry::loadAll(root) loads nothing and does not throw when <root>/effects is missing. Each program then fails with "Unknown effect: '<name>'" for every effect. The Qt Quick item checks the root itself; plain library hosts do not.
+- Evidence: A literal README run, 2026-09-24: a missing data root gives exit 1 with the unknown-effect message.
+- Next action: Throw std::runtime_error naming "<root>/effects" when it holds no definitions. Add a unit test.
+- Dependencies: None.
+- Acceptance criteria: loadAll on a root without effects/ throws with the directory in the message; nm-render with a wrong root prints it.
+- Required checks: test_registry; ctest.
+- Last verification: 2026-09-24, macOS arm64.
 
 ## 5. Ordered next actions
 
