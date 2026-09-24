@@ -484,13 +484,13 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P3. Category: ecosystem.
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
-- Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's.
-- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5.
-- Next action: Re-measure on Linux and Windows. Re-check kerning when Qt applies variation deltas in shaping.
+- Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's. Before 167a62c, FreeType slanted synthetic italic by about 12 degrees, not Chromium's skew of 1/4; the italic case missed the centroid bound by 0.38 px.
+- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3.
+- Next action: Record the first Linux render-smoke result. Measure on Windows (DirectWrite). Re-check kerning when Qt applies variation deltas in shaping.
 - Dependencies: Qt font shaping (external).
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
-- Last verification: 2026-09-24, macOS only.
+- Last verification: 2026-09-24, macOS CoreText and FreeType engines.
 
 ### GAP-028: compileGraph failures did not say what was wrong
 
