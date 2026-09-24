@@ -183,6 +183,121 @@ jobs:
       - name: Build library, nm-render and tests
         run: cmake --build build --config Release --parallel
 
+  install-workflow:
+    # GAP-002: the README's installed workflow, literally, on each OS: build
+    # and install the library, build the viewer and the Qt Quick example
+    # against the install (the configure log must say it used the installed
+    # package, not the qt/ tree), run their --selfcheck, render with the
+    # installed nm-render from an unrelated directory, then uninstall and
+    # require an empty prefix.
+    name: installed workflow (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Git Bash would rewrite Windows paths and /-style arguments.
+      MSYS_NO_PATHCONV: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ runner.os == 'Windows' && env.QT_VERSION_WINDOWS || env.QT_VERSION }}
+          arch: ${{ runner.os == 'Windows' && env.QT_ARCH_WINDOWS || '' }}
+          cache: true
+
+      - name: Install Linux GL and X11 runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
+
+      - name: Install Mesa llvmpipe (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
+          $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
+          7z x mesa.7z "-o$env:RUNNER_TEMP/mesa" | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/mesa/x64/opengl32.dll" "$env:RUNNER_TEMP/mesa/x64/opengl32sw.dll"
+
+      - name: Paths
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            {
+              echo "PREFIX=$(cygpath -m "$RUNNER_TEMP/nm-prefix")"
+              echo "QT_PREFIX=$(cygpath -m "$QT_ROOT_DIR")"
+              echo "CONFIG_DIR=Release/"
+              echo "EXE=.exe"
+            } >> "$GITHUB_ENV"
+          else
+            {
+              echo "PREFIX=$RUNNER_TEMP/nm-prefix"
+              echo "QT_PREFIX=$QT_ROOT_DIR"
+              echo "CONFIG_DIR="
+              echo "EXE="
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Build and install the library
+        run: |
+          cmake -B qt/build -S qt -DCMAKE_BUILD_TYPE=Release -DNM_QT_BUILD_QUICK=ON -DNM_QT_BUILD_TESTS=OFF "-DCMAKE_PREFIX_PATH=$QT_PREFIX"
+          cmake --build qt/build --config Release --parallel
+          cmake --install qt/build --config Release --prefix "$PREFIX"
+
+      - name: Build the viewer and the Qt Quick example against the install
+        run: |
+          for ex in viewer quick; do
+            cmake -B "examples/$ex/build-installed" -S "examples/$ex" -DCMAKE_BUILD_TYPE=Release \
+              "-DCMAKE_PREFIX_PATH=$QT_PREFIX;$PREFIX" | tee "$RUNNER_TEMP/configure-$ex.log"
+            grep -q "using installed noisemaker-qt" "$RUNNER_TEMP/configure-$ex.log" \
+              || { echo "examples/$ex did not build against the installed package"; exit 1; }
+            cmake --build "examples/$ex/build-installed" --config Release --parallel
+            if [ "$RUNNER_OS" = Windows ]; then
+              cp "$RUNNER_TEMP"/mesa/x64/*.dll "examples/$ex/build-installed/Release/"
+            fi
+          done
+
+      - name: Self-checks and the installed nm-render
+        run: |
+          gui() {
+            case "$RUNNER_OS" in
+              Linux) QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x1024x24" "$@" ;;
+              Windows) QT_OPENGL=software GALLIUM_DRIVER=llvmpipe "$@" ;;
+              *) "$@" ;;
+            esac
+          }
+          for ex in viewer quick; do
+            gui "examples/$ex/build-installed/$CONFIG_DIR$ex$EXE" --selfcheck
+          done
+          mkdir -p "$RUNNER_TEMP/elsewhere"
+          cd "$RUNNER_TEMP/elsewhere"
+          if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP"/mesa/x64/*.dll .; fi
+          printf 'search synth\nnoise(seed: 3).write(o0)\nrender(o0)\n' > program.dsl
+          gui "$PREFIX/bin/nm-render$EXE" --dsl program.dsl --size 64x64 --out out.png
+          test -s out.png
+
+      - name: Uninstall
+        run: |
+          while IFS= read -r file || [ -n "$file" ]; do rm -f "$file"; done < qt/build/install_manifest.txt
+          rm -r "$PREFIX/include/noisemaker-qt" "$PREFIX/lib/cmake/noisemaker-qt" \
+            "$PREFIX/share/noisemaker-qt" "$PREFIX/share/doc/noisemaker-qt"
+          left=$(find "$PREFIX" -type f | wc -l)
+          find "$PREFIX" -type f
+          echo "files left under the prefix: $left"
+          test "$left" -eq 0
+
   gates:
     runs-on: ubuntu-latest
     timeout-minutes: 60
