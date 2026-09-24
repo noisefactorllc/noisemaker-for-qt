@@ -138,16 +138,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-005: compiler warnings break hosts that build with warnings as errors
 
-- Status: open. Priority: P2. Category: ecosystem.
+- Status: closed. Priority: P2. Category: ecosystem.
 - Affected scope: qt/noisemaker/compiler/lexer.cpp, validator.cpp, expander.cpp, dsl_compiler.cpp, qt/tests/test_output_runtime.cpp.
 - Expected behavior: The library and tests build without warnings under `-Wall -Wextra -Wpedantic` (Clang, GCC) and `/W4` (MSVC).
 - Observed behavior: Apple Clang reported 8 warnings. Causes were unused functions, an unused field, unused parameters, and partial aggregate initializers.
 - Evidence: Unused code was removed, not suppressed. Token and GpuSurface initializers now set every field. Checks are listed below.
-- Next action: Run the warnings-as-errors CI job on Linux GCC and Windows MSVC.
-- Dependencies: GAP-006 CI workflow.
+- Next action: None.
+- Dependencies: None.
 - Acceptance criteria: Zero warnings with warnings as errors on macOS Clang, Linux GCC, and Windows MSVC `/W4 /WX`.
 - Required checks: Warnings-as-errors build of the library, nm-render, and tests. ctest and the compiler gates on the same source.
-- Last verification: 2026-09-24. Local Apple Clang passes. CI run 35968600167 (`3a4f421`): Linux GCC passed. The macOS job failed to link (AGL, a Qt packaging issue), and MSVC failed at configure (Git Bash rewrote the flags). Both fixes are unverified.
+- Last verification: 2026-09-24. Local Apple Clang passes. CI run 35968600167 (`3a4f421`): Linux GCC passed. The macOS job failed to link (AGL, a Qt packaging issue), and MSVC failed at configure (Git Bash rewrote the flags). Both fixes are unverified. CI run 35974199816 (`12c1d1c`): warnings-as-errors passed on macos-latest, ubuntu-latest and windows-latest (MSVC `/W4 /WX`, after the C4456 rename in `49131bd`); build-test ctest 15/15 and gates passed on the same SHA.
 
 <details><summary>GAP-005 evidence</summary>
 
@@ -159,16 +159,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-006: no CI builds or tests the library
 
-- Status: open. Priority: P2. Category: verification.
+- Status: closed. Priority: P2. Category: verification.
 - Affected scope: .github/workflows/ci.yml, all C++ sources, parity/check_*.mjs, parity/run.sh.
 - Expected behavior: Every push builds and tests the library on macOS, Linux, and Windows. The compiler gates and a render smoke run against the reference pin.
 - Observed behavior: Before this change, the only workflow was export-kit.yml. macOS was the only platform ever built.
 - Evidence: ci.yml has jobs build-test, warnings, gates, and render-smoke on GitHub-hosted runners. Actions are pinned by commit SHA. The Windows Mesa archive is pinned by SHA-256.
-- Next action: Push, then read each job with `gh run view`. Record GL renderers, ctest counts, and smoke results per platform.
-- Dependencies: Operator approval to push. Remote execution cannot be observed before a push.
+- Next action: None.
+- Dependencies: None.
 - Acceptance criteria: All four jobs pass on the pushed SHA. Linux and Windows ctest report 13 of 13 on llvmpipe. Smoke results stay at the strict tolerance.
 - Required checks: `gh run view` job logs for the exact SHA. Count skips and failures in the logs; do not rely on the summary.
-- Last verification: 2026-09-24. CI run 35968600167 on `3a4f421`: Linux build-test, gates, render-smoke and Linux warnings passed. macOS and Windows failed; fixes pending a run.
+- Last verification: 2026-09-24. CI run 35968600167 on `3a4f421`: Linux build-test, gates, render-smoke and Linux warnings passed. macOS and Windows failed; fixes pending a run. CI run 35974199816 (`12c1d1c`): all eight jobs passed. build-test ctest 15/15 on ubuntu-latest (llvmpipe), windows-latest (Mesa opengl32sw) and macos-latest, none skipped or not run. Gates: shaders 317/317, definitions 210/210, registry 5/5, lex/parse/validate/expand/graph 358/358, MIDI_STATE 66/66, AUDIO_STATE 93/93, AUDIO_ANALYZER 570/570. Render smoke PASS at the strict tolerance (max diff 1, tol 2.001).
 
 <details><summary>GAP-006 evidence</summary>
 
@@ -420,24 +420,24 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: The test checks that a format change recreates the surface with the driver's storage for the requested format.
 - Observed behavior: CI run 35970287679 (macos-latest) failed "recreated texture has GL_RGBA16F internal format". The test took 78.27 s, which suggests a software renderer.
 - Evidence: A CGL probe on this Mac: Apple M4 reports RGBA16F as 0x881a. The Apple Software Renderer (4.1 APPLE-23.1.1) reports it as 0x8814 (RGBA32F), also after delete and reallocation. This is driver storage, not a SurfaceCache bug.
-- Next action: Confirm the renderer name and the probe value in the next macOS CI log.
+- Next action: Run test_device_limits with its output shown on macos-latest (ctest -V -R test_device_limits) so the log carries GL_RENDERER and both formats.
 - Dependencies: A pushed CI run.
 - Acceptance criteria: macos-latest test_device_limits passes. The log shows GL_RENDERER and matching probe and recreated formats.
 - Required checks: `gh run view` log of test_device_limits on macos-latest.
-- Last verification: 2026-09-24. Local Apple M4: probe 0x881a, recreated 0x881a, test passes.
+- Last verification: 2026-09-24. Local Apple M4: probe 0x881a, recreated 0x881a, test passes. CI run 35974199816 (12c1d1c), macos-latest: test_device_limits passed in 88.58 s, consistent with the software renderer. ctest hides a passing test's output, so the log does not show GL_RENDERER or the formats yet.
 
 ### GAP-022: AnalyserNode 5.1 down-mix rounding differs by CPU architecture
 
-- Status: open. Priority: P2. Category: verification.
+- Status: closed. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/runtime/audio_analyzer.cpp, parity/check_audio_analyzer.mjs.
 - Expected behavior: Time-domain data matches the Chromium on the same architecture exactly, for 5.1 input too.
 - Observed behavior: CI run 35970287679 (ubuntu x86_64, Chromium 153.0.8010.12) failed the surround-5.1 case: 8983 time-domain mismatches, AUDIO_ANALYZER 476/570. At index 914, x86 Chromium gave 0.8555886149406433, the unfused value. arm64 Chromium gives the fused value 0.8555885553359985.
 - Evidence: The down-mix now uses std::fma on arm64 and a separate multiply and add elsewhere. The file builds with -ffp-contract=off. The oracle stays the Chromium running on that machine, with the same tolerance and all 570 reads.
-- Next action: Read the x86 render-smoke log for AUDIO_ANALYZER 570/570.
-- Dependencies: A pushed CI run.
+- Next action: None.
+- Dependencies: None.
 - Acceptance criteria: 570/570 on arm64 (local) and on x86_64 (CI), with the tolerances unchanged.
 - Required checks: check_audio_analyzer.mjs on both architectures.
-- Last verification: 2026-09-24. arm64 local: 570/570, 0 time-domain mismatches. x86_64 unverified.
+- Last verification: 2026-09-24. arm64 local: 570/570, 0 time-domain mismatches. x86_64: CI run 35974199816 (12c1d1c), render-smoke on ubuntu-latest: AUDIO_ANALYZER 570/570.
 
 ### GAP-023: fused multiply-add changed automation values against the reference
 
@@ -468,6 +468,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
 | 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012, GAP-013 and GAP-014 and GAP-016 (closed), GAP-015 (blocked), GAP-017 to GAP-020 (open) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `12c1d1c6f160e5fe30f482e6376f220b3ec982c4` | CI evidence review: GAP-005, GAP-006 and GAP-022 closed; GAP-021 updated (passes on macos-latest, renderer not yet logged). | CI run 35974199816: 8 of 8 jobs passed on macOS, Linux and Windows; ctest 15/15 on each; all gates and the render smoke passed. | GAP-021 needs the renderer in the log. GAP-010, GAP-011, GAP-017 to GAP-020 remain open; GAP-015 blocked. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.
