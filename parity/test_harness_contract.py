@@ -967,6 +967,41 @@ class HarnessContractTests(unittest.TestCase):
         self.assertIn("--mesh", args)
         self.assertEqual(args[args.index("--mesh") + 1], str(parity / "programs" / "meshy.obj"))
 
+    def _run_with_venv_layout(self, interpreters):
+        parity = self.tmp / "parity"
+        (parity / "out").mkdir(parents=True)
+        shutil.copy2(REPO / "parity" / "run.sh", parity / "run.sh")
+        for suffix in ("graph.json", "golden.png"):
+            (parity / "out" / f"chrome.{suffix}").touch()
+        (parity / "compare.py").write_text("# comparator stub\n")
+        for relative, verdict in interpreters.items():
+            python = parity / ".venv" / relative
+            python.parent.mkdir(parents=True, exist_ok=True)
+            python.write_text(f"#!/usr/bin/env bash\necho '[{verdict}] {relative}'\n")
+            python.chmod(0o755)
+        renderer = self.tmp / "fake-nm-render"
+        renderer.write_text(
+            "#!/usr/bin/env bash\n"
+            "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
+        )
+        renderer.chmod(0o755)
+        return subprocess.run(
+            ["bash", str(parity / "run.sh"), "chrome"],
+            env={**os.environ, "NM_RENDER": str(renderer)},
+            capture_output=True,
+            text=True,
+        )
+
+    def test_runner_uses_a_windows_venv_interpreter(self):
+        result = self._run_with_venv_layout({"Scripts/python.exe": "PASS"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("[PASS] Scripts/python.exe", result.stdout)
+
+    def test_runner_prefers_the_posix_venv_interpreter(self):
+        result = self._run_with_venv_layout({"bin/python": "PASS", "Scripts/python.exe": "FAIL"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("[PASS] bin/python", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

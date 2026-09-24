@@ -22,6 +22,10 @@ SIZE="${4:-256}"
 TIME="${5:-0.25}"
 NM_RENDER="${NM_RENDER:-$ROOT/qt/build/nm-render}"
 PY="$ROOT/parity/.venv/bin/python"
+# A venv created by a native Windows Python keeps its interpreter in Scripts/.
+if [ ! -e "$PY" ] && [ -e "$ROOT/parity/.venv/Scripts/python.exe" ]; then
+	PY="$ROOT/parity/.venv/Scripts/python.exe"
+fi
 GRAPH="$ROOT/parity/out/$NAME.graph.json"
 GOLD="$ROOT/parity/out/$NAME.golden.png"
 CAND="$ROOT/parity/out/$NAME.candidate.png"
