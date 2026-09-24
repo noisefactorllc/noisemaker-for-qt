@@ -18,6 +18,8 @@ These authority heads are review targets, not qualification results. No goldens 
 
 Served kit `0.1.17` identifies `8460cfd77798d4e79d37828c16b0b29a09fbdbda`. [Metadata](https://kits.noisedeck.app/qt/0/deployment-meta.json). Inventory and compatibility metadata were retrieved. Complete artifact bytes were not checked.
 
+Implementation update, 2026-09-24: the reference pin is `30c47030` (STATUS.md). The served kit is `0.1.35` from `cd8a050`, with all 210 effects and no exclusions. The macOS ledger grades 353 of 353 fixtures (309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped); the compiler gates are 379 of 379. CI runs 9 jobs on Linux, Windows, and macOS, including rendered smoke on Linux and Windows llvmpipe. The audit text above records the earlier review.
+
 These document paths do not match the current publication workflow filters.
 The containing commit identifies this register's publication revision. The shared run record retains commits, remote hashes, and downstream results.
 
@@ -25,10 +27,10 @@ The containing commit identifies this register's publication revision. The share
 
 | Claim ID | Claim source | Claimed scope | Finding | Evidence |
 |---|---|---|---|---|
-| CLAIM-001 | [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) | Source status reports compiler gates and historical rendered PASS, NEAR, and CHAOS classifications with effect-specific tolerances. | partial | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. |
-| CLAIM-002 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Human usability: installation, output, errors, and recovery | unverified | Complete installed workflows were not observed. GAP-002. |
-| CLAIM-003 | [Ecosystem reference](https://doc.qt.io/qt-6/qopenglwidget.html) | Ecosystem fit and version support | partial | Source entry points were examined. Installed integration and version qualification remain open. |
-| CLAIM-004 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Release readiness | unverified | Metadata and CI do not replace installation of the actual artifact. GAP-003. |
+| CLAIM-001 | [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) | Source status reports compiler gates and historical rendered PASS, NEAR, and CHAOS classifications with effect-specific tolerances. | partial | Earlier: 31 Python harness tests passed; a rebuild passed 12 C++ tests and rendered noise. 2026-09-24: the full macOS suite grades 353/353 (309 PASS, 44 NEAR, 0 FAIL); Linux and Windows CI grade 6 smoke fixtures at max 0. NEAR is not full parity. GAP-001. |
+| CLAIM-002 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Human usability: installation, output, errors, and recovery | partial | Earlier: complete installed workflows were not observed. 2026-09-24: the README installed workflow passes on macOS and Linux (Qt 6.9.3); Windows has CI ctest only. GAP-002. |
+| CLAIM-003 | [Ecosystem reference](https://doc.qt.io/qt-6/qopenglwidget.html) | Ecosystem fit and version support | partial | Earlier: source entry points were examined. 2026-09-24: find_package with a version, FetchContent by tag, a Qt Quick item, and Qt 6.9 as the stated minimum are verified on macOS and Linux. GAP-002. |
+| CLAIM-004 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Release readiness | partial | Earlier: metadata and CI do not replace installation. 2026-09-24: kit 0.1.29 reproduces byte for byte; the scaffold release gate builds and renders each Qt kit before publication; the notice and release-note decisions remain. GAP-003. |
 | CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-qt/actions?query=head_sha%3A8460cfd77798d4e79d37828c16b0b29a09fbdbda) | Workflow status only | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-qt/actions/runs/35953721777): `success`. |
 
 ## 3. Methods and evidence
@@ -78,23 +80,23 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/, qt/tests/, examples/viewer/, parity/, STATUS.md
 - Expected behavior: Reproducible evidence binds each supported claim to the port and authority revisions.
-- Observed behavior: Historical rendered tables cannot qualify newer shader and compiler changes. A harness test is not a GPU or installed-package result.
+- Observed behavior: At reference 30c47030 the macOS ledger grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped; the compiler gates are 379 of 379. The 44 NEAR entries pass only at fixture-specific tolerances. Outside macOS, rendered parity covers the 6 CI smoke fixtures (Linux and Windows llvmpipe, max 0).
 - Evidence: [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) and section 3.
-- Next action: Rebuild the C++ source, run ctest, then rerun compiler and image gates. Preserve NEAR, CHAOS, exclusions, and each tolerance.
-- Dependencies: Resolve immutable authority inputs. Preserve historical goldens and provenance.
+- Next action: (1) Triage the 44 NEAR entries into fixable and inherent, with the mechanism for each, and make exact what operation order can fix (GAP-011 is the precedent). (2) Grade the full suite on Linux llvmpipe in CI against same-rasterizer goldens (the GAP-033 method).
+- Dependencies: None.
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
-- Last verification: 2026-09-24. At pin c9ee8a04 the ledger, regenerated by parity/sweep.sh after GAP-025 (a14a613), grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped. fibers, scratches, and strayHair now PASS (max 1, 0, 0), and navierStokes PASS (max 2). The goldens come from a full fresh sweep and are byte-identical to the prior full sweep (360 PNGs). The live-DSL sweep agrees on every row (GAP-035). Earlier: 353 of 353 with 305 PASS, 46 NEAR, 2 FAIL (c6893a9); 347 of 347 with 298 PASS, 47 NEAR, 2 FAIL. See GAP-010, GAP-011, GAP-019, GAP-025, GAP-026, and the sweep evidence below. Only macOS was measured for the full suite; NEAR entries are tolerance-based, not full parity. CI render-smoke grades 6 fixtures on Linux llvmpipe against same-rasterizer goldens at max 0 (GAP-033).
+- Last verification: 2026-09-24. The ledger was graded at pin c9ee8a04; c9ee8a04..30c47030 changes no shader, definition, or engine file (only parser diagnostics; the compiler gates are 379/379 at 30c47030), so it stands for 30c47030. At pin c9ee8a04 the ledger, regenerated by parity/sweep.sh after GAP-025 (a14a613), grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped. fibers, scratches, and strayHair now PASS (max 1, 0, 0), and navierStokes PASS (max 2). The goldens come from a full fresh sweep and are byte-identical to the prior full sweep (360 PNGs). The live-DSL sweep agrees on every row (GAP-035). Earlier: 353 of 353 with 305 PASS, 46 NEAR, 2 FAIL (c6893a9); 347 of 347 with 298 PASS, 47 NEAR, 2 FAIL. See GAP-010, GAP-011, GAP-019, GAP-025, GAP-026, and the sweep evidence below. Only macOS was measured for the full suite; NEAR entries are tolerance-based, not full parity. CI render-smoke grades 6 fixtures on Linux llvmpipe against same-rasterizer goldens at max 0 (GAP-033).
 
 ### GAP-002: installed developer workflow qualification
 
 - Status: open. Priority: P2. Category: usability.
 - Affected scope: Public API, examples (viewer, Qt Quick), the installed CMake package, supported hosts, errors, recovery, and lifecycle.
 - Expected behavior: Developers can install, produce useful output, integrate it, recover from errors, and remove the package.
-- Observed behavior: On macOS the installed workflow passes: build, install, versioned find_package consumer, nm-render, the viewer and Qt Quick examples from the tree and the install, resize and teardown cycles, error recovery, relocation, and uninstall. Before this pass the viewer could not resize, the Backend had no resize, --selfcheck wrote /tmp/viewer.png, the quick start needed Ninja, find_package with a version failed, no license was installed, uninstall was undocumented, and there was no Qt Quick integration. A wrong data root still reports every effect as unknown (GAP-032).
+- Observed behavior: On macOS the installed workflow passes: build, install, versioned find_package consumer, nm-render, the viewer and Qt Quick examples from the tree and the install, resize and teardown cycles, error recovery, relocation, and uninstall. Before this pass the viewer could not resize, the Backend had no resize, --selfcheck wrote /tmp/viewer.png, the quick start needed Ninja, find_package with a version failed, no license was installed, uninstall was undocumented, and there was no Qt Quick integration. A wrong data root now names the directory (GAP-032, closed).
 - Evidence: Earlier pass: [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md), [official reference](https://doc.qt.io/qt-6/qopenglwidget.html), and section 3. This pass: a literal README run in a fresh clone at the candidate commit (exit codes, hashes, and grabs retained in the run record). A find_package(noisemaker-qt 0.1) consumer renders byte-identical to nm-render; versions 0.2 and 1.0 are refused. The uninstall leaves 0 files. ctest 22/22, including test_backend_lifecycle, test_quick_item, and test_nm_render_cli. Commits ed3eb58 to 6a70ee0. macOS arm64, Qt 6.11.1. CI run for 217ac1e: test_backend_lifecycle, test_quick_item, test_nm_render_cli, and test_export_kit_host pass on Linux, Windows, and macOS. Linux arm64 Docker (Ubuntu 24.04, Mesa llvmpipe, gcc 13.3), Qt 6.9.3: ctest 22/22, and the README installed workflow passes (build, install of 570 files, viewer and quick --selfcheck against the install, a versioned find_package consumer, uninstall to 0 files). Qt 6.4.2 builds and passes 20/22; only the text weight checks fail, because Qt before 6.9 cannot set the wght axis. The README states Qt 6.9 as the minimum, and CMake warns below it (93d00f1).
-- Next action: Run the installed workflow on Windows (CI covers ctest). Fix GAP-032.
-- Dependencies: GAP-032.
+- Next action: Run the README installed workflow on Windows: the viewer and Qt Quick --selfcheck against an installed prefix, a consumer build, and the uninstall.
+- Dependencies: None.
 - Acceptance criteria: The README commands pass as written on each supported OS. A wrong data root names the directory. The minimum Qt version is stated and built.
 - Required checks: ctest on all three OSes, viewer and quick --selfcheck, a consumer build against an installed prefix, and an uninstall that leaves no files.
 - Last verification: 2026-09-24, macOS arm64 Qt 6.11.1; Linux arm64 Qt 6.9.3 and 6.4.2; CI on three OSes.
@@ -484,10 +486,10 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P3. Category: ecosystem.
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
-- Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's. Before 167a62c, FreeType slanted synthetic italic by about 12 degrees, not Chromium's skew of 1/4; the italic case missed the centroid bound by 0.38 px.
+- Observed behavior: Since 4c2c957 the layout matches Chromium per glyph within 1 px on CoreText, FreeType, and DirectWrite (largest glyph run 0.73 px). Chromium's glyph masks are heavier on macOS: the port draws 0.76 to 0.94 of Chromium's coverage (Linux 0.95 to 1.0). Generic families (serif, sans-serif, monospace) resolve to Qt's default families, not the browser's. Before 4c2c957, Qt shaped the variable font with the default instance's kerning, and "Heavy" at wght 800 was 4.4 px narrower.
 - Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996. First Windows result (CI run 36034701739, a8aa2a2, Qt 6.10.3, DirectWrite): 9/10. extrabold-rot fails with centroid d=(0.205, -1.395) against the 1.0 bound. The case is rotated -90 degrees, so dy lies along the text direction. The same case gives (0.158, -0.277) on macOS and (0.165, -0.371) on Linux. The other 9 pass with coverage 0.80 to 1.005. Per-glyph ink runs on Windows (CI run 36038944290), qt minus chrome along the text axis: H +2.39, e +2.13, a +2.32, v +2.32, y -2.22 px, ink ratios 0.958 to 0.971. That is the signature of a line about 4.4 px shorter, centred: the wght-800 "vy" kerning delta that Qt does not apply.
 - Next action: Measure generic families (serif, sans-serif, monospace) against the browser's, which resolve to different fonts per platform. First CI result with the fix (run 36046806674, dbdf960): check_text_canvas 10/10 on Linux (extrabold-rot largest run 0.148 px) and 10/10 on Windows DirectWrite (0.187 px). Fix since 4c2c957: the renderer applies the font's GPOS kerning variation deltas (fvar, avar, GDEF ItemVariationStore) as HarfBuzz does, so a wght-800 "Heavy" gains the 4.3995 px "vy" delta. Since 5bf54cf, check_text_canvas gates layout per glyph run at the same 1.0 px bound; the overall ink centroid mixed placement with per-glyph ink weight (macOS before the fix: placement +1.065, ink weight -0.787). The Linux oracle runs Chromium's new headless mode, which positions glyphs on subpixels; the headless shell used whole pixels. Results: macOS CoreText 10/10 (largest run 0.536 px), macOS FreeType 10/10 (0.727), Linux Docker 10/10 (0.346). The pre-fix renderer fails the new gate at 2.580 px (integration check, CoreText). Kerning deltas are pinned for 8 Nunito pairs at wght 300/400/700/800 against HarfBuzz.
-- Dependencies: Qt font shaping (external).
+- Dependencies: None.
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
 - Last verification: 2026-09-24, macOS (CoreText and FreeType engines), Linux CI, and Windows CI (DirectWrite).
@@ -622,13 +624,42 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: The macOS warnings-as-errors CI job; test_js_number; the compiler gates.
 - Last verification: 2026-09-24, macOS arm64, Qt 6.11.1.
 
+### GAP-038: an overlay trace stalls live hosts
+
+- Status: open. Priority: P2. Category: implementation.
+- Affected scope: qt/noisemaker/runtime/async_overlay.{h,cpp}; nm::Backend::render(); live hosts (Sync's render helper, the viewer, the Qt Quick item) running fibers, scratches, or strayHair.
+- Expected behavior: A live host keeps presenting frames while an overlay is traced, as the reference keeps rendering during its progressive asyncInit trace.
+- Observed behavior: Backend::render() traces an overlay to completion before the passes, and traces again after a seed, density, or render size change. At 1920x1080 on an Apple M4 that takes about 2.8 s (fibers), so a Seance edit to one of those parameters, or a resize, stops a live host for that long. Offline hosts (nm-render, the kit, goldens) need the completed trace on frame 1.
+- Evidence: Measured with the GAP-025 implementation: fibers 0.1 s at 256x256 and 2.8 s at 1920x1080. Sync's render-helper qualification record notes the stall.
+- Next action: Trace on a worker thread with a host-selectable mode: synchronous for offline hosts, and for live hosts keep the previous overlay until the new trace completes. Keep the synchronous result byte-identical.
+- Dependencies: None.
+- Acceptance criteria: In the live mode, render() returns within one frame budget during a 1080p re-trace, and the overlay changes to the completed trace. The synchronous mode's output is unchanged.
+- Required checks: test_async_overlay; a timing test of render() during a re-trace; parity/run.sh for fibers, scratches, and strayHair.
+- Last verification: 2026-09-24.
+
+### GAP-039: arrow-function values render without a golden check
+
+- Status: open. Priority: P3. Category: verification.
+- Affected scope: validator Func values (GAP-017); the runtime binding of a Func uniform; parity fixtures.
+- Expected behavior: A program with arrow-function parameter values renders as the reference renders it.
+- Observed behavior: Func values compile to the reference's graph (check_graph 379/379), and the runtime binds a non-numeric uniform as 0, as WebGL2 does. No rendered fixture compares that output with a reference golden.
+- Evidence: parity/corpus/func_*.dsl are compiler-only fixtures; parity/programs has no Func fixture.
+- Next action: Add rendered fixtures with Func values for numeric and boolean parameters, mint goldens, and grade them at the strict tolerance.
+- Dependencies: None.
+- Acceptance criteria: The Func fixtures pass at 2.001/0.98 against reference goldens.
+- Required checks: parity/run.sh on the new fixtures; the full sweep.
+- Last verification: 2026-09-24.
+
 ## 5. Ordered next actions
 
-1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
-2. Execute the installed workflow for GAP-002. Record meaningful output, failure recovery, versions, and cleanup.
-3. Run compiler and rendered parity for GAP-001. Keep structural, numerical, and platform evidence separate.
-4. Qualify distribution contents and lifecycle for GAP-003 after the installed workflow passes.
-5. Record measured results. Close entries only when their acceptance criteria pass.
+1. GAP-001: triage the 44 NEAR entries into fixable and inherent, and make the fixable ones exact.
+2. GAP-001: grade the full suite on Linux llvmpipe in CI against same-rasterizer goldens.
+3. GAP-038: trace overlays off the render thread for live hosts.
+4. GAP-002: run the installed workflow on Windows.
+5. GAP-039, GAP-027: rendered Func fixtures; generic font families.
+6. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-031 waits for a definition that uses countUniform.
+
+Record measured results. Close entries only when their acceptance criteria pass.
 
 Implementation belongs to the separate job. Do not port additional effects or advance the current parity checkpoint through this register.
 
