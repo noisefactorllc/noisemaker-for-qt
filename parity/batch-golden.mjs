@@ -584,6 +584,14 @@ async function main () {
       // session setup itself failed. Already logged above; move on to the
       // next chunk with a fresh session rather than aborting the whole run.
       process.stderr.write(`[batch-golden] chunk aborted, restarting session: ${err?.message || err}\n`)
+      // Fixtures the aborted chunk never reached count as failed, so the
+      // exit status reports them.
+      for (const dslPath of chunk) {
+        const programName = basename(dslPath).replace(/\.dsl$/, '')
+        if (!minted.includes(programName) && !failed.some(f => f.programName === programName)) {
+          failed.push({ programName, error: `chunk aborted: ${err?.message || err}` })
+        }
+      }
     })
   }
 

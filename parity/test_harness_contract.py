@@ -261,7 +261,10 @@ function makePage () {
 }
 
 export class BrowserSession {
-  async setup () { this.page = makePage() }
+  async setup () {
+    if (process.env.FAKE_HARNESS_SETUP_FAILS === '1') throw new Error('fake session setup failure')
+    this.page = makePage()
+  }
   async setBackend () {}
   get globals () { return { renderingPipeline: '__noisemakerRenderingPipeline' } }
   getConsoleMessages () { return [] }
@@ -943,7 +946,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("0/3 pass", result.stdout)
 
-    def _mint_with_fake_reference(self, script, programs, meshes=None):
+    def _mint_with_fake_reference(self, script, programs, meshes=None, env=None):
         parity = self.tmp / "parity"
         tools = self.tmp / "tools"
         reference = self.tmp / "reference"
@@ -971,12 +974,22 @@ class HarnessContractTests(unittest.TestCase):
             command = ["node", str(parity / script), paths[0], str(out), "--size", "8"]
         result = subprocess.run(
             command,
-            env={**os.environ, "NM_REFERENCE_ROOT": str(reference)},
+            env={**os.environ, "NM_REFERENCE_ROOT": str(reference), **(env or {})},
             capture_output=True,
             text=True,
             timeout=120,
         )
         return result, out
+
+    def test_batch_golden_counts_fixtures_of_an_aborted_chunk_as_failed(self):
+        result, out = self._mint_with_fake_reference(
+            "batch-golden.mjs", {"first": "fill 0 255 0\n", "second": "fill 0 0 255\n"},
+            env={"FAKE_HARNESS_SETUP_FAILS": "1"},
+        )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("BATCH-GOLDEN: minted=0 failed=2 total=2", result.stdout)
+        self.assertIn("FAILED: first second", result.stderr)
 
     def test_single_golden_mint_captures_the_loaded_program_after_a_slow_compile(self):
         result, out = self._mint_with_fake_reference(
