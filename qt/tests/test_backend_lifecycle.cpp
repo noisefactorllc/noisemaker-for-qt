@@ -14,7 +14,9 @@
 #include <QOpenGLFunctions_4_1_Core>
 #include <QSurfaceFormat>
 
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <memory>
 #include <stdexcept>
