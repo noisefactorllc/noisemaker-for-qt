@@ -99,6 +99,12 @@ audio.
   `convolutionFeedback` itself moved from CHAOS — excluded from grading entirely — to a graded NEAR
   pass, after its CHAOS classification turned out to be a harness bug, not inherent reference
   chaos; see `docs/CHAOS-GATE.md`). **This corpus currently has zero CHAOS entries.**
+- **Correction (2026-09-24): the fibers, scratches and strayHair explanations below are wrong.**
+  The port never generated these effects' asyncInit overlays (GAP-025), and their goldens
+  depended on capture timing (GAP-026). The NEAR entries and the "flake" hid both defects.
+  Both are fixed. The three fixtures now pass at the default 2.001/0.98 tolerance (fibers max 1,
+  scratches and strayHair max 0), and their `tol_for()` entries are removed. The paragraphs and
+  the Sobel/gradient table row below are kept as the record of the earlier passes.
 - **Two golden-minting flakes hit and resolved this pass** (same known mechanism class as the
   precedent immediately below: a batch-minted golden occasionally differs from a same-run
   single-fixture re-mint for the near-zero Sobel/gradient-singularity effect family —
@@ -297,7 +303,7 @@ cmake --build examples/viewer/build
 examples/viewer/build/viewer --selfcheck
 ```
 
-**If a single fixture's golden looks wrong** (e.g. the documented `scratches` flake): re-mint it
+**If a single fixture's golden looks wrong:** re-mint it
 alone via `export-and-render.mjs` into a scratch directory, `compare.py` it against the batch
 golden AND against the existing candidate, and only replace the committed golden if the
 single-fixture mint matches the (already-verified-deterministic) candidate — never hand-edit a

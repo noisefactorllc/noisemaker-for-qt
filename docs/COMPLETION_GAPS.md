@@ -84,7 +84,7 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: Resolve immutable authority inputs. Preserve historical goldens and provenance.
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
-- Last verification: 2026-09-24. A full sweep at pin c9ee8a04 with fresh goldens graded 353 of 353 fixtures: 305 PASS, 46 NEAR, 2 FAIL (fibers, scratches: GAP-025), 0 CHAOS, 0 skipped. parity/sweep.sh regenerated the ledger (c6893a9). The earlier sweep graded 347 of 347: 298 PASS, 47 NEAR, 2 FAIL. See GAP-010, GAP-011, GAP-019, GAP-026, and the sweep evidence below. Only macOS was measured for the full suite. CI render-smoke grades 6 fixtures on Linux and Windows llvmpipe against SwiftShader goldens: 5 pass, and meshRenderCustom fails on edge ties (GAP-033).
+- Last verification: 2026-09-24. A full sweep at pin c9ee8a04 with fresh goldens graded 353 of 353 fixtures: 305 PASS, 46 NEAR, 2 FAIL (fibers, scratches: GAP-025), 0 CHAOS, 0 skipped. parity/sweep.sh regenerated the ledger (c6893a9). Since 504243b, fibers, scratches, and strayHair pass at the default tolerance (GAP-025); the ledger does not yet record that. The earlier sweep graded 347 of 347: 298 PASS, 47 NEAR, 2 FAIL. See GAP-010, GAP-011, GAP-019, GAP-026, and the sweep evidence below. Only macOS was measured for the full suite. CI render-smoke grades 6 fixtures on Linux and Windows llvmpipe against SwiftShader goldens: 5 pass, and meshRenderCustom fails on edge ties (GAP-033).
 
 ### GAP-002: installed developer workflow qualification
 
@@ -207,7 +207,7 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: A host updates step parameters and global uniforms of a compiled graph, as reference applyStepParameterValues and Pipeline.setUniform do.
 - Observed behavior: Before the fix, the only update path was a full recompile. The graph loader dropped stepIndex and scopedParams.
 - Evidence: `applyStepParameterValues` and `setUniform` port the reference rules, palette expansion, and convertParameterForUniform. The feedback surface persisted across a live update and a same-structure recompile.
-- Next action: None for live parameters. Correction (2026-09-24): reference checkAsyncRegen and asyncInit are not ported, and three effects do use them (fibers, scratches, strayHair); tracked as GAP-025.
+- Next action: None for live parameters. Correction (2026-09-24): reference checkAsyncRegen and asyncInit are not ported, and three effects do use them (fibers, scratches, strayHair); tracked as GAP-025, closed by 504243b.
 - Dependencies: GAP-006 for platforms other than macOS.
 - Acceptance criteria: Pixel checks show updated colors without a recompile. Automation values stay intact. The live update matches the recompiled swap byte for byte.
 - Required checks: test_host_inputs, ctest, and the compiler gates.
@@ -455,16 +455,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-025: async-init overlay effects render without their overlay
 
-- Status: open. Priority: P1. Category: implementation.
-- Affected scope: filter/fibers, filter/scratches and filter/strayHair (the three definitions with asyncInit at reference c9ee8a04); qt/noisemaker/runtime (no asyncInit, overlayTex or CPU worm tracing); parity/sweep.sh tol_for() entries for the three; the export kit, which ships them.
-- Expected behavior: As in the reference, each effect's asyncInit traces its overlay on the CPU (traceWorms into a canvas) and uploads it as overlayTex, progressively through onProgress, and regenerates it when its inputs change (ProgramState.checkAsyncRegen, 300 ms debounce).
-- Observed behavior: The overlay is never generated. The fibers candidate is one colour (0,0,0,255) over all 65536 px; the scratches candidate is one colour (43,43,43,255). The tol_for() NEAR entries (fibers 122.001/0.93, scratches 147.001/0.75, strayHair 79.001/0.998) were labelled as a near-zero Sobel singularity; they absorbed the difference between an absent overlay and a partly traced one. The GAP-010 minter race hid this by capturing before the traces drew. This was false completion.
-- Evidence: GAP-001 sweep 1 at pin c9ee8a04 (HEAD 130540a) with the fixed minter: fibers FAIL max 122 ssim 0.9206, scratches FAIL max 147 ssim 0.7291. No Qt runtime source mentions overlayTex, traceWorms or asyncInit.
-- Next action: Port the reference asyncInit contract and the three effects' CPU overlay generation (traceWorms and its RNG) to the engine, with an oracle test of the traced overlay against the reference under Node, and remove the three mislabelled tol_for() entries in the same change.
-- Dependencies: GAP-026 for stable goldens of progressive overlays.
-- Acceptance criteria: The overlay is generated and uploaded as the reference does; the CPU overlay matches the reference bit for bit for fixed inputs; the three fixtures pass at strict tolerance, or at a NEAR entry backed by a traced mechanism; the export kit renders them.
-- Required checks: An overlay oracle test; parity/run.sh for the three fixtures against deterministic goldens; ctest.
-- Last verification: 2026-09-24. Open.
+- Status: closed. Priority: P1. Category: implementation.
+- Affected scope: filter/fibers, filter/scratches, and filter/strayHair (the three asyncInit definitions at reference c9ee8a04); qt/noisemaker/runtime async_overlay, worm_tracer, stroke_canvas, and nm::Backend::render(); parity/sweep.sh; parity/check_async_overlay.mjs; the export kit.
+- Expected behavior: As in the reference, each effect traces worms on the CPU into a 2D canvas and uploads it as overlayTex. A change of seed, density, or render size traces it again. Goldens capture the completed trace (GAP-026).
+- Observed behavior: Before 504243b, the overlay was never generated, and NEAR entries in tol_for() hid the flat candidates. Now Backend::render() traces each overlay to completion before the passes that sample it, and traces again after a seed, density, or size change. The three fixtures pass at the default tolerance, their tol_for() entries are removed, and the export kit lists all 210 effects.
+- Evidence: The stroke lists are bit-identical to Chromium's (fibers 40960, scratches 10752, strayHair 160). check_async_overlay.mjs: 13/13 PASS. The scratches and strayHair canvases are byte-identical; the fibers canvas differs by 1 in 14 of 262144 values, at blended values a few float ulps from a rounding midpoint. Mutation checks (half-even snapping, no dirty-rect cull, exact-division unpremultiply) each fail the oracle. Integration check: goldens minted again from the reference grade fibers max 1, scratches max 0, strayHair max 0 at 2.001/0.98, and the candidates carry the overlay (17198, 148, and 18784 distinct colours). Integration build: 0 warnings, ctest 24/24. Commits 504243b, 5ef419f, ebdf46f, c0a32d0.
+- Next action: None. The oracle runs only on macOS with ANGLE Metal; CI runs test_async_overlay on three OSes.
+- Dependencies: None. GAP-026 (closed) supplies settled goldens.
+- Acceptance criteria: The overlay is generated and uploaded as the reference does. The stroke list is bit-exact. Canvas values differ by at most 1, in at most 1 of 5000. The fixtures pass at 2.001/0.98. The kit renders them.
+- Required checks: node parity/check_async_overlay.mjs; test_async_overlay; parity/run.sh for fibers, scratches, and strayHair; ctest.
+- Last verification: 2026-09-24, macOS (Apple M4), Chromium 153.
 
 ### GAP-026: goldens of async and host inputs depend on capture timing
 
@@ -546,12 +546,12 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-032: a wrong data root reports every effect as unknown
 
-- Status: open. Priority: P2. Category: usability.
-- Affected scope: qt/noisemaker/compiler/effect_registry.cpp (EffectRegistry::loadAll); every library host that passes a data root.
+- Status: closed. Priority: P2. Category: usability.
+- Affected scope: qt/noisemaker/compiler/effect_registry.{h,cpp} (EffectRegistry::loadAll); every library host that passes a data root; qt/tests/test_registry.cpp, test_nm_render_cli.cpp; README.md.
 - Expected behavior: A data root without effect definitions fails with a message that names the directory.
-- Observed behavior: EffectRegistry::loadAll(root) loads nothing and does not throw when <root>/effects is missing. Each program then fails with "Unknown effect: '<name>'" for every effect. The Qt Quick item checks the root itself; plain library hosts do not.
-- Evidence: A literal README run, 2026-09-24: a missing data root gives exit 1 with the unknown-effect message.
-- Next action: Throw std::runtime_error naming "<root>/effects" when it holds no definitions. Add a unit test.
+- Observed behavior: Fixed in 369cf88: loadAll throws std::runtime_error naming '<root>/effects' and what the data root must be. Before the fix, EffectRegistry::loadAll(root) loaded nothing and did not throw when <root>/effects was missing. Each program then fails with "Unknown effect: '<name>'" for every effect. The Qt Quick item checks the root itself; plain library hosts do not.
+- Evidence: Before: a literal README run gave exit 1 with the unknown-effect message. After: nm-render with NOISEMAKER_QT_DATA_ROOT=/tmp/no-such-root prints "no effect definitions (<namespace>/<func>.json) in '/tmp/no-such-root/effects'". test_registry (missing, empty, and real roots) and test_nm_render_cli pass; test_quick_item's bad-root case still passes; ctest 24/24.
+- Next action: None. The nm-render --dsl lookup itself is GAP-036.
 - Dependencies: None.
 - Acceptance criteria: loadAll on a root without effects/ throws with the directory in the message; nm-render with a wrong root prints it.
 - Required checks: test_registry; ctest.
@@ -594,6 +594,19 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: None.
 - Acceptance criteria: NM_LIVE_DSL=1 parity/sweep.sh grades text as PASS.
 - Required checks: The live-DSL sweep on text.
+- Last verification: 2026-09-24.
+
+### GAP-036: nm-render --dsl does not find an installed data root
+
+- Status: open. Priority: P3. Category: usability.
+- Affected scope: qt/tools/nm-render (the data-root lookup for --dsl).
+- Expected behavior: nm-render finds its data in the source tree, in an install (share/noisemaker-qt/noisemaker), or at NOISEMAKER_QT_DATA_ROOT.
+- Observed behavior: nm-render --dsl looks only at <exe>/../noisemaker and <cwd>/qt/noisemaker. It ignores NOISEMAKER_QT_DATA_ROOT and the installed share path. Since 369cf88 the error names the directory it tried.
+- Evidence: Source inspection and a copied nm-render run from an empty working directory, 2026-09-24.
+- Next action: Resolve the data root as NOISEMAKER_QT_DATA_ROOT, then the install-relative share path, then the source-tree paths. Add a test_nm_render_cli case for each.
+- Dependencies: None.
+- Acceptance criteria: An installed nm-render renders from any working directory, and NOISEMAKER_QT_DATA_ROOT overrides the lookup.
+- Required checks: test_nm_render_cli; the README installed workflow.
 - Last verification: 2026-09-24.
 
 ## 5. Ordered next actions
