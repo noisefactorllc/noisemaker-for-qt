@@ -145,6 +145,11 @@ target_link_libraries(test_obj_parser PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_obj_parser COMMAND test_obj_parser)
 set_tests_properties(test_obj_parser PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_mesh_render test_mesh_render.cpp)
+target_link_libraries(test_mesh_render PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
+add_test(NAME test_mesh_render COMMAND test_mesh_render)
+set_tests_properties(test_mesh_render PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 # Parity-gate helper (NOT a ctest case) -- candidate side of
 # parity/check_obj_parser.mjs (reference obj-parser.js oracle).
 add_executable(obj_parser_dump obj_parser_dump.cpp)

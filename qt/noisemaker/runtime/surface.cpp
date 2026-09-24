@@ -229,6 +229,7 @@ GpuSurface& SurfaceCache::getOrCreate(const QString& cacheKey, const ResolvedSpe
             return it.value();
         }
         if (it->fbo != 0) {
+            releaseDepthBuffer(it->fbo);
             m_gl->glDeleteFramebuffers(1, &it->fbo);
             it->fbo = 0;
         }
@@ -237,6 +238,7 @@ GpuSurface& SurfaceCache::getOrCreate(const QString& cacheKey, const ResolvedSpe
             for (auto mrtIt = m_mrtFbos.begin(); mrtIt != m_mrtFbos.end(); ) {
                 if (mrtIt.key().contains(QStringLiteral(":%1,").arg(oldTex))) {
                     unsigned int fbo = mrtIt.value();
+                    releaseDepthBuffer(fbo);
                     m_gl->glDeleteFramebuffers(1, &fbo);
                     mrtIt = m_mrtFbos.erase(mrtIt);
                 } else {
@@ -335,6 +337,45 @@ unsigned int SurfaceCache::defaultTextureHandle() {
     return m_defaultTexture;
 }
 
+void SurfaceCache::ensureDepthBuffer(unsigned int fbo, int width, int height) {
+    const auto existing = m_depthBuffers.find(fbo);
+    if (existing != m_depthBuffers.end()) {
+        if (existing->width != width || existing->height != height) {
+            m_gl->glBindRenderbuffer(GL_RENDERBUFFER, existing->renderbuffer);
+            m_gl->glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+            m_gl->glBindRenderbuffer(GL_RENDERBUFFER, 0);
+            existing->width = width;
+            existing->height = height;
+        }
+        return;
+    }
+
+    unsigned int renderbuffer = 0;
+    m_gl->glGenRenderbuffers(1, &renderbuffer);
+    m_gl->glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
+    m_gl->glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+    m_gl->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    m_gl->glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
+    const GLenum status = m_gl->glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    m_gl->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    m_gl->glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        m_gl->glDeleteRenderbuffers(1, &renderbuffer);
+        throw std::runtime_error(
+            QStringLiteral("nm::SurfaceCache: framebuffer incomplete (status 0x%1) after adding a depth buffer")
+                .arg(static_cast<uint>(status), 0, 16)
+                .toStdString());
+    }
+    m_depthBuffers.insert(fbo, DepthBuffer{renderbuffer, width, height});
+}
+
+void SurfaceCache::releaseDepthBuffer(unsigned int fbo) {
+    const auto it = m_depthBuffers.find(fbo);
+    if (it == m_depthBuffers.end()) return;
+    m_gl->glDeleteRenderbuffers(1, &it->renderbuffer);
+    m_depthBuffers.erase(it);
+}
+
 void SurfaceCache::releaseAll() {
     for (auto it = m_surfaces.begin(); it != m_surfaces.end(); ++it) {
         m_gl->glDeleteFramebuffers(1, &it->fbo);
@@ -346,6 +387,10 @@ void SurfaceCache::releaseAll() {
         m_gl->glDeleteFramebuffers(1, &fbo);
     }
     m_mrtFbos.clear();
+    for (auto it = m_depthBuffers.begin(); it != m_depthBuffers.end(); ++it) {
+        m_gl->glDeleteRenderbuffers(1, &it->renderbuffer);
+    }
+    m_depthBuffers.clear();
     if (m_defaultTexture != 0) {
         m_gl->glDeleteTextures(1, &m_defaultTexture);
         m_defaultTexture = 0;

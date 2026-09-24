@@ -1,11 +1,13 @@
 #include "backend.h"
 
 #include "device_limits.h"
+#include "obj_parser.h"
 #include "parameters.h"
 #include "../compiler/effect_registry.h"
 #include "pingpong.h"
 #include "shader_assembly.h"
 
+#include <QDir>
 #include <QFile>
 #include <QDebug>
 #include <QJsonArray>
@@ -15,11 +17,13 @@
 #include <QOpenGLContext>
 #include <QOpenGLFunctions_4_1_Core>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSurfaceFormat>
 #include <QVector>
 
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
@@ -808,6 +812,204 @@ void Backend::removeExternalTexture(const QString& texId) {
     m_externalTextures.remove(texId);
 }
 
+// ---------------------------------------------------------------- meshes
+
+namespace {
+
+// reference canvas.js _packCacheAndUploadMesh / pipeline.js createSurfaces:
+// every mesh surface is a 256x256 texel grid.
+constexpr int kMeshTextureSize = 256;
+
+bool isDefaultMeshId(const QString& meshId) {
+    static const QRegularExpression pattern(QStringLiteral("^mesh[0-7]$"));
+    return pattern.match(meshId).hasMatch();
+}
+
+QString meshTextureId(const QString& meshId, const char* attribute) {
+    return QStringLiteral("global_%1_%2").arg(meshId, QLatin1String(attribute));
+}
+
+const char* const kMeshAttributes[] = {"positions", "normals", "uvs"};
+
+MeshLoadResult meshFailure(const QString& error) {
+    MeshLoadResult result;
+    result.error = error;
+    return result;
+}
+
+} // namespace
+
+const Backend::MeshTexture* Backend::findMeshTexture(const QString& texId) {
+    // reference bindTextures(): a global input resolves to a texture of the
+    // same id, then to the id without its `_chain_N` scope suffix (mesh
+    // uploads use the unscoped name), before any ping-pong surface. The
+    // mesh0..mesh7 textures always exist in the reference (createSurfaces);
+    // here they are created, zero-filled, on first use.
+    if (!texId.startsWith(QStringLiteral("global_"))) return nullptr;
+    static const QRegularExpression chainScope(QStringLiteral("_chain_\\d+$"));
+    static const QRegularExpression defaultMeshTexture(
+        QStringLiteral("^global_(mesh[0-7])_(positions|normals|uvs)$"));
+    QString unscoped = texId;
+    unscoped.remove(chainScope);
+    for (const QString& id : {texId, unscoped}) {
+        const auto existing = m_meshTextures.constFind(id);
+        if (existing != m_meshTextures.constEnd()) return &existing.value();
+        const QRegularExpressionMatch match = defaultMeshTexture.match(id);
+        if (match.hasMatch()) {
+            const QString meshId = match.captured(1);
+            if (createZeroMeshTextures(meshId)) {
+                const auto cached = m_meshCache.constFind(meshId);
+                if (cached != m_meshCache.constEnd()) {
+                    uploadMeshData(meshId, cached->positionData, cached->normalData, cached->uvData,
+                                   kMeshTextureSize, kMeshTextureSize, cached->vertexCount);
+                }
+            }
+            return &m_meshTextures.constFind(id).value();
+        }
+    }
+    return nullptr;
+}
+
+bool Backend::createZeroMeshTextures(const QString& meshId) {
+    // reference createSurfaces: positions, normals and uvs, 256x256
+    // rgba32f, cleared to zero.
+    bool created = false;
+    std::vector<float> zeros;
+    for (const char* attribute : kMeshAttributes) {
+        const QString texId = meshTextureId(meshId, attribute);
+        if (m_meshTextures.contains(texId)) continue;
+        if (zeros.empty()) zeros.assign(static_cast<std::size_t>(kMeshTextureSize) * kMeshTextureSize * 4, 0.0f);
+        uploadMeshTexture(texId, zeros.data(), kMeshTextureSize, kMeshTextureSize, GL_RGBA32F);
+        created = true;
+    }
+    return created;
+}
+
+void Backend::uploadMeshTexture(const QString& texId, const float* data, int width, int height,
+                                unsigned int internalFormat) {
+    // reference webgl2.js _uploadMeshTexture: (re)create with NEAREST
+    // filtering and CLAMP_TO_EDGE when missing or resized, else update the
+    // existing texture in place (keeping its format).
+    m_gl->glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    const auto existing = m_meshTextures.find(texId);
+    if (existing == m_meshTextures.end() || existing->width != width || existing->height != height) {
+        if (existing != m_meshTextures.end()) m_gl->glDeleteTextures(1, &existing->handle);
+        GLuint handle = 0;
+        m_gl->glGenTextures(1, &handle);
+        m_gl->glBindTexture(GL_TEXTURE_2D, handle);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        m_gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        m_gl->glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), width, height, 0, GL_RGBA,
+                           GL_FLOAT, data);
+        m_meshTextures.insert(texId, MeshTexture{handle, width, height});
+    } else {
+        m_gl->glBindTexture(GL_TEXTURE_2D, existing->handle);
+        m_gl->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_FLOAT, data);
+    }
+    m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+MeshLoadResult Backend::uploadMeshData(const QString& meshId, const std::vector<float>& positionData,
+                                       const std::vector<float>& normalData, const std::vector<float>& uvData,
+                                       int width, int height, int vertexCount) {
+    if (!m_gl) return meshFailure(QStringLiteral("Pipeline not ready"));
+    if (width <= 0 || height <= 0) {
+        return meshFailure(QStringLiteral("uploadMeshData: width and height must be positive"));
+    }
+    const std::size_t texels = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    if (positionData.size() < texels * 4 || normalData.size() < texels * 4 || uvData.size() < texels * 4) {
+        return meshFailure(QStringLiteral("uploadMeshData: each array needs width * height * 4 floats"));
+    }
+    // mesh0..mesh7 already exist as rgba32f in the reference pipeline, so a
+    // same-size upload updates them in place.
+    if (isDefaultMeshId(meshId)) createZeroMeshTextures(meshId);
+    uploadMeshTexture(meshTextureId(meshId, "positions"), positionData.data(), width, height, GL_RGBA32F);
+    uploadMeshTexture(meshTextureId(meshId, "normals"), normalData.data(), width, height, GL_RGBA32F);
+    uploadMeshTexture(meshTextureId(meshId, "uvs"), uvData.data(), width, height, GL_RGBA16F);
+    MeshLoadResult result;
+    result.success = true;
+    result.vertexCount = vertexCount;
+    return result;
+}
+
+MeshLoadResult Backend::loadPackedMesh(const QString& meshId, std::vector<float> positionData,
+                                       std::vector<float> normalData, std::vector<float> uvData,
+                                       int vertexCount) {
+    // reference _packCacheAndUploadMesh: cache, then upload.
+    CachedMesh& cached = m_meshCache[meshId];
+    cached.positionData = std::move(positionData);
+    cached.normalData = std::move(normalData);
+    cached.uvData = std::move(uvData);
+    cached.vertexCount = vertexCount;
+    return uploadMeshData(meshId, cached.positionData, cached.normalData, cached.uvData, kMeshTextureSize,
+                          kMeshTextureSize, vertexCount);
+}
+
+MeshLoadResult Backend::loadOBJFromString(const QString& objText, const QString& meshId) {
+    if (!m_gl) return meshFailure(QStringLiteral("Pipeline not ready"));
+    try {
+        PackedMeshData packed = packMeshDataForTextures(parseOBJ(objText), kMeshTextureSize, kMeshTextureSize);
+        return loadPackedMesh(meshId, std::move(packed.positionData), std::move(packed.normalData),
+                              std::move(packed.uvData), packed.vertexCount);
+    } catch (const std::exception& e) {
+        return meshFailure(QString::fromUtf8(e.what()));
+    }
+}
+
+MeshLoadResult Backend::loadOBJFromFile(const QString& path, const QString& meshId) {
+    if (!m_gl) return meshFailure(QStringLiteral("Pipeline not ready"));
+    try {
+        PackedMeshData packed = packMeshDataForTextures(loadOBJ(path), kMeshTextureSize, kMeshTextureSize);
+        return loadPackedMesh(meshId, std::move(packed.positionData), std::move(packed.normalData),
+                              std::move(packed.uvData), packed.vertexCount);
+    } catch (const std::exception& e) {
+        return meshFailure(QString::fromUtf8(e.what()));
+    }
+}
+
+QVector<ExternalMeshInput> Backend::externalMeshes(const Graph& graph) const {
+    const QString dataRoot = m_dataRoot.isEmpty() ? QStringLiteral("qt/noisemaker") : m_dataRoot;
+    const QDir root(dataRoot);
+    QVector<ExternalMeshInput> result;
+    QSet<QString> seen;
+    QHash<QString, QJsonObject> definitions;
+    for (const Pass& pass : graph.passes) {
+        if (pass.effectNamespace.isEmpty() || pass.func.isEmpty()) continue;
+        const QString key = pass.effectNamespace + QLatin1Char('/') + pass.func;
+        if (!definitions.contains(key)) {
+            QJsonObject definition;
+            QFile file(root.filePath(QStringLiteral("effects/%1.json").arg(key)));
+            if (file.open(QIODevice::ReadOnly)) {
+                const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+                if (document.isObject()) definition = document.object();
+            }
+            definitions.insert(key, definition);
+        }
+        const QJsonObject definition = definitions.value(key);
+        const QString meshId = definition.value(QStringLiteral("externalMesh")).toString();
+        if (meshId.isEmpty()) continue;
+        const QString step = QString::number(pass.stepIndex) + QLatin1Char('|') + key;
+        if (seen.contains(step)) continue;
+        seen.insert(step);
+
+        ExternalMeshInput input;
+        input.meshId = meshId;
+        input.stepIndex = pass.stepIndex;
+        input.effectKey = pass.effectKey;
+        for (const QJsonValue& entry : definition.value(QStringLiteral("builtinMeshes")).toArray()) {
+            const QJsonObject mesh = entry.toObject();
+            input.builtinMeshes.append(BuiltinMesh{
+                mesh.value(QStringLiteral("name")).toString(),
+                root.absoluteFilePath(mesh.value(QStringLiteral("path")).toString()),
+            });
+        }
+        result.append(input);
+    }
+    return result;
+}
+
 int Backend::applyStepParameterValues(Graph& graph, const EffectRegistry& registry,
                                       const QJsonObject& stepParameterValues) const {
     int writes = 0;
@@ -1025,6 +1227,12 @@ void Backend::releaseGl() {
         m_gl->glDeleteTextures(1, &m_midiNoteGridTexture);
         m_midiNoteGridTexture = 0;
     }
+    // Mesh textures go with the context; m_meshCache stays so that the next
+    // setup() re-uploads loaded OBJ meshes (reference _reuploadCachedMeshes).
+    for (auto it = m_meshTextures.begin(); it != m_meshTextures.end(); ++it) {
+        m_gl->glDeleteTextures(1, &it->handle);
+    }
+    m_meshTextures.clear();
     if (m_surfaces) {
         m_surfaces->releaseAll();
         m_surfaces.reset();
@@ -1312,17 +1520,19 @@ const Backend::CompiledProgram& Backend::programFor(const Pass& pass) {
         return cached.value();
     }
 
-    const bool isAgentPass = isAgentDrawMode(pass.drawMode);
+    // Agent points/billboards passes and triangle mesh passes
+    // (render/meshRender render.vert) link their own vertex stage.
+    const bool usesVertexStage = isAgentDrawMode(pass.drawMode) || pass.drawMode == QStringLiteral("triangles");
 
     const QByteArray fragRaw = isBlit(pass) ? QByteArray(kBlitFragmentSource) : loadEffectSource(pass);
     // Agent points/billboards passes compile their own corpus vertex shader
     // (gl_VertexID-driven scatter, textureFetch of agent state); every
     // other pass keeps the shared default vertex shader (backend-owned
     // constant, mirrors reference default-shaders.js DEFAULT_VERTEX_SHADER).
-    const QByteArray vertRaw = isAgentPass ? loadVertexSource(pass) : QByteArray(kDefaultVertexSource);
+    const QByteArray vertRaw = usesVertexStage ? loadVertexSource(pass) : QByteArray(kDefaultVertexSource);
 
     const bool needsPolyfill = !isBlit(pass) && shaderNeedsPackHalfPolyfill(QString::fromUtf8(fragRaw));
-    const bool vertNeedsPolyfill = isAgentPass && shaderNeedsPackHalfPolyfill(QString::fromUtf8(vertRaw));
+    const bool vertNeedsPolyfill = usesVertexStage && shaderNeedsPackHalfPolyfill(QString::fromUtf8(vertRaw));
 
     const QByteArray fragAssembled = assembleShader(QString::fromUtf8(fragRaw), pass.defines, needsPolyfill);
     // godot `_load_vertex`/`_inject_after_version`: the SAME defines block
@@ -1330,7 +1540,7 @@ const Backend::CompiledProgram& Backend::programFor(const Pass& pass) {
     // shader too (harmless no-op for a vertex shader with no matching
     // #ifdef, and future-proofs a define-gated vertex shader).
     const QByteArray vertAssembled =
-        assembleShader(QString::fromUtf8(vertRaw), isAgentPass ? pass.defines : QJsonObject(), vertNeedsPolyfill);
+        assembleShader(QString::fromUtf8(vertRaw), usesVertexStage ? pass.defines : QJsonObject(), vertNeedsPolyfill);
 
     GLuint vertShader = m_gl->glCreateShader(GL_VERTEX_SHADER);
     {
@@ -1748,6 +1958,8 @@ void Backend::bindTextures(const Graph& graph, const CompiledProgram& program, c
         } else if (texId == QStringLiteral("midiNoteGrid")) {
             if (m_midiNoteGridTexture == 0) uploadMidiNoteGrid();
             handle = m_midiNoteGridTexture;
+        } else if (const MeshTexture* mesh = findMeshTexture(texId)) {
+            handle = mesh->handle;
         } else if (isExternalTextureId(texId)) {
             // Not supplied by the host yet: default texture, as the
             // reference binds for any id absent from its texture map.
@@ -1912,21 +2124,55 @@ int Backend::resolvePointCount(const Graph& graph, const Pass& pass) {
     return 1000; // reference `effectivePass.count || 1000`; not hit by any in-corpus fixture
 }
 
+int Backend::resolveTriangleVertexCount(const Graph& graph, const Pass& pass) {
+    // reference webgl2.js executePass triangles branch: `count || 3`, and
+    // "auto"/"input" take the size of the mesh position texture
+    // (inputs.meshPositions, else inputs.inputTex), falling back to 3.
+    if (pass.count.isDouble()) {
+        const double count = pass.count.toDouble();
+        if (count == 0.0) return 3;
+        // drawArrays truncates; a negative count draws nothing (the
+        // reference gets GL_INVALID_VALUE).
+        if (count >= static_cast<double>(INT_MAX)) return INT_MAX;
+        return std::max(0, static_cast<int>(count));
+    }
+    if (pass.count.isString()) {
+        const QString mode = pass.count.toString();
+        if (mode.isEmpty()) return 3;
+        if (mode == QStringLiteral("auto") || mode == QStringLiteral("input")) {
+            QString meshInputId = pass.inputs.value(QStringLiteral("meshPositions")).toString();
+            if (meshInputId.isEmpty()) meshInputId = pass.inputs.value(QStringLiteral("inputTex")).toString();
+            if (meshInputId.isEmpty() || meshInputId == QStringLiteral("none")) return 3;
+            if (const MeshTexture* mesh = findMeshTexture(meshInputId)) {
+                return mesh->width * mesh->height;
+            }
+            const GpuSurface& surface = resolveInputSurface(graph, meshInputId);
+            return (surface.width > 0 && surface.height > 0) ? surface.width * surface.height : 3;
+        }
+        throw std::runtime_error(QStringLiteral("nm::Backend: triangles pass '%1' has unsupported count '%2'")
+                                     .arg(pass.id, mode)
+                                     .toStdString());
+    }
+    if (!pass.count.isUndefined() && !pass.count.isNull()
+        && !(pass.count.isBool() && !pass.count.toBool())) {
+        throw std::runtime_error(QStringLiteral("nm::Backend: triangles pass '%1' has an unsupported count value")
+                                     .arg(pass.id)
+                                     .toStdString());
+    }
+    return 3;
+}
+
 void Backend::executePass(const Graph& graph, const Pass& pass) {
-    // PORTING-GUIDE.md rule 4 "Fail loud, never approximate": drawMode
-    // "triangles" (mesh rendering -- render/meshRender.json is the one
-    // corpus user) is real, reachable DSL surface with no implementation
-    // here. Left unguarded, it would silently fall through to the
-    // fullscreen-triangle default below and mis-render (a mesh shader
-    // expects per-vertex mesh attributes, not a fullscreen sweep) instead
-    // of failing where the gap actually is. `points`/`billboards` are
-    // implemented (isAgentDrawMode); absent/empty is the ordinary
-    // fullscreen-effect case; anything else -- "triangles" today, whatever
-    // comes next -- is unsupported and must say so.
-    if (!pass.drawMode.isEmpty() && !isAgentDrawMode(pass.drawMode)) {
+    // PORTING-GUIDE.md rule 4 "Fail loud, never approximate": the draw
+    // modes are "points"/"billboards" (isAgentDrawMode), "triangles" (mesh
+    // rendering, render/meshRender) and absent/empty (the fullscreen
+    // triangle). Any other drawMode is unsupported and must say so rather
+    // than fall through to the fullscreen triangle.
+    const bool isTrianglePass = pass.drawMode == QStringLiteral("triangles");
+    if (!pass.drawMode.isEmpty() && !isAgentDrawMode(pass.drawMode) && !isTrianglePass) {
         throw std::runtime_error(QStringLiteral("nm::Backend: pass '%1' has unsupported drawMode '%2' "
-                                                  "(only \"points\"/\"billboards\" agent draws and the "
-                                                  "fullscreen-triangle default are implemented)")
+                                                  "(only \"points\"/\"billboards\" agent draws, \"triangles\" "
+                                                  "mesh draws and the fullscreen-triangle default are implemented)")
                                       .arg(pass.id, pass.drawMode)
                                       .toStdString());
     }
@@ -2065,7 +2311,18 @@ void Backend::executePass(const Graph& graph, const Pass& pass) {
     // unit before the draw call.
     const bool isAgentPass = isAgentDrawMode(pass.drawMode);
     const int agentCount = isAgentPass ? resolvePointCount(graph, pass) : 0;
+    const int triangleVertexCount = isTrianglePass ? resolveTriangleVertexCount(graph, pass) : 0;
     bindTextures(graph, program, pass);
+
+    // reference executePass triangles branch: the output FBO gets a depth
+    // buffer. ensureDepthBuffer() binds and unbinds framebuffers, so it
+    // runs before the draw target is bound. (The reference calls it after
+    // binding and leaves the default framebuffer bound when it first
+    // creates the buffer, so its first mesh draw into a new FBO misses the
+    // FBO. This port draws into the FBO on every frame.)
+    if (isTrianglePass) {
+        m_surfaces->ensureDepthBuffer(fboToUse, viewportWidth, viewportHeight);
+    }
 
     m_gl->glBindFramebuffer(GL_FRAMEBUFFER, fboToUse);
     m_gl->glViewport(0, 0, viewportWidth, viewportHeight);
@@ -2103,6 +2360,24 @@ void Backend::executePass(const Graph& graph, const Pass& pass) {
         m_gl->glBindVertexArray(m_emptyVao);
         m_gl->glDrawArrays(billboards ? GL_TRIANGLES : GL_POINTS, 0, vertexCount);
         m_gl->glBindVertexArray(0);
+    } else if (isTrianglePass) {
+        // reference executePass triangles branch: depth test (LESS, depth
+        // writes on) and back-face culling with CCW front faces; the depth
+        // buffer is cleared for the pass (colour is not). The vertex stage
+        // reads the mesh textures by gl_VertexID, with no vertex buffer.
+        m_gl->glEnable(GL_DEPTH_TEST);
+        m_gl->glDepthFunc(GL_LESS);
+        m_gl->glDepthMask(GL_TRUE);
+        m_gl->glEnable(GL_CULL_FACE);
+        m_gl->glFrontFace(GL_CCW);
+        m_gl->glCullFace(GL_BACK);
+        m_gl->glClear(GL_DEPTH_BUFFER_BIT);
+        m_gl->glBindVertexArray(m_emptyVao);
+        m_gl->glDrawArrays(GL_TRIANGLES, 0, triangleVertexCount);
+        m_gl->glBindVertexArray(0);
+        // Restore the 2D pass state.
+        m_gl->glDisable(GL_DEPTH_TEST);
+        m_gl->glDisable(GL_CULL_FACE);
     } else {
         m_gl->glBindVertexArray(m_fullscreenVao);
         m_gl->glDrawArrays(GL_TRIANGLES, 0, 3);

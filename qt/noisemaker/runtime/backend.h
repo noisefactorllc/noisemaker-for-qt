@@ -7,6 +7,7 @@
 #include <QSize>
 #include <QString>
 #include <QStringList>
+#include <QVector>
 
 #include <functional>
 #include <memory>
@@ -36,12 +37,37 @@ struct ExternalTextureOptions {
     bool flipY = true;
 };
 
+// Result of a mesh load or upload (reference CanvasRenderer.loadOBJFromString/
+// loadOBJFromURL: {success, vertexCount, error}).
+struct MeshLoadResult {
+    bool success = false;
+    int vertexCount = 0; // vertices stored in the mesh textures
+    QString error;       // empty on success
+};
+
+// One entry of an effect definition's `builtinMeshes`, in definition order.
+// `path` is absolute: the definition's data-root-relative path (e.g.
+// "share/meshes/sphere.obj") resolved against the Backend's dataRoot.
+struct BuiltinMesh {
+    QString name;
+    QString path;
+};
+
+// A graph step whose effect reads a host-supplied mesh (definition
+// `externalMesh`, e.g. render/meshLoader -> "mesh0").
+struct ExternalMeshInput {
+    QString meshId;
+    int stepIndex = -1;
+    QString effectKey;
+    QVector<BuiltinMesh> builtinMeshes;
+};
+
 // QOpenGL executor for the full render-graph runtime model
 // (ARCHITECTURE.md "Runtime model" table; reference/05-webgl2-backend.md):
 // fullscreen-triangle effect passes, `passType:"blit"`, MRT, agent points/
-// billboards, feedback ping-pong (the family hazard rule, pingpong.h),
-// `repeat: N` intra-frame loops, and the one std140 UBO effect
-// (`synth/remap`). The public API is unchanged from T3/T4 — callers drive
+// billboards, triangle meshes (`drawMode:"triangles"`), feedback ping-pong
+// (the family hazard rule, pingpong.h), `repeat: N` intra-frame loops, and
+// the one std140 UBO effect (`synth/remap`). Callers drive
 // settle/timed-sample semantics externally by calling render(t) repeatedly
 // (see nm-render `--frames` / `--samples`); this class does not decide how
 // many frames a graph needs on its own.
@@ -131,6 +157,42 @@ public:
     // GL texture only if the Backend created it. Needs a current context
     // when it deletes.
     void removeExternalTexture(const QString& texId);
+
+    // ------------------------------------------------ meshes
+    // Mesh surfaces (reference pipeline.js createSurfaces): mesh0..mesh7, each
+    // three 256x256 RGBA32F textures global_<meshId>_positions, _normals and
+    // _uvs, all zero until a mesh is loaded. render/meshRender draws
+    // triangles from them and render/meshLoader previews them. A pass input
+    // such as "global_mesh0_positions_chain_0" resolves to the unscoped
+    // texture, as reference bindTextures() does. Meshes stay loaded across
+    // render() calls and graphs.
+    //
+    // loadOBJFromString and loadOBJFromFile mirror the reference
+    // CanvasRenderer.loadOBJFromString and loadOBJFromURL: parse
+    // (obj_parser.h), pack into 256x256 texels (more than 65536 vertices are
+    // truncated with a warning), keep the packed data, and upload it. The
+    // kept data is uploaded again after releaseGl() and setup(), as the
+    // reference re-uploads its mesh cache. Both return {false, 0,
+    // "Pipeline not ready"} before setup() and {false, 0, "Failed to load
+    // OBJ: <reason>"} for an unreadable file. The GL context must be current,
+    // as for render().
+    MeshLoadResult loadOBJFromString(const QString& objText, const QString& meshId = QStringLiteral("mesh0"));
+    MeshLoadResult loadOBJFromFile(const QString& path, const QString& meshId = QStringLiteral("mesh0"));
+    // Reference backend uploadMeshData: packed RGBA32F texels (width *
+    // height * 4 floats per array; positions carry w = 1 for a used vertex).
+    // Positions and normals upload as RGBA32F, uvs as RGBA16F when the
+    // texture is created here (mesh0..mesh7 already exist as RGBA32F, as in
+    // the reference). Not kept for re-upload. Returns {false, 0, <reason>}
+    // before setup(), for a non-positive size, or for a short array.
+    MeshLoadResult uploadMeshData(const QString& meshId, const std::vector<float>& positionData,
+                                  const std::vector<float>& normalData, const std::vector<float>& uvData,
+                                  int width, int height, int vertexCount);
+    // Every step whose effect definition declares `externalMesh`, in pass
+    // order, with the effect's built-in meshes. The engine itself loads no
+    // mesh (the mesh textures stay zero, as in the reference engine). The
+    // reference demo host loads builtinMeshes.first() into meshId for each
+    // such step; a host that wants the same default does the same.
+    QVector<ExternalMeshInput> externalMeshes(const Graph& graph) const;
 
     // ------------------------------------------------ live parameters
     // Reference canvas.js applyStepParameterValues: `stepParameterValues`
@@ -238,6 +300,19 @@ private:
     int resolveRepeatCount(const Pass& pass) const;
     bool shouldSkipPass(const Pass& pass) const;
     int resolvePointCount(const Graph& graph, const Pass& pass);
+    int resolveTriangleVertexCount(const Graph& graph, const Pass& pass);
+    struct MeshTexture {
+        unsigned int handle = 0;
+        int width = 0;
+        int height = 0;
+    };
+    const MeshTexture* findMeshTexture(const QString& texId);
+    bool createZeroMeshTextures(const QString& meshId);
+    void uploadMeshTexture(const QString& texId, const float* data, int width, int height,
+                           unsigned int internalFormat);
+    MeshLoadResult loadPackedMesh(const QString& meshId, std::vector<float> positionData,
+                                  std::vector<float> normalData, std::vector<float> uvData,
+                                  int vertexCount);
     void renderInternal(
         const Graph& graph,
         double t,
@@ -281,6 +356,14 @@ private:
     };
     QHash<QString, ExternalTexture> m_externalTextures;
     unsigned int m_midiNoteGridTexture = 0;        // 128x16 RGBA32F, created when a pass reads midiNoteGrid
+    QHash<QString, MeshTexture> m_meshTextures;    // "global_<meshId>_<positions|normals|uvs>" -> texture
+    struct CachedMesh {
+        std::vector<float> positionData;
+        std::vector<float> normalData;
+        std::vector<float> uvData;
+        int vertexCount = 0;
+    };
+    QHash<QString, CachedMesh> m_meshCache;        // meshId -> last loaded OBJ (reference canvas _meshCache)
     QJsonObject m_globalUniforms;                  // host setUniform() globals; engine values override
     double m_lastTime = 0.0;
     double m_deltaTime = 0.0;

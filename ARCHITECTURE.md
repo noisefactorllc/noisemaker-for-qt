@@ -90,6 +90,7 @@ reference WebGL2 backend:
 | Effect passes | Fullscreen triangle-pair draw into an FBO; `passType:"blit"` = present-program copy |
 | MRT | `glDrawBuffers` over N color attachments |
 | Points / billboards | `GL_POINTS` / procedural billboard triangles, vertex shader `texelFetch`ing agent state by vertex index; additive `ONE, ONE` blend, no clear (deposits accumulate). Desktop GL requires `GL_PROGRAM_POINT_SIZE` enabled — WebGL2 has it always-on |
+| Triangle meshes | `drawMode:"triangles"` (`render/meshRender`): vertex shader `texelFetch`es 256x256 `GL_RGBA32F` mesh textures by vertex index; `DEPTH_COMPONENT24` renderbuffer on the output FBO, depth cleared per pass, `GL_LESS`, back faces culled (CCW front). Mesh textures are zero until the host loads an OBJ (`nm::Backend::loadOBJFromFile` / `loadOBJFromString`, reference `obj-parser.js` ported bit-exact) |
 | Feedback / state | Ping-pong double-buffering; a `global_*` surface double-buffers iff it has a read/write hazard (same-pass read+write, or read at-or-before first write); state surfaces persist final binding across frames, display surfaces toggle |
 | `repeat: N` / iterations | Intra-frame ping-pong loop (Jacobi solvers etc.) |
 | Uniforms | Named uniforms, set via location lookup per active uniform — the reference's `extractUniforms` model. `synth/remap`'s `std140` UBO is kept as the reference wrote it (real UBO, `glUniformBlockBinding`) |
@@ -184,8 +185,9 @@ only on the reference plus capture parameters and are reusable across sibling po
 External-input effects take host input: `media` and `text` through
 `nm::Backend::updateTextureFromSource`, `scope`, `spectrum` and `roll` through the audio and MIDI
 snapshots. Capture itself (camera, microphone, MIDI devices, text rasterization) stays in the
-host. `meshLoader` mesh input is still staged. The parity harness exercises the no-input
-fallbacks only. DSL control flow fails at expansion, as it does in the reference. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
+host. `meshLoader` meshes come from the host as OBJ files or text (`nm::Backend::loadOBJFromFile`,
+`loadOBJFromString`); nm-render loads the reference demo host's default built-in mesh. The parity harness exercises the
+no-input fallbacks and the mesh inputs. DSL control flow fails at expansion, as it does in the reference. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
 
 ## Repo layout
 

@@ -86,6 +86,13 @@ public:
     // per-mrt-id `this.fbos` cache). Throws on an incomplete framebuffer.
     unsigned int mrtFramebuffer(const QMap<int, unsigned int>& attachments);
 
+    // reference webgl2.js ensureDepthBuffer (triangle mesh passes): gives
+    // `fbo` a DEPTH_COMPONENT24 renderbuffer of width x height, created once
+    // and resized when the size changes. Binds `fbo` while attaching and
+    // leaves GL_FRAMEBUFFER bound to 0, so call it before binding the draw
+    // target. The renderbuffer is deleted with its FBO.
+    void ensureDepthBuffer(unsigned int fbo, int width, int height);
+
     // Deletes every GL texture/FBO this cache created. The owning context
     // must be current.
     void releaseAll();
@@ -105,6 +112,13 @@ private:
     QOpenGLFunctions_4_1_Core* m_gl;
     QHash<QString, GpuSurface> m_surfaces;
     QHash<QString, unsigned int> m_mrtFbos;
+    struct DepthBuffer {
+        unsigned int renderbuffer = 0;
+        int width = 0;
+        int height = 0;
+    };
+    QHash<unsigned int, DepthBuffer> m_depthBuffers; // fbo -> depth attachment
+    void releaseDepthBuffer(unsigned int fbo);
     unsigned int m_defaultTexture = 0;
 };
 
