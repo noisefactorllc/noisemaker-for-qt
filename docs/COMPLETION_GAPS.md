@@ -147,7 +147,7 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: GAP-006 CI workflow.
 - Acceptance criteria: Zero warnings with warnings as errors on macOS Clang, Linux GCC, and Windows MSVC `/W4 /WX`.
 - Required checks: Warnings-as-errors build of the library, nm-render, and tests. ctest and the compiler gates on the same source.
-- Last verification: 2026-09-24. macOS Clang passes. GCC and MSVC are unverified.
+- Last verification: 2026-09-24. Local Apple Clang passes. CI run 35968600167 (`3a4f421`): Linux GCC passed. The macOS job failed to link (AGL, a Qt packaging issue), and MSVC failed at configure (Git Bash rewrote the flags). Both fixes are unverified.
 
 <details><summary>GAP-005 evidence</summary>
 
@@ -168,7 +168,7 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: Operator approval to push. Remote execution cannot be observed before a push.
 - Acceptance criteria: All four jobs pass on the pushed SHA. Linux and Windows ctest report 13 of 13 on llvmpipe. Smoke results stay at the strict tolerance.
 - Required checks: `gh run view` job logs for the exact SHA. Count skips and failures in the logs; do not rely on the summary.
-- Last verification: 2026-09-24. actionlint passed. The macOS steps were reproduced locally. Remote execution is unverified.
+- Last verification: 2026-09-24. CI run 35968600167 on `3a4f421`: Linux build-test, gates, render-smoke and Linux warnings passed. macOS and Windows failed; fixes pending a run.
 
 <details><summary>GAP-006 evidence</summary>
 
@@ -176,6 +176,14 @@ These entries record missing qualification. They do not infer implementation def
 - Gates job, reproduced locally: the STATUS.md pin parse gave `5b81e04f`. A clean `git clone --filter=blob:none` checked out `5b81e04f8a4b53c2be43b8e328cee0c3365f352f` with no npm install. All 8 gates exited 0: 317/317, 210/210, 5/5, and 357/357 for the other 5.
 - Build-test and warnings jobs: the macOS commands passed locally (ctest 13 of 13; `-Werror` build with 0 warnings). The Linux Xvfb/llvmpipe and Windows Mesa opengl32.dll paths are untested.
 - The Windows /W4 /WX build is untested. GAP-005 depends on it.
+- First remote run, 35968600167 (`3a4f421e351e76e28e4bdb58e19f38a96c8d9c7d`, pushed by the operator session):
+  - build-test (ubuntu-latest): renderer `llvmpipe (LLVM 20.1.2, 256 bits)`, OpenGL 4.5 core, Mesa 25.2.8. ctest: 14 of 14 passed.
+  - gates: all 8 passed. SHADERS 317/317, DEFINITIONS 210/210, REGISTRY 5/5, and 357/357 for LEX, PARSE, VALIDATE, EXPAND and GRAPH.
+  - render-smoke: adjust, blendMode, cell and feedback passed at 2.001 / 0.98. Each had max diff 1 against goldens from Chromium in CI.
+  - warnings-as-errors (ubuntu-latest): passed.
+  - build-test and warnings (macos-latest): link failed with `ld: framework 'AGL' not found` under Qt 6.8.3. Fix: Qt 6.11.1, the locally verified version.
+  - build-test (windows-latest): the GL tests failed ("OpenGL 4.1 functions initialize" FAIL, then 0xc0000409). Qt loads desktop opengl32.dll from System32 only. Fix: Mesa installed as opengl32sw.dll and QT_OPENGL=software.
+  - warnings (windows-latest): configure failed because Git Bash rewrote the /W4-style flags. Fix: MSYS_NO_PATHCONV=1.
 
 </details>
 

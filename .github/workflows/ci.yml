@@ -35,7 +35,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QT_VERSION: "6.8.3"
+  # 6.11.1 matches the locally verified Homebrew Qt. Qt 6.8.3's macOS
+  # package links the AGL framework, which the current macOS SDK lacks
+  # (first CI run 35968600167: "ld: framework 'AGL' not found").
+  QT_VERSION: "6.11.1"
   # pal1000/mesa-dist-win release-msvc archive (llvmpipe opengl32.dll).
   MESA_WIN_URL: https://github.com/pal1000/mesa-dist-win/releases/download/26.2.1/mesa3d-26.2.1-release-msvc.7z
   MESA_WIN_SHA256: 78a0305844074535e73dfb6dcb5eb2a65f1d9dc445102e1f4c3c3e97dace19bf
@@ -84,8 +87,14 @@ jobs:
           $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
           if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
           7z x mesa.7z -omesa | Out-Null
+          # Qt loads desktop opengl32.dll from System32 only (the GDI 1.1
+          # renderer there fails the 4.1 core check: first CI run
+          # 35968600167). With QT_OPENGL=software Qt loads opengl32sw.dll
+          # from the executable's directory, so Mesa's opengl32.dll is also
+          # installed under that name.
           foreach ($dir in @("build/Release", "build/tests/Release")) {
             Copy-Item mesa/x64/*.dll $dir
+            Copy-Item mesa/x64/opengl32.dll (Join-Path $dir "opengl32sw.dll")
           }
           Get-ChildItem build/Release/*.dll | Select-Object Name, Length
 
@@ -106,6 +115,7 @@ jobs:
         if: runner.os == 'Windows'
         env:
           GALLIUM_DRIVER: llvmpipe
+          QT_OPENGL: software
         run: ctest --test-dir build -C Release --output-on-failure
 
       - name: ctest (macOS)
@@ -137,6 +147,10 @@ jobs:
 
       - name: Configure
         shell: bash
+        env:
+          # Git Bash would rewrite /W4-style MSVC flags as paths (first CI
+          # run 35968600167 failed at configure).
+          MSYS_NO_PATHCONV: "1"
         run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_CXX_FLAGS=${{ matrix.flags }}"
 
       - name: Build library, nm-render and tests
