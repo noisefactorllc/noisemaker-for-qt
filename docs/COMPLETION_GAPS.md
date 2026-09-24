@@ -240,17 +240,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-010: heightGrid_billboard_alpha renders wrong
 
-- Status: open. Priority: P1. Category: implementation.
-- Affected scope: render/pointsBillboardRender with `blendMode: alpha` over points/heightGrid. Fixture: parity/programs/heightGrid_billboard_alpha.dsl.
+- Status: closed. Priority: P1. Category: verification.
+- Affected scope: parity/export-and-render.mjs and parity/batch-golden.mjs (golden minting). Fixture: parity/programs/heightGrid_billboard_alpha.dsl. The render/pointsBillboardRender alpha path in qt/noisemaker/runtime was not at fault.
 - Expected behavior: The candidate matches the reference golden at the strict tolerance 2.001 / SSIM 0.98.
-- Observed behavior: Every pixel differs. Max diff 255, mean 64.19, SSIM 0.35693. The same fixture with the default blend mode passes exactly.
-- Evidence: Two single-fixture reference mints were byte-identical, so the golden is deterministic. The first batch mint raced (see sweep evidence).
-- Diagnosis so far: alpha mode adds depthKeys, 24 depthMerge passes (rgba32f depthOrderA/B) and deposits with blend [ONE, ONE_MINUS_SRC_ALPHA]. Candidate alpha falls between 0 and 166.7 mean where the golden alpha is 255 everywhere. Mean RGB: candidate (83.3, 89.7, 78.0), golden (59.6, 109.2, 117.5).
-- Next action: Compare depthOrder intermediates with parity/compare_intermediates.py. Then check deposit blend and alpha output against reference webgl2.js.
+- Observed behavior: The recorded golden was the demo's default filter/adjust program, not the fixture. Both minters passed the waitForFunction options object in the page-argument slot. The DSL-swap wait then returned true on its first poll, and a slow compile (about 130 ms here) was captured from the previous program. With the fix, the fixture passes bit-exact: max diff 0, SSIM 1.00000.
+- Evidence: The old-harness golden equals a mint of the default DSL byte for byte. An NM_DUMP_INTERMEDIATES mint equals the Qt candidate (0 of 65536 px differ). With the fix, 3 single mints were byte-identical and the batch mint equals the single mint. All 7 points/billboard fixtures pass with max diff 0. Commit 728969f.
+- Next action: None. The full re-mint in the GAP-001 sweep checks every other golden minted by the old harness.
 - Dependencies: None.
-- Acceptance criteria: The fixture passes at 2.001 / 0.98 with no tolerance change. The other heightGrid fixtures stay PASS.
-- Required checks: `bash parity/run.sh heightGrid_billboard_alpha` against a fresh reference golden, then a full sweep.
-- Last verification: 2026-09-24, macOS.
+- Acceptance criteria: The fixture passes at 2.001 / 0.98 with no tolerance change. The other heightGrid and points fixtures stay PASS. The minters capture the loaded program after a slow compile.
+- Required checks: `bash parity/run.sh heightGrid_billboard_alpha` against a fresh golden; the two new golden_mint tests in parity/test_harness_contract.py; a full sweep.
+- Last verification: 2026-09-24, macOS (Apple M4). run.sh [PASS] max-abs-diff 0.000. 7 of 7 points fixtures PASS. Python tests 33 OK. ctest 15/15.
 
 ### GAP-011: heightmap3d_landscape exceeds the strict tolerance by one level
 
