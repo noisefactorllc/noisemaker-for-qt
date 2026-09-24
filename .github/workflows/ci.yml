@@ -23,9 +23,11 @@ name: CI
 #                 parity/run.sh at the strict default tolerance. It also runs
 #                 the AnalyserNode gate against the same Chromium.
 #   render-smoke-windows
-#                 The same golden minting and grading on Windows (Chromium on
-#                 Windows, nm-render on the Mesa llvmpipe opengl32sw.dll), and
-#                 the filter/text gate against Qt's DirectWrite font engine.
+#                 The same golden minting and grading on Windows (Chromium's
+#                 ANGLE GL backend over Mesa llvmpipe registered as the system
+#                 OpenGL driver, nm-render on the same Mesa as
+#                 opengl32sw.dll), and the filter/text gate against Qt's
+#                 DirectWrite font engine.
 
 on:
   push:
@@ -365,7 +367,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install the reference engine and headless Chromium
+      - name: Install the reference engine and Chromium
         run: |
           cd "$RUNNER_TEMP/noisemaker"
           npm ci
@@ -384,7 +386,7 @@ jobs:
           cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
           cmake --build qt/build --config Release --parallel --target nm-render text_texture_dump
 
-      - name: Install Mesa llvmpipe opengl32sw.dll
+      - name: Install Mesa llvmpipe (opengl32sw.dll and the system OpenGL ICD)
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
@@ -396,47 +398,42 @@ jobs:
           Copy-Item mesa/x64/*.dll qt/build/Release
           Copy-Item mesa/x64/opengl32.dll qt/build/Release/opengl32sw.dll
           Get-ChildItem qt/build/Release/*.dll | Select-Object Name, Length
+          # GAP-033: the golden browser must draw on the same Mesa. ANGLE's
+          # GL backend loads opengl32.dll from System32 only (DisplayWGL.cpp,
+          # LOAD_LIBRARY_SEARCH_SYSTEM32). mesa-dist-win's system-wide
+          # deployment (bin/systemwidedeploy.cmd, modules/reggl.cmd) makes
+          # that opengl32.dll use Mesa: the WGL megadriver is copied to
+          # System32\mesadrv.dll and registered as the MSOGL OpenGL ICD.
+          # libgallium_wgl.dll imports only Windows system DLLs.
+          Copy-Item mesa/x64/libgallium_wgl.dll "$env:WINDIR\System32\mesadrv.dll"
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL'
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty -Path $key -Name DLL -Value 'mesadrv.dll' -PropertyType String -Force | Out-Null
+          New-ItemProperty -Path $key -Name DriverVersion -Value 1 -PropertyType DWord -Force | Out-Null
+          New-ItemProperty -Path $key -Name Flags -Value 1 -PropertyType DWord -Force | Out-Null
+          New-ItemProperty -Path $key -Name Version -Value 2 -PropertyType DWord -Force | Out-Null
+          Get-ItemProperty -Path $key | Format-List DLL, DriverVersion, Flags, Version
 
       - name: Python compare environment
         run: |
           python -m venv parity/.venv
           parity/.venv/Scripts/python.exe -m pip install numpy pillow
 
-      - name: Chromium WebGL renderer
+      - name: Mint goldens with the reference engine (ANGLE GL on llvmpipe)
         env:
-          SHADE_SWIFTSHADER: "1"
-        run: |
-          cat > "$RUNNER_TEMP/webgl-renderer.mjs" <<'EOF'
-          // Launches Chromium with the golden harness's WebGL2 arguments
-          // (vendor/shade-mcp browser-session getBrowserLaunchOptions) and
-          // prints the renderer the goldens come from.
-          import { join } from 'node:path'
-          import { pathToFileURL } from 'node:url'
-          const { chromium } = await import(pathToFileURL(join(process.env.NM_REFERENCE_ROOT, 'node_modules', 'playwright', 'index.mjs')).href)
-          const browser = await chromium.launch({ headless: true, args: ['--disable-gpu-sandbox', '--enable-unsafe-swiftshader'] })
-          const page = await browser.newPage()
-          console.log(await page.evaluate(() => {
-            const gl = document.createElement('canvas').getContext('webgl2')
-            if (!gl) return 'no WebGL2 context'
-            const info = gl.getExtension('WEBGL_debug_renderer_info')
-            return [gl.getParameter(gl.VERSION), info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'renderer masked'].join(' | ')
-          }))
-          console.log(`Chromium ${browser.version()}`)
-          await browser.close()
-          EOF
-          NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" node "$RUNNER_TEMP/webgl-renderer.mjs"
-
-      - name: Mint goldens with the reference engine
-        env:
-          SHADE_HEADLESS: "1"
-          # getBrowserLaunchOptions adds --enable-unsafe-swiftshader, so
-          # Chromium can use SwiftShader when the runner has no GPU.
-          SHADE_SWIFTSHADER: "1"
+          # GAP-033: as in render-smoke. Headed Chromium, WebGL on ANGLE's GL
+          # backend over the Mesa ICD registered above, forced to llvmpipe.
+          SHADE_HEADLESS: "0"
+          GALLIUM_DRIVER: llvmpipe
+          NM_GOLDEN_CHROMIUM_ARGS: "--use-gl=angle --use-angle=gl --ignore-gpu-blocklist"
         run: |
           export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
           mkdir -p parity/out
           for name in $SMOKE_FIXTURES; do
-            node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2
+            node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2 \
+              2>&1 | tee "$RUNNER_TEMP/mint-$name.log"
+            grep -q "golden WebGL renderer: ANGLE (Mesa, llvmpipe" "$RUNNER_TEMP/mint-$name.log" \
+              || { echo "$name: the golden was not rendered on Mesa llvmpipe"; exit 1; }
           done
 
       - name: Render and grade candidates (strict tolerance, llvmpipe)
