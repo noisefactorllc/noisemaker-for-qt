@@ -42,6 +42,12 @@ beyond a literal port:
   - test_timed_golden_mint_starts_from_cleared_graph_state (a timed series
     starts from zeroed graph state; GAP-034) and
     test_live_dsl_sweep_passes_saved_host_textures_to_the_renderer (GAP-035)
+  - test_golden_mints_export_the_asyncinit_overlay_they_sampled,
+    test_runner_passes_reference_overlays_only_when_asked,
+    test_batch_manifest_passes_reference_overlays_only_when_asked and
+    test_live_dsl_sweep_passes_reference_overlays_only_when_asked (the
+    reference's asyncInit overlays reach the candidate only under
+    NM_REFERENCE_OVERLAYS=1; GAP-025)
 """
 
 import os
@@ -66,6 +72,7 @@ export function compileGraph (source) {
   const inputs = {}
   if (source.includes('mesh0')) inputs.meshPositions = 'global_mesh0_positions_chain_0'
   if (/ text /.test(source)) inputs.textTex = 'textTex_step_1'
+  if (/ overlay /.test(source)) inputs.overlayTex = 'node_1_overlayTex'
   const textures = / sim/.test(source) ? { global_sim_state: { width: 1, height: 1 } } : {}
   return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill', inputs }], programs: {}, textures, renderSurface: 'o0' }
 }
@@ -80,12 +87,13 @@ export function compileGraph (source) {
 #   ("fill R G B"), or, for a program that names mesh0, the color its loaded
 #   mesh text names (black if empty); replaced by its overlay once traced and
 #   by the host text texture once uploaded.
-# - "overlay R G B" is an asyncInit overlay. The load traces it with the
-#   pipeline's global parameters (gray) and schedules the host's regeneration
-#   with the step's own parameters (R G B) DEBOUNCE_TICKS later. Each trace
-#   takes TRACE_TICKS; a newer trace cancels an older one. resize() cancels
-#   the traces and the pending regeneration and traces gray again, like the
-#   reference pipeline.resize() -> initAsyncEffects().
+# - "overlay R G B" is an asyncInit overlay of node_1, uploaded as the
+#   backend texture node_1_overlayTex that the pass samples. The load traces
+#   it with the pipeline's global parameters (gray) and schedules the host's
+#   regeneration with the step's own parameters (R G B) DEBOUNCE_TICKS later.
+#   Each trace takes TRACE_TICKS; a newer trace cancels an older one.
+#   resize() cancels the traces and the pending regeneration and traces gray
+#   again, like the reference pipeline.resize() -> initAsyncEffects().
 # - "text R G B" makes the host upload textTex_step_1 (R G B) TEXT_TICKS
 #   after the swap, at the renderer's size.
 # - "sim" is a stateful solver: each render() adds 1 to its state texture
@@ -175,9 +183,14 @@ function makePage (launchArgs = []) {
       }
       const generation = ++this.generation
       this.overlay = null
+      const overlayTexture = texture(8, 8)
+      textures.set(`${nodeId}_overlayTex`, overlayTexture)
       effectDef.asyncInit({
         params: options.params,
-        draw: (color) => { this.overlay = color },
+        draw: (color) => {
+          this.overlay = color
+          for (let i = 0; i < overlayTexture.data.length; i += 4) overlayTexture.data.set(color, i)
+        },
         isCancelled: () => generation !== this.generation
       })
     }
@@ -191,8 +204,10 @@ function makePage (launchArgs = []) {
     }
 
     load (source) {
-      this.graph = { id: `loaded${tick}`, source, passes: [{}], renderSurface: 'o0' }
+      const inputs = colorAfter('overlay', source) ? { overlayTex: 'node_1_overlayTex' } : {}
+      this.graph = { id: `loaded${tick}`, source, passes: [{ inputs, outputs: { fragColor: 'node_1_out' } }], renderSurface: 'o0' }
       textures.delete('textTex_step_1')
+      textures.delete('node_1_overlayTex')
       this.initAsyncEffects()
       const overlay = colorAfter('overlay', source)
       if (overlay) this._startAsyncInit('node_1', overlayEffect, { debounce: true, params: { color: overlay } })
@@ -1223,6 +1238,87 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(png_pixel(out / "second.golden.png", 3, 3), (255, 0, 255, 255))
         self.assertEqual(png_pixel(out / "second.textTex_step_1.png", 7, 7), (255, 0, 255, 255))
 
+    def test_golden_mints_export_the_asyncinit_overlay_they_sampled(self):
+        result, out = self._mint_with_fake_reference(
+            "export-and-render.mjs", {"overlay": "fill 0 255 0 overlay 0 0 255\n"}
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "overlay.node_1_overlayTex.png", 7, 7), (0, 0, 255, 255))
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+
+        out = self.tmp / "out"
+        out.mkdir()
+        (out / "second.node_1_overlayTex.png").write_text("from an earlier mint")
+        result, out = self._mint_with_fake_reference(
+            "batch-golden.mjs",
+            {"first": "fill 0 255 0 overlay 255 0 0\n", "second": "fill 0 0 255\n"},
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "first.node_1_overlayTex.png", 7, 7), (255, 0, 0, 255))
+        self.assertFalse((out / "second.node_1_overlayTex.png").exists())
+
+    def _runner_args_with_reference_overlays(self, env):
+        parity = self.tmp / "parity"
+        (parity / "out").mkdir(parents=True, exist_ok=True)
+        (parity / ".venv" / "bin").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO / "parity" / "run.sh", parity / "run.sh")
+        for suffix in ("graph.json", "golden.png", "textTex_step_1.png", "node_1_overlayTex.png"):
+            (parity / "out" / f"fibers.{suffix}").touch()
+        (parity / "out" / "fibersSecond.node_1_overlayTex.png").touch()
+        (parity / "compare.py").write_text("# comparator stub\n")
+        python = parity / ".venv" / "bin" / "python"
+        python.write_text("#!/usr/bin/env bash\necho '[PASS] synthetic'\n")
+        python.chmod(0o755)
+        args_file = self.tmp / "renderer-args.txt"
+        renderer = self.tmp / "fake-nm-render-args"
+        renderer.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$@\" > '{args_file}'\n"
+            "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
+        )
+        renderer.chmod(0o755)
+        result = subprocess.run(
+            ["bash", str(parity / "run.sh"), "fibers"],
+            env={**os.environ, "NM_RENDER": str(renderer), **env},
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        args = args_file.read_text().splitlines()
+        return [args[i + 1] for i, arg in enumerate(args) if arg == "--external-texture"], parity / "out"
+
+    def test_runner_passes_reference_overlays_only_when_asked(self):
+        textures, out = self._runner_args_with_reference_overlays({"NM_REFERENCE_OVERLAYS": "0"})
+        self.assertEqual(textures, [f"textTex_step_1={out / 'fibers.textTex_step_1.png'}"])
+
+        textures, out = self._runner_args_with_reference_overlays({"NM_REFERENCE_OVERLAYS": "1"})
+        self.assertEqual(textures, [
+            f"textTex_step_1={out / 'fibers.textTex_step_1.png'}",
+            f"node_1_overlayTex={out / 'fibers.node_1_overlayTex.png'}",
+        ])
+
+    def test_batch_manifest_passes_reference_overlays_only_when_asked(self):
+        parity = self.tmp / "parity"
+        (parity / "out").mkdir(parents=True)
+        manifest_builder = parity / "make-batch-manifest.py"
+        shutil.copy2(REPO / "parity" / "make-batch-manifest.py", manifest_builder)
+        (parity / "out" / "fibers.graph.json").write_text("{}")
+        (parity / "out" / "fibers.node_1_overlayTex.png").touch()
+        (parity / "out" / "fibers.golden.png").touch()
+        names_file = self.tmp / "names.txt"
+        names_file.write_text("fibers\n")
+        manifest_path = self.tmp / "batch.json"
+        for flag, expected in (("0", None), ("1", {"node_1_overlayTex": str(parity / "out" / "fibers.node_1_overlayTex.png")})):
+            with self.subTest(NM_REFERENCE_OVERLAYS=flag):
+                result = subprocess.run([
+                    "python3", str(manifest_builder), "--root", str(self.tmp),
+                    "--output", str(manifest_path), "--names-file", str(names_file),
+                ], env={**os.environ, "NM_REFERENCE_OVERLAYS": flag}, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                entry = json.loads(manifest_path.read_text())[0]
+                self.assertEqual(entry.get("externalTextures"), expected)
+
     def test_runner_passes_saved_host_textures_to_the_renderer(self):
         parity = self.tmp / "parity"
         (parity / "out").mkdir(parents=True)
@@ -1314,6 +1410,54 @@ class HarnessContractTests(unittest.TestCase):
         self.assertIn(f"--external-texture textTex_step_1={texture}", text_launch[0])
         self.assertNotIn("--external-texture", plain_launch[0])
 
+
+    def test_live_dsl_sweep_passes_reference_overlays_only_when_asked(self):
+        for flag in ("0", "1"):
+            with self.subTest(NM_REFERENCE_OVERLAYS=flag):
+                parity = self.tmp / "parity"
+                (parity / "programs").mkdir(parents=True)
+                (parity / "out").mkdir()
+                for helper in ("sweep.sh", "write-ledger.py"):
+                    shutil.copy2(REPO / "parity" / helper, parity / helper)
+                (parity / "programs" / "fibers.dsl").write_text("noise().fibers().write(o0)\n")
+                (parity / "out" / "fibers.golden.png").touch()
+                (parity / "out" / "fibers.graph.json").write_text("{}")
+                (parity / "out" / "fibers.node_1_overlayTex.png").touch()
+                runner = parity / "run.sh"
+                runner.write_text(
+                    "#!/usr/bin/env bash\n"
+                    "name=$1\n"
+                    "printf '%s\\n' \"{\\\"name\\\":\\\"$name\\\",\\\"passed\\\":true,\\\"max_abs_diff\\\":0,\\\"mean_abs_diff\\\":0,\\\"ssim\\\":1,\\\"tolerance\\\":$2,\\\"ssim_min\\\":$3}\" > \"$(dirname \"$0\")/out/$name.report.json\"\n"
+                    "echo \"[PASS] $name: synthetic live-DSL candidate\"\n"
+                )
+                runner.chmod(0o755)
+                launches = self.tmp / "launches"
+                renderer = self.tmp / "fake-nm-render"
+                renderer.write_text(
+                    "#!/usr/bin/env bash\n"
+                    f"echo \"$*\" >> '{launches}'\n"
+                    "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
+                )
+                renderer.chmod(0o755)
+
+                result = subprocess.run(
+                    ["bash", str(parity / "sweep.sh")],
+                    env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1",
+                         "NM_REFERENCE_OVERLAYS": flag},
+                    capture_output=True,
+                    text=True,
+                )
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                lines = launches.read_text().splitlines()
+                self.assertEqual(len(lines), 1, lines)
+                overlay = f"--external-texture node_1_overlayTex={parity / 'out' / 'fibers.node_1_overlayTex.png'}"
+                if flag == "1":
+                    self.assertIn(overlay, lines[0])
+                else:
+                    self.assertNotIn("--external-texture", lines[0])
+                shutil.rmtree(self.tmp)
+                self.tmp.mkdir()
 
 if __name__ == "__main__":
     unittest.main()

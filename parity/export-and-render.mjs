@@ -107,6 +107,10 @@ const STATUS_TIMEOUT = 300000
 // Host-supplied texture ids, "<externalTexture>_step_<stepIndex>" (the same
 // pattern as nm::Backend::externalTextureIds).
 const EXTERNAL_TEXTURE_ID = /^[A-Za-z][A-Za-z0-9]*_step_\d+$/
+// Textures an asyncInit uploads, "<nodeId>_<name>" (nm::asyncOverlayTextureIds,
+// for example node_1_overlayTex). Saved like the external textures; the
+// graders pass them to nm-render only with NM_REFERENCE_OVERLAYS=1 (run.sh).
+const ASYNC_OVERLAY_ID = /^node_\d+_[A-Za-z][A-Za-z0-9]*$/
 
 // Read back the presented render surface (or, given `textureId`, that backend
 // texture) as LINEAR FLOAT, quantize to 8-bit, flip to top-down, and encode a
@@ -197,6 +201,27 @@ function assertGoldenChromiumArgsApplied (launchesBefore) {
     throw new Error('NM_GOLDEN_CHROMIUM_ARGS is set, but the harness did not launch Chromium ' +
       'through the reference Playwright chromium.launch()')
   }
+}
+
+// The asyncInit overlay textures of the presented graph: inputs that no pass
+// writes, named "<nodeId>_<name>" after a node whose asyncInit the tracker
+// saw start, and present in the backend. Keep identical in both minters.
+async function asyncOverlayIds (page) {
+  const ids = await page.evaluate(() => {
+    const p = window.__noisemakerRenderingPipeline
+    const nodes = window.__nmAsyncInitNodes || new Set()
+    const passes = p?.graph?.passes || []
+    const written = new Set(passes.flatMap((pass) => Object.values(pass.outputs || {})))
+    const found = new Set()
+    for (const pass of passes) {
+      for (const id of Object.values(pass.inputs || {})) {
+        if (written.has(id) || !p.backend?.textures?.get(id)?.handle) continue
+        for (const node of nodes) if (id.startsWith(`${node}_`)) found.add(id)
+      }
+    }
+    return [...found]
+  })
+  return ids.filter((id) => ASYNC_OVERLAY_ID.test(id))
 }
 
 // Logs the renderer of the golden pipeline's own WebGL context.
@@ -423,12 +448,13 @@ async function main () {
   writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
   process.stderr.write(`[parity] wrote ${graphPath}\n`)
   const meshes = await meshPlan(graph, opts.programPath)
-  // Drop external textures saved by an earlier mint of this program; this
-  // mint writes the ones its graph samples.
+  // Drop external textures and asyncInit overlays saved by an earlier mint
+  // of this program; this mint writes the ones its graph samples.
   for (const file of readdirSync(opts.outDir)) {
     const prefix = `${programName}.`
+    const id = file.slice(prefix.length, -'.png'.length)
     if (file.startsWith(prefix) && file.endsWith('.png') &&
-        EXTERNAL_TEXTURE_ID.test(file.slice(prefix.length, -'.png'.length))) {
+        (EXTERNAL_TEXTURE_ID.test(id) || ASYNC_OVERLAY_ID.test(id))) {
       unlinkSync(join(opts.outDir, file))
     }
   }
@@ -554,9 +580,11 @@ async function main () {
         throw new Error('reference pipeline has no _startAsyncInit; the asyncInit quiescence wait needs updating')
       }
       window.__nmAsyncInitPending = 0
+      window.__nmAsyncInitNodes = new Set()
       const start = proto._startAsyncInit
       proto._startAsyncInit = function (nodeId, effectDef, options) {
         if (options && options.debounce) return start.call(this, nodeId, effectDef, options)
+        window.__nmAsyncInitNodes.add(nodeId)
         const ownAsyncInit = Object.prototype.hasOwnProperty.call(effectDef, 'asyncInit')
         const asyncInit = effectDef.asyncInit
         effectDef.asyncInit = function (context) {
@@ -645,6 +673,15 @@ async function main () {
     // first, as <program>.<textureId>.png. nm-render uploads it with flipY, so
     // both sides sample identical texels (parity/run.sh --external-texture).
     for (const id of externalIds) {
+      const texturePath = join(opts.outDir, `${programName}.${id}.png`)
+      writeFileSync(texturePath, await capture(page, globals, id))
+      process.stderr.write(`[parity] wrote ${texturePath}\n`)
+    }
+    // Save each asyncInit overlay the golden samples the same way (GAP-025):
+    // a graph input that no pass writes, uploaded by a node whose asyncInit
+    // ran. nm-render takes it under the same id when the grader asks for the
+    // reference's overlays (NM_REFERENCE_OVERLAYS=1).
+    for (const id of await asyncOverlayIds(page)) {
       const texturePath = join(opts.outDir, `${programName}.${id}.png`)
       writeFileSync(texturePath, await capture(page, globals, id))
       process.stderr.write(`[parity] wrote ${texturePath}\n`)

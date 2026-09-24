@@ -29,7 +29,10 @@
 //
 // The oracle is Chromium's GPU canvas (Skia Graphite on Metal); another GPU
 // backend rasterizes strokes differently, so the gate refuses to run on a
-// renderer other than ANGLE Metal (exit 3).
+// renderer other than ANGLE Metal (exit 3). Measured on Linux arm64, Chromium
+// 153 with --use-gl=angle --use-angle=gl over Mesa llvmpipe: Skia Ganesh on
+// GL, the same 51872 traced strokes bit for bit, and a different canvas
+// (fibers 90246, scratches 16492, strayHair 134 of 262144 values differ).
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker node parity/check_async_overlay.mjs
 // Env: NM_ASYNC_OVERLAY_DUMP  candidate binary (default qt/build/tests/async_overlay_dump)

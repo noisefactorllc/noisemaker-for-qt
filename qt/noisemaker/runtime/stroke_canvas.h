@@ -30,8 +30,11 @@
 //
 // Measured against Chromium 153 (headless shell, --use-angle=metal, Skia
 // Graphite on Metal, Apple M4) by parity/check_async_overlay.mjs. Other
-// browsers and GPU backends rasterize strokes differently; the goldens of
-// this port are minted with that Chromium configuration.
+// browsers and GPU backends rasterize strokes differently. On Linux with
+// ANGLE on OpenGL (the parity-llvmpipe job) Chromium 153 draws the canvas
+// with Skia Ganesh on GL: the traced strokes are bit-identical, the pixels
+// are not, so that job passes the reference's own overlays to the candidate
+// (parity/run.sh, NM_REFERENCE_OVERLAYS).
 
 #include <cstdint>
 #include <vector>

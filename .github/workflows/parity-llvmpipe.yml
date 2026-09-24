@@ -86,6 +86,10 @@ jobs:
           SHADE_HEADLESS: "0"
           LIBGL_ALWAYS_SOFTWARE: "1"
           NM_GOLDEN_CHROMIUM_ARGS: "--use-gl=angle --use-angle=gl --ignore-gpu-blocklist"
+          # Chromium's 2D canvas here is Skia Ganesh on GL, not the Graphite
+          # on Metal canvas the port's asyncInit overlays reproduce, so the
+          # candidates take the reference's own overlays (parity/run.sh).
+          NM_REFERENCE_OVERLAYS: "1"
           QT_QPA_PLATFORM: xcb
           LEDGER_PATH: ${{ runner.temp }}/ledger-llvmpipe.json
         run: |

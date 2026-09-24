@@ -20,22 +20,27 @@ that must run before this script, in the same sweep).
 
 externalTextures maps each external texture id to the host pixels the
 reference sampled, parity/out/<name>.<texId>.png (written by the golden
-minter; see nm-render --external-texture).
+minter; see nm-render --external-texture). With NM_REFERENCE_OVERLAYS=1 it
+also maps each asyncInit overlay the reference uploaded
+(<name>.node_<N>_<texture>.png), as parity/run.sh does.
 """
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 
 EXTERNAL_TEXTURE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9]*_step_\d+$")
+ASYNC_OVERLAY_ID = re.compile(r"^node_\d+_[A-Za-z][A-Za-z0-9]*$")
 
 
 def external_textures(out_dir, name):
+    overlays = os.environ.get("NM_REFERENCE_OVERLAYS", "0") == "1"
     textures = {}
     for path in sorted(out_dir.glob(f"{name}.*.png")):
         texture_id = path.name[len(name) + 1:-len(".png")]
-        if EXTERNAL_TEXTURE_ID.match(texture_id):
+        if EXTERNAL_TEXTURE_ID.match(texture_id) or (overlays and ASYNC_OVERLAY_ID.match(texture_id)):
             textures[texture_id] = str(path)
     return textures
 

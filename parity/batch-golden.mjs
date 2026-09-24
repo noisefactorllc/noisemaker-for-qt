@@ -108,8 +108,30 @@ const VIEWER_PATH = '/demo/shaders/'
 const EFFECTS_DIR = join(REFERENCE_ROOT, 'shaders', 'effects')
 const GLOBALS_PREFIX = '__noisemaker'
 const STATUS_TIMEOUT = 300000
-// Host-supplied texture ids (see export-and-render.mjs).
+// Host-supplied texture ids and asyncInit overlay ids (see export-and-render.mjs).
 const EXTERNAL_TEXTURE_ID = /^[A-Za-z][A-Za-z0-9]*_step_\d+$/
+const ASYNC_OVERLAY_ID = /^node_\d+_[A-Za-z][A-Za-z0-9]*$/
+
+// The asyncInit overlay textures of the presented graph: inputs that no pass
+// writes, named "<nodeId>_<name>" after a node whose asyncInit the tracker
+// saw start, and present in the backend. Keep identical in both minters.
+async function asyncOverlayIds (page) {
+  const ids = await page.evaluate(() => {
+    const p = window.__noisemakerRenderingPipeline
+    const nodes = window.__nmAsyncInitNodes || new Set()
+    const passes = p?.graph?.passes || []
+    const written = new Set(passes.flatMap((pass) => Object.values(pass.outputs || {})))
+    const found = new Set()
+    for (const pass of passes) {
+      for (const id of Object.values(pass.inputs || {})) {
+        if (written.has(id) || !p.backend?.textures?.get(id)?.handle) continue
+        for (const node of nodes) if (id.startsWith(`${node}_`)) found.add(id)
+      }
+    }
+    return [...found]
+  })
+  return ids.filter((id) => ASYNC_OVERLAY_ID.test(id))
+}
 
 // capture() — verbatim copy of export-and-render.mjs's own.
 async function capture (page, globals, textureId = null) {
@@ -345,9 +367,11 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
       throw new Error('reference pipeline has no _startAsyncInit; the asyncInit quiescence wait needs updating')
     }
     window.__nmAsyncInitPending = 0
+    window.__nmAsyncInitNodes = new Set()
     const start = proto._startAsyncInit
     proto._startAsyncInit = function (nodeId, effectDef, options) {
       if (options && options.debounce) return start.call(this, nodeId, effectDef, options)
+      window.__nmAsyncInitNodes.add(nodeId)
       const ownAsyncInit = Object.prototype.hasOwnProperty.call(effectDef, 'asyncInit')
       const asyncInit = effectDef.asyncInit
       effectDef.asyncInit = function (context) {
@@ -371,6 +395,9 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
     }
     proto.__nmTracksAsyncInit = true
   })
+
+  // The asyncInit nodes of this program only (asyncOverlayIds).
+  await page.evaluate(() => { window.__nmAsyncInitNodes = new Set() })
 
   await page.evaluate(({ src, resetStatus }) => {
     const editor = document.getElementById('dsl-editor')
@@ -429,6 +456,9 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
     return ids.every((id) => !!p.backend?.textures?.get(id)?.handle)
   }, externalIds, { timeout: STATUS_TIMEOUT })
   for (const id of externalIds) {
+    writeFileSync(join(opts.outDir, `${programName}.${id}.png`), await capture(page, globals, id))
+  }
+  for (const id of await asyncOverlayIds(page)) {
     writeFileSync(join(opts.outDir, `${programName}.${id}.png`), await capture(page, globals, id))
   }
 
@@ -592,11 +622,13 @@ async function main () {
           writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
 
           const meshes = await meshPlan(graph, dslPath)
-          // Drop external textures saved by an earlier mint of this program.
+          // Drop external textures and asyncInit overlays saved by an earlier
+          // mint of this program.
           for (const file of readdirSync(opts.outDir)) {
             const prefix = `${programName}.`
+            const id = file.slice(prefix.length, -'.png'.length)
             if (file.startsWith(prefix) && file.endsWith('.png') &&
-                EXTERNAL_TEXTURE_ID.test(file.slice(prefix.length, -'.png'.length))) {
+                (EXTERNAL_TEXTURE_ID.test(id) || ASYNC_OVERLAY_ID.test(id))) {
               unlinkSync(join(opts.outDir, file))
             }
           }

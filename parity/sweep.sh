@@ -50,6 +50,11 @@
 #                  process flag (dump_graph.cpp); --batch-manifest only ever
 #                  reads {graph,out,size,time,frames} entries, so there is no
 #                  --dsl-flavored batch entry to build a manifest from.
+#   NM_REFERENCE_OVERLAYS=1  every candidate render also receives the
+#                  asyncInit overlays the golden minter saved
+#                  (<name>.node_<N>_<texture>.png) as host textures, which
+#                  replace the overlays the port traces (run.sh explains when
+#                  to use it; the parity-llvmpipe job does).
 #   NM_EXTRA_CHAOS / NM_EXTRA_DEFER   space-separated program names UNIONED
 #                  into the CHAOS/DEFER case arms below. Test-injection seam
 #                  (test_harness_contract.py) so the classification MACHINERY
@@ -336,6 +341,17 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 					[[ "$texture_id" =~ ^[A-Za-z][A-Za-z0-9]*_step_[0-9]+$ ]] || continue
 					external_args+=(--external-texture "$texture_id=$texture")
 				done
+				# The reference's asyncInit overlays, as run.sh passes them.
+				if [ "${NM_REFERENCE_OVERLAYS:-0}" = "1" ]; then
+					for texture in "$ROOT/parity/out/$name".node_*.png; do
+						[ -f "$texture" ] || continue
+						texture_id="${texture##*/}"
+						texture_id="${texture_id#"$name".}"
+						texture_id="${texture_id%.png}"
+						[[ "$texture_id" =~ ^node_[0-9]+_[A-Za-z][A-Za-z0-9]*$ ]] || continue
+						external_args+=(--external-texture "$texture_id=$texture")
+					done
+				fi
 				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" ${mesh_args[@]+"${mesh_args[@]}"} ${external_args[@]+"${external_args[@]}"} 2>&1)
 				rc=$?
 				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true

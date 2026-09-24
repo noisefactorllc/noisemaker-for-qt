@@ -45,6 +45,22 @@ for texture in "$ROOT/parity/out/$NAME".*_step_*.png; do
 	[[ "$texture_id" =~ ^[A-Za-z][A-Za-z0-9]*_step_[0-9]+$ ]] || continue
 	EXTERNAL_ARGS+=(--external-texture "$texture_id=$texture")
 done
+# NM_REFERENCE_OVERLAYS=1 also passes each asyncInit overlay the reference
+# uploaded (<name>.node_<N>_<texture>.png), which replaces the overlay the port
+# would trace, so only the shader passes are graded. The parity-llvmpipe job
+# sets it: Chromium's canvas there is Skia Ganesh on GL, not the Graphite on
+# Metal canvas the port reproduces (parity/check_async_overlay.mjs). Other
+# sweeps grade the port's own trace.
+if [ "${NM_REFERENCE_OVERLAYS:-0}" = "1" ]; then
+	for texture in "$ROOT/parity/out/$NAME".node_*.png; do
+		[ -f "$texture" ] || continue
+		texture_id="${texture##*/}"
+		texture_id="${texture_id#"$NAME".}"
+		texture_id="${texture_id%.png}"
+		[[ "$texture_id" =~ ^node_[0-9]+_[A-Za-z][A-Za-z0-9]*$ ]] || continue
+		EXTERNAL_ARGS+=(--external-texture "$texture_id=$texture")
+	done
+fi
 
 [ -f "$GRAPH" ] || { echo "missing graph: $GRAPH (run: node parity/export-and-render.mjs parity/programs/$NAME.dsl parity/out)"; exit 2; }
 [ -f "$GOLD" ]  || { echo "missing golden: $GOLD (run the reference harness)"; exit 2; }
