@@ -54,6 +54,13 @@ target_link_libraries(test_backend_lifecycle PRIVATE noisemaker-qt Qt6::Core Qt6
 add_test(NAME test_backend_lifecycle COMMAND test_backend_lifecycle)
 set_tests_properties(test_backend_lifecycle PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+if(NM_QT_BUILD_QUICK)
+    add_executable(test_quick_item test_quick_item.cpp)
+    target_link_libraries(test_quick_item PRIVATE noisemaker-qt-quick Qt6::Quick Qt6::OpenGL)
+    add_test(NAME test_quick_item COMMAND test_quick_item)
+    set_tests_properties(test_quick_item PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+endif()
+
 # The export kit's host input code (export-kit/kit/src), built against
 # this tree the way the kit builds it against its vendored engine.
 add_executable(test_export_kit_host test_export_kit_host.cpp

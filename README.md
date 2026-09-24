@@ -29,9 +29,14 @@ Unlike the HLSL/GDShader ports, this port shares the reference's shader *languag
   (`qt/noisemaker/compiler/`: lexer → parser → validator → expander → resources → orchestrator)
   and the render-graph runtime (`qt/noisemaker/runtime/`: a `QOpenGL*` executor, `nm::Backend`).
   Qt 6 Core/Gui/OpenGL only — no Widgets/QML dependency.
+- **`libnoisemaker-qt-quick`** (CMake target `noisemaker-qt::quick`, `qt/quick/`) — optional:
+  `nm::NoisemakerItem`, a Qt Quick item that compiles a DSL program and shows its live render in a
+  QML scene. Built when Qt Quick is installed (`NM_QT_BUILD_QUICK`).
 - **`nm-render`** (`qt/tools/nm-render/`) — an offscreen render CLI: `--dsl <file>` (live compiler)
   or `--graph <json>` (a pre-exported graph) in, a PNG out. Drives the parity harness and doubles
   as a standalone batch renderer.
+- **`examples/quick`** — `NoisemakerItem` filling a `QQuickView`, with compiler errors shown over
+  the render and Space to pause.
 - **`examples/viewer`** — a minimal live `QOpenGLWidget` embedding: DSL in (the live compiler path,
   `nm::compileGraph`), an animated render out, at roughly 60fps. It follows the window size with
   `nm::Backend::resize()` and presents each frame with a GPU blit of
@@ -106,9 +111,51 @@ rm -r /path/to/some/prefix/include/noisemaker-qt /path/to/some/prefix/lib/cmake/
   /path/to/some/prefix/share/noisemaker-qt /path/to/some/prefix/share/doc/noisemaker-qt
 ```
 
+### Show a program in Qt Quick
+
+`nm::NoisemakerItem` (`qt/quick/noisemaker_item.h`) is a `QQuickFramebufferObject`. It needs the OpenGL scene graph backend with a 4.1 core profile context, so set both before creating the application, then register the QML type:
+
+```cpp
+QSurfaceFormat format;
+format.setVersion(4, 1);
+format.setProfile(QSurfaceFormat::CoreProfile);
+QSurfaceFormat::setDefaultFormat(format);
+QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+QGuiApplication app(argc, argv);
+nm::registerQmlTypes(); // import Noisemaker 1.0
+```
+
+```qml
+import Noisemaker 1.0
+
+NoisemakerItem {
+    anchors.fill: parent
+    dataRoot: noisemakerDataRoot // NOISEMAKER_QT_DATA_ROOT, passed in from C++
+    program: "search synth\nnoise(seed: 3).write(o0)\nrender(o0)"
+    onErrorStringChanged: if (errorString) console.warn(errorString)
+}
+```
+
+The item renders at its size in device pixels, every frame while `running` is true, and at `time` (normalized loop time) while it is false. A size change or a new `program` or `dataRoot` starts the program over. `filter/text` steps are drawn. A compile or setup error sets `errorString`, and the item shows transparent pixels until the program works again. Link it with:
+
+```cmake
+find_package(noisemaker-qt 0.1 CONFIG REQUIRED COMPONENTS Quick)
+target_link_libraries(my_app PRIVATE noisemaker-qt::quick)
+```
+
+The example builds against an installed package or the `qt/` tree, like the viewer:
+
+```sh
+cmake -B examples/quick/build -S examples/quick -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
+cmake --build examples/quick/build --parallel
+examples/quick/build/quick              # a resizable window; Space pauses
+examples/quick/build/quick --selfcheck  # renders 30 frames, resizes to 640x360, breaks the program and
+                                         # restores it; saves quick.png in the temp directory; exits 0 / 1
+```
+
 ### Embed the library in another CMake project
 
-A host project can add `qt/` with `add_subdirectory` or `FetchContent`. Then only the library builds. `nm-render`, the tests, and the install rules default ON only for a top-level build. Override them with `NM_QT_BUILD_TOOLS`, `NM_QT_BUILD_TESTS`, and `NM_QT_INSTALL`.
+A host project can add `qt/` with `add_subdirectory` or `FetchContent`. Then only the library builds. `nm-render`, the tests, the Qt Quick item and the install rules default ON only for a top-level build. Override them with `NM_QT_BUILD_TOOLS`, `NM_QT_BUILD_TESTS`, `NM_QT_BUILD_QUICK` and `NM_QT_INSTALL`.
 
 ```cmake
 find_package(Qt6 COMPONENTS Core Gui OpenGL REQUIRED)

@@ -5,7 +5,8 @@ name: CI
 # this workflow never targets self-hosted runners.
 #
 # Jobs:
-#   build-test    Configure, build and ctest on all three operating systems.
+#   build-test    Configure, build and ctest on all three operating systems,
+#                 including the Qt Quick item (NM_QT_BUILD_QUICK=ON).
 #                 Linux renders through Mesa llvmpipe under Xvfb; Windows
 #                 renders through a checksum-pinned Mesa llvmpipe
 #                 opengl32.dll placed next to the executables.
@@ -83,7 +84,9 @@ jobs:
             libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
 
       - name: Configure
-        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release
+        # NM_QT_BUILD_QUICK=ON: fail rather than skip the Qt Quick item and
+        # test_quick_item if the Qt install lacks Qt Quick.
+        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release -DNM_QT_BUILD_QUICK=ON
 
       - name: Build
         run: cmake --build build --config Release --parallel
@@ -165,7 +168,7 @@ jobs:
           # Git Bash would rewrite /W4-style MSVC flags as paths (first CI
           # run 35968600167 failed at configure).
           MSYS_NO_PATHCONV: "1"
-        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_CXX_FLAGS=${{ matrix.flags }}"
+        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release -DNM_QT_BUILD_QUICK=ON "-DCMAKE_CXX_FLAGS=${{ matrix.flags }}"
 
       - name: Build library, nm-render and tests
         run: cmake --build build --config Release --parallel

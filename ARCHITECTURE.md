@@ -172,13 +172,19 @@ only on the reference plus capture parameters and are reusable across sibling po
   `nm::compileGraph`, `nm::EffectRegistry`, `nm::Graph`, `nm::Backend` (render, external
   textures, live parameters, engine time), and the input state machines `nm::MidiState`,
   `nm::AudioAnalyzer`, `nm::AudioState` and `nm::AudioInput`. There is no separate pipeline
-  class: `nm::Backend` executes the graph. Qt 6 Core/Gui/OpenGL only — no Widgets/QML
-  dependency. Requires an OpenGL 4.1 core context; shaders compile as GLSL 330 core.
+  class: `nm::Backend` executes the graph; `resize()` and `renderSurfaceTexture()` serve
+  embedding hosts. Qt 6 Core/Gui/OpenGL only — no Widgets/QML dependency. Requires an OpenGL 4.1
+  core context; shaders compile as GLSL 330 core.
+- `libnoisemaker-qt-quick` (optional, `noisemaker-qt::quick`): `nm::NoisemakerItem`, a
+  `QQuickFramebufferObject` that runs a DSL program in a QML scene. It needs the OpenGL scene
+  graph backend (`QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL)`), which keeps the
+  engine on QOpenGL for the reasons above; Qt Quick on Metal, Vulkan or Direct3D cannot host it.
 - `nm-render` (CLI): `--dsl <file> | --graph <json> | --batch-manifest <json>`, `--size`,
   `--time`, `--frames`, `--samples`, `--out <png>`, plus `--dump-{tokens,ast,validated,graph}`
   for the compiler gates. Offscreen; requires a GPU but no window session interaction.
-- `examples/viewer`: a minimal `QOpenGLWidget` live view (DSL in, animated render out) — the
-  smallest honest demonstration of embedding in a real Qt app.
+- `examples/viewer`: a minimal, resizable `QOpenGLWidget` live view (DSL in, animated render
+  out) — the smallest honest demonstration of embedding in a Qt Widgets app.
+- `examples/quick`: `NoisemakerItem` in a `QQuickView`, with errors shown in the scene.
 
 ## Staged / out of scope (matching siblings)
 
@@ -199,10 +205,11 @@ noisemaker-for-qt/
 ├── tools/           export-graph.mjs · convert-definitions.mjs · convert-shaders-qt.mjs · dump-*.mjs
 ├── qt/
 │   ├── CMakeLists.txt
-│   ├── noisemaker/  compiler/ · runtime/ · effects/<ns>/*.json · shaders/effects/<ns>/<func>/*.frag
+│   ├── noisemaker/  compiler/ · runtime/ · effects/<ns>/*.json · shaders/effects/<ns>/<func>/*.frag · fonts/
+│   ├── quick/       NoisemakerItem (optional Qt Quick item)
 │   └── tools/nm-render/
 ├── parity/          compare.py · sweep.sh · run.sh · run_samples.sh · write-ledger.py ·
 │                    check_*.mjs · test_artistic_matrix.py · test_harness_contract.py ·
 │                    programs/*.dsl · corpus/*.dsl
-└── examples/viewer/
+└── examples/        viewer/ · quick/
 ```

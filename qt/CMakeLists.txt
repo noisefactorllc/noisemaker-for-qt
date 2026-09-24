@@ -1,13 +1,14 @@
-# Noisemaker for Qt: static library, nm-render CLI, and unit tests.
+# Noisemaker for Qt: static library, optional Qt Quick item, nm-render CLI,
+# and unit tests.
 #
 # Embedding: a host may add this directory with add_subdirectory() or
-# FetchContent. Tools, tests and install rules then default OFF, so the
-# host's build and ctest contain only the library. Set the options below to
-# override. The host locates the runtime data tree through
-# NOISEMAKER_QT_DATA_ROOT (also exported as NOISEMAKER_QT_DATA_DIR and as the
-# NOISEMAKER_QT_DATA_ROOT property of the noisemaker-qt target). Link the
-# library as noisemaker-qt::noisemaker-qt, the same name the installed
-# package exports.
+# FetchContent. Tools, tests, the Qt Quick item and install rules then
+# default OFF, so the host's build and ctest contain only the library. Set
+# the options below to override. The host locates the runtime data tree
+# through NOISEMAKER_QT_DATA_ROOT (also exported as NOISEMAKER_QT_DATA_DIR
+# and as the NOISEMAKER_QT_DATA_ROOT property of the noisemaker-qt target).
+# Link the library as noisemaker-qt::noisemaker-qt and the item as
+# noisemaker-qt::quick, the names the installed package exports.
 cmake_minimum_required(VERSION 3.21)
 # The version is the port's release series; export-kit/kit.config.json
 # "series" states the same series for the export kit releases
@@ -32,6 +33,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 COMPONENTS Core Gui OpenGL REQUIRED)
+find_package(Qt6 QUIET OPTIONAL_COMPONENTS Quick)
+set(_nm_quick_default OFF)
+if(PROJECT_IS_TOP_LEVEL AND Qt6Quick_FOUND)
+    set(_nm_quick_default ON)
+endif()
+option(NM_QT_BUILD_QUICK "Build the Qt Quick item library noisemaker-qt-quick (needs Qt6 Quick)" ${_nm_quick_default})
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/noisemaker/runtime/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/noisemaker/compiler/sources.cmake)
@@ -55,6 +62,16 @@ add_library(noisemaker-qt::noisemaker-qt ALIAS noisemaker-qt)
 # is unaffected.
 target_compile_options(noisemaker-qt PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-ffp-contract=off>)
+
+# Optional Qt Quick item, nm::NoisemakerItem (quick/noisemaker_item.h).
+# Linked as noisemaker-qt::quick, the name the installed package exports
+# for find_package(noisemaker-qt COMPONENTS Quick).
+if(NM_QT_BUILD_QUICK)
+    find_package(Qt6 COMPONENTS Quick REQUIRED)
+    add_library(noisemaker-qt-quick STATIC quick/noisemaker_item.h quick/noisemaker_item.cpp)
+    target_link_libraries(noisemaker-qt-quick PUBLIC noisemaker-qt Qt6::Quick)
+    add_library(noisemaker-qt::quick ALIAS noisemaker-qt-quick)
+endif()
 
 # Runtime data tree (shaders/, effects/ and share/meshes/) for
 # nm::Backend::setup() and nm::EffectRegistry::loadAll(). Visible to a
@@ -96,6 +113,10 @@ if(NM_QT_INSTALL)
     install(TARGETS noisemaker-qt
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     )
+    if(NM_QT_BUILD_QUICK)
+        install(TARGETS noisemaker-qt-quick ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        install(FILES quick/noisemaker_item.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/noisemaker-qt/quick)
+    endif()
 
     # Public headers: mirrors the two PUBLIC include roots set above (qt/ and
     # qt/noisemaker/) so both `#include "noisemaker/runtime/backend.h"` and

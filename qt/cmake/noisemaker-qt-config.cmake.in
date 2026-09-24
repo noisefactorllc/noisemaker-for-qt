@@ -34,6 +34,23 @@ if(NOT TARGET noisemaker-qt::noisemaker-qt)
     )
 endif()
 
+# COMPONENTS Quick: nm::NoisemakerItem (quick/noisemaker_item.h), present
+# when the package was built with NM_QT_BUILD_QUICK.
+set(noisemaker-qt_Quick_FOUND FALSE)
+set(_noisemaker_qt_quick_lib "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_LIBDIR@/@CMAKE_STATIC_LIBRARY_PREFIX@noisemaker-qt-quick@CMAKE_STATIC_LIBRARY_SUFFIX@")
+if("Quick" IN_LIST noisemaker-qt_FIND_COMPONENTS AND EXISTS "${_noisemaker_qt_quick_lib}")
+    find_dependency(Qt6 COMPONENTS Quick)
+    if(NOT TARGET noisemaker-qt::quick)
+        add_library(noisemaker-qt::quick STATIC IMPORTED)
+        set_target_properties(noisemaker-qt::quick PROPERTIES
+            IMPORTED_LOCATION "${_noisemaker_qt_quick_lib}"
+            INTERFACE_LINK_LIBRARIES "noisemaker-qt::noisemaker-qt;Qt6::Quick"
+        )
+    endif()
+    set(noisemaker-qt_Quick_FOUND TRUE)
+endif()
+unset(_noisemaker_qt_quick_lib)
+
 set(NOISEMAKER_QT_DATA_ROOT "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_DATADIR@/noisemaker-qt/noisemaker")
 set(NOISEMAKER_QT_DATA_DIR "${NOISEMAKER_QT_DATA_ROOT}")
 set_target_properties(noisemaker-qt::noisemaker-qt PROPERTIES
@@ -41,3 +58,13 @@ set_target_properties(noisemaker-qt::noisemaker-qt PROPERTIES
 unset(_noisemaker_qt_prefix)
 
 set(noisemaker-qt_FOUND TRUE)
+foreach(_noisemaker_qt_component IN LISTS noisemaker-qt_FIND_COMPONENTS)
+    if(NOT noisemaker-qt_${_noisemaker_qt_component}_FOUND)
+        if(noisemaker-qt_FIND_REQUIRED_${_noisemaker_qt_component})
+            set(noisemaker-qt_FOUND FALSE)
+            set(noisemaker-qt_NOT_FOUND_MESSAGE
+                "component ${_noisemaker_qt_component} is not available; the package provides Quick when built with -DNM_QT_BUILD_QUICK=ON")
+        endif()
+    endif()
+endforeach()
+unset(_noisemaker_qt_component)
