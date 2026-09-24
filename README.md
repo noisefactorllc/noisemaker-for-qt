@@ -115,6 +115,14 @@ rm -r /path/to/some/prefix/include/noisemaker-qt /path/to/some/prefix/lib/cmake/
   /path/to/some/prefix/share/noisemaker-qt /path/to/some/prefix/share/doc/noisemaker-qt
 ```
 
+In PowerShell on Windows:
+
+```powershell
+Get-Content qt/build/install_manifest.txt | Where-Object { $_ } | ForEach-Object { Remove-Item -LiteralPath $_ }
+Remove-Item -Recurse C:/path/to/prefix/include/noisemaker-qt, C:/path/to/prefix/lib/cmake/noisemaker-qt, `
+  C:/path/to/prefix/share/noisemaker-qt, C:/path/to/prefix/share/doc/noisemaker-qt
+```
+
 ### Show a program in Qt Quick
 
 `nm::NoisemakerItem` (`qt/quick/noisemaker_item.h`) is a `QQuickFramebufferObject`. It needs the OpenGL scene graph backend with a 4.1 core profile context, so set both before creating the application, then register the QML type:

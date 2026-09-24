@@ -295,11 +295,23 @@ jobs:
           esac
           test -s out.png
 
-      - name: Uninstall
+      - name: Uninstall (README, sh)
+        if: runner.os != 'Windows'
         run: |
           while IFS= read -r file || [ -n "$file" ]; do rm -f "$file"; done < qt/build/install_manifest.txt
           rm -r "$PREFIX/include/noisemaker-qt" "$PREFIX/lib/cmake/noisemaker-qt" \
             "$PREFIX/share/noisemaker-qt" "$PREFIX/share/doc/noisemaker-qt"
+
+      - name: Uninstall (README, PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-Content qt/build/install_manifest.txt | Where-Object { $_ } | ForEach-Object { Remove-Item -LiteralPath $_ }
+          Remove-Item -Recurse "$env:PREFIX/include/noisemaker-qt", "$env:PREFIX/lib/cmake/noisemaker-qt", `
+            "$env:PREFIX/share/noisemaker-qt", "$env:PREFIX/share/doc/noisemaker-qt"
+
+      - name: The prefix is empty
+        run: |
           left=$(find "$PREFIX" -type f | wc -l)
           find "$PREFIX" -type f
           echo "files left under the prefix: $left"
