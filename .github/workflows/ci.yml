@@ -23,11 +23,11 @@ name: CI
 #                 parity/run.sh at the strict default tolerance. It also runs
 #                 the AnalyserNode gate against the same Chromium.
 #   render-smoke-windows
-#                 The same golden minting and grading on Windows (Chromium's
-#                 ANGLE GL backend over Mesa llvmpipe registered as the system
-#                 OpenGL driver, nm-render on the same Mesa as
-#                 opengl32sw.dll), and the filter/text gate against Qt's
-#                 DirectWrite font engine.
+#                 Renders the same fixtures with nm-render on the pinned Mesa
+#                 llvmpipe opengl32sw.dll and grades them against the goldens
+#                 render-smoke minted (GL on llvmpipe on both sides: GAP-033),
+#                 and runs the filter/text gate against Qt's DirectWrite font
+#                 engine.
 
 on:
   push:
@@ -302,6 +302,18 @@ jobs:
               || { echo "$name: the golden was not rendered on Mesa llvmpipe"; exit 1; }
           done
 
+      - name: Upload goldens for render-smoke-windows
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: render-smoke-goldens
+          # Everything parity/run.sh reads from parity/out: graphs, goldens
+          # and the host textures of external-texture fixtures.
+          path: |
+            parity/out/*.graph.json
+            parity/out/*.golden.png
+            parity/out/*_step_*.png
+          if-no-files-found: error
+
       - name: Render and grade candidates (strict tolerance, llvmpipe)
         env:
           QT_QPA_PLATFORM: xcb
@@ -322,6 +334,14 @@ jobs:
           if-no-files-found: warn
 
   render-smoke-windows:
+    # GAP-033: goldens must come from the candidate's rasterizer. Chromium on
+    # the Windows runner cannot draw WebGL on Mesa (run 36038944290: with
+    # Mesa registered as the MSOGL ICD, ANGLE's GL backend got a context
+    # that failed the ES 3.0 vertex shader), so this job grades against
+    # render-smoke's llvmpipe goldens. It runs even when render-smoke fails;
+    # without goldens the grading step fails.
+    needs: render-smoke
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -329,9 +349,9 @@ jobs:
         shell: bash
     steps:
       - name: Keep checkouts byte-identical to Linux
-        # Git for Windows converts LF to CRLF on checkout. The golden harness
-        # waits for graph.source (the demo editor value, newlines normalized
-        # to LF) to equal the DSL file text, so CRLF fixtures never match.
+        # Git for Windows converts LF to CRLF on checkout. The fixture inputs
+        # (sidecar OBJ files) and the reference files the text gate reads
+        # stay byte-identical to the Linux job's.
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -341,23 +361,11 @@ jobs:
           pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
           test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
           echo "reference pin: $pin"
-          ref="$RUNNER_TEMP/noisemaker"
-          git clone -c core.symlinks=false --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$ref"
-          git -C "$ref" checkout --detach "$pin"
-          git -C "$ref" rev-parse HEAD
-          # The reference's shaders/share is a git symlink to ../share (the
-          # built-in meshes that meshLoader loads from the shaders base
-          # path). Without symlinks git writes a plain file that holds the
-          # link target. Replace that file with a real copy of share/.
-          if [ -L "$ref/shaders/share" ] || [ ! -f "$ref/shaders/share" ] \
-            || ! printf '../share' | cmp -s - "$ref/shaders/share"; then
-            echo "reference shaders/share is not the expected '../share' placeholder file; check the reference layout"
-            exit 1
-          fi
-          rm "$ref/shaders/share"
-          cp -R "$ref/share" "$ref/shaders/share"
-          diff -r "$ref/share" "$ref/shaders/share"
-          test -f "$ref/shaders/share/meshes/sphere.obj"
+          # The text gate needs the reference's Playwright, its demo font
+          # and demo-ui.js; nothing here serves the reference to a browser.
+          git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
+          git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
+          git -C "$RUNNER_TEMP/noisemaker" rev-parse HEAD
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -386,7 +394,7 @@ jobs:
           cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
           cmake --build qt/build --config Release --parallel --target nm-render text_texture_dump
 
-      - name: Install Mesa llvmpipe (opengl32sw.dll and the system OpenGL ICD)
+      - name: Install Mesa llvmpipe opengl32sw.dll
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
@@ -398,45 +406,19 @@ jobs:
           Copy-Item mesa/x64/*.dll qt/build/Release
           Copy-Item mesa/x64/opengl32.dll qt/build/Release/opengl32sw.dll
           Get-ChildItem qt/build/Release/*.dll | Select-Object Name, Length
-          # GAP-033: the golden browser must draw on the same Mesa. ANGLE's
-          # GL backend loads opengl32.dll from System32 only (DisplayWGL.cpp,
-          # LOAD_LIBRARY_SEARCH_SYSTEM32). mesa-dist-win's system-wide
-          # deployment (bin/systemwidedeploy.cmd, modules/reggl.cmd) makes
-          # that opengl32.dll use Mesa: the WGL megadriver is copied to
-          # System32\mesadrv.dll and registered as the MSOGL OpenGL ICD.
-          # libgallium_wgl.dll imports only Windows system DLLs.
-          Copy-Item mesa/x64/libgallium_wgl.dll "$env:WINDIR\System32\mesadrv.dll"
-          $key = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL'
-          New-Item -Path $key -Force | Out-Null
-          New-ItemProperty -Path $key -Name DLL -Value 'mesadrv.dll' -PropertyType String -Force | Out-Null
-          New-ItemProperty -Path $key -Name DriverVersion -Value 1 -PropertyType DWord -Force | Out-Null
-          New-ItemProperty -Path $key -Name Flags -Value 1 -PropertyType DWord -Force | Out-Null
-          New-ItemProperty -Path $key -Name Version -Value 2 -PropertyType DWord -Force | Out-Null
-          Get-ItemProperty -Path $key | Format-List DLL, DriverVersion, Flags, Version
 
       - name: Python compare environment
         run: |
           python -m venv parity/.venv
           parity/.venv/Scripts/python.exe -m pip install numpy pillow
 
-      - name: Mint goldens with the reference engine (ANGLE GL on llvmpipe)
-        env:
-          # GAP-033: as in render-smoke. Headed Chromium, WebGL on ANGLE's GL
-          # backend over the Mesa ICD registered above, forced to llvmpipe.
-          SHADE_HEADLESS: "0"
-          GALLIUM_DRIVER: llvmpipe
-          NM_GOLDEN_CHROMIUM_ARGS: "--use-gl=angle --use-angle=gl --ignore-gpu-blocklist"
-        run: |
-          export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
-          mkdir -p parity/out
-          for name in $SMOKE_FIXTURES; do
-            node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2 \
-              2>&1 | tee "$RUNNER_TEMP/mint-$name.log"
-            grep -q "golden WebGL renderer: ANGLE (Mesa, llvmpipe" "$RUNNER_TEMP/mint-$name.log" \
-              || { echo "$name: the golden was not rendered on Mesa llvmpipe"; exit 1; }
-          done
+      - name: Download render-smoke's llvmpipe goldens
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: render-smoke-goldens
+          path: parity/out
 
-      - name: Render and grade candidates (strict tolerance, llvmpipe)
+      - name: Render and grade candidates against the Linux goldens (strict tolerance, llvmpipe)
         env:
           GALLIUM_DRIVER: llvmpipe
           QT_OPENGL: software
