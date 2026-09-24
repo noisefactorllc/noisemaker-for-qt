@@ -9,6 +9,7 @@
 #include <QStringList>
 #include <QVector>
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -166,6 +167,12 @@ public:
     // GL texture only if the Backend created it. Needs a current context
     // when it deletes.
     void removeExternalTexture(const QString& texId);
+    // The two calls above also accept an asyncInit overlay id
+    // (nm::asyncOverlayTextureIds(), e.g. "node_1_overlayTex"). A host
+    // texture takes precedence over the overlay render() generates: while it
+    // is set, render() neither traces that node's overlay nor overwrites it.
+    // removeExternalTexture() returns the node to its generated overlay on
+    // the next render().
 
     // ------------------------------------------------ meshes
     // Mesh surfaces (reference pipeline.js createSurfaces): mesh0..mesh7, each
@@ -302,6 +309,7 @@ public:
 
 private:
     friend struct BackendTestAccess;
+    friend class AsyncOverlays;
 
     struct CompiledProgram {
         unsigned int handle = 0;
@@ -384,9 +392,15 @@ private:
         unsigned int handle = 0;
         int width = 0;
         int height = 0;
-        bool owned = false; // created by updateTextureFromSource (deleted by the Backend)
+        bool owned = false;     // created by updateTextureFromSource (deleted by the Backend)
+        bool generated = false; // an asyncInit overlay AsyncOverlays uploaded, not a host texture
     };
     QHash<QString, ExternalTexture> m_externalTextures;
+    // AsyncOverlays' side of the external texture table.
+    void uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size);
+    bool hasGeneratedTexture(const QString& texId) const;
+    bool hostSuppliesTexture(const QString& texId) const;
+    void removeGeneratedTexture(const QString& texId);
     unsigned int m_midiNoteGridTexture = 0;        // 128x16 RGBA32F, created when a pass reads midiNoteGrid
     QHash<QString, MeshTexture> m_meshTextures;    // "global_<meshId>_<positions|normals|uvs>" -> texture
     struct CachedMesh {

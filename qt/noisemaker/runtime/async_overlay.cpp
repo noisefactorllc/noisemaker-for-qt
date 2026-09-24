@@ -259,20 +259,45 @@ std::vector<std::uint8_t> generateAsyncOverlay(const QString& effectKey, QSize s
     return canvas.unpremultipliedRgba8();
 }
 
+QStringList asyncOverlayTextureIds(const Graph& graph) {
+    QStringList ids;
+    QSet<QString> seen;
+    for (const Pass& pass : graph.passes) {
+        if (pass.effectKey.isEmpty() || pass.nodeId.isEmpty() || seen.contains(pass.nodeId)) continue;
+        seen.insert(pass.nodeId);
+        for (const QString& name : asyncInitTextures(pass.effectKey)) {
+            ids.append(pass.nodeId + QLatin1Char('_') + name);
+        }
+    }
+    return ids;
+}
+
 int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const QJsonObject& globalUniforms) {
     int generated = 0;
     QSet<QString> seen;
-    QSet<QString> current; // async nodes of this graph
+    QSet<QString> current; // async nodes whose overlay this object keeps
     for (const Pass& pass : graph.passes) {
         // reference initAsyncEffects: the first pass of each node decides.
         if (pass.effectKey.isEmpty() || pass.nodeId.isEmpty() || seen.contains(pass.nodeId)) continue;
         seen.insert(pass.nodeId);
         if (!hasAsyncInit(pass.effectKey) || size.width() <= 0 || size.height() <= 0) continue;
 
+        QStringList textureIds;
+        bool hostSupplied = false;
+        for (const QString& name : asyncInitTextures(pass.effectKey)) {
+            const QString texId = pass.nodeId + QLatin1Char('_') + name;
+            textureIds.append(texId);
+            if (backend.hostSuppliesTexture(texId)) hostSupplied = true;
+        }
+        // A host texture for the node's overlay takes precedence (backend.h).
+        if (hostSupplied) continue;
+
         current.insert(pass.nodeId);
         const QJsonObject params = asyncInitParams(pass.effectKey, pass.uniforms, globalUniforms);
         const auto existing = m_nodes.constFind(pass.nodeId);
-        if (existing != m_nodes.constEnd() && existing->effectKey == pass.effectKey
+        bool uploaded = true;
+        for (const QString& texId : textureIds) uploaded = uploaded && backend.hasGeneratedTexture(texId);
+        if (uploaded && existing != m_nodes.constEnd() && existing->effectKey == pass.effectKey
             && existing->size == size && existing->params == params) {
             continue;
         }
@@ -282,17 +307,11 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
         node.effectKey = pass.effectKey;
         node.size = size;
         node.params = params;
-        ExternalTextureOptions options;
-        options.flipY = true; // reference Pipeline._startAsyncInit updateTexture
-        for (const QString& name : asyncInitTextures(pass.effectKey)) {
-            const QString texId = pass.nodeId + QLatin1Char('_') + name;
-            backend.updateTextureFromSource(texId, pixels.data(), size.width(), size.height(),
-                                            size.width() * 4, options);
-            node.textureIds.append(texId);
-        }
+        node.textureIds = textureIds;
+        for (const QString& texId : textureIds) backend.uploadGeneratedTexture(texId, pixels, size);
         if (existing != m_nodes.constEnd()) {
             for (const QString& texId : existing->textureIds) {
-                if (!node.textureIds.contains(texId)) backend.removeExternalTexture(texId);
+                if (!textureIds.contains(texId)) backend.removeGeneratedTexture(texId);
             }
         }
         m_nodes.insert(pass.nodeId, node);
@@ -304,7 +323,7 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
             ++it;
             continue;
         }
-        for (const QString& texId : it->textureIds) backend.removeExternalTexture(texId);
+        for (const QString& texId : it->textureIds) backend.removeGeneratedTexture(texId);
         it = m_nodes.erase(it);
     }
     return generated;

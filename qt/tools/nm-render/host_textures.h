@@ -5,8 +5,11 @@
 // --dsl). `--external-texture <texId>=<png>` names a PNG whose top row is the
 // texture's highest v, as parity/export-and-render.mjs saves what the
 // reference sampled. It is uploaded with flipY = true, which restores the
-// reference's texel rows exactly.
+// reference's texel rows exactly. An asyncInit overlay id (node_1_overlayTex)
+// is accepted too: the host texture replaces the overlay the Backend would
+// generate (nm::Backend::setExternalTexture).
 
+#include "../../noisemaker/runtime/async_overlay.h"
 #include "../../noisemaker/runtime/backend.h"
 #include "../../noisemaker/runtime/graph.h"
 
@@ -41,10 +44,10 @@ inline HostTextures findHostTextures(const QStringList& args) {
     return textures;
 }
 
-// Uploads each texture. An id the graph does not sample or an unreadable
-// file is an error.
+// Uploads each texture. An id that is neither an external texture nor an
+// asyncInit overlay of the graph, or an unreadable file, is an error.
 inline void loadHostTextures(Backend& backend, const Graph& graph, const HostTextures& textures) {
-    const QStringList graphExternalIds = Backend::externalTextureIds(graph);
+    const QStringList graphExternalIds = Backend::externalTextureIds(graph) + asyncOverlayTextureIds(graph);
     for (const auto& [texId, path] : textures) {
         if (!graphExternalIds.contains(texId)) {
             throw std::runtime_error(

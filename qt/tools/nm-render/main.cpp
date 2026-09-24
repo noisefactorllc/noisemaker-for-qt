@@ -73,6 +73,8 @@ const char* const kUsage =
     "              default built-in mesh.\n"
     "  --external-texture ID=PNG  Upload PNG as the host texture ID that the graph\n"
     "              samples (for example textTex_step_1), top row first. Repeatable.\n"
+    "              An asyncInit overlay id (node_1_overlayTex) replaces the overlay\n"
+    "              the renderer would trace.\n"
     "\n"
     "Compiler dumps (JSON on standard output, for the parity gates):\n"
     "  --dump-tokens FILE  --dump-ast FILE  --dump-validated FILE  --dump-graph FILE\n"

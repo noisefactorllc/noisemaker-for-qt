@@ -72,6 +72,11 @@ bool hasAsyncInit(const QString& effectKey);
 // graph-scoped texture id is `${nodeId}_${name}`, as in the reference.
 QStringList asyncInitTextures(const QString& effectKey);
 
+// The graph-scoped ids of every asyncInit texture in `graph`
+// ("node_1_overlayTex"), in pass order. A host texture set under one of
+// these ids replaces the generated overlay (Backend::setExternalTexture).
+QStringList asyncOverlayTextureIds(const Graph& graph);
+
 // The reference `params` object for the async node that owns `uniforms`
 // (the first pass of the node): the step values when seed or density holds
 // a scalar, otherwise `globalUniforms`.
@@ -96,14 +101,15 @@ public:
     // Regenerates and uploads the overlay of every async node in `graph`
     // whose effect, parameters or render size changed since its last
     // upload, and removes the textures of nodes no longer in the graph.
-    // The Backend's GL context must be current. Returns the number of
-    // overlays generated.
+    // A node whose texture the host supplied is skipped, and a host texture
+    // is never removed. The Backend's GL context must be current. Returns
+    // the number of overlays generated.
     int sync(Backend& backend, const Graph& graph, QSize size, const QJsonObject& globalUniforms);
 
     // Forgets every node (after the Backend released its GL objects).
     void clear() { m_nodes.clear(); }
 
-    // Texture ids currently uploaded, in no particular order.
+    // Ids of the generated textures this object keeps, in no particular order.
     QStringList textureIds() const;
 
 private:

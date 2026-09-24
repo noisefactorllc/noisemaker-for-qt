@@ -1,6 +1,7 @@
 // nm-render's command line: --help lists every mode and flag and exits 0;
 // an unknown option, no arguments or no mode print the usage and exit 2; a
-// malformed --external-texture value exits 2. The data root is found at
+// malformed --external-texture value exits 2, and an asyncInit overlay id
+// accepts a host PNG. The data root is found at
 // NOISEMAKER_QT_DATA_ROOT, then in an install layout, then in the source
 // tree (data_root.h); a wrong one is named.
 // Qt may add its own diagnostics to standard error (for example
@@ -204,6 +205,44 @@ int main(int argc, char** argv) {
         const QString repoRoot = QDir::cleanPath(sourceDataRoot + QStringLiteral("/../.."));
         const Result sourceDump = runIn(nmRender, {QStringLiteral("--dump-graph"), program}, repoRoot, QString());
         check(sourceDump.out.contains(QStringLiteral("\"ok\":true")), "the source tree's qt/noisemaker is found from the repository root");
+    }
+
+    // A host texture under an asyncInit overlay id replaces the traced
+    // overlay (the parity-llvmpipe job passes the reference's own overlay).
+    // With fibers alpha 1 over black the frame is the overlay itself, so the
+    // output PNG equals the host PNG, rendered first by nm-render.
+    {
+        QTemporaryDir scratch;
+        const auto writeDsl = [&](const QString& name, const QByteArray& source) {
+            QFile file(scratch.path() + QLatin1Char('/') + name);
+            return file.open(QIODevice::WriteOnly) && file.write(source) == source.size() ? file.fileName() : QString();
+        };
+        const QString solid = writeDsl(QStringLiteral("solid.dsl"), "search synth\nsolid(color: #c86432).write(o0)\nrender(o0)\n");
+        const QString fibers = writeDsl(QStringLiteral("fibers.dsl"),
+                                        "search filter, synth\nsolid(color: #000000).fibers(density: 1, alpha: 1).write(o0)\nrender(o0)\n");
+        const QString hostPng = scratch.path() + QStringLiteral("/host.png");
+        const QString outPng = scratch.path() + QStringLiteral("/out.png");
+        const QStringList size = {QStringLiteral("--size"), QStringLiteral("32x32")};
+        const Result host = runIn(nmRender, QStringList{QStringLiteral("--dsl"), solid, QStringLiteral("--out"), hostPng} + size,
+                                  scratch.path(), sourceDataRoot);
+        const Result replaced = runIn(nmRender,
+                                      QStringList{QStringLiteral("--dsl"), fibers, QStringLiteral("--out"), outPng,
+                                                  QStringLiteral("--external-texture"), QStringLiteral("node_1_overlayTex=") + hostPng}
+                                          + size,
+                                      scratch.path(), sourceDataRoot);
+        QFile hostFile(hostPng);
+        QFile outFile(outPng);
+        const bool same = hostFile.open(QIODevice::ReadOnly) && outFile.open(QIODevice::ReadOnly)
+                          && hostFile.readAll() == outFile.readAll();
+        check(host.exitCode == 0 && replaced.exitCode == 0 && same,
+              "--external-texture node_1_overlayTex replaces the fibers overlay with the host PNG");
+        const Result unknown = runIn(nmRender,
+                                     QStringList{QStringLiteral("--dsl"), fibers, QStringLiteral("--out"), outPng,
+                                                 QStringLiteral("--external-texture"), QStringLiteral("node_9_overlayTex=") + hostPng}
+                                         + size,
+                                     scratch.path(), sourceDataRoot);
+        check(unknown.exitCode == 1 && unknown.err.contains(QStringLiteral("not sampled by this graph")),
+              "an overlay id of a node the graph does not have exits 1");
     }
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,

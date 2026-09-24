@@ -792,8 +792,30 @@ QSize Backend::updateTextureFromSource(const QString& texId, const void* rgba8, 
         m_gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload);
         entry = ExternalTexture{handle, width, height, true};
     }
+    entry.generated = false; // a host texture until uploadGeneratedTexture() says otherwise
     m_gl->glBindTexture(GL_TEXTURE_2D, 0);
     return QSize(width, height);
+}
+
+void Backend::uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size) {
+    ExternalTextureOptions options;
+    options.flipY = true; // reference Pipeline._startAsyncInit updateTexture
+    updateTextureFromSource(texId, rgba8.data(), size.width(), size.height(), size.width() * 4, options);
+    m_externalTextures[texId].generated = true;
+}
+
+bool Backend::hasGeneratedTexture(const QString& texId) const {
+    const auto it = m_externalTextures.constFind(texId);
+    return it != m_externalTextures.constEnd() && it->generated;
+}
+
+bool Backend::hostSuppliesTexture(const QString& texId) const {
+    const auto it = m_externalTextures.constFind(texId);
+    return it != m_externalTextures.constEnd() && !it->generated;
+}
+
+void Backend::removeGeneratedTexture(const QString& texId) {
+    if (hasGeneratedTexture(texId)) removeExternalTexture(texId);
 }
 
 void Backend::setExternalTexture(const QString& texId, unsigned int glTexture, QSize size) {

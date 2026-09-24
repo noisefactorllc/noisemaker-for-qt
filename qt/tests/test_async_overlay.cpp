@@ -17,6 +17,7 @@
 
 #include <QCryptographicHash>
 #include <QGuiApplication>
+#include <QColor>
 #include <QImage>
 #include <QJsonArray>
 
@@ -322,6 +323,33 @@ void testSync(nm::EffectRegistry& registry) {
     check(none == 0 && overlays.textureIds().isEmpty(), "a graph without the node drops its overlay texture");
 }
 
+// Largest difference between a frame of fibersBlend over black and the
+// blend of `overlay` (straight RGBA8, row 0 at the top) at alpha 0.5:
+// overlay.rgb * overlay.a * 0.5. `inked` counts non-transparent overlay pixels.
+int blendError(const QImage& frame, QSize frameSize, const std::vector<std::uint8_t>& overlay, int& inked) {
+    int worst = frame.size() == frameSize ? 0 : 255;
+    inked = 0;
+    for (int y = 0; y < frameSize.height() && worst < 255; ++y) {
+        const uchar* row = frame.constScanLine(y);
+        for (int x = 0; x < frameSize.width(); ++x) {
+            const size_t o = static_cast<size_t>(y * frameSize.width() + x) * 4;
+            const double a = overlay[o + 3] / 255.0 * 0.5;
+            if (overlay[o + 3]) ++inked;
+            for (int c = 0; c < 3; ++c) {
+                const int expected = static_cast<int>(std::lround(overlay[o + static_cast<size_t>(c)] / 255.0 * a * 255.0));
+                worst = std::max(worst, std::abs(expected - static_cast<int>(row[x * 4 + c])));
+            }
+        }
+    }
+    return worst;
+}
+
+// The port's fibers overlay at `size` for `seed` (density 1).
+std::vector<std::uint8_t> fibersOverlay(QSize size, int seed) {
+    return nm::generateAsyncOverlay(QStringLiteral("filter.fibers"), size,
+                                    QJsonObject{{QStringLiteral("seed"), seed}, {QStringLiteral("density"), 1}});
+}
+
 // The overlay as the Backend renders it: fibersBlend over black gives
 // overlay.rgb * overlay.a * alpha.
 void testRender(nm::EffectRegistry& registry) {
@@ -333,29 +361,8 @@ void testRender(nm::EffectRegistry& registry) {
     backend.render(graph, 0.25);
     const QImage first = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
 
-    // Largest difference between a frame and the blend of the port's overlay
-    // at `frameSize`; `inked` counts the overlay's non-transparent pixels.
-    const auto blendError = [](const QImage& frame, QSize frameSize, int& inked) {
-        const std::vector<std::uint8_t> overlay = nm::generateAsyncOverlay(
-            QStringLiteral("filter.fibers"), frameSize, QJsonObject{{QStringLiteral("seed"), 1}, {QStringLiteral("density"), 1}});
-        int worst = frame.size() == frameSize ? 0 : 255;
-        inked = 0;
-        for (int y = 0; y < frameSize.height() && worst < 255; ++y) {
-            const uchar* row = frame.constScanLine(y);
-            for (int x = 0; x < frameSize.width(); ++x) {
-                const size_t o = static_cast<size_t>(y * frameSize.width() + x) * 4;
-                const double a = overlay[o + 3] / 255.0 * 0.5;
-                if (overlay[o + 3]) ++inked;
-                for (int c = 0; c < 3; ++c) {
-                    const int expected = static_cast<int>(std::lround(overlay[o + static_cast<size_t>(c)] / 255.0 * a * 255.0));
-                    worst = std::max(worst, std::abs(expected - static_cast<int>(row[x * 4 + c])));
-                }
-            }
-        }
-        return worst;
-    };
     int inked = 0;
-    const int worst = blendError(first, size, inked);
+    const int worst = blendError(first, size, fibersOverlay(size, 1), inked);
     check(inked > 500 && worst <= 1,
           "the first rendered frame blends the completed overlay, upright (within 1 level, fp16 intermediates)");
 
@@ -373,7 +380,8 @@ void testRender(nm::EffectRegistry& registry) {
     backend.resize(resized);
     backend.render(graph, 0.25);
     int resizedInked = 0;
-    const int resizedWorst = blendError(backend.readSurface().convertToFormat(QImage::Format_RGBA8888), resized, resizedInked);
+    const int resizedWorst = blendError(backend.readSurface().convertToFormat(QImage::Format_RGBA8888), resized,
+                                        fibersOverlay(resized, 1), resizedInked);
     check(resizedInked > 200 && resizedWorst <= 1, "Backend::resize re-traces the overlay at the new size");
 
     nm::Graph blank = graph;
@@ -397,6 +405,57 @@ void testRender(nm::EffectRegistry& registry) {
     check(black, "an automated density uploads the cleared canvas, so the input passes through");
 }
 
+// A host texture under an asyncInit overlay id takes precedence over the
+// generated overlay (backend.h): the parity job on llvmpipe passes the
+// reference's own overlay this way.
+void testHostOverlay(nm::EffectRegistry& registry) {
+    const QSize size(64, 64);
+    const QString overlayId = QStringLiteral("node_1_overlayTex");
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, size);
+    nm::Graph graph = nm::compileGraph(
+        QStringLiteral("search filter, synth\nsolid(color: #000000).fibers(density: 1).write(o0)\nrender(o0)"), registry);
+    check(nm::asyncOverlayTextureIds(graph) == QStringList{overlayId}
+              && nm::asyncOverlayTextureIds(nm::compileGraph(
+                     QStringLiteral("search synth\nsolid(color: #000000).write(o0)\nrender(o0)"), registry)).isEmpty(),
+          "asyncOverlayTextureIds lists node_1_overlayTex for fibers and nothing for solid");
+
+    QImage host(size, QImage::Format_RGBA8888);
+    host.fill(QColor(200, 100, 50, 255));
+    const std::vector<std::uint8_t> hostPixels(host.constBits(), host.constBits() + host.sizeInBytes());
+    const auto render = [&](const nm::Graph& g) {
+        backend.render(g, 0.25);
+        return backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
+    };
+    int inked = 0;
+
+    backend.updateTextureFromSource(overlayId, host);
+    const QImage hostFrame = render(graph);
+    check(blendError(hostFrame, size, hostPixels, inked) <= 1,
+          "a host texture set before the first render replaces the traced overlay");
+
+    nm::AsyncOverlays overlays;
+    check(overlays.sync(backend, graph, size, {}) == 0 && overlays.textureIds().isEmpty(),
+          "AsyncOverlays neither generates nor keeps a node whose texture the host supplies");
+
+    backend.applyStepParameterValues(graph, registry,
+        QJsonObject{{QStringLiteral("step_1"), QJsonObject{{QStringLiteral("seed"), 5}}}});
+    check(blendError(render(graph), size, hostPixels, inked) <= 1,
+          "a seed change does not overwrite the host texture");
+
+    backend.removeExternalTexture(overlayId);
+    check(blendError(render(graph), size, fibersOverlay(size, 5), inked) <= 1 && inked > 500,
+          "removeExternalTexture returns the node to its generated overlay on the next render");
+
+    backend.updateTextureFromSource(overlayId, host);
+    check(blendError(render(graph), size, hostPixels, inked) <= 1,
+          "a host texture set after the overlay was generated takes over");
+
+    render(nm::compileGraph(QStringLiteral("search synth\nsolid(color: #000000).write(o0)\nrender(o0)"), registry));
+    check(blendError(render(graph), size, hostPixels, inked) <= 1,
+          "a graph without the node leaves the host texture in place");
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -412,6 +471,7 @@ int main(int argc, char** argv) {
     testParams();
     testSync(registry);
     testRender(registry);
+    testHostOverlay(registry);
 
     std::printf("%d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
