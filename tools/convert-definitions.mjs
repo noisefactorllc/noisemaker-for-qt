@@ -208,6 +208,10 @@ function convertEffect (instance, namespace, name, existing) {
   if (instance.outputXyz !== undefined) def.outputXyz = instance.outputXyz
   if (instance.outputVel !== undefined) def.outputVel = instance.outputVel
   if (instance.outputRgba !== undefined) def.outputRgba = instance.outputRgba
+  // Host-supplied texture input (media -> imageTex, text -> textTex). The expander binds
+  // it to the per-step id `${externalTexture}_step_${N}`; without it the input falls
+  // through to a node-local texture that no host can address.
+  if (instance.externalTexture !== undefined) def.externalTexture = instance.externalTexture
   if (instance.hidden) def.hidden = true
   if (instance.deprecatedBy) def.deprecatedBy = instance.deprecatedBy
 
