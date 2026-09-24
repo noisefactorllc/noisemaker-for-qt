@@ -14,6 +14,7 @@
 #include <QJsonDocument>
 #include <QMap>
 #include <QOffscreenSurface>
+#include <QGuiApplication>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions_4_1_Core>
 #include <QRegularExpression>
@@ -1309,7 +1310,12 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
         m_ownedContext = new QOpenGLContext();
         m_ownedContext->setFormat(format);
         if (!m_ownedContext->create()) {
-            throw std::runtime_error("nm::Backend::setup: failed to create OpenGL 4.1 core context");
+            throw std::runtime_error(
+                ("nm::Backend::setup: failed to create an OpenGL 4.1 core profile context on the '"
+                 + QGuiApplication::platformName()
+                 + "' platform; this runtime needs a GPU driver or a software renderer (such as Mesa "
+                   "llvmpipe) with OpenGL 4.1 core, and a platform plugin with OpenGL support")
+                    .toStdString());
         }
 
         m_ownedSurface = new QOffscreenSurface();
@@ -1331,7 +1337,15 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
     // against whichever context is current.
     m_gl = new QOpenGLFunctions_4_1_Core();
     if (!m_gl->initializeOpenGLFunctions()) {
-        throw std::runtime_error("nm::Backend::setup: failed to resolve OpenGL 4.1 core functions");
+        const QSurfaceFormat actual = QOpenGLContext::currentContext()
+            ? QOpenGLContext::currentContext()->format() : QSurfaceFormat();
+        throw std::runtime_error(
+            QStringLiteral("nm::Backend::setup: failed to resolve OpenGL 4.1 core functions; the current "
+                           "context is OpenGL %1.%2%3. Request version 4.1 with CoreProfile through "
+                           "QSurfaceFormat::setDefaultFormat() before creating the QGuiApplication")
+                .arg(actual.majorVersion()).arg(actual.minorVersion())
+                .arg(actual.profile() == QSurfaceFormat::CoreProfile ? QStringLiteral(" core") : QString())
+                .toStdString());
     }
 
     GLint maxTextureUnits = m_maxTextureUnits;
