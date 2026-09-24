@@ -45,22 +45,15 @@
 #include <QString>
 #include <QVector>
 
-#include "validator.h"  // nm::UnsupportedDsl — reused as-is (see below), not redeclared.
-
 namespace nm {
 
 class EffectRegistry;
 
-// Compute/MRT PassDef fields (entryPoint/workgroups/storageBuffers/
-// storageTextures actually present) throw the SAME nm::UnsupportedDsl
-// validator.h already declares — this expander is staged exactly like
-// TD's, which imports one shared UnsupportedDsl class into BOTH its
-// validator and expander modules (`from .validator import UnsupportedDsl`,
-// td/noisemaker/compiler/lang/expander.py line 26) rather than minting a
-// second, subsystem-local exception type with an identical contract
-// (never silently wrong — fail loud). reference/03 survey area (no field
-// in this catalog's PassDefs currently sets these — a real compute
-// pipeline is out of scope for this first cut).
+// Compute PassDef fields (entryPoint/workgroups/storageBuffers/
+// storageTextures) are copied onto each expanded pass verbatim, as
+// expander.js does. No catalog definition declares them at the pinned
+// reference. The normalized graph drops them (tools/export-graph.mjs
+// normalizePass), and nm::Backend has no compute path.
 
 // One expanded GPU pass in the RAW (pre-normalization) shape
 // shaders/src/runtime/expander.js itself produces (reference/03 §2.1
@@ -150,12 +143,8 @@ struct ExpandResult {
 // (registry.rawJson()) for the two order-sensitive iterations documented
 // in expander.cpp.
 //
-// Throws UnsupportedDslExpand for compute/MRT PassDef fields actually
-// present (entryPoint/workgroups/storageBuffers/storageTextures) —
-// reference/03 survey area; never silently wrong (validator.h's family
-// contract, reused here since expander.js has no interpreter fallback for
-// these fields either — a real port would need compute-pipeline support
-// this first cut does not have).
+// Throws std::runtime_error("plan.chain is not iterable") for a plan with
+// no chain (control flow), as expander.js's for...of does.
 ExpandResult expand(const QJsonObject& validated, EffectRegistry& registry);
 
 // Serializes one ExpandedPass to the exact RAW shape expander.js's own

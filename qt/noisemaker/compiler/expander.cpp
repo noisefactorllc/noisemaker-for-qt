@@ -890,13 +890,6 @@ private:
         for (int i = 0; i < effectPasses.size(); ++i) {
             const QJsonObject passDef = effectPasses.at(i).toObject();
 
-            if (passDef.value(QStringLiteral("entryPoint")).isString() || passDef.contains(QStringLiteral("workgroups"))
-                || passDef.contains(QStringLiteral("storageBuffers")) || passDef.contains(QStringLiteral("storageTextures"))) {
-                throw nm::UnsupportedDsl(QStringLiteral(
-                    "compute/MRT pass fields (entryPoint/workgroups/storage*) are not implemented "
-                    "in the first-cut Expander (reference/03 §2.1)."));
-            }
-
             ExpandedPass pass;
             pass.id = QStringLiteral("%1_pass_%2").arg(nodeId).arg(i);
             pass.program = QStringLiteral("%1_%2%3").arg(nodeId, passDef.value(QStringLiteral("program")).toString(), programDefineSuffix);

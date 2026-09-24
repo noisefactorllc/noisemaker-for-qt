@@ -115,7 +115,8 @@ AST and graph are `QJsonObject` trees with the same `type` strings and key shape
 reference, so every stage byte-diffs against the reference oracles
 (`parity/check_{lex,parse,validate,expand,graph,registry}.mjs`, key-order-insensitive).
 Unsupported DSL surface fails loudly (`UnsupportedDsl`): `Func` (arrow-function) params and
-conditions, and compute pass fields (`entryPoint`, `workgroups`, `storage*`). Control flow
+conditions. Compute pass fields (`entryPoint`, `workgroups`, `storage*`) are copied onto expanded
+passes as the reference expander copies them; no catalog definition declares them. Control flow
 (`if/elif/else`, `break/continue/return`) validates to the reference's Branch, Break, Continue and
 Return plans; expansion then fails with the reference's own error ("plan.chain is not iterable"),
 so neither engine renders such a program. Bare state values (`time`, `frame`, ...) compile as the
@@ -184,8 +185,7 @@ External-input effects take host input: `media` and `text` through
 `nm::Backend::updateTextureFromSource`, `scope`, `spectrum` and `roll` through the audio and MIDI
 snapshots. Capture itself (camera, microphone, MIDI devices, text rasterization) stays in the
 host. `meshLoader` mesh input is still staged. The parity harness exercises the no-input
-fallbacks only. DSL control flow fails at expansion, as it does in the reference. Compute-pass
-fields fail loudly as unsupported. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
+fallbacks only. DSL control flow fails at expansion, as it does in the reference. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
 
 ## Repo layout
 

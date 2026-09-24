@@ -28,10 +28,16 @@
 #include "../noisemaker/compiler/parser.h"
 #include "../noisemaker/compiler/validator.h"
 
+#include <QByteArray>
+#include <QDir>
+#include <QFile>
+#include <QIODevice>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QString>
+#include <QTemporaryDir>
 
 #include <cmath>
 #include <cstdio>
@@ -242,21 +248,48 @@ int main() {
     }
 
     // ======================================================================
-    // resolveEnum (std tree only) + UnsupportedDsl smoke check: verify the
-    // exception type is nm::UnsupportedDsl (shared with validator.h), not
-    // a new/duplicate type -- this catalog never actually triggers the
-    // compute/MRT throw site (verified: no effect JSON declares entryPoint/
-    // workgroups/storageBuffers/storageTextures on any pass), so this is a
-    // compile-time/type check, not a behavioral one.
+    // Compute pass fields: the reference expander copies entryPoint,
+    // workgroups, storageBuffers and storageTextures onto each pass
+    // verbatim. No catalog definition declares them at the pinned
+    // reference, so this synthetic definition stands in. Expected passes
+    // were minted by the reference expander over the equivalent
+    // definition.js (expand(validate(parse(lex(src)))), node 26.10.0,
+    // reference c9ee8a04).
     // ======================================================================
     {
-        bool isRuntimeError = false;
-        try {
-            throw nm::UnsupportedDsl(QStringLiteral("smoke"));
-        } catch (const nm::UnsupportedDsl&) {
-            isRuntimeError = true;
-        }
-        check(isRuntimeError, "nm::UnsupportedDsl (expander.h) is nm::UnsupportedDsl (validator.h) -- one shared type");
+        static const char kDefinition[] = R"({
+  "name": "Gpgpu", "namespace": "synth", "func": "gpgpu", "starter": true, "paramAliases": {},
+  "globals": {"speed": {"type": "float", "default": 1, "uniform": "speed", "min": 0, "max": 4}},
+  "passes": [
+    {"name": "simulate", "program": "sim", "inputs": {}, "outputs": {"outputBuffer": "outputTex"},
+     "entryPoint": "simulate", "workgroups": [8, 8, 1], "storageBuffers": {"state": "stateBuf"},
+     "storageTextures": {"outputTex": "outputTex"}},
+    {"name": "main", "program": "sim", "inputs": {}, "outputs": {"color": "outputTex"}, "entryPoint": "main"}
+  ],
+  "textures": {}
+})";
+        static const char kReferencePasses[] = R"([
+{"id":"node_0_pass_0","program":"node_0_sim","entryPoint":"simulate","workgroups":[8,8,1],"storageBuffers":{"state":"stateBuf"},"storageTextures":{"outputTex":"outputTex"},"inputs":{},"outputs":{"outputBuffer":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
+{"id":"node_0_pass_1","program":"node_0_sim","entryPoint":"main","inputs":{},"outputs":{"color":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
+{"id":"node_1_write_blit","program":"blit","type":"render","inputs":{"src":"node_0_out"},"outputs":{"color":"global_o0"},"uniforms":{},"nodeId":"node_1","stepIndex":1}
+])";
+        QTemporaryDir root;
+        const bool dirOk = root.isValid() && QDir(root.path()).mkpath(QStringLiteral("effects/synth"));
+        QFile file(root.path() + QStringLiteral("/effects/synth/gpgpu.json"));
+        const bool written = dirOk && file.open(QIODevice::WriteOnly)
+                             && file.write(kDefinition) == static_cast<qint64>(sizeof(kDefinition) - 1);
+        file.close();
+        check(written, "compute fields: synthetic definition written");
+        nm::EffectRegistry computeRegistry;
+        computeRegistry.loadAll(root.path());
+        const QJsonObject validated = nm::validate(
+            nm::parse(nm::lex(QStringLiteral("search synth\ngpgpu(speed: 2).write(o0)\nrender(o0)\n"))), computeRegistry);
+        const nm::ExpandResult r = nm::expand(validated, computeRegistry);
+        const QJsonArray expected = QJsonDocument::fromJson(QByteArray(kReferencePasses)).array();
+        QJsonArray actual;
+        for (const nm::ExpandedPass& p : r.passes) actual.append(nm::toRawPassJson(p));
+        check(r.errors.isEmpty(), "compute fields: no expand errors");
+        check(actual == expected, "compute fields: raw passes equal the reference expander's, field for field");
     }
 
     // ======================================================================

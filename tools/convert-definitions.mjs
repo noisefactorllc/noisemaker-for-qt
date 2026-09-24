@@ -127,6 +127,10 @@ function projectPass (pass) {
   if (pass.clear !== undefined) out.clear = pass.clear
   if (pass.type !== undefined) out.type = pass.type
   if (pass.entryPoint !== undefined) out.entryPoint = pass.entryPoint
+  // Compute-pass fields. The reference expander copies them onto each expanded pass verbatim.
+  if (pass.workgroups !== undefined) out.workgroups = pass.workgroups
+  if (pass.storageBuffers !== undefined) out.storageBuffers = pass.storageBuffers
+  if (pass.storageTextures !== undefined) out.storageTextures = pass.storageTextures
   return out
 }
 
