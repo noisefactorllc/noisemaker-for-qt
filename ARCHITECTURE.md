@@ -188,12 +188,14 @@ only on the reference plus capture parameters and are reusable across sibling po
 
 ## Staged / out of scope (matching siblings)
 
-External-input effects take host input: `media` and `text` through
-`nm::Backend::updateTextureFromSource`, `scope`, `spectrum` and `roll` through the audio and MIDI
-snapshots. Capture itself (camera, microphone, MIDI devices, text rasterization) stays in the
-host. `meshLoader` meshes come from the host as OBJ files or text (`nm::Backend::loadOBJFromFile`,
-`loadOBJFromString`); nm-render loads the reference demo host's default built-in mesh. The parity harness exercises the
-no-input fallbacks and the mesh inputs. DSL control flow fails at expansion, as it does in the reference. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
+External-input effects take host input: `media` through `nm::Backend::updateTextureFromSource`,
+`scope`, `spectrum` and `roll` through the audio and MIDI snapshots. `text` is rasterized by the
+runtime (`nm::updateTextTextures`, `runtime/text_texture.h`) the way the reference canvas host
+draws it. Capture itself (camera, microphone, MIDI devices) stays in the host; the export kit
+feeds images, WAV files and MIDI files. `meshLoader` meshes come from the host as OBJ files or
+text (`nm::Backend::loadOBJFromFile`, `loadOBJFromString`); nm-render loads the reference demo
+host's default built-in mesh. The parity harness exercises the no-input fallbacks and the mesh
+inputs. DSL control flow fails at expansion, as it does in the reference. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
 
 ## Repo layout
 
