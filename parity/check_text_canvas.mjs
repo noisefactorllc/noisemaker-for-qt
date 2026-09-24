@@ -184,6 +184,50 @@ function ink(rgba, width, height) {
     return { coverage, cx: sx / coverage, cy: sy / coverage, left, top, right, bottom }
 }
 
+// Ink runs along the text direction, for diagnosing a failed case: alpha
+// mass projected onto the rotated text axis through the text origin, in
+// 1 px bins, split where a bin is empty. For one line of text each run is
+// usually one glyph, so the runs show whether glyphs moved or differ in ink.
+function textAxisRuns(rgba, width, height, u) {
+    const angle = u.rotation * Math.PI / 180
+    const [ux, uy] = [Math.cos(angle), Math.sin(angle)]
+    const [ox, oy] = [u.posX * width, u.posY * height]
+    const bins = new Map()
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const a = rgba[(y * width + x) * 4 + 3]
+            if (a === 0) continue
+            const t = Math.floor((x + 0.5 - ox) * ux + (y + 0.5 - oy) * uy)
+            bins.set(t, (bins.get(t) || 0) + a / 255)
+        }
+    }
+    const runs = []
+    for (const t of [...bins.keys()].sort((p, q) => p - q)) {
+        const last = runs[runs.length - 1]
+        if (last && t === last.end + 1) {
+            last.end = t
+        } else {
+            runs.push({ start: t, end: t, mass: 0, moment: 0 })
+        }
+        const run = runs[runs.length - 1]
+        run.mass += bins.get(t)
+        run.moment += bins.get(t) * (t + 0.5)
+    }
+    return runs.map(r => ({ start: r.start, end: r.end, mass: r.mass, centroid: r.moment / r.mass }))
+}
+
+function printTextAxisRuns(c, ref, got) {
+    const a = textAxisRuns(ref, c.width, c.height, c.u)
+    const b = textAxisRuns(got, c.width, c.height, c.u)
+    const show = runs => runs.map(r => `[${r.start}..${r.end} ink ${r.mass.toFixed(0)} c ${r.centroid.toFixed(2)}]`).join(' ')
+    console.log(`     ink along the text axis, chrome: ${show(a)}`)
+    console.log(`     ink along the text axis, qt:     ${show(b)}`)
+    if (a.length === b.length) {
+        console.log(`     per run, qt - chrome: ${a.map((r, i) =>
+            `c ${(b[i].centroid - r.centroid).toFixed(2)} ink x${(b[i].mass / r.mass).toFixed(3)}`).join('; ')}`)
+    }
+}
+
 let failures = 0
 for (const c of cases) {
     const ref = oracle.get(c.name)
@@ -212,6 +256,7 @@ for (const c of cases) {
             `font "${ref.font}" centroid d=(${dx.toFixed(3)}, ${dy.toFixed(3)}) ` +
             `bbox d=[${edges.join(', ')}] coverage qt/chrome=${ratio.toFixed(3)}` +
             (problems.length ? `  <- ${problems.join(', ')}` : ''))
+        if (problems.length) printTextAxisRuns(c, ref.rgba, got)
     }
     if (problems.length) failures++
 }
