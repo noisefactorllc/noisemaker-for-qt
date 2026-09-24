@@ -21,6 +21,7 @@
 // `nm::Backend`'s public API is unchanged (T5 brief "Interfaces"): this
 // file is pure CLI-side looping over the existing render(t)/readSurface().
 
+#include "data_root.h"
 #include "flag_hooks.h"
 #include "host_meshes.h"
 
@@ -59,21 +60,6 @@ bool parseSize(const QString& text, QSize* out) {
     }
     *out = QSize(m.captured(1).toInt(), m.captured(2).toInt());
     return out->width() > 0 && out->height() > 0;
-}
-
-// Same resolution strategy as main.cpp's own (private, not shared --
-// flag-handler translation units are self-contained by the T3 hook
-// contract; see flag_hooks.h).
-QString resolveDataRoot() {
-    QDir fromExe(QCoreApplication::applicationDirPath());
-    if (fromExe.cdUp() && fromExe.cd(QStringLiteral("noisemaker")) && fromExe.exists(QStringLiteral("shaders"))) {
-        return fromExe.absolutePath();
-    }
-    QDir fromCwd(QStringLiteral("qt/noisemaker"));
-    if (fromCwd.exists(QStringLiteral("shaders"))) {
-        return fromCwd.absolutePath();
-    }
-    return QStringLiteral("qt/noisemaker");
 }
 
 nm::Graph loadGraphFile(const QString& path) {
@@ -139,7 +125,7 @@ int handleSamples(const QStringList& args) {
     try {
         const nm::Graph graph = loadGraphFile(graphPath);
         nm::Backend backend;
-        backend.setup(nullptr, resolveDataRoot(), size);
+        backend.setup(nullptr, nm::resolveDataRoot(), size);
         nm::loadHostMeshes(backend, graph, meshPath);
 
         static const double kDeltaTime = 1.0 / 600.0;

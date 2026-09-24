@@ -2,10 +2,9 @@
 // <file>` flag (see flag_hooks.h). Registers a handler at static-init time
 // so main.cpp never needs another edit (T3 hook contract).
 //
-// Loads the EffectRegistry from EffectRegistry::defaultDataRoot() (CWD-
-// relative "qt/noisemaker" -- nm-render is always invoked from the repo
-// root by the driving parity/*.mjs scripts, matching every other dump_*
-// tool's convention of adding no new required flags beyond the file path),
+// Loads the EffectRegistry from nm-render's data root (data_root.h --
+// adding no new required flags beyond the file path, matching every other
+// dump_* tool),
 // then runs nm::validate(nm::parse(nm::lex(src)), registry) for the given
 // DSL file and prints the result as canonical JSON to stdout:
 // {"ok":true,"out":<ValidatedProgram>} on success, or
@@ -25,6 +24,7 @@
 // well under the time a single DSL validate takes, so no caching is
 // needed across the 339-file gate run.
 
+#include "data_root.h"
 #include "flag_hooks.h"
 
 #include "../../noisemaker/compiler/diagnostics.h"
@@ -71,7 +71,7 @@ int handleDumpValidated(const QStringList& args) {
     QJsonObject out;
     try {
         nm::EffectRegistry registry;
-        registry.loadAll(nm::EffectRegistry::defaultDataRoot());
+        registry.loadAll(nm::resolveDataRoot());
         const QJsonArray tokens = nm::lex(src);
         const QJsonObject ast = nm::parse(tokens);
         const QJsonObject validated = nm::validate(ast, registry);

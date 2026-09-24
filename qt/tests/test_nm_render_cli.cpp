@@ -1,15 +1,19 @@
 // nm-render's command line: --help lists every mode and flag and exits 0;
 // an unknown option, no arguments or no mode print the usage and exit 2; a
-// malformed --external-texture value exits 2.
+// malformed --external-texture value exits 2. The data root is found at
+// NOISEMAKER_QT_DATA_ROOT, then in an install layout, then in the source
+// tree (data_root.h); a wrong one is named.
 // Qt may add its own diagnostics to standard error (for example
 // "XDG_RUNTIME_DIR not set" on Linux), so stderr is searched, not matched
 // from its start.
 //
-//   test_nm_render_cli <path to nm-render>
+//   test_nm_render_cli <path to nm-render> <source data root (qt/noisemaker)>
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
+#include <QFileInfo>
 #include <QIODevice>
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -44,15 +48,68 @@ Result run(const QString& program, const QStringList& args) {
     return result;
 }
 
+// Runs `program` in `workingDir` with NOISEMAKER_QT_DATA_ROOT set to
+// `dataRootEnv`, or unset when that is empty.
+Result runIn(const QString& program, const QStringList& args, const QString& workingDir, const QString& dataRootEnv) {
+    QProcess process;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.remove(QStringLiteral("NOISEMAKER_QT_DATA_ROOT"));
+    if (!dataRootEnv.isEmpty()) env.insert(QStringLiteral("NOISEMAKER_QT_DATA_ROOT"), dataRootEnv);
+    process.setProcessEnvironment(env);
+    process.setWorkingDirectory(workingDir);
+    process.start(program, args);
+    Result result;
+    if (!process.waitForFinished(60000) || process.exitStatus() != QProcess::NormalExit) return result;
+    result.exitCode = process.exitCode();
+    result.out = QString::fromUtf8(process.readAllStandardOutput());
+    result.err = QString::fromUtf8(process.readAllStandardError());
+    return result;
+}
+
+bool copyTree(const QString& from, const QString& to) {
+    QDirIterator it(from, QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        const QString source = it.next();
+        const QString target = to + QLatin1Char('/') + QDir(from).relativeFilePath(source);
+        if (!QDir().mkpath(QFileInfo(target).path()) || !QFile::copy(source, target)) return false;
+    }
+    return true;
+}
+
+// Stages <prefix>/bin/nm-render (with the DLLs beside it, for Windows) and,
+// when `sourceDataRoot` is given, <prefix>/share/noisemaker-qt/noisemaker.
+// Returns the staged executable, or an empty string on failure.
+QString stageInstall(const QString& nmRender, const QString& prefix, const QString& sourceDataRoot) {
+    const QFileInfo exe(nmRender);
+    const QString bin = prefix + QStringLiteral("/bin");
+    if (!QDir().mkpath(bin)) return QString();
+    const QString staged = bin + QLatin1Char('/') + exe.fileName();
+    if (!QFile::copy(nmRender, staged)) return QString();
+    QFile::setPermissions(staged, QFile(nmRender).permissions());
+    for (const QString& dll : QDir(exe.path()).entryList({QStringLiteral("*.dll")}, QDir::Files)) {
+        if (!QFile::copy(exe.path() + QLatin1Char('/') + dll, bin + QLatin1Char('/') + dll)) return QString();
+    }
+    if (!sourceDataRoot.isEmpty()) {
+        const QString data = prefix + QStringLiteral("/share/noisemaker-qt/noisemaker");
+        for (const QString& dir : {QStringLiteral("effects"), QStringLiteral("shaders"), QStringLiteral("fonts"), QStringLiteral("share")}) {
+            if (QDir(sourceDataRoot).exists(dir) && !copyTree(sourceDataRoot + QLatin1Char('/') + dir, data + QLatin1Char('/') + dir)) {
+                return QString();
+            }
+        }
+    }
+    return staged;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
-    if (argc != 2) {
-        std::fprintf(stderr, "usage: test_nm_render_cli <path to nm-render>\n");
+    if (argc != 3) {
+        std::fprintf(stderr, "usage: test_nm_render_cli <path to nm-render> <source data root>\n");
         return 2;
     }
-    const QString nmRender = QString::fromLocal8Bit(argv[1]);
+    const QString nmRender = QFileInfo(QString::fromLocal8Bit(argv[1])).absoluteFilePath();
+    const QString sourceDataRoot = QFileInfo(QString::fromLocal8Bit(argv[2])).absoluteFilePath();
     const QStringList flags = {
         QStringLiteral("--dsl"),         QStringLiteral("--graph"),        QStringLiteral("--samples"),
         QStringLiteral("--batch-manifest"), QStringLiteral("--size"),      QStringLiteral("--out"),
@@ -97,25 +154,49 @@ int main(int argc, char** argv) {
               && badTexture.err.contains(QStringLiteral("--external-texture expects <texId>=<png>")),
           "an --external-texture value without ID=PNG exits 2");
 
-    // A data root without effect definitions names its effects directory
-    // (the compiler dumps read NOISEMAKER_QT_DATA_ROOT).
+    // Data root lookup (data_root.h). Each case runs from an unrelated
+    // working directory unless it says otherwise.
     {
         QTemporaryDir scratch;
         const QString program = scratch.path() + QStringLiteral("/p.dsl");
         QFile file(program);
-        const bool written = file.open(QIODevice::WriteOnly) && file.write("search synth\nnoise().write(o0)\n") > 0;
+        const bool written = file.open(QIODevice::WriteOnly)
+                             && file.write("search synth\nnoise().write(o0)\nrender(o0)\n") > 0;
         file.close();
+        const QString cwd = scratch.path() + QStringLiteral("/cwd");
+        const bool haveCwd = QDir().mkpath(cwd);
+        const QString png = scratch.path() + QStringLiteral("/out.png");
+        const QStringList renderArgs = {QStringLiteral("--dsl"), program, QStringLiteral("--size"), QStringLiteral("16x16"),
+                                        QStringLiteral("--out"), png};
+
+        // NOISEMAKER_QT_DATA_ROOT overrides every other location, and a wrong
+        // one names its effects directory instead of reporting unknown effects.
         const QString badRoot = scratch.path() + QStringLiteral("/no-data-root");
-        QProcess process;
-        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-        env.insert(QStringLiteral("NOISEMAKER_QT_DATA_ROOT"), badRoot);
-        process.setProcessEnvironment(env);
-        process.start(nmRender, {QStringLiteral("--dump-graph"), program});
-        const bool finished = process.waitForFinished(60000);
-        const QString out = QString::fromUtf8(process.readAllStandardOutput());
-        check(written && finished && out.contains(QStringLiteral("\"ok\":false"))
-                  && out.contains(QDir::cleanPath(badRoot + QStringLiteral("/effects"))),
-              "a wrong data root names <root>/effects instead of reporting unknown effects");
+        const Result wrongDump = runIn(nmRender, {QStringLiteral("--dump-graph"), program}, cwd, badRoot);
+        check(written && haveCwd && wrongDump.out.contains(QStringLiteral("\"ok\":false"))
+                  && wrongDump.out.contains(QDir::cleanPath(badRoot + QStringLiteral("/effects"))),
+              "a wrong NOISEMAKER_QT_DATA_ROOT: --dump-graph names <root>/effects");
+        const Result wrongRender = runIn(nmRender, renderArgs, cwd, badRoot);
+        check(wrongRender.exitCode == 1 && wrongRender.err.contains(QDir::cleanPath(badRoot + QStringLiteral("/effects"))),
+              "a wrong NOISEMAKER_QT_DATA_ROOT: --dsl exits 1 naming <root>/effects");
+        const Result envDump = runIn(nmRender, {QStringLiteral("--dump-graph"), program}, cwd, sourceDataRoot);
+        check(envDump.out.contains(QStringLiteral("\"ok\":true")), "NOISEMAKER_QT_DATA_ROOT set to the data root: --dump-graph compiles");
+
+        // An install layout: <prefix>/bin/nm-render finds
+        // <prefix>/share/noisemaker-qt/noisemaker from any working directory.
+        const QString installed = stageInstall(nmRender, scratch.path() + QStringLiteral("/prefix"), sourceDataRoot);
+        const Result installedRender = runIn(installed, renderArgs, cwd, QString());
+        check(!installed.isEmpty() && installedRender.exitCode == 0 && QFileInfo::exists(png),
+              "an installed nm-render renders from an unrelated working directory");
+        const QString bare = stageInstall(nmRender, scratch.path() + QStringLiteral("/bare"), QString());
+        const Result bareRender = runIn(bare, renderArgs, cwd, QString());
+        check(!bare.isEmpty() && bareRender.exitCode == 1 && bareRender.err.contains(QStringLiteral("no effect definitions")),
+              "the same executable without the share/ data finds none (the install path was the one used)");
+
+        // The source tree, run from the repository root.
+        const QString repoRoot = QDir::cleanPath(sourceDataRoot + QStringLiteral("/../.."));
+        const Result sourceDump = runIn(nmRender, {QStringLiteral("--dump-graph"), program}, repoRoot, QString());
+        check(sourceDump.out.contains(QStringLiteral("\"ok\":true")), "the source tree's qt/noisemaker is found from the repository root");
     }
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,

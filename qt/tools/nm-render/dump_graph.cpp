@@ -17,13 +17,14 @@
 // render paths can only diverge if this module's graph JSON differs from
 // the oracle's, which parity/check_graph.mjs already gates end to end.
 //
-// resolveDataRoot()/parseSize()/findValue()/renderGraph() are duplicated
+// parseSize()/findValue()/renderGraph() are duplicated
 // from main.cpp on purpose: main.cpp's own copies are anonymous-
 // namespace-local, and main.cpp is a frozen shared file after T3 (see
 // PORTING-GUIDE.md file-ownership rules) -- dump_validate.cpp already
 // established this per-file self-containment convention (it duplicates
 // its own local findValue() rather than reaching into main.cpp).
 
+#include "data_root.h"
 #include "flag_hooks.h"
 #include "host_meshes.h"
 
@@ -71,26 +72,6 @@ bool parseSize(const QString& text, QSize* out) {
     return out->width() > 0 && out->height() > 0;
 }
 
-// Duplicated from main.cpp's resolveDataRoot() (see file header) --
-// executable-relative first, CWD-relative "qt/noisemaker" fallback, so
-// `--dsl` works "as documented" regardless of the caller's CWD, matching
-// `--graph`'s own robustness (not just the narrower CWD-only resolution
-// the parity-gate-only dump_*.cpp tools use, since those are always
-// invoked from the repo root by their driving parity/*.mjs script).
-QString resolveDataRoot() {
-    QDir fromExe(QCoreApplication::applicationDirPath());
-    if (fromExe.cdUp() && fromExe.cd(QStringLiteral("noisemaker")) && fromExe.exists(QStringLiteral("shaders"))) {
-        return fromExe.absolutePath();
-    }
-
-    QDir fromCwd(QStringLiteral("qt/noisemaker"));
-    if (fromCwd.exists(QStringLiteral("shaders"))) {
-        return fromCwd.absolutePath();
-    }
-
-    return QStringLiteral("qt/noisemaker");
-}
-
 QString readTextFile(const QString& path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -126,7 +107,7 @@ int handleDumpGraph(const QStringList& args) {
         // Parity-gate-only flag (candidate side of check_graph.mjs, always
         // invoked from the repo root) -- matches dump_validate.cpp's own
         // choice of the narrower CWD-relative resolution.
-        registry.loadAll(nm::EffectRegistry::defaultDataRoot());
+        registry.loadAll(nm::resolveDataRoot());
         const QJsonObject graphJson = nm::compileGraphJson(src, registry);
         out.insert(QStringLiteral("ok"), true);
         out.insert(QStringLiteral("out"), graphJson);
@@ -165,7 +146,7 @@ int handleDsl(const QStringList& args) {
 
     try {
         const QString src = readTextFile(dslPath);
-        const QString dataRoot = resolveDataRoot();
+        const QString dataRoot = nm::resolveDataRoot();
         nm::EffectRegistry registry;
         registry.loadAll(dataRoot);
         const nm::Graph graph = nm::compileGraph(src, registry);

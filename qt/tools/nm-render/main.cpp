@@ -5,6 +5,7 @@
 // and kKnownFlags, which --help and the unknown-option check read
 // (qt/tests/test_nm_render_cli.cpp checks both).
 
+#include "data_root.h"
 #include "flag_hooks.h"
 #include "host_meshes.h"
 
@@ -139,30 +140,6 @@ bool parseSize(const QString& text, QSize* out) {
     return out->width() > 0 && out->height() > 0;
 }
 
-// dataRoot = "qt/noisemaker" (T3 brief). Derived from the nm-render
-// executable's own location assuming the documented build layout
-// (`qt/build` is a sibling of `qt/noisemaker`; see CLAUDE.md-equivalent
-// "Build dir: qt/build"), which works regardless of the caller's current
-// working directory. Falls back to the CWD-relative literal "qt/noisemaker"
-// (the form the T3 smoke test's own invocation convention — run from the
-// repo root — resolves correctly) if that layout isn't found, so nm-render
-// still works when invoked exactly as documented even from a relocated or
-// custom build directory.
-QString resolveDataRoot() {
-    QDir fromExe(QCoreApplication::applicationDirPath());
-    if (fromExe.cdUp() && fromExe.cd(QStringLiteral("noisemaker"))
-        && fromExe.exists(QStringLiteral("shaders"))) {
-        return fromExe.absolutePath();
-    }
-
-    QDir fromCwd(QStringLiteral("qt/noisemaker"));
-    if (fromCwd.exists(QStringLiteral("shaders"))) {
-        return fromCwd.absolutePath();
-    }
-
-    return QStringLiteral("qt/noisemaker");
-}
-
 nm::Graph loadGraphFile(const QString& path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -180,7 +157,7 @@ nm::Graph loadGraphFile(const QString& path) {
 QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, const QString& meshPath,
                    const ExternalTextures& externalTextures) {
     nm::Backend backend;
-    backend.setup(nullptr, resolveDataRoot(), size);
+    backend.setup(nullptr, nm::resolveDataRoot(), size);
     nm::loadHostMeshes(backend, graph, meshPath);
     const QStringList graphExternalIds = nm::Backend::externalTextureIds(graph);
     for (const auto& [texId, path] : externalTextures) {

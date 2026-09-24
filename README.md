@@ -34,7 +34,9 @@ Unlike the HLSL/GDShader ports, this port shares the reference's shader *languag
   QML scene. Built when Qt Quick is installed (`NM_QT_BUILD_QUICK`).
 - **`nm-render`** (`qt/tools/nm-render/`) — an offscreen render CLI: `--dsl <file>` (live compiler)
   or `--graph <json>` (a pre-exported graph) in, a PNG out. Drives the parity harness and doubles
-  as a standalone batch renderer. `nm-render --help` lists every mode and flag.
+  as a standalone batch renderer. `nm-render --help` lists every mode and flag. It reads its data
+  from `NOISEMAKER_QT_DATA_ROOT` when that is set, else from `share/noisemaker-qt/noisemaker` beside
+  its `bin/` directory (an install layout), else from the source tree's `qt/noisemaker`.
 - **`examples/quick`** — `NoisemakerItem` filling a `QQuickView`, with compiler errors shown over
   the render and Space to pause.
 - **`examples/viewer`** — a minimal live `QOpenGLWidget` embedding: DSL in (the live compiler path,

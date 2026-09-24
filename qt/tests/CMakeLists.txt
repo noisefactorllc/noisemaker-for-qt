@@ -64,7 +64,7 @@ endif()
 if(NM_QT_BUILD_TOOLS)
     add_executable(test_nm_render_cli test_nm_render_cli.cpp)
     target_link_libraries(test_nm_render_cli PRIVATE Qt6::Core)
-    add_test(NAME test_nm_render_cli COMMAND test_nm_render_cli $<TARGET_FILE:nm-render>)
+    add_test(NAME test_nm_render_cli COMMAND test_nm_render_cli $<TARGET_FILE:nm-render> ${PROJECT_SOURCE_DIR}/noisemaker)
 endif()
 
 # The export kit's host input code (export-kit/kit/src), built against
