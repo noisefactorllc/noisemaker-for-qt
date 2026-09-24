@@ -20,8 +20,8 @@ Godot:
     has a golden-MINTING phase godot's does not (task-T6-brief.md), and no
     unit test may launch a real browser / need NM_REFERENCE_ROOT.
 
-Plus three tests with no Godot-sibling equivalent, for behavior this task
-adds beyond a literal port:
+Plus tests with no Godot-sibling equivalent, for behavior this repo adds
+beyond a literal port:
   - test_sweep_records_defer_as_distinct_from_policy_skip (DEFER verdict,
     task-T6-brief.md's stage-classification)
   - test_batch_manifest_includes_only_names_with_graph_and_clears_stale_candidate
@@ -29,6 +29,10 @@ adds beyond a literal port:
     run_seconds/sample_every fields, gated on graph.json not golden.png)
   - test_ledger_rejects_incomplete_universe (write-ledger.py's new
     parity/programs/*.dsl completeness gate)
+  - test_single_golden_mint_captures_the_loaded_program_after_a_slow_compile
+    and test_batch_golden_mint_captures_each_loaded_program_after_a_slow_compile
+    (the golden minters wait for the loaded DSL, not the demo's previous
+    program; GAP-010)
 """
 
 import os
@@ -37,10 +41,150 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[1]
+
+# Stand-in reference for the golden minters (no browser). compileGraph gives
+# every program one pass; the fake demo gives it one pass too, so batch
+# minting's pass-count check agrees.
+FAKE_REFERENCE_COMPILER = """
+export function compileGraph (source) {
+  return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill' }], programs: {}, renderSurface: 'o0' }
+}
+"""
+
+# Stand-in shade-mcp BrowserSession. Its page follows Playwright's argument
+# order (evaluate(fn, arg), waitForFunction(fn, arg, options)) and simulates
+# the demo: a run click swaps the presented graph only after COMPILE_TICKS
+# further page calls, like a slow effect load and compile. Until then the
+# default program stays presented. render() fills o0 with the color that
+# the presented program's source names ("fill R G B").
+FAKE_SHADE_HARNESS = """
+const COMPILE_TICKS = 25
+
+function colorOf (source) {
+  const m = /fill (\\d+) (\\d+) (\\d+)/.exec(source)
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3]), 255] : [0, 0, 0, 255]
+}
+
+class FakeCanvasElement {
+  get width () { return this._width }
+  set width (value) { this._width = value }
+  get height () { return this._height }
+  set height (value) { this._height = value }
+}
+
+function makePage () {
+  let tick = 0
+  let pending = null
+  const o0 = { handle: {}, width: 64, height: 64, glFormat: { type: 'UNSIGNED_BYTE' }, data: new Uint8Array(64 * 64 * 4) }
+  const textures = new Map([['global_o0_read', o0]])
+  let attached = null
+  const gl = {
+    FRAMEBUFFER: 1, COLOR_ATTACHMENT0: 2, TEXTURE_2D: 3, FRAMEBUFFER_COMPLETE: 4, RGBA: 5,
+    COLOR_BUFFER_BIT: 6, FLOAT: 'FLOAT', HALF_FLOAT: 'HALF_FLOAT', UNSIGNED_BYTE: 'UNSIGNED_BYTE',
+    createFramebuffer: () => ({}),
+    deleteFramebuffer () {},
+    bindFramebuffer () {},
+    framebufferTexture2D (target, attachment, textarget, handle) {
+      attached = [...textures.values()].find((t) => t.handle === handle)
+    },
+    checkFramebufferStatus: () => 4,
+    getExtension: () => null,
+    finish () {},
+    clearColor () {},
+    clear () { attached.data.fill(0) },
+    readPixels (x, y, w, h, format, type, buf) { buf.set(attached.data) }
+  }
+  const pipeline = {
+    graph: { id: 'default', source: 'fill 255 0 0', passes: [{}, {}, {}], renderSurface: 'o0' },
+    isCompiling: false,
+    surfaces: new Map([['o0', { read: 'global_o0_read', write: 'global_o0_read' }]]),
+    backend: { gl, textures },
+    resize (w, h) {
+      o0.width = w
+      o0.height = h
+      o0.data = new Uint8Array(w * h * 4)
+    },
+    render () {
+      const color = colorOf(this.graph.source)
+      for (let i = 0; i < o0.data.length; i += 4) o0.data.set(color, i)
+    }
+  }
+  const status = { textContent: 'pipeline loaded successfully' }
+  const editor = { value: '', dispatchEvent () {} }
+  const runButton = {
+    click () { pending = { source: editor.value.trim(), at: tick + COMPILE_TICKS } }
+  }
+  const elements = { 'dsl-editor': editor, 'dsl-run-btn': runButton, status }
+  const pageWindow = {
+    __noisemakerRenderingPipeline: pipeline,
+    __noisemakerCanvasRenderer: { canvas: Object.assign(new FakeCanvasElement(), { style: {} }) },
+    __noisemakerSetPaused () {},
+    __noisemakerSetPausedTime () {}
+  }
+  const step = () => {
+    tick++
+    if (pending && tick >= pending.at) {
+      pipeline.graph = { id: `loaded${tick}`, source: pending.source, passes: [{}], renderSurface: 'o0' }
+      pending = null
+      status.textContent = 'compiled successfully'
+    }
+    globalThis.window = pageWindow
+    globalThis.document = { getElementById: (id) => elements[id] ?? null }
+    globalThis.HTMLCanvasElement = FakeCanvasElement
+  }
+  return {
+    async setViewportSize () {},
+    async evaluate (fn, arg) {
+      step()
+      return fn(arg)
+    },
+    async waitForFunction (fn, arg, options) {
+      for (let poll = 0; poll < 10000; poll++) {
+        step()
+        const value = await fn(arg)
+        if (value) return value
+      }
+      throw new Error('fake waitForFunction timed out')
+    }
+  }
+}
+
+export class BrowserSession {
+  async setup () { this.page = makePage() }
+  async setBackend () {}
+  get globals () { return { renderingPipeline: '__noisemakerRenderingPipeline' } }
+  getConsoleMessages () { return [] }
+  clearConsoleMessages () {}
+  async teardown () {}
+}
+"""
+
+
+def png_pixel(path, x, y):
+    """Returns (r, g, b, a) at (x, y) of an 8-bit RGBA PNG whose rows all use filter 0."""
+    data = Path(path).read_bytes()
+    offset = 8
+    width = None
+    idat = b""
+    while offset < len(data):
+        length = int.from_bytes(data[offset:offset + 4], "big")
+        kind = data[offset + 4:offset + 8]
+        body = data[offset + 8:offset + 8 + length]
+        if kind == b"IHDR":
+            width = int.from_bytes(body[0:4], "big")
+        elif kind == b"IDAT":
+            idat += body
+        offset += 12 + length
+    raw = zlib.decompress(idat)
+    stride = 1 + width * 4
+    assert raw[y * stride] == 0, "unexpected PNG row filter"
+    start = y * stride + 1 + x * 4
+    return tuple(raw[start:start + 4])
 
 
 class HarnessContractTests(unittest.TestCase):
@@ -686,6 +830,57 @@ class HarnessContractTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("0/3 pass", result.stdout)
+
+    def _mint_with_fake_reference(self, script, programs):
+        parity = self.tmp / "parity"
+        tools = self.tmp / "tools"
+        reference = self.tmp / "reference"
+        parity.mkdir()
+        tools.mkdir()
+        shutil.copy2(REPO / "parity" / script, parity / script)
+        shutil.copy2(REPO / "tools" / "export-graph.mjs", tools / "export-graph.mjs")
+        (reference / "shaders" / "effects").mkdir(parents=True)
+        (reference / "shaders" / "src").mkdir()
+        (reference / "shaders" / "src" / "index.js").write_text(FAKE_REFERENCE_COMPILER)
+        (reference / "vendor" / "shade-mcp" / "harness").mkdir(parents=True)
+        (reference / "vendor" / "shade-mcp" / "harness" / "index.js").write_text(FAKE_SHADE_HARNESS)
+        (reference / "package.json").write_text('{"type": "module"}\n')
+        paths = []
+        for name, source in programs.items():
+            path = parity / f"{name}.dsl"
+            path.write_text(source)
+            paths.append(str(path))
+        out = self.tmp / "out"
+        if script == "batch-golden.mjs":
+            command = ["node", str(parity / script), str(out), "--size", "8", "--"] + paths
+        else:
+            command = ["node", str(parity / script), paths[0], str(out), "--size", "8"]
+        result = subprocess.run(
+            command,
+            env={**os.environ, "NM_REFERENCE_ROOT": str(reference)},
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        return result, out
+
+    def test_single_golden_mint_captures_the_loaded_program_after_a_slow_compile(self):
+        result, out = self._mint_with_fake_reference(
+            "export-and-render.mjs", {"slowCompile": "fill 0 255 0\n"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "slowCompile.golden.png", 3, 3), (0, 255, 0, 255))
+
+    def test_batch_golden_mint_captures_each_loaded_program_after_a_slow_compile(self):
+        result, out = self._mint_with_fake_reference(
+            "batch-golden.mjs", {"first": "fill 0 255 0\n", "second": "fill 0 0 255\n"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "first.golden.png", 3, 3), (0, 255, 0, 255))
+        self.assertEqual(png_pixel(out / "second.golden.png", 3, 3), (0, 0, 255, 255))
+        self.assertNotIn("WARNING", result.stderr)
 
 
 if __name__ == "__main__":

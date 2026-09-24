@@ -344,16 +344,20 @@ async function main () {
 
     // Wait for the demo's initial pipeline + DSL editor to be ready (the demo
     // boots with a default effect; __noisemakerRenderingPipeline is set then).
+    // Playwright's signature is waitForFunction(fn, arg, options).
     await page.waitForFunction(() => !!window.__noisemakerRenderingPipeline &&
       !!document.getElementById('dsl-editor') && !!document.getElementById('dsl-run-btn'),
-    { timeout: STATUS_TIMEOUT })
+    null, { timeout: STATUS_TIMEOUT })
 
-    // Load OUR DSL via the editor + run button, then wait for the pipeline's
-    // graph to actually SWAP to our program (graph.id change). Polling only the
-    // status text races the default-effect "compiled" message and reads the
-    // wrong surface (the bug that produced identical default goldens).
-    const baselineId = await page.evaluate(() =>
-      window.__noisemakerRenderingPipeline?.graph?.id ?? null)
+    // Load OUR DSL via the editor + run button, then wait until the presented
+    // pipeline runs exactly this program with its shaders compiled. The demo
+    // compiles `editor.value.trim()`, so graph.source must equal the trimmed
+    // DSL. This wait once passed its options object in the page-argument
+    // slot, so it returned true on its first poll; a slow compile was then
+    // captured from the demo's default filter/adjust program (GAP-010).
+    // Polling only the status text races the default-effect "compiled"
+    // message and reads the wrong surface (the bug that produced identical
+    // default goldens).
     await page.evaluate((src) => {
       const editor = document.getElementById('dsl-editor')
       const runBtn = document.getElementById('dsl-run-btn')
@@ -361,14 +365,14 @@ async function main () {
       editor.dispatchEvent(new Event('input', { bubbles: true }))
       runBtn.click()
     }, dsl)
-    await page.waitForFunction((base) => {
+    await page.waitForFunction((src) => {
       const s = (document.getElementById('status')?.textContent || '').toLowerCase()
       if (s.includes('error') || s.includes('failed')) {
         throw new Error('DSL compile failed: ' + document.getElementById('status')?.textContent)
       }
       const p = window.__noisemakerRenderingPipeline
-      return !!(p && p.graph && p.graph.id !== base)
-    }, { timeout: STATUS_TIMEOUT }, baselineId)
+      return !!(p && p.graph && p.graph.source === src.trim() && !p.isCompiling)
+    }, dsl, { timeout: STATUS_TIMEOUT })
 
     // PAUSE FIRST so the demo's requestAnimationFrame loop stops re-syncing the
     // canvas to its (small, letterboxed) layout size — that auto-resize is what

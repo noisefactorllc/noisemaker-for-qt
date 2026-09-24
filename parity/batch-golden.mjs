@@ -7,7 +7,7 @@
 // fresh Chromium per fixture for a 335-program corpus is what this file
 // avoids: it opens ONE BrowserSession (or a small number, see --chunk-size)
 // and reuses the SAME page across many DSL loads by driving the exact same
-// "set editor text -> click run -> wait for graph.id to change" interaction
+// "set editor text -> click run -> wait for the pipeline to run that source" interaction
 // export-and-render.mjs already uses for its own single DSL swap (the demo's
 // own supported "load a different program" interaction, exercised here
 // repeatedly instead of once).
@@ -185,30 +185,23 @@ async function capture (page, globals) {
 // instead of once per process -- PLUS one addition beyond the single-
 // fixture protocol, documented here since it's a real behavioral delta:
 //
-// BATCH-SPECIFIC FIX: the demo's compile is a TWO-PHASE async process --
-// `pipeline.graph.id` changes almost immediately (~5-10ms) to a TRANSIENT
-// value while `pipeline.graph.passes` still reflects the PREVIOUS graph,
-// then `id` changes AGAIN (~30-40ms later) once `passes` actually finishes
-// repopulating. Directly observed via instrumented polling (task-T6-report.md):
-// loading physarumNoSense (13 passes) right after noise (2 passes) in one
-// page session showed `id` change to an intermediate value at t=7ms with
-// `passes.length` STILL 2, then change AGAIN at t=43ms with `passes.length`
-// correctly 13. export-and-render.mjs's own single-swap-per-process wait
-// (`id !== base` alone) never observes this: a cold page's boot + networkidle
-// wait already burns far more than 40ms before its one explicit swap begins,
-// so the race window is always closed by the time it checks. A warm page
-// doing back-to-back swaps has no such cushion. Fix: wait for `id !== base`
-// AND `passes.length === expectedPassCount` (the count `exportGraph()`
-// already computed on the Node side for this exact DSL, BEFORE the browser
-// step -- a ground-truth value, not a guess), then do one short settle
-// recheck and warn (not fail) if it flickers again. This makes the wait
-// STRICTER than the single-fixture protocol, never different in a case that
-// was already passing -- not a change to what "correct" means, a fix for a
-// timing assumption the single-fixture protocol gets for free from its own
-// slower per-process startup.
+// BATCH-SPECIFIC CHECK: the swap wait also requires
+// `passes.length === expectedPassCount` (the count `exportGraph()` already
+// computed on the Node side for this exact DSL, BEFORE the browser step),
+// then does one short settle recheck and warns (not fails) if it changes
+// again.
+//
+// Both swap waits (here and in export-and-render.mjs) once passed their
+// options object where Playwright expects the page argument
+// (waitForFunction(fn, arg, options)). The page function then compared
+// against `{ timeout }`, so it returned true on its first poll and neither
+// the id nor the pass-count test ran. A fixture whose compile outlasted the
+// following round trips was captured from the previous program: in a cold
+// page, the demo's default filter/adjust program (heightGrid_billboard_alpha,
+// GAP-010: that golden was byte-identical to a mint of the default program).
+// The wait now requires graph.source === the trimmed DSL (the demo compiles
+// `editor.value.trim()`) and !isCompiling, with the arguments in order.
 async function mintOne (page, globals, opts, dsl, expectedPassCount, programName) {
-  const baselineId = await page.evaluate(() =>
-    window.__noisemakerRenderingPipeline?.graph?.id ?? null)
   await page.evaluate((src) => {
     const editor = document.getElementById('dsl-editor')
     const runBtn = document.getElementById('dsl-run-btn')
@@ -217,21 +210,20 @@ async function mintOne (page, globals, opts, dsl, expectedPassCount, programName
     runBtn.click()
   }, dsl)
   await page.waitForFunction((args) => {
-    const { base, expectedPassCount } = args
+    const { src, expectedPassCount } = args
     const s = (document.getElementById('status')?.textContent || '').toLowerCase()
     if (s.includes('error') || s.includes('failed')) {
       throw new Error('DSL compile failed: ' + document.getElementById('status')?.textContent)
     }
     const p = window.__noisemakerRenderingPipeline
-    if (!(p && p.graph && p.graph.id !== base)) return false
+    if (!(p && p.graph && p.graph.source === src.trim() && !p.isCompiling)) return false
     if (typeof expectedPassCount === 'number' && p.graph.passes?.length !== expectedPassCount) return false
     return true
-  }, { timeout: STATUS_TIMEOUT }, { base: baselineId, expectedPassCount })
+  }, { src: dsl, expectedPassCount }, { timeout: STATUS_TIMEOUT })
 
-  // Settle recheck: confirm the id we just resolved on is still current a
-  // beat later. Never observed to flicker a second time in testing; this is
-  // a cheap belt-and-suspenders check, not a load-bearing wait -- if it DOES
-  // fire, that's new evidence the two-phase pattern above isn't the whole
+  // Settle recheck: confirm the graph we just resolved on is still current a
+  // beat later. A cheap belt-and-suspenders check, not a load-bearing wait --
+  // if it DOES fire, that's new evidence the swap wait above isn't the whole
   // story, so it's logged loudly rather than silently retried.
   await new Promise((resolve) => setTimeout(resolve, 50))
   const settled = await page.evaluate(() => {
@@ -394,7 +386,7 @@ async function withSession (opts, fn) {
     await page.setViewportSize({ width: opts.size, height: opts.size })
     await page.waitForFunction(() => !!window.__noisemakerRenderingPipeline &&
       !!document.getElementById('dsl-editor') && !!document.getElementById('dsl-run-btn'),
-    { timeout: STATUS_TIMEOUT })
+    null, { timeout: STATUS_TIMEOUT })
     return await fn(session, page, globals)
   } finally {
     await session.teardown()
