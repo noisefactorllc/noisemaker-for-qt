@@ -352,7 +352,7 @@ These entries record missing qualification. They do not infer implementation def
 ### GAP-017: arrow-function params raise UnsupportedDsl
 
 - Status: open. Priority: P2. Category: contract.
-- Affected scope: validator.cpp Func branches (boolean and numeric params).
+- Affected scope: validator.cpp Func branches (boolean and numeric params); Func conditions in if/elif (the same check).
 - Expected behavior: `noise(octaves: () => time * 4)` compiles like the reference: `{min, max}` numeric, `{}` boolean, or S001 for invalid JavaScript.
 - Observed behavior: Qt throws UnsupportedDsl. The reference graph for that program carries `octaves: {min: 1, max: 8}` and `ridges: {}` (probe with tools/dump-graph.mjs).
 - Evidence: The reference decides validity with `new Function(...)`, a JavaScript parse. This port has no JavaScript expression parser to reproduce S001.
@@ -364,16 +364,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-018: if/elif/else, break, continue and return raise UnsupportedDsl
 
-- Status: open. Priority: P3. Category: contract.
-- Affected scope: validator.cpp control-flow statements.
-- Expected behavior: Match the reference at each stage.
-- Observed behavior: The reference validator returns Branch/Break/Continue/Return plans. Its compileGraph then fails ("plan.chain is not iterable"), so the reference cannot render these programs either. Qt fails earlier with UnsupportedDsl.
-- Evidence: `tools/dump-graph.mjs` on `if (1) { noise().write(o0) } else { solid().write(o0) }` returned `{"ok":false,"error":"plan.chain is not iterable"}`.
-- Next action: Emit the reference Branch plan shapes from validate() for check_validate parity. Keep compileGraph failing as the reference does.
+- Status: closed. Priority: P3. Category: contract.
+- Affected scope: validator.cpp control-flow statements (compileStmt, compileBlock, evalExpr, evalCondition); expander.cpp expandPlan; parity/corpus/control_flow_{conditions,blocks,statements,block_let,block_comment}.dsl; test_validator, test_expander.
+- Expected behavior: Match the reference at each stage. Lex and parse succeed. Validate returns Branch, Break, Continue and Return plans. Expand fails with "plan.chain is not iterable", so compileGraph fails.
+- Observed behavior: Before this change, validate threw UnsupportedDsl, and nm::expand silently expanded nothing for a plan without a chain. The port now returns the reference plans and fails at expand with the reference text.
+- Evidence: With the previous binaries, VALIDATE was 0/3 on the 3 fixtures the reference validates. After the change, LEX, PARSE, VALIDATE, EXPAND and GRAPH are each 5/5 on the control-flow fixtures and 364/364 on the full pool. The fixtures cover conditions (numbers, NaN/Infinity via the clone, booleans, let-bound values, state values, unknown identifiers, resolved and unresolved members, strings, colors, refs, calls, chains, osc), nested blocks with the shared temp counter, every Return value form, the `let`-in-block TypeError, and the parse failures. Commit ff10380.
+- Next action: None. Func conditions (`if (() => ...)`) use the same check as Func params and are tracked under GAP-017.
 - Dependencies: None.
-- Acceptance criteria: check_validate byte-identical on control-flow fixtures. compileGraph fails for the same programs.
-- Required checks: corpus fixtures with control flow, check_validate, check_graph.
-- Last verification: 2026-09-24.
+- Acceptance criteria: check_validate byte-identical on the control-flow fixtures. Expand and compileGraph fail for the same programs.
+- Required checks: check_lex, check_parse, check_validate, check_expand, check_graph; test_validator; test_expander; ctest.
+- Last verification: 2026-09-24, reference c9ee8a04, macOS arm64, ctest 15/15.
 
 ### GAP-019: triangle mesh rendering and meshLoader are not implemented
 
@@ -390,16 +390,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-020: compute pass fields raise UnsupportedDsl
 
-- Status: open. Priority: P3. Category: contract.
-- Affected scope: expander.cpp (`entryPoint`, `workgroups`, `storageBuffers`, `storageTextures`).
-- Expected behavior: The reference WebGL2 backend runs such passes as fullscreen render passes (webgl2.js, around line 1093).
-- Observed behavior: Qt throws when a definition declares these fields. No current definition declares them (`grep -rl entryPoint shaders/effects` in the reference returns no definition.js).
-- Evidence: The expander throw site and the empty reference grep.
-- Next action: None until a definition uses these fields. Then port the WebGL2 conversion.
-- Dependencies: A reference definition with these fields.
-- Acceptance criteria: Graph and render parity for the first such definition.
-- Required checks: compiler gates and a render fixture.
-- Last verification: 2026-09-24.
+- Status: closed. Priority: P3. Category: contract.
+- Affected scope: expander.cpp and expander.h (entryPoint, workgroups, storageBuffers, storageTextures); tools/convert-definitions.mjs projectPass; test_expander.
+- Expected behavior: The expander copies the four fields from each pass definition verbatim, as expander.js does (storageTextures is not resolved). The normalized graph drops them.
+- Observed behavior: Before this change, the expander threw UnsupportedDsl. convert-definitions.mjs dropped workgroups, storageBuffers and storageTextures, so those fields could not reach the expander. No definition declares these fields at reference c9ee8a04.
+- Evidence: A synthetic compute definition (entryPoint, workgroups, storageBuffers, storageTextures, outputBuffer output). Raw expand from the reference over its definition.js is EQUAL to Qt expand over the converted JSON. The normalized graph is EQUAL too. The previous converter omitted the three fields; the new converter carries them. check_definitions stays at 210/210. The new test_expander case aborts with the old expander (exit 134) and passes after the change. Commit e9da55d.
+- Next action: None for the compiler. Render parity for WebGL2's compute-to-render conversion (outputBuffer renamed to color, and `{color: 'outputTex'}` when a pass has no outputs) waits for the first definition that uses these fields.
+- Dependencies: A reference definition with these fields, for render verification only.
+- Acceptance criteria: Raw expand and normalized graph equal the reference for a definition with the fields. The converter carries them.
+- Required checks: test_expander; check_definitions; check_expand and check_graph; ctest.
+- Last verification: 2026-09-24, reference c9ee8a04.
 
 ### GAP-021: RGBA16F recreation check assumed the driver reports RGBA16F
 
@@ -439,6 +439,19 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: Exact reference values in test_midi_state. Every parity gate and the rendered ledger unchanged.
 - Required checks: ctest, all 11 parity gates, a SKIP_GOLDEN sweep regrade.
 - Last verification: 2026-09-24. ctest 15/15. Gates exit 0: 317/317, 210/210, 5/5, 358/358 five times, 66/66, 570/570, 93/93. The regrade gave 345 of 347 with the same 2 FAILs; `git diff parity/ledger.json` is empty. `-Werror` build: 0 warnings.
+
+### GAP-024: member paths ignored array and string own properties
+
+- Status: closed. Priority: P2. Category: implementation.
+- Affected scope: validator.cpp resolveEnum (member params, numeric Member args, let bindings, control-flow conditions and Return values); parity/corpus/member_own_properties.dsl; test_validator.
+- Expected behavior: resolveEnum walks paths with `cur && hasOwnProperty.call(cur, part)`. Arrays and strings have own index properties and `length`.
+- Observed behavior: Before this change, the port walked JSON objects only. `noise(octaves: c.value.length)` with `let c = #ff8800` compiled octaves 2 (the default) instead of 4.
+- Evidence: On member_own_properties.dsl, the previous binaries gave VALIDATE 0/1 (octaves ref=4, port=2) and EXPAND 0/1; GRAPH 0/1 failed on an error diagnostic. After the change all three are 1/1, and the full pool is 364/364 at every stage. Commit 525e09c.
+- Next action: None.
+- Dependencies: None.
+- Acceptance criteria: validate, expand and graph byte-identical on the fixture.
+- Required checks: check_validate, check_expand, check_graph; test_validator.
+- Last verification: 2026-09-24, reference c9ee8a04.
 
 ## 5. Ordered next actions
 
