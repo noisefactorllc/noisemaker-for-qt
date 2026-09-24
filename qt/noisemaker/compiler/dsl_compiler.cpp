@@ -1,4 +1,5 @@
 #include "dsl_compiler.h"
+#include "js_number.h"
 
 #include "effect_registry.h"
 #include "expander.h"
@@ -12,7 +13,6 @@
 #include <QLocale>
 #include <QStringList>
 
-#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
@@ -53,15 +53,6 @@ bool jsTruthy(const QJsonValue& v) {
     return true; // arrays/objects are always truthy in JS, even empty ones
 }
 
-QString jsNumberToString(double v) {
-    if (v == 0.0) return QStringLiteral("0");
-    if (std::isnan(v)) return QStringLiteral("NaN");
-    if (std::isinf(v)) return v > 0 ? QStringLiteral("Infinity") : QStringLiteral("-Infinity");
-    char buf[64];
-    const auto result = std::to_chars(buf, buf + sizeof(buf), v);
-    return QString::fromLatin1(buf, static_cast<int>(result.ptr - buf));
-}
-
 // `${v}` template-literal stringification: null/undefined -> "null" (JS
 // coerces BOTH to the literal string "null" inside a template literal —
 // actually `${undefined}` is "undefined", but effectNamespace/effectFunc
@@ -72,7 +63,7 @@ QString jsNumberToString(double v) {
 QString jsTemplateStringOf(const QJsonValue& v) {
     if (v.isNull() || v.isUndefined()) return QStringLiteral("null");
     if (v.isString()) return v.toString();
-    if (v.isDouble()) return jsNumberToString(v.toDouble());
+    if (v.isDouble()) return js::numberToString(v.toDouble());
     if (v.isBool()) return v.toBool() ? QStringLiteral("true") : QStringLiteral("false");
     return QString();
 }

@@ -1,4 +1,5 @@
 #include "validator.h"
+#include "js_number.h"
 
 #include "ast.h"
 #include "diagnostics.h"
@@ -16,7 +17,6 @@
 #include <QStringList>
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <optional>
 #include <stdexcept>
@@ -198,19 +198,6 @@ bool isTruthy(const QJsonValue& v) {
     return false;
 }
 
-// Formats a double exactly like JS's String(number)/template-literal
-// interpolation (shortest round-trippable decimal; no trailing ".0" for
-// integral values) -- diagnostic MESSAGE TEXT is machine-gated by
-// check_validate.mjs (full deep-equality on `out`, unlike the lex/parse
-// gates' ok-only comparison), so this must match byte-for-byte for every
-// value the corpus's min/max-clamp diagnostics interpolate.
-QString jsNumberToString(double value) {
-    if (value == 0.0) return QStringLiteral("0"); // JS: String(-0) === "0"
-    char buf[32];
-    const auto res = std::to_chars(buf, buf + sizeof(buf), value);
-    return QString::fromLatin1(buf, static_cast<int>(res.ptr - buf));
-}
-
 // value -> [non-empty string segments], or an EMPTY list for "null" (no
 // path) -- mirrors normalizeMemberPath's null-collapsing exactly (an
 // array with only empty/falsy segments, an empty string, or a value of
@@ -234,7 +221,7 @@ QStringList normalizeMemberPath(const QJsonValue& value) {
         return parts;
     }
     if (value.isDouble()) {
-        return {jsNumberToString(value.toDouble())};
+        return {js::numberToString(value.toDouble())};
     }
     return {};
 }
@@ -420,7 +407,7 @@ QString Validator::extractIdentifierName(const QJsonValue& nodeVal) {
     if (isTruthy(node.value(QStringLiteral("name")))) return node.value(QStringLiteral("name")).toString();
     if (isTruthy(node.value(QStringLiteral("value")))) {
         const QJsonValue v = node.value(QStringLiteral("value"));
-        return v.isDouble() ? jsNumberToString(v.toDouble()) : v.toVariant().toString();
+        return v.isDouble() ? js::numberToString(v.toDouble()) : v.toVariant().toString();
     }
     return QStringLiteral("[%1]").arg(t.isEmpty() ? QStringLiteral("unknown") : t);
 }
@@ -1457,7 +1444,7 @@ void Validator::resolveSurfaceArg(QJsonArray& chain, const ParamDef& def, const 
                     nodeName = segs.join(QLatin1Char('.'));
                 } else if (isTruthy(n.value(QStringLiteral("value")))) {
                     const QJsonValue v = n.value(QStringLiteral("value"));
-                    nodeName = v.isDouble() ? jsNumberToString(v.toDouble()) : v.toVariant().toString();
+                    nodeName = v.isDouble() ? js::numberToString(v.toDouble()) : v.toVariant().toString();
                 } else if (isTruthy(n.value(QStringLiteral("type")))) {
                     nodeName = n.value(QStringLiteral("type")).toString();
                 } else {
@@ -1787,8 +1774,8 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
         if (clamped != value) {
             pushDiag(QStringLiteral("S002"), node,
                       QStringLiteral("Argument out of range for '%1' in %2() (got %3, clamped to %4)")
-                          .arg(def.name, call.value(QStringLiteral("name")).toString(), jsNumberToString(value),
-                               jsNumberToString(clamped)));
+                          .arg(def.name, call.value(QStringLiteral("name")).toString(), js::numberToString(value),
+                               js::numberToString(clamped)));
         }
         if (n.contains(QStringLiteral("_varRef"))) {
             QJsonObject wrapped;
@@ -1828,8 +1815,8 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
             if (v != cur.toDouble()) {
                 pushDiag(QStringLiteral("S002"), node,
                           QStringLiteral("Argument out of range for '%1' in %2() (got %3, clamped to %4)")
-                              .arg(def.name, call.value(QStringLiteral("name")).toString(), jsNumberToString(cur.toDouble()),
-                                   jsNumberToString(v)));
+                              .arg(def.name, call.value(QStringLiteral("name")).toString(), js::numberToString(cur.toDouble()),
+                                   js::numberToString(v)));
             }
             args.insert(argKey, v);
         } else {
@@ -1922,7 +1909,7 @@ QJsonValue Validator::resolveAutomationEnum(const QJsonValue& nodeVal, const QSt
                               .arg(descriptorName, fieldName);
         if (descriptorName == QStringLiteral("audio") && fieldName == QStringLiteral("band")) {
             const QString got = resolved.isUndefined() ? QStringLiteral("undefined")
-                                                       : (resolved.isDouble() ? jsNumberToString(resolved.toDouble())
+                                                       : (resolved.isDouble() ? js::numberToString(resolved.toDouble())
                                                                               : resolved.toVariant().toString());
             message = QStringLiteral("audio() band must resolve to an integer from 0 to 4 (got %1)").arg(got);
         }
@@ -2008,11 +1995,11 @@ QJsonValue Validator::resolveAutomationNumber(const QJsonValue& nodeVal, const Q
     }
     if (options.minimum && value < *options.minimum) {
         return reject(QStringLiteral("S002"), QStringLiteral("%1() %2 must be at least %3 (got %4)")
-            .arg(descriptorName, fieldName, jsNumberToString(*options.minimum), jsNumberToString(value)));
+            .arg(descriptorName, fieldName, js::numberToString(*options.minimum), js::numberToString(value)));
     }
     if (options.maximum && value > *options.maximum) {
         return reject(QStringLiteral("S002"), QStringLiteral("%1() %2 must be at most %3 (got %4)")
-            .arg(descriptorName, fieldName, jsNumberToString(*options.maximum), jsNumberToString(value)));
+            .arg(descriptorName, fieldName, js::numberToString(*options.maximum), js::numberToString(value)));
     }
     if (options.clamp01) value = std::clamp(value, 0.0, 1.0);
     return value;
@@ -2155,7 +2142,7 @@ QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int d
                              QStringLiteral("String literal not allowed for audio() channel"));
                 } else {
                     QString got = nodeType(channelNode);
-                    if (raw.isDouble()) got = jsNumberToString(raw.toDouble());
+                    if (raw.isDouble()) got = js::numberToString(raw.toDouble());
                     else if (raw.isBool()) got = raw.toBool() ? QStringLiteral("true") : QStringLiteral("false");
                     else if (channelNode.toObject().value(QStringLiteral("name")).isString()) {
                         got = channelNode.toObject().value(QStringLiteral("name")).toString();

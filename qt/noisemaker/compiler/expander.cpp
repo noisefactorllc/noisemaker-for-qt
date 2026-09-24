@@ -1,4 +1,5 @@
 #include "expander.h"
+#include "js_number.h"
 
 #include "effect_registry.h"
 #include "dim.h"
@@ -8,7 +9,6 @@
 #include <QSet>
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <stdexcept>
 
@@ -92,21 +92,9 @@ QJsonValue resolveMemberIfNeeded(const QJsonObject& stdTree, const QJsonObject& 
     return value;
 }
 
-// JS `String(number)`: shortest round-trippable decimal, no trailing
-// ".0" for integer-valued doubles; `-0` prints as "0" (T9's validator.cpp
-// established this exact guard for the same underlying JS-parity need).
-QString jsNumberToString(double v) {
-    if (v == 0.0) return QStringLiteral("0");
-    if (std::isnan(v)) return QStringLiteral("NaN");
-    if (std::isinf(v)) return v > 0 ? QStringLiteral("Infinity") : QStringLiteral("-Infinity");
-    char buf[64];
-    const auto result = std::to_chars(buf, buf + sizeof(buf), v);
-    return QString::fromLatin1(buf, static_cast<int>(result.ptr - buf));
-}
-
 QString jsStringOf(const QJsonValue& v) {
     if (v.isBool()) return v.toBool() ? QStringLiteral("true") : QStringLiteral("false");
-    if (v.isDouble()) return jsNumberToString(v.toDouble());
+    if (v.isDouble()) return js::numberToString(v.toDouble());
     if (v.isString()) return v.toString();
     return QString();
 }
