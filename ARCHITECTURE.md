@@ -115,8 +115,10 @@ AST and graph are `QJsonObject` trees with the same `type` strings and key shape
 reference, so every stage byte-diffs against the reference oracles
 (`parity/check_{lex,parse,validate,expand,graph,registry}.mjs`, key-order-insensitive).
 Unsupported DSL surface fails loudly (`UnsupportedDsl`) exactly where the siblings fail:
-`if/elif/else`, `break/continue/return`, `midi()`/`audio()` automation, `Func` params,
-compute/MRT DSL pass fields.
+`if/elif/else`, `break/continue/return`, `Func` params, bare state values (`time`, `frame`, ...)
+in boolean, member and numeric params, and compute pass fields (`entryPoint`, `workgroups`,
+`storage*`). `midi()` and `audio()` automation compile and resolve at render time against
+host-fed state (`nm::MidiState`, `nm::AudioState`).
 
 ## Effects library
 
@@ -162,8 +164,12 @@ only on the reference plus capture parameters and are reusable across sibling po
 
 ## Integration surface
 
-- `libnoisemaker-qt` (CMake target `noisemaker-qt`): `nm::compileGraph`, `nm::Graph`,
-  `nm::Backend`, `nm::Pipeline`. Qt 6 Core/Gui/OpenGL only — no Widgets/QML dependency.
+- `libnoisemaker-qt` (CMake target `noisemaker-qt`, alias `noisemaker-qt::noisemaker-qt`):
+  `nm::compileGraph`, `nm::EffectRegistry`, `nm::Graph`, `nm::Backend` (render, external
+  textures, live parameters, engine time), and the input state machines `nm::MidiState`,
+  `nm::AudioAnalyzer`, `nm::AudioState` and `nm::AudioInput`. There is no separate pipeline
+  class: `nm::Backend` executes the graph. Qt 6 Core/Gui/OpenGL only — no Widgets/QML
+  dependency. Requires an OpenGL 4.1 core context; shaders compile as GLSL 330 core.
 - `nm-render` (CLI): `--dsl <file> | --graph <json> | --batch-manifest <json>`, `--size`,
   `--time`, `--frames`, `--samples`, `--out <png>`, plus `--dump-{tokens,ast,validated,graph}`
   for the compiler gates. Offscreen; requires a GPU but no window session interaction.
@@ -172,11 +178,12 @@ only on the reference plus capture parameters and are reusable across sibling po
 
 ## Staged / out of scope (matching siblings)
 
-External-input effects (`media`, `text`, `meshLoader`, `scope`, `spectrum`, `roll`) ship their
-definitions but their live input plumbing (camera/video/text-raster/mesh/audio-FFT) is staged;
-the parity harness exercises their no-input fallbacks only. DSL control flow, `midi()`/`audio()`,
-and compute-pass fields fail loudly as unsupported, exactly as in the Unity and TouchDesigner
-ports. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
+External-input effects take host input: `media` and `text` through
+`nm::Backend::updateTextureFromSource`, `scope`, `spectrum` and `roll` through the audio and MIDI
+snapshots. Capture itself (camera, microphone, MIDI devices, text rasterization) stays in the
+host. `meshLoader` mesh input is still staged. The parity harness exercises the no-input
+fallbacks only. DSL control flow and compute-pass fields fail loudly as unsupported, exactly as
+in the Unity and TouchDesigner ports. 3D volume effects follow the DEFER/cubemap harness posture of the TouchDesigner port.
 
 ## Repo layout
 

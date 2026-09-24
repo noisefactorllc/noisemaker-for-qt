@@ -321,6 +321,32 @@ These entries record missing qualification. They do not infer implementation def
 
 </details>
 
+### GAP-014: status and architecture documents contradicted the code
+
+- Status: closed. Priority: P3. Category: contract.
+- Affected scope: README.md, STATUS.md, ARCHITECTURE.md.
+- Expected behavior: Documents state the real GL requirement, current counts, real classes, and verified platforms.
+- Observed behavior: Before this change, the documents claimed OpenGL 3.3 (the context is 4.1 core), 311 shaders (317), 345 fixtures (357), and ctest 8/8 (15). They listed a nonexistent `nm::Pipeline` class and said midi()/audio() raise UnsupportedDsl. README reported an old sweep (289/45/1 of 335).
+- Evidence: Each statement was checked against source: `setVersion(4, 1)` in backend.cpp, `#version 330 core` in shader_assembly.cpp, and the UnsupportedDsl throw sites in validator.cpp and expander.cpp. Gate and ctest counts come from this stream's runs.
+- Next action: None for these files. PORTING-GUIDE.md already matched the code. See GAP-015 for AGENTS.md.
+- Dependencies: None.
+- Acceptance criteria: No listed contradiction remains. Counts match the latest measured runs.
+- Required checks: `grep -n "3\.3\|nm::Pipeline\|311\|345/345"` finds only dated historical sync notes.
+- Last verification: 2026-09-24.
+
+### GAP-015: AGENTS.md states an OpenGL 3.3 runtime
+
+- Status: blocked. Priority: P3. Category: contract.
+- Affected scope: AGENTS.md line 3.
+- Expected behavior: The instruction file names the OpenGL 4.1 core requirement.
+- Observed behavior: "Desktop OpenGL 3.3 runtime and compiler for the Noisemaker shader platform."
+- Evidence: `grep -n "3\.3" AGENTS.md` returns line 3.
+- Next action: Edit line 3 when the operator approves an instruction-file change.
+- Dependencies: Operator approval. Operator rules restrict instruction-file edits to explicit requests.
+- Acceptance criteria: AGENTS.md names the 4.1 core context and GLSL 330 core.
+- Required checks: grep of AGENTS.md.
+- Last verification: 2026-09-24.
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
@@ -336,7 +362,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012 and GAP-013 (closed) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012, GAP-013 and GAP-014 (closed), GAP-015 (blocked) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.

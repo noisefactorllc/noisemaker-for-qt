@@ -36,6 +36,10 @@ Unlike the HLSL/GDShader ports, this port shares the reference's shader *languag
   `nm::compileGraph`), an animated render out, at roughly 60fps. This demonstrates how to embed the library in a Qt application. Widgets/OpenGLWidgets are a dependency of
   this example only, never of `libnoisemaker-qt` itself.
 
+## Requirements
+
+The runtime needs an OpenGL 4.1 core profile context; shaders compile as GLSL 330 core. Qt 6 Core, Gui and OpenGL are required, with CMake 3.21 or later and a C++17 compiler. Rendered parity is verified on macOS (Apple Silicon). CI builds and runs the unit tests on Linux with Mesa llvmpipe. Windows is not yet verified; see [completion gaps](docs/COMPLETION_GAPS.md).
+
 ## Quickstart
 
 Every command below was verified by literally running it before it was written down here.
@@ -106,12 +110,13 @@ target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_RO
 
 ## Status, parity, and coverage
 
-A from-scratch rebuild and full re-verification produced these results:
+Results measured on macOS (Apple Silicon) on 2026-09-24:
 
 - **210 effect definitions.**
-- **311/311 shaders byte-identical.**
-- **6/6 compiler oracle gates at 345/345.**
-- **Corpus-wide pixel sweep: 289 PASS / 45 NEAR / 1 CHAOS / 0 FAIL of 335.**
+- **317/317 shaders byte-identical.**
+- **Compiler oracle gates at 357/357** (lex, parse, validate, expand, graph), registry 5/5.
+- **MIDI and audio state gates:** MIDI_STATE 66/66 and AUDIO_STATE 93/93 exact against the reference classes. AUDIO_ANALYZER 570/570 against Chromium's AnalyserNode.
+- **Corpus-wide pixel sweep (2026-09-24): 298 PASS / 47 NEAR / 0 CHAOS / 2 FAIL of 347.** The failures are open gaps GAP-010 and GAP-011.
 
 **[STATUS.md](STATUS.md)** is the single source of truth. It includes coverage by namespace, every NEAR mechanism with its evidence, and the CHAOS entry's isolation evidence. It also includes timed and live-DSL results and known limits. This README does not duplicate it further.
 

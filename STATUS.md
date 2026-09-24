@@ -1,11 +1,12 @@
 # Noisemaker for Qt — status & parity
 
-*Verified on macOS (Apple Silicon) — desktop OpenGL 3.3 core via Apple's own driver ("Metal-GL":
-Apple's GL implementation on Apple Silicon is realized on top of the Metal driver stack, not a
-native GL backend). Linux/Windows and non-Apple GPU vendors (NVIDIA/AMD/Intel discrete) are
-unverified. The sources of truth are `parity/sweep.sh`, `parity/compare.py`,
+*Verified on macOS (Apple Silicon) — an OpenGL 4.1 core context (Apple's maximum; shaders compile
+as GLSL 330 core) via Apple's own driver ("Metal-GL": Apple's GL implementation on Apple Silicon is
+realized on top of the Metal driver stack, not a native GL backend). Linux passed ctest on Mesa
+llvmpipe in CI run 35968600167 (2026-09-24); Windows and non-Apple GPU vendors (NVIDIA/AMD/Intel
+discrete) are unverified. The sources of truth are `parity/sweep.sh`, `parity/compare.py`,
 `parity/write-ledger.py`, and `parity/check_{shaders,definitions,lex,parse,validate,expand,graph,
-registry}.mjs`. Crystallized against reference (`noisemaker`) content pinned at commit
+registry,midi_state,audio_state,audio_analyzer}.mjs`. Open gaps: `docs/COMPLETION_GAPS.md`. Crystallized against reference (`noisemaker`) content pinned at commit
 `244ebf138d79a5a913f1b517fb8a5d2cd082dc87` ("ci: remove remaining Node 20 action runtime"). Per
 family practice (the Blender port's precedent, forced by an upstream amended commit there), this
 is treated as a **content** pin, not a bare-SHA trust point: what's actually graded is the
@@ -45,7 +46,7 @@ it, see the [README](README.md).
 ## Coverage
 
 **210 effect definitions** across 8 namespaces, generated and byte-gated from the reference (never
-hand-edited). **311 / 311 shader programs** — the full corpus, byte-identical copies of the
+hand-edited). **317 / 317 shader programs** (count at 2026-09-24) — the full corpus, byte-identical copies of the
 reference's own GLSL (this port shares the reference's actual shader language, so unlike the
 HLSL/GDShader ports there is no re-derivation step and no partial-coverage story to report).
 
@@ -60,30 +61,36 @@ HLSL/GDShader ports there is no re-derivation step and no partial-coverage story
 
 **Compiler gates** — the C++ port (`qt/noisemaker/compiler/`: lexer → parser → validator →
 expander → resources → orchestrator) against the reference's own oracle dumps, over the full
-345-fixture pool (335 `parity/programs/*.dsl` render fixtures + 10 `parity/corpus/*.dsl`
-compiler-only fixtures):
+357-fixture pool (347 `parity/programs/*.dsl` render fixtures + 10 `parity/corpus/*.dsl`
+compiler-only fixtures; counts re-run 2026-09-24):
 
 | Gate | Result | Candidate |
 |---|---|---|
-| `check_lex.mjs` (token stream) | 345/345 | `nm-render --dump-tokens` |
-| `check_parse.mjs` (AST) | 345/345 | `nm-render --dump-parse` |
-| `check_validate.mjs` | 345/345 | `nm-render --dump-validate` |
-| `check_expand.mjs` | 345/345 | `tests/expand_dump` |
-| `check_graph.mjs` (compiled render graph) | 345/345 | `nm-render --dump-graph` |
+| `check_lex.mjs` (token stream) | 357/357 | `nm-render --dump-tokens` |
+| `check_parse.mjs` (AST) | 357/357 | `nm-render --dump-ast` |
+| `check_validate.mjs` | 357/357 | `nm-render --dump-validated` |
+| `check_expand.mjs` | 357/357 | `tests/expand_dump` |
+| `check_graph.mjs` (compiled render graph) | 357/357 | `nm-render --dump-graph` |
 | `check_registry.mjs` (`EffectRegistry`) | 5/5 categories | `tests/registry_dump` |
 
 Registry categories: 210 ops / 8 enums / 44 paramAliases / 3 effectAliases / 628 effectKeys — all
 matching the reference exactly. `ctest` (plain-executable unit tests, no framework dependency):
-**8/8**, reproduced from a from-scratch build in **two independent build directories**
-(`qt/build`, `qt/build-compiler` — the renderer and compiler tracks' own build trees during
-development; both rebuilt clean for this crystallization pass, both 8/8).
+**15/15** on 2026-09-24 (`qt/build` and a from-scratch `-Wall -Wextra -Wpedantic -Werror`
+build). The original crystallization pass reported 8/8 in two build directories (`qt/build`,
+`qt/build-compiler`); tests added since cover automation, frame export, host inputs, MIDI and
+audio.
 
 ## Parity
 
-- **Shader / definitions byte-gates:** `check_shaders.mjs` 311/311, `check_definitions.mjs`
+- **Shader / definitions byte-gates:** `check_shaders.mjs` 317/317, `check_definitions.mjs`
   210/210 — both byte-identical to the reference, gating drift out entirely rather than merely
   detecting it (`tools/convert-shaders-qt.mjs` / `tools/convert-definitions.mjs` regenerate both;
   hand-editing either is a porting-rule violation).
+- **Fresh sweep, 2026-09-24** (all 347 fixtures, goldens minted from the reference): **298 PASS /
+  47 NEAR / 0 CHAOS / 2 FAIL** — `heightGrid_billboard_alpha` (whole-frame mismatch, GAP-010) and
+  `heightmap3d_landscape` (max diff 3 against the strict 2.001, GAP-011). Evidence and the golden
+  re-mint procedure: `docs/COMPLETION_GAPS.md` and `parity/ledger.json`. The bullets below record
+  the earlier crystallization pass.
 - **Corpus-wide pixel sweep** (`parity/sweep.sh`, fresh goldens + candidates minted in the same
   run): **298 PASS / 47 NEAR / 0 CHAOS, 0 FAIL, of 345** render fixtures (final fix wave: +9 new
   `synth3d`/`filter3d` gate fixtures, +1 new `convolutionFeedback` ablation fixture, and
@@ -136,7 +143,7 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
   Never a solid-region mismatch — every NEAR entry above is a sparse, mechanism-traced,
   cross-GPU-transcendental-rounding class, the same family the sibling ports document (Metal/
   Vulkan-SPIRV-cross/ANGLE all round certain transcendentals a legal-but-different way; this
-  port's own stack is desktop OpenGL 3.3 core via Apple's driver, a *third* independent
+  port's own stack is an OpenGL 4.1 core context via Apple's driver, a *third* independent
   rounding path, verified fresh here rather than copied from a sibling's numbers).
 - **CHAOS — 1 entry, `convolutionFeedback`** (`filter/convolutionFeedback`, default params
   `sharpenAmount=2.5`): an expansive sharpen/blur feedback loop that amplifies cross-GPU
@@ -193,15 +200,15 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
   volume-atlas path `render3d()`/`synth3d`/`filter3d` use) were not part of this investigation and
   their status is genuinely unknown — not claimed working, not claimed `UnsupportedDsl`, just
   unverified either way pending someone actually testing them.
-- **Billboards are implemented but not gate-verified.** `drawMode:"billboards"`
-  (`pointsBillboardRender`) shares the same count/blend/VAO machinery as the verified `points`
-  path, but no corpus fixture exercises it, so "structurally identical to a verified path" is the
-  actual evidentiary basis — not the same as an observed-correct pixel result.
+- **Billboards are partly gate-verified.** `drawMode:"billboards"` (`pointsBillboardRender`):
+  `heightGrid_billboard` PASSes exactly (2026-09-24 sweep), while `heightGrid_billboard_alpha`
+  (`blendMode: alpha`) FAILs across the whole frame (GAP-010).
 - **Three commits carry a Claude attribution trailer against this repo's no-trailer convention**
   (`9fad7f5`, `9f71d03`, `c02769b`) — recorded here, not rewritten (rewriting shared history this
   late in the task was judged higher-risk than the cosmetic inconsistency).
-- **Verified on macOS/Apple-Silicon-Metal-GL only.** No CI or hardware access to a native Linux/
-  Windows GL driver or a non-Apple GPU vendor exists in this task's scope; the 45 NEAR entries
+- **Rendered parity is verified on macOS/Apple-Silicon-Metal-GL only.** CI (`.github/workflows/
+  ci.yml`) runs ctest and a 4-fixture strict render smoke on Linux Mesa llvmpipe (both passed in
+  run 35968600167); Windows and non-Apple GPU vendors remain unverified (GAP-006). The 45 NEAR entries
   above are this platform's own cross-GPU rounding signature; a different driver stack would need
   its own from-scratch NEAR re-derivation, not a copy of this table (matching this port's own
   practice of never copying a sibling's NEAR numbers without re-observing them here).
@@ -219,7 +226,7 @@ development; both rebuilt clean for this crystallization pass, both 8/8).
 Dev tooling expects the reference engine at **`$NM_REFERENCE_ROOT`** (no default — set it
 explicitly). Qt via `-DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt`.
 
-**Build + unit tests** (two independent build dirs; both must be 8/8):
+**Build + unit tests** (every ctest case must pass; 15 cases on 2026-09-24):
 
 ```sh
 cmake -B qt/build -S qt -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
