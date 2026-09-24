@@ -40,7 +40,8 @@ beyond a literal port:
     overlays settle before capture and the reference's host textures reach
     the candidate; GAP-026)
   - test_timed_golden_mint_starts_from_cleared_graph_state (a timed series
-    starts from zeroed graph state; GAP-034)
+    starts from zeroed graph state; GAP-034) and
+    test_live_dsl_sweep_passes_saved_host_textures_to_the_renderer (GAP-035)
 """
 
 import os
@@ -1267,6 +1268,52 @@ class HarnessContractTests(unittest.TestCase):
         # 60 protocol frames from a cleared state; the demo's 22 paused
         # renders after the load must not carry into the series.
         self.assertEqual(png_pixel(out / "solver.golden.t1.png", 3, 3), (60, 0, 0, 255))
+
+    def test_live_dsl_sweep_passes_saved_host_textures_to_the_renderer(self):
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        for helper in ("sweep.sh", "write-ledger.py"):
+            shutil.copy2(REPO / "parity" / helper, parity / helper)
+        for name in ("text", "plain"):
+            (parity / "programs" / f"{name}.dsl").write_text("noise().text().write(o0)\n")
+            (parity / "out" / f"{name}.golden.png").touch()
+            (parity / "out" / f"{name}.graph.json").write_text("{}")
+        (parity / "out" / "text.textTex_step_1.png").touch()
+        runner = parity / "run.sh"
+        runner.write_text(
+            "#!/usr/bin/env bash\n"
+            "name=$1\n"
+            "printf '%s\\n' \"{\\\"name\\\":\\\"$name\\\",\\\"passed\\\":true,\\\"max_abs_diff\\\":0,\\\"mean_abs_diff\\\":0,\\\"ssim\\\":1,\\\"tolerance\\\":$2,\\\"ssim_min\\\":$3}\" > \"$(dirname \"$0\")/out/$name.report.json\"\n"
+            "echo \"[PASS] $name: synthetic live-DSL candidate\"\n"
+        )
+        runner.chmod(0o755)
+        launches = self.tmp / "launches"
+        renderer = self.tmp / "fake-nm-render"
+        renderer.write_text(
+            "#!/usr/bin/env bash\n"
+            f"echo \"$*\" >> '{launches}'\n"
+            "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
+        )
+        renderer.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(parity / "sweep.sh")],
+            env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1"},
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        lines = launches.read_text().splitlines()
+        text_launch = [line for line in lines if "text.dsl" in line]
+        plain_launch = [line for line in lines if "plain.dsl" in line]
+        self.assertEqual(len(text_launch), 1, lines)
+        self.assertEqual(len(plain_launch), 1, lines)
+        texture = parity / "out" / "text.textTex_step_1.png"
+        self.assertIn(f"--external-texture textTex_step_1={texture}", text_launch[0])
+        self.assertNotIn("--external-texture", plain_launch[0])
+
 
 if __name__ == "__main__":
     unittest.main()

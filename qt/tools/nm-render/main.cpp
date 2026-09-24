@@ -8,6 +8,7 @@
 #include "data_root.h"
 #include "flag_hooks.h"
 #include "host_meshes.h"
+#include "host_textures.h"
 
 #include "../../noisemaker/runtime/backend.h"
 #include "../../noisemaker/runtime/graph.h"
@@ -18,7 +19,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
-#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -31,8 +31,6 @@
 #include <cstdio>
 #include <exception>
 #include <stdexcept>
-#include <utility>
-#include <vector>
 
 namespace {
 
@@ -58,6 +56,7 @@ const char* const kUsage =
     "\n"
     "Render modes (write PNG files):\n"
     "  --dsl FILE --size WxH --out PNG [--time T] [--frames N] [--mesh OBJ]\n"
+    "        [--external-texture ID=PNG]...\n"
     "      Compile a DSL program and render it N times at normalized loop time T,\n"
     "      0 <= T < 1 (defaults: T 0, N 1). Feedback effects need N > 1.\n"
     "  --graph FILE --size WxH --out PNG [--time T] [--frames N] [--mesh OBJ]\n"
@@ -106,30 +105,6 @@ QString findValue(const QStringList& args, const QString& flag) {
     return args.at(idx + 1);
 }
 
-// Host pixels for an external texture id (for example textTex_step_1): a
-// PNG whose top row is the texture's highest v, as parity/export-and-render
-// saves what the reference sampled. Uploaded with flipY = true, which
-// restores the reference's texel rows exactly.
-using ExternalTextures = std::vector<std::pair<QString, QString>>;
-
-// Every `--external-texture <texId>=<png>` argument, in order.
-ExternalTextures findExternalTextures(const QStringList& args) {
-    ExternalTextures textures;
-    for (int i = 0; i + 1 < args.size(); ++i) {
-        if (args.at(i) != QStringLiteral("--external-texture")) {
-            continue;
-        }
-        const QString value = args.at(i + 1);
-        const qsizetype split = value.indexOf(QLatin1Char('='));
-        if (split <= 0 || split == value.size() - 1) {
-            throw std::invalid_argument(
-                ("--external-texture expects <texId>=<png> (got '" + value + "')").toStdString());
-        }
-        textures.emplace_back(value.left(split), value.mid(split + 1));
-    }
-    return textures;
-}
-
 bool parseSize(const QString& text, QSize* out) {
     static const QRegularExpression re(QStringLiteral("^(\\d+)x(\\d+)$"));
     const QRegularExpressionMatch m = re.match(text);
@@ -153,24 +128,13 @@ nm::Graph loadGraphFile(const QString& path) {
 // detect feedback graphs itself, so the caller's --frames value is honored
 // literally) before a single readSurface(). `meshPath` (may be empty) is
 // the host mesh for mesh0 (host_meshes.h); `externalTextures` are the host
-// pixels for external texture ids. Throws on any failure.
+// pixels for external texture ids (host_textures.h). Throws on any failure.
 QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, const QString& meshPath,
-                   const ExternalTextures& externalTextures) {
+                   const nm::HostTextures& externalTextures) {
     nm::Backend backend;
     backend.setup(nullptr, nm::resolveDataRoot(), size);
     nm::loadHostMeshes(backend, graph, meshPath);
-    const QStringList graphExternalIds = nm::Backend::externalTextureIds(graph);
-    for (const auto& [texId, path] : externalTextures) {
-        if (!graphExternalIds.contains(texId)) {
-            throw std::runtime_error(
-                ("external texture '" + texId + "' is not sampled by this graph").toStdString());
-        }
-        const QImage image(path);
-        if (image.isNull()) {
-            throw std::runtime_error(("cannot read external texture '" + path + "'").toStdString());
-        }
-        backend.updateTextureFromSource(texId, image, nm::ExternalTextureOptions{true});
-    }
+    nm::loadHostTextures(backend, graph, externalTextures);
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
@@ -196,9 +160,9 @@ int runSingleGraph(const QStringList& args) {
         return 2;
     }
 
-    ExternalTextures externalTextures;
+    nm::HostTextures externalTextures;
     try {
-        externalTextures = findExternalTextures(args);
+        externalTextures = nm::findHostTextures(args);
     } catch (const std::invalid_argument& e) {
         std::fprintf(stderr, "ERROR: %s\n", e.what());
         return 2;
@@ -262,7 +226,7 @@ int runBatchManifest(const QString& manifestPath) {
                 throw std::runtime_error("manifest item has invalid or missing 'size' (expected WxH)");
             }
 
-            ExternalTextures externalTextures;
+            nm::HostTextures externalTextures;
             const QJsonObject externals = item.value(QStringLiteral("externalTextures")).toObject();
             for (auto it = externals.begin(); it != externals.end(); ++it) {
                 externalTextures.emplace_back(it.key(), it.value().toString());

@@ -27,6 +27,7 @@
 #include "data_root.h"
 #include "flag_hooks.h"
 #include "host_meshes.h"
+#include "host_textures.h"
 
 #include "../../noisemaker/compiler/dsl_compiler.h"
 #include "../../noisemaker/compiler/effect_registry.h"
@@ -83,10 +84,11 @@ QString readTextFile(const QString& path) {
 // Mirrors main.cpp's renderGraph() (same settle-frame contract: caller's
 // --frames value is honored literally, no feedback-graph auto-detection).
 QImage renderGraph(const nm::Graph& graph, const QString& dataRoot, QSize size, double time, int frames,
-                   const QString& meshPath) {
+                   const QString& meshPath, const nm::HostTextures& externalTextures) {
     nm::Backend backend;
     backend.setup(nullptr, dataRoot, size);
     nm::loadHostMeshes(backend, graph, meshPath);
+    nm::loadHostTextures(backend, graph, externalTextures);
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
@@ -141,6 +143,14 @@ int handleDsl(const QStringList& args) {
         return 2;
     }
 
+    nm::HostTextures externalTextures;
+    try {
+        externalTextures = nm::findHostTextures(args);
+    } catch (const std::invalid_argument& e) {
+        std::fprintf(stderr, "ERROR: %s\n", e.what());
+        return 2;
+    }
+
     const double time = timeText.isEmpty() ? 0.0 : timeText.toDouble();
     const int frames = framesText.isEmpty() ? 1 : std::max(1, framesText.toInt());
 
@@ -150,7 +160,7 @@ int handleDsl(const QStringList& args) {
         nm::EffectRegistry registry;
         registry.loadAll(dataRoot);
         const nm::Graph graph = nm::compileGraph(src, registry);
-        const QImage image = renderGraph(graph, dataRoot, size, time, frames, meshPath);
+        const QImage image = renderGraph(graph, dataRoot, size, time, frames, meshPath, externalTextures);
         if (!nm::savePng(image, outPath)) {
             throw std::runtime_error("failed to write PNG");
         }

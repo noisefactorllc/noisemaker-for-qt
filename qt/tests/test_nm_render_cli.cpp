@@ -154,6 +154,13 @@ int main(int argc, char** argv) {
               && badTexture.err.contains(QStringLiteral("--external-texture expects <texId>=<png>")),
           "an --external-texture value without ID=PNG exits 2");
 
+    const Result badDslTexture = run(nmRender, {QStringLiteral("--dsl"), QStringLiteral("x.dsl"), QStringLiteral("--size"),
+                                                QStringLiteral("8x8"), QStringLiteral("--out"), QStringLiteral("x.png"),
+                                                QStringLiteral("--external-texture"), QStringLiteral("textTex_step_1")});
+    check(badDslTexture.exitCode == 2
+              && badDslTexture.err.contains(QStringLiteral("--external-texture expects <texId>=<png>")),
+          "--dsl also rejects an --external-texture value without ID=PNG with exit 2");
+
     // Data root lookup (data_root.h). Each case runs from an unrelated
     // working directory unless it says otherwise.
     {

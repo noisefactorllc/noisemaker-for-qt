@@ -326,7 +326,17 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 				rm -f "$cand"
 				mesh_args=()
 				[ -f "$ROOT/parity/programs/$name.obj" ] && mesh_args=(--mesh "$ROOT/parity/programs/$name.obj")
-				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" ${mesh_args[@]+"${mesh_args[@]}"} 2>&1)
+				# The host pixels the reference sampled (<name>.<texId>.png), as run.sh passes them.
+				external_args=()
+				for texture in "$ROOT/parity/out/$name".*_step_*.png; do
+					[ -f "$texture" ] || continue
+					texture_id="${texture##*/}"
+					texture_id="${texture_id#"$name".}"
+					texture_id="${texture_id%.png}"
+					[[ "$texture_id" =~ ^[A-Za-z][A-Za-z0-9]*_step_[0-9]+$ ]] || continue
+					external_args+=(--external-texture "$texture_id=$texture")
+				done
+				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" ${mesh_args[@]+"${mesh_args[@]}"} ${external_args[@]+"${external_args[@]}"} 2>&1)
 				rc=$?
 				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
 				[ "$rc" -eq 0 ] || { echo "[sweep] live-DSL render FAILED for $name (exit $rc)"; batch_rc=1; }
