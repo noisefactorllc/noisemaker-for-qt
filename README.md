@@ -193,8 +193,34 @@ Results measured on macOS (Apple Silicon) on 2026-09-24:
 
 See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the render-graph seam, OpenGL-vs-RHI decision record, shader corpus policy, runtime model, and compiler design. Follow **[PORTING-GUIDE.md](PORTING-GUIDE.md)** when changing this port. It covers the shader byte-copy policy, GL state parity rules, and compiler porting rules.
 
+## Versions and releases
+
+The port has one version series, `0.1`. It is the CMake project version (`find_package(noisemaker-qt 0.1)`) and the `series` in `export-kit/kit.config.json`; configure fails if they differ. In `0.x`, a new minor version may change the API.
+
+A push to `main` that changes `qt/noisemaker/`, `export-kit/` or `LICENSE` releases the export kit. `.github/workflows/export-kit.yml` dispatches the Noise Factor release workflow, which builds the kit from that commit, validates it, publishes it at `https://kits.noisedeck.app/qt/<version>/`, points `qt/0.1/` and `qt/0/` at it, and tags the commit `kit-qt-v0.1.<n>`. A published version directory never changes. Noisedeck's "Export shader pipeline" reads `qt/0/`, so a new export uses the newest `0.x` kit. The kit's `kit.json` records its version and source commit, and an export's `noisedeck-export.json` records that commit as `kitSha`.
+
+A C++ project pins the source of a kit release by its tag:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(noisemaker_qt
+    GIT_REPOSITORY https://github.com/noisefactorllc/noisemaker-for-qt.git
+    GIT_TAG kit-qt-v0.1.29
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR qt)
+FetchContent_MakeAvailable(noisemaker_qt)
+target_link_libraries(my_app PRIVATE noisemaker-qt::noisemaker-qt)
+target_compile_definitions(my_app PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_ROOT}")
+```
+
+Set `NM_QT_BUILD_QUICK` to `ON` before `FetchContent_MakeAvailable` to build `noisemaker-qt::quick` too. There are no separate release notes: `git log --oneline kit-qt-v0.1.<m>..kit-qt-v0.1.<n>` lists the changes between two releases.
+
 ## License and trademark
 
-Code is MIT-licensed. See [LICENSE](LICENSE). The MIT license does not cover the bundled font:
+Code is MIT-licensed. See [LICENSE](LICENSE). The shaders and built-in meshes under `qt/noisemaker/` are unmodified copies of the reference engine's files ([noisefactorllc/noisemaker](https://github.com/noisefactorllc/noisemaker)), and the effect definitions are generated from its definitions (`tools/convert-definitions.mjs`); the reference is MIT-licensed by the same copyright holder. Shader code adapted from third-party work keeps its license notice in the shader source; the reference's [CREDITS.md](https://github.com/noisefactorllc/noisemaker/blob/main/CREDITS.md) lists those works.
 
-- `qt/noisemaker/fonts/Nunito/Nunito-VariableFont_wght.ttf` is Nunito Version 3.602, Copyright 2014 The Nunito Project Authors ([googlefonts/nunito](https://github.com/googlefonts/nunito)), licensed under the SIL Open Font License 1.1 ([OFL.txt](qt/noisemaker/fonts/Nunito/OFL.txt)). It is an unmodified copy of the reference's `demo/font/Nunito/Nunito-VariableFont_wght.ttf` (added in `noisefactorllc/noisemaker` commit `9f23756d`, identical at `c9ee8a04`). SHA-256: `707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08`. [TRADEMARK.md](TRADEMARK.md) governs use of the "Noisemaker" and "Noise Factor" names. Read it before using either name for a derivative product.
+The MIT license does not cover the bundled font:
+
+- `qt/noisemaker/fonts/Nunito/Nunito-VariableFont_wght.ttf` is Nunito Version 3.602, Copyright 2014 The Nunito Project Authors ([googlefonts/nunito](https://github.com/googlefonts/nunito)), licensed under the SIL Open Font License 1.1 ([OFL.txt](qt/noisemaker/fonts/Nunito/OFL.txt)). It is an unmodified copy of the reference's `demo/font/Nunito/Nunito-VariableFont_wght.ttf` (added in `noisefactorllc/noisemaker` commit `9f23756d`, identical at `c9ee8a04`). SHA-256: `707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08`.
+
+[TRADEMARK.md](TRADEMARK.md) governs use of the "Noisemaker" and "Noise Factor" names. Read it before using either name for a derivative product.

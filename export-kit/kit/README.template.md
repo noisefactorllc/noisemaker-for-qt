@@ -77,4 +77,4 @@ The default export includes both the pinned `noisemaker-for-qt` C++ engine and e
 
 ## License
 
-The Noisemaker engine and the Qt port are MIT licensed: `LICENSES/noisemaker-MIT.txt` and `LICENSES/noisemaker-for-qt-LICENSE.txt`. The Nunito font in `fonts/Nunito/` is licensed under the SIL Open Font License 1.1: `LICENSES/Nunito-OFL.txt`. Your program and the imagery it renders are yours.
+The Noisemaker engine and the Qt port are MIT licensed: `LICENSES/noisemaker-MIT.txt` and `LICENSES/noisemaker-for-qt-LICENSE.txt`. Shader code adapted from third-party work keeps its license notice in the shader source. The Nunito font in `fonts/Nunito/` is licensed under the SIL Open Font License 1.1: `LICENSES/Nunito-OFL.txt`. Your program and the imagery it renders are yours.
