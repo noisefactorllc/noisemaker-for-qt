@@ -609,6 +609,19 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: test_nm_render_cli on all three operating systems; ctest.
 - Last verification: 2026-09-24, macOS arm64, Qt 6.11.1.
 
+### GAP-037: the compiler does not build for macOS before 13.3
+
+- Status: closed. Priority: P2. Category: ecosystem.
+- Affected scope: qt/noisemaker/compiler/validator.cpp, expander.cpp, dsl_compiler.cpp; qt/noisemaker/compiler/js_number.{h,cpp}; hosts that target macOS 13.0 to 13.2 (Sync's render helper).
+- Expected behavior: The library builds for every macOS its hosts support, and formats numbers as JavaScript's String(number).
+- Observed behavior: Before f0c123b, three copies of a formatter used the C++17 floating-point std::to_chars, which Apple's libc++ provides only from macOS 13.3. Sync's first release with the render helper (target 13.0) failed to compile (scaffold run 36046367268). The copies also printed "1e-07" for 1e-7, switched to exponent form below 1e21, and the validator's copy printed "nan" and "inf". nm::js::numberToString replaces them.
+- Evidence: A build for -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 under -Werror reproduced the three "'to_chars' is unavailable: introduced in macOS 13.3" errors before the change and has 0 compiler warnings after it. numberToString equals node 26.10.0's String(x) on 400,000 doubles (random bit patterns and random decimals). test_js_number pins 38 cases; ctest 25/25; check_validate, check_expand, and check_graph 376/376. CI now builds the macOS warnings job for 13.0.
+- Next action: None.
+- Dependencies: None.
+- Acceptance criteria: The library builds for macOS 13.0 with -Werror, and numberToString matches V8 on a large random sample.
+- Required checks: The macOS warnings-as-errors CI job; test_js_number; the compiler gates.
+- Last verification: 2026-09-24, macOS arm64, Qt 6.11.1.
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
