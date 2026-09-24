@@ -244,8 +244,8 @@ QJsonObject Parser::parseRenderDirective() {
     advance();
     expect(TokenType::LPAREN, QStringLiteral("Expect '('"));
     if (peek().type != TokenType::OUTPUT_REF) {
-        // Reference throws with NO location suffix here.
-        throw DslSyntaxError(QStringLiteral("Expected output reference in render()"));
+        // Reference throws with NO location suffix in error.message, but carries structured location.
+        throw parserError(QStringLiteral("P005"), QStringLiteral("Expected output reference in render()"), peek());
     }
     QJsonObject out = refNode(NodeKind::OutputRef, advance().lexeme);
     expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
@@ -536,8 +536,8 @@ QJsonArray Parser::parseChain(const QString& context) {
         if (nextType == TokenType::WRITE || nextType == TokenType::WRITE3D) {
             if (context == QStringLiteral("expression")) {
                 const Token t = peek();
-                throw DslSyntaxError::at(QStringLiteral("'.write()' is only allowed in statement context"), t.line,
-                                          t.col);
+                throw parserErrorAt(QStringLiteral("P005"),
+                                    QStringLiteral("'.write()' is only allowed in statement context"), t);
             }
             QJsonObject writeNode = parseWriteCall();
             if (!allComments.isEmpty()) writeNode.insert(QStringLiteral("leadingComments"), allComments);
@@ -583,10 +583,11 @@ QJsonObject Parser::parseWriteCall() {
             surface = refNode(NodeKind::OutputRef, advance().lexeme);
         } else {
             const Token p = peek();
-            throw DslSyntaxError::at(
+            throw parserErrorAt(
+                QStringLiteral("P005"),
                 QStringLiteral(
                     "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none)"),
-                p.line, p.col);
+                p);
         }
         expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
         QJsonObject node;
@@ -610,7 +611,7 @@ QJsonObject Parser::parseWriteCall() {
             }
         } else {
             const Token p = peek();
-            throw DslSyntaxError::at(QStringLiteral("Expected tex3d reference in write3d()"), p.line, p.col);
+            throw parserErrorAt(QStringLiteral("P005"), QStringLiteral("Expected tex3d reference in write3d()"), p);
         }
         expect(TokenType::COMMA, QStringLiteral("Expect ',' between tex3d and geo in write3d()"));
         QJsonObject geo;
@@ -625,7 +626,7 @@ QJsonObject Parser::parseWriteCall() {
             }
         } else {
             const Token p = peek();
-            throw DslSyntaxError::at(QStringLiteral("Expected geo reference in write3d()"), p.line, p.col);
+            throw parserErrorAt(QStringLiteral("P005"), QStringLiteral("Expected geo reference in write3d()"), p);
         }
         expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
         QJsonObject node;

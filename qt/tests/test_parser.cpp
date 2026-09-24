@@ -776,10 +776,122 @@ int main() {
     }
 
     // ==================================================================
-    // Parser automation and search diagnostics represent unavailable coordinates explicitly
+    // Structured output validation diagnostics (P005)
     // ==================================================================
     {
-        for (const QString& src : {QStringLiteral("search synth\nlet x = midi()"), QStringLiteral("search bogus")}) {
+        struct OutputCase {
+            const char* name;
+            QString source;
+            QString message;
+            int line;
+            int column;
+        };
+
+        const QVector<OutputCase> outputCases = {
+            {"invalid render target", QStringLiteral("search synth\nrender(1)"),
+             QStringLiteral("Expected output reference in render()"), 2, 8},
+            {"render target at EOF", QStringLiteral("search synth\nrender("),
+             QStringLiteral("Expected output reference in render()"), 2, 8},
+            {"write in expression", QStringLiteral("search synth\nlet x = diagProbe().write(o0)"),
+             QStringLiteral("'.write()' is only allowed in statement context at line 2 col 21"), 2, 21},
+            {"write3d in expression", QStringLiteral("search synth\nlet x = diagProbe().write3d(vol0, geo0)"),
+             QStringLiteral("'.write()' is only allowed in statement context at line 2 col 21"), 2, 21},
+            {"missing write surface", QStringLiteral("search synth\ndiagProbe().write()"),
+             QStringLiteral("write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none) at line 2 col 19"), 2, 19},
+            {"write surface at EOF", QStringLiteral("search synth\ndiagProbe().write("),
+             QStringLiteral("write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none) at line 2 col 19"), 2, 19},
+            {"invalid write surface", QStringLiteral("search synth\ndiagProbe().write(1)"),
+             QStringLiteral("write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none) at line 2 col 19"), 2, 19},
+            {"invalid write3d texture", QStringLiteral("search synth\ndiagProbe().write3d(1, geo0)"),
+             QStringLiteral("Expected tex3d reference in write3d() at line 2 col 21"), 2, 21},
+            {"write3d texture at EOF", QStringLiteral("search synth\ndiagProbe().write3d("),
+             QStringLiteral("Expected tex3d reference in write3d() at line 2 col 21"), 2, 21},
+            {"invalid write3d geometry", QStringLiteral("search synth\ndiagProbe().write3d(vol0, 1)"),
+             QStringLiteral("Expected geo reference in write3d() at line 2 col 27"), 2, 27},
+            {"write3d geometry at EOF", QStringLiteral("search synth\ndiagProbe().write3d(vol0,"),
+             QStringLiteral("Expected geo reference in write3d() at line 2 col 26"), 2, 26},
+            {"CRLF and tab render target", QString::fromUtf8("// \xF0\x9F\x98\x80\r\nsearch synth\r\n\trender(\"\xF0\x9F\x98\x80\")"),
+             QStringLiteral("Expected output reference in render()"), 3, 9},
+            {"UTF-16 render target column", QString::fromUtf8("search synth\nlet x = \"\xF0\x9F\x98\x80\"; render(none)"),
+             QStringLiteral("Expected output reference in render()"), 2, 22},
+        };
+
+        for (const auto& c : outputCases) {
+            bool caught = false;
+            try {
+                parseSrc(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == c.message,
+                      QStringLiteral("output diagnostic message matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject d = err.diagnostic();
+                check(!d.isEmpty(),
+                      QStringLiteral("output diagnostic payload present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P005"),
+                      QStringLiteral("output diagnostic code is P005 for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"),
+                      QStringLiteral("output diagnostic stage matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"),
+                      QStringLiteral("output diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("message")).toString() == c.message,
+                      QStringLiteral("output diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(d.value(QStringLiteral("span")).isNull(),
+                      QStringLiteral("output diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(loc.value(QStringLiteral("line")).toInt() == c.line,
+                      QStringLiteral("output diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                check(loc.value(QStringLiteral("column")).toInt() == c.column,
+                      QStringLiteral("output diagnostic location column matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caught, QStringLiteral("throws DslSyntaxError for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+    }
+
+    // ==================================================================
+    // Output syntax preserves shared expectation diagnostic precedence
+    // ==================================================================
+    {
+        struct PrecedenceCase {
+            QString source;
+            QString code;
+            QString message;
+        };
+
+        const QVector<PrecedenceCase> precedenceCases = {
+            {QStringLiteral("search synth\nrender o0"), QStringLiteral("P001"),
+             QStringLiteral("Expect '(' at line 2 col 8")},
+            {QStringLiteral("search synth\nrender(o0"), QStringLiteral("P002"),
+             QStringLiteral("Expect ')' at line 2 col 10")},
+            {QStringLiteral("search synth\nrender(o0) render(o1)"), QStringLiteral("P001"),
+             QStringLiteral("Expected end of input at line 2 col 12")},
+            {QStringLiteral("search synth\ndiagProbe().write(o0"), QStringLiteral("P002"),
+             QStringLiteral("Expect ')' at line 2 col 21")},
+            {QStringLiteral("search synth\ndiagProbe().write3d(vol0 geo0)"), QStringLiteral("P001"),
+             QStringLiteral("Expect ',' between tex3d and geo in write3d() at line 2 col 26")},
+        };
+
+        for (const auto& c : precedenceCases) {
+            bool caught = false;
+            try {
+                parseSrc(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.message() == c.message, "precedence error message matches");
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString() == c.code, "precedence diagnostic code matches");
+            }
+            check(caught, "throws DslSyntaxError for precedence case");
+        }
+    }
+
+    // ==================================================================
+    // Parser automation, search, and output diagnostics represent unavailable coordinates explicitly
+    // ==================================================================
+    {
+        for (const QString& src : {QStringLiteral("search synth\nlet x = midi()"),
+                                   QStringLiteral("search bogus"),
+                                   QStringLiteral("search synth\nrender(1)"),
+                                   QStringLiteral("search synth\ndiagProbe().write()")}) {
             const QJsonArray origTokens = nm::lex(src);
             QJsonArray modifiedTokens;
             for (const QJsonValue& val : origTokens) {
@@ -797,7 +909,7 @@ int main() {
                 check(d.value(QStringLiteral("code")).toString().startsWith(QLatin1Char('P')), "code starts with P");
                 check(d.value(QStringLiteral("location")).isNull(), "location is null when coordinates unavailable");
             }
-            check(caught, "throws DslSyntaxError for unavailable coordinates in P003/P004");
+            check(caught, "throws DslSyntaxError for unavailable coordinates in P003/P004/P005");
         }
     }
 
