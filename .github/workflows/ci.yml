@@ -255,10 +255,17 @@ jobs:
       - name: Build nm-render
         run: |
           cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build qt/build --parallel --target nm-render audio_analyzer_dump
+          cmake --build qt/build --parallel --target nm-render audio_analyzer_dump text_texture_dump
 
       - name: AnalyserNode gate (Chromium oracle)
         run: NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" node parity/check_audio_analyzer.mjs
+
+      - name: filter/text gate (Chromium oracle, FreeType)
+        env:
+          QT_QPA_PLATFORM: xcb
+        run: |
+          NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" \
+            xvfb-run -a -s "-screen 0 1280x1024x24" node parity/check_text_canvas.mjs
 
       - name: Python compare environment
         run: |

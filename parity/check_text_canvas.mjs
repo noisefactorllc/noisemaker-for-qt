@@ -24,6 +24,9 @@
 //     (102 px), and 0 by Qt. Edges along the text direction can move by
 //     that much; the 5 px edge bound covers the cases below and the
 //     centroid bound stays at 1 px.
+//   - The same 10 cases pass on Qt's FreeType engine (the Linux engine;
+//     QT_QPA_PLATFORM=cocoa:fontengine=freetype on macOS). CI runs this
+//     gate on Linux in the render-smoke job.
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker node parity/check_text_canvas.mjs
 // Env: NM_TEXT_TEXTURE_DUMP  candidate binary (default qt/build/tests/text_texture_dump)
