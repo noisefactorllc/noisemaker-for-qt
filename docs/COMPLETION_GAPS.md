@@ -84,7 +84,7 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: Resolve immutable authority inputs. Preserve historical goldens and provenance.
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
-- Last verification: 2026-09-24. Full behavior qualification remains unverified.
+- Last verification: 2026-09-24. A full sweep graded 347 of 347 fixtures: 298 PASS, 47 NEAR, 2 FAIL, 0 CHAOS, 0 skipped. See GAP-010, GAP-011 and the sweep evidence below. Only macOS was measured.
 
 ### GAP-002: installed developer workflow qualification
 
@@ -230,6 +230,43 @@ These entries record missing qualification. They do not infer implementation def
 
 </details>
 
+### GAP-010: heightGrid_billboard_alpha renders wrong
+
+- Status: open. Priority: P1. Category: implementation.
+- Affected scope: render/pointsBillboardRender with `blendMode: alpha` over points/heightGrid. Fixture: parity/programs/heightGrid_billboard_alpha.dsl.
+- Expected behavior: The candidate matches the reference golden at the strict tolerance 2.001 / SSIM 0.98.
+- Observed behavior: Every pixel differs. Max diff 255, mean 64.19, SSIM 0.35693. The same fixture with the default blend mode passes exactly.
+- Evidence: Two single-fixture reference mints were byte-identical, so the golden is deterministic. The first batch mint raced (see sweep evidence).
+- Next action: Compare the alpha blend, depth, and draw-order state of the billboard pass against reference webgl2.js.
+- Dependencies: None.
+- Acceptance criteria: The fixture passes at 2.001 / 0.98 with no tolerance change. The other heightGrid fixtures stay PASS.
+- Required checks: `bash parity/run.sh heightGrid_billboard_alpha` against a fresh reference golden, then a full sweep.
+- Last verification: 2026-09-24, macOS.
+
+### GAP-011: heightmap3d_landscape exceeds the strict tolerance by one level
+
+- Status: open. Priority: P2. Category: verification.
+- Affected scope: synth3d/heightmap3d and render/renderLandscape3d. Fixture: parity/programs/heightmap3d_landscape.dsl.
+- Expected behavior: PASS at 2.001 / 0.98, or a NEAR policy backed by a traced mechanism.
+- Observed behavior: Max diff 3.0000017, mean 3.4e-05, SSIM 1.00000. The result is FAIL at the strict bar.
+- Evidence: Batch and single-fixture goldens were byte-identical (0 differing pixels).
+- Next action: Locate the differing pixels. Trace the rounding mechanism before any tol_for() entry.
+- Dependencies: None.
+- Acceptance criteria: A PASS, or a NEAR policy with a documented mechanism and a measured bound.
+- Required checks: parity/run.sh with a diff heatmap, then a full sweep.
+- Last verification: 2026-09-24, macOS.
+
+<details><summary>Sweep evidence, 2026-09-24</summary>
+
+- Source: noisemaker-for-qt `5d88cb5` runtime (commit c0f0644 plus the test-only change) built in `qt/build`. Reference checkout `285e50f538371ffa1ed5656821a417fef36e7c5c` (clean). Its shaders and definitions matched the port byte for byte (SHADERS 317/317, DEFINITIONS 210/210).
+- `NM_REFERENCE_ROOT=<reference> bash parity/sweep.sh`: 11 min 29 s. It minted 345 goldens in one browser session plus 2 timed series. Result: 342 pass of 347, FAIL agentsPoints, fibers, heightGrid_billboard_alpha, heightmap3d_landscape, scratches.
+- batch-golden.mjs warned about a pass-count race for agentsPoints, heightGrid_billboard_alpha and julia.
+- The 5 failing fixtures were minted again one at a time with parity/export-and-render.mjs. Batch against single-mint golden differences: agentsPoints 1095 px, heightGrid_billboard_alpha 65536 px, fibers 60 px, scratches 24 px, heightmap3d_landscape 0 px.
+- `SKIP_GOLDEN=1 bash parity/sweep.sh` (new candidates, same goldens): 345 pass of 347. FAIL: heightGrid_billboard_alpha, heightmap3d_landscape. No tolerance changed.
+- Ledger: 347 entries (was 342). The 5 fixtures that had never been graded: heightGrid_billboard PASS, heightGrid_pointsRender_perspective PASS, remap_zone PASS, heightGrid_billboard_alpha FAIL, heightmap3d_landscape FAIL. No verdict changed for the 342 earlier entries.
+
+</details>
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.
@@ -245,7 +282,7 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
-| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008 and GAP-009 (closed) and GAP-005 and GAP-006 (open). | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
+| 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008 and GAP-009 (closed) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Creating this register does not advance successful-audit timestamps or the rotation.

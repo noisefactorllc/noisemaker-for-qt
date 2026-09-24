@@ -2000,6 +2000,86 @@
     }
   },
   {
+    "program": "heightGrid_billboard",
+    "effect": "filter/pointsBillboardRender",
+    "mode": "viewMode: perspective, rotateX: 0.55, posY: -12, posZ: 22, pointSize: 2, density: 100, intensity: 0, inputIntensity: 0, depositOpacity: 65, sizeDistance: 150, brightnessDistance: 180, aperture: 1.5, focalDistance: 65",
+    "golden": "parity/out/heightGrid_billboard.golden.png",
+    "candidate": "parity/out/heightGrid_billboard.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "heightGrid_billboard_alpha",
+    "effect": "filter/pointsBillboardRender",
+    "mode": "viewMode: perspective, blendMode: alpha, rotateX: 0.55, posY: -12, posZ: 22, pointSize: 3, density: 100, intensity: 0, inputIntensity: 0, depositOpacity: 65",
+    "golden": "parity/out/heightGrid_billboard_alpha.golden.png",
+    "candidate": "parity/out/heightGrid_billboard_alpha.candidate.png",
+    "verdict": "FAIL",
+    "max_abs_diff": 255.0,
+    "mean_abs_diff": 64.19001770019531,
+    "ssim": 0.35693296790122986,
+    "passed": false,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "comparison child exited nonzero"
+    }
+  },
+  {
+    "program": "heightGrid_pointsRender_perspective",
+    "effect": "filter/pointsRender",
+    "mode": "viewMode: perspective, rotateX: 0.55, posY: -12, posZ: 22, fieldOfView: 70",
+    "golden": "parity/out/heightGrid_pointsRender_perspective.golden.png",
+    "candidate": "parity/out/heightGrid_pointsRender_perspective.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "heightmap3d_landscape",
+    "effect": "filter/renderLandscape3d",
+    "mode": "panY: -0.18",
+    "golden": "parity/out/heightmap3d_landscape.golden.png",
+    "candidate": "parity/out/heightmap3d_landscape.candidate.png",
+    "verdict": "FAIL",
+    "max_abs_diff": 3.0000016689300537,
+    "mean_abs_diff": 3.433227902860381e-05,
+    "ssim": 1.0,
+    "passed": false,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "comparison child exited nonzero"
+    }
+  },
+  {
     "program": "highPass",
     "effect": "filter/highPass",
     "mode": "default",
@@ -3061,8 +3141,8 @@
     ],
     "verdict": "NEAR",
     "max_abs_diff": 6.999999523162842,
-    "mean_abs_diff": 0.5598640441894531,
-    "ssim": 0.9990365505218506,
+    "mean_abs_diff": 0.561553955078125,
+    "ssim": 0.9990154504776001,
     "passed": true,
     "skipped": false,
     "policy": {
@@ -3078,8 +3158,8 @@
         "golden": "parity/out/navierStokes.golden.t5.png",
         "candidate": "parity/out/navierStokes.candidate.t5.png",
         "max_abs_diff": 6.999999523162842,
-        "mean_abs_diff": 0.5598640441894531,
-        "ssim": 0.9990365505218506,
+        "mean_abs_diff": 0.561553955078125,
+        "ssim": 0.9990154504776001,
         "passed": true,
         "policy_matches": true
       },
@@ -3088,8 +3168,8 @@
         "golden": "parity/out/navierStokes.golden.t10.png",
         "candidate": "parity/out/navierStokes.candidate.t10.png",
         "max_abs_diff": 2.0000035762786865,
-        "mean_abs_diff": 0.059780120849609375,
-        "ssim": 0.9998616576194763,
+        "mean_abs_diff": 0.059444427490234375,
+        "ssim": 0.9998648166656494,
         "passed": true,
         "policy_matches": true
       },
@@ -3098,8 +3178,8 @@
         "golden": "parity/out/navierStokes.golden.t15.png",
         "candidate": "parity/out/navierStokes.candidate.t15.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.00506591796875,
-        "ssim": 0.9999918937683105,
+        "mean_abs_diff": 0.004058837890625,
+        "ssim": 0.9999939799308777,
         "passed": true,
         "policy_matches": true
       },
@@ -3108,8 +3188,8 @@
         "golden": "parity/out/navierStokes.golden.t20.png",
         "candidate": "parity/out/navierStokes.candidate.t20.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.009830474853515625,
-        "ssim": 0.999985933303833,
+        "mean_abs_diff": 0.007442474365234375,
+        "ssim": 0.9999896883964539,
         "passed": true,
         "policy_matches": true
       },
@@ -3118,8 +3198,8 @@
         "golden": "parity/out/navierStokes.golden.t25.png",
         "candidate": "parity/out/navierStokes.candidate.t25.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.004611968994140625,
-        "ssim": 0.999993085861206,
+        "mean_abs_diff": 0.003955841064453125,
+        "ssim": 0.9999940991401672,
         "passed": true,
         "policy_matches": true
       },
@@ -3128,8 +3208,8 @@
         "golden": "parity/out/navierStokes.golden.t30.png",
         "candidate": "parity/out/navierStokes.candidate.t30.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.0068817138671875,
-        "ssim": 0.9999900460243225,
+        "mean_abs_diff": 0.019748687744140625,
+        "ssim": 0.9999670386314392,
         "passed": true,
         "policy_matches": true
       }
@@ -4381,6 +4461,26 @@
     "mode": "default",
     "golden": "parity/out/remap.golden.png",
     "candidate": "parity/out/remap.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "remap_zone",
+    "effect": null,
+    "mode": "default",
+    "golden": "parity/out/remap_zone.golden.png",
+    "candidate": "parity/out/remap_zone.candidate.png",
     "verdict": "PASS",
     "max_abs_diff": 0.0,
     "mean_abs_diff": 0.0,
