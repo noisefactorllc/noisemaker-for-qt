@@ -52,7 +52,8 @@ REPO = Path(__file__).resolve().parents[1]
 # minting's pass-count check agrees.
 FAKE_REFERENCE_COMPILER = """
 export function compileGraph (source) {
-  return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill' }], programs: {}, renderSurface: 'o0' }
+  const inputs = source.includes('mesh0') ? { meshPositions: 'global_mesh0_positions_chain_0' } : {}
+  return { id: 'exported', source, passes: [{ id: 'p0', program: 'fill', inputs }], programs: {}, renderSurface: 'o0' }
 }
 """
 
@@ -61,7 +62,8 @@ export function compileGraph (source) {
 # the demo: a run click swaps the presented graph only after COMPILE_TICKS
 # further page calls, like a slow effect load and compile. Until then the
 # default program stays presented. render() fills o0 with the color that
-# the presented program's source names ("fill R G B").
+# the presented program's source names ("fill R G B"), or, for a program
+# that names mesh0, the color its loaded mesh text names (black if empty).
 FAKE_SHADE_HARNESS = """
 const COMPILE_TICKS = 25
 
@@ -80,6 +82,7 @@ class FakeCanvasElement {
 function makePage () {
   let tick = 0
   let pending = null
+  let meshText = ''
   const o0 = { handle: {}, width: 64, height: 64, glFormat: { type: 'UNSIGNED_BYTE' }, data: new Uint8Array(64 * 64 * 4) }
   const textures = new Map([['global_o0_read', o0]])
   let attached = null
@@ -110,7 +113,7 @@ function makePage () {
       o0.data = new Uint8Array(w * h * 4)
     },
     render () {
-      const color = colorOf(this.graph.source)
+      const color = colorOf(this.graph.source.includes('mesh0') ? meshText : this.graph.source)
       for (let i = 0; i < o0.data.length; i += 4) o0.data.set(color, i)
     }
   }
@@ -122,7 +125,10 @@ function makePage () {
   const elements = { 'dsl-editor': editor, 'dsl-run-btn': runButton, status }
   const pageWindow = {
     __noisemakerRenderingPipeline: pipeline,
-    __noisemakerCanvasRenderer: { canvas: Object.assign(new FakeCanvasElement(), { style: {} }) },
+    __noisemakerCanvasRenderer: {
+      canvas: Object.assign(new FakeCanvasElement(), { style: {} }),
+      async loadOBJFromString (text) { meshText = text; return { success: true, vertexCount: 0 } }
+    },
     __noisemakerSetPaused () {},
     __noisemakerSetPausedTime () {}
   }
@@ -134,7 +140,7 @@ function makePage () {
       status.textContent = 'compiled successfully'
     }
     globalThis.window = pageWindow
-    globalThis.document = { getElementById: (id) => elements[id] ?? null }
+    globalThis.document = { getElementById: (id) => elements[id] ?? null, querySelectorAll: () => [] }
     globalThis.HTMLCanvasElement = FakeCanvasElement
   }
   return {
@@ -831,7 +837,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("0/3 pass", result.stdout)
 
-    def _mint_with_fake_reference(self, script, programs):
+    def _mint_with_fake_reference(self, script, programs, meshes=None):
         parity = self.tmp / "parity"
         tools = self.tmp / "tools"
         reference = self.tmp / "reference"
@@ -850,6 +856,8 @@ class HarnessContractTests(unittest.TestCase):
             path = parity / f"{name}.dsl"
             path.write_text(source)
             paths.append(str(path))
+        for name, obj_text in (meshes or {}).items():
+            (parity / f"{name}.obj").write_text(obj_text)
         out = self.tmp / "out"
         if script == "batch-golden.mjs":
             command = ["node", str(parity / script), str(out), "--size", "8", "--"] + paths
@@ -881,6 +889,83 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(png_pixel(out / "first.golden.png", 3, 3), (0, 255, 0, 255))
         self.assertEqual(png_pixel(out / "second.golden.png", 3, 3), (0, 0, 255, 255))
         self.assertNotIn("WARNING", result.stderr)
+
+    def test_single_golden_mint_loads_the_sidecar_mesh(self):
+        result, out = self._mint_with_fake_reference(
+            "export-and-render.mjs", {"meshed": "mesh0\n"}, meshes={"meshed": "fill 0 255 0\n"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "meshed.golden.png", 3, 3), (0, 255, 0, 255))
+
+    def test_batch_golden_mint_resets_a_mesh_the_previous_fixture_loaded(self):
+        result, out = self._mint_with_fake_reference(
+            "batch-golden.mjs",
+            {"meshed": "mesh0\n", "unmeshed": "mesh0 without a sidecar\n"},
+            meshes={"meshed": "fill 0 0 255\n"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(png_pixel(out / "meshed.golden.png", 3, 3), (0, 0, 255, 255))
+        self.assertEqual(png_pixel(out / "unmeshed.golden.png", 3, 3), (0, 0, 0, 255))
+
+    def test_batch_manifest_passes_a_sidecar_mesh_only_when_present(self):
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        manifest_builder = parity / "make-batch-manifest.py"
+        shutil.copy2(REPO / "parity" / "make-batch-manifest.py", manifest_builder)
+        for name in ("withMesh", "noMesh"):
+            (parity / "programs" / f"{name}.dsl").write_text("noise().meshRender().write(o0)\n")
+            (parity / "out" / f"{name}.graph.json").write_text("{}")
+        (parity / "programs" / "withMesh.obj").write_text("v 0 0 0\n")
+        names_file = self.tmp / "names.txt"
+        names_file.write_text("withMesh\nnoMesh\n")
+        manifest_path = self.tmp / "batch.json"
+
+        result = subprocess.run([
+            "python3", str(manifest_builder), "--root", str(self.tmp),
+            "--output", str(manifest_path), "--names-file", str(names_file),
+        ], capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        entries = {Path(e["graph"]).name: e for e in json.loads(manifest_path.read_text())}
+        self.assertEqual(entries["withMesh.graph.json"]["mesh"], str(parity / "programs" / "withMesh.obj"))
+        self.assertNotIn("mesh", entries["noMesh.graph.json"])
+
+    def test_runner_passes_a_sidecar_mesh_to_the_renderer(self):
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        (parity / ".venv" / "bin").mkdir(parents=True)
+        shutil.copy2(REPO / "parity" / "run.sh", parity / "run.sh")
+        for suffix in ("graph.json", "golden.png"):
+            (parity / "out" / f"meshy.{suffix}").touch()
+        (parity / "programs" / "meshy.obj").write_text("v 0 0 0\n")
+        (parity / "compare.py").write_text("# comparator stub\n")
+        python = parity / ".venv" / "bin" / "python"
+        python.write_text("#!/usr/bin/env bash\necho '[PASS] stub'\n")
+        python.chmod(0o755)
+        args_file = self.tmp / "renderer-args.txt"
+        renderer = self.tmp / "fake-nm-render"
+        renderer.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' \"$@\" > '{args_file}'\n"
+            "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
+        )
+        renderer.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(parity / "run.sh"), "meshy"],
+            env={**os.environ, "NM_RENDER": str(renderer)},
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        args = args_file.read_text().splitlines()
+        self.assertIn("--mesh", args)
+        self.assertEqual(args[args.index("--mesh") + 1], str(parity / "programs" / "meshy.obj"))
 
 
 if __name__ == "__main__":

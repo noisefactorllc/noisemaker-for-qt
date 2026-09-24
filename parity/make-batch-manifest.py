@@ -4,7 +4,7 @@
 Adapted from the Godot sibling's make-batch-manifest.py, but the manifest
 SHAPE here matches THIS repo's actual candidate: nm-render's own
 `runBatchManifest()` (qt/tools/nm-render/main.cpp), which reads a flat JSON
-ARRAY of {graph, out, size, time, frames} objects -- not Godot's
+ARRAY of {graph, out, size, time, frames[, mesh]} objects -- not Godot's
 {"entries": [...]} object with run_seconds/sample_every fields (this port's
 nm-render has no batch-manifest timed-sampling mode; timed fixtures are
 rendered separately via parity/run_samples.sh's own `--samples` flag, one
@@ -51,13 +51,18 @@ def main():
             continue
         candidate = out_dir / f"{name}.candidate.png"
         candidate.unlink(missing_ok=True)
-        entries.append({
+        entry = {
             "graph": str(graph_path),
             "out": str(candidate),
             "size": size_text,
             "time": args.time,
             "frames": args.frames,
-        })
+        }
+        # Optional mesh0 input: the fixture's sidecar OBJ (see run.sh).
+        mesh = args.root / "parity" / "programs" / f"{name}.obj"
+        if mesh.exists():
+            entry["mesh"] = str(mesh)
+        entries.append(entry)
 
     args.output.write_text(json.dumps(entries, indent=2) + "\n")
     if missing_graph:

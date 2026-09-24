@@ -328,7 +328,9 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 				dsl="$ROOT/parity/programs/$name.dsl"
 				cand="$ROOT/parity/out/$name.candidate.png"
 				rm -f "$cand"
-				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" 2>&1)
+				mesh_args=()
+				[ -f "$ROOT/parity/programs/$name.obj" ] && mesh_args=(--mesh "$ROOT/parity/programs/$name.obj")
+				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" ${mesh_args[@]+"${mesh_args[@]}"} 2>&1)
 				rc=$?
 				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
 				[ "$rc" -eq 0 ] || { echo "[sweep] live-DSL render FAILED for $name (exit $rc)"; batch_rc=1; }

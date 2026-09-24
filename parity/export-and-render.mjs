@@ -30,7 +30,7 @@
 // and the reference repo at $NM_REFERENCE_ROOT (its shaders/ and demo/ trees).
 // See parity/README.md.
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -161,6 +161,63 @@ async function capture (page, globals) {
     }
   }
   return encodePng(width, height, topDown)
+}
+
+// ---- Mesh inputs (render/meshLoader, render/meshRender) -------------------
+// The reference ENGINE starts every mesh surface at zero. The reference DEMO
+// HOST loads the first `builtinMeshes` entry of each step whose effect
+// declares `externalMesh` (demo-ui.js _createMeshInputSection), without
+// awaiting it, and keeps loaded meshes across recompiles (canvas.js
+// _meshCache). So a mesh golden sets its mesh state EXPLICITLY through the
+// renderer's own host API, after the demo's own loads have settled, in the
+// order nm-render uses (qt/tools/nm-render/host_meshes.h): each built-in
+// default via loadOBJFromURL, then the fixture's sidecar
+// parity/programs/<name>.obj via loadOBJFromString into mesh0, or an empty
+// mesh0 when the fixture supplies nothing. Graphs that read no mesh texture
+// and have no sidecar skip all of this, so their protocol is unchanged.
+// Keep this block identical in export-and-render.mjs and batch-golden.mjs.
+const MESH_TEXTURE_INPUT = /^global_mesh\d+_(positions|normals|uvs)/
+
+async function meshPlan (graph, dslPath) {
+  const sidecar = dslPath.replace(/\.dsl$/, '.obj')
+  const objText = existsSync(sidecar) ? readFileSync(sidecar, 'utf8') : null
+  const readsMesh = (graph.passes || []).some(pass =>
+    Object.values(pass.inputs || {}).some(id => typeof id === 'string' && MESH_TEXTURE_INPUT.test(id)))
+  if (!readsMesh && objText === null) return null
+  const builtins = []
+  const seenSteps = new Set()
+  for (const pass of graph.passes || []) {
+    if (!pass.namespace || !pass.func) continue
+    const stepKey = `${pass.stepIndex}|${pass.namespace}/${pass.func}`
+    if (seenSteps.has(stepKey)) continue
+    seenSteps.add(stepKey)
+    const mod = await import(pathToFileURL(join(EFFECTS_DIR, pass.namespace, pass.func, 'definition.js')).href)
+    const def = typeof mod.default === 'function' ? new mod.default() : mod.default
+    if (!def?.externalMesh || !def.builtinMeshes) continue
+    const first = Object.values(def.builtinMeshes)[0]
+    if (first) builtins.push({ meshId: def.externalMesh, path: first })
+  }
+  return { objText, builtins }
+}
+
+async function applyMeshPlan (page, plan) {
+  // The demo sets #status to 'compiled successfully' after it rebuilds the
+  // controls, which starts its own built-in mesh loads ('loading...').
+  await page.waitForFunction(() => {
+    if ((document.getElementById('status')?.textContent || '') !== 'compiled successfully') return false
+    return [...document.querySelectorAll('.mesh-status')].every(el => el.textContent !== 'loading...')
+  }, null, { timeout: STATUS_TIMEOUT })
+  const results = await page.evaluate(async ({ objText, builtins }) => {
+    const r = window.__noisemakerCanvasRenderer
+    const out = []
+    for (const b of builtins) out.push(await r.loadOBJFromURL(`${r._basePath}/${b.path}`, b.meshId))
+    if (objText !== null) out.push(await r.loadOBJFromString(objText, 'mesh0'))
+    else if (builtins.length === 0) out.push(await r.loadOBJFromString('', 'mesh0'))
+    return out
+  }, plan)
+  const failed = results.filter(res => !res?.success)
+  if (failed.length) throw new Error(`mesh load failed: ${JSON.stringify(failed)}`)
+  return results
 }
 
 // ---- Diagnostic mode: NM_DUMP_INTERMEDIATES ------------------------------
@@ -319,6 +376,7 @@ async function main () {
   const graphPath = join(opts.outDir, `${programName}.graph.json`)
   writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
   process.stderr.write(`[parity] wrote ${graphPath}\n`)
+  const meshes = await meshPlan(graph, opts.programPath)
 
   // ---- 2. Render the golden frame via the Playwright harness ---------------
   // Configure the harness via SHADE_* env (read by BrowserSession.getConfig()).
@@ -358,13 +416,14 @@ async function main () {
     // Polling only the status text races the default-effect "compiled"
     // message and reads the wrong surface (the bug that produced identical
     // default goldens).
-    await page.evaluate((src) => {
+    await page.evaluate(({ src, resetStatus }) => {
       const editor = document.getElementById('dsl-editor')
       const runBtn = document.getElementById('dsl-run-btn')
+      if (resetStatus) document.getElementById('status').textContent = ''
       editor.value = src
       editor.dispatchEvent(new Event('input', { bubbles: true }))
       runBtn.click()
-    }, dsl)
+    }, { src: dsl, resetStatus: meshes !== null })
     await page.waitForFunction((src) => {
       const s = (document.getElementById('status')?.textContent || '').toLowerCase()
       if (s.includes('error') || s.includes('failed')) {
@@ -373,6 +432,11 @@ async function main () {
       const p = window.__noisemakerRenderingPipeline
       return !!(p && p.graph && p.graph.source === src.trim() && !p.isCompiling)
     }, dsl, { timeout: STATUS_TIMEOUT })
+
+    if (meshes) {
+      const loaded = await applyMeshPlan(page, meshes)
+      process.stderr.write(`[parity] mesh inputs: ${JSON.stringify(loaded)}\n`)
+    }
 
     // PAUSE FIRST so the demo's requestAnimationFrame loop stops re-syncing the
     // canvas to its (small, letterboxed) layout size — that auto-resize is what

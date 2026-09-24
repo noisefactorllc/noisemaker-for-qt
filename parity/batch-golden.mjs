@@ -69,7 +69,7 @@
 // the batching speedup); do it by hand for the fixtures a sweep actually
 // classifies as sensitive to the exact number, the way task-T6 did.
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { deflateSync } from 'node:zlib'
@@ -178,6 +178,63 @@ async function capture (page, globals) {
   return encodePng(width, height, topDown)
 }
 
+// ---- Mesh inputs (render/meshLoader, render/meshRender) -------------------
+// The reference ENGINE starts every mesh surface at zero. The reference DEMO
+// HOST loads the first `builtinMeshes` entry of each step whose effect
+// declares `externalMesh` (demo-ui.js _createMeshInputSection), without
+// awaiting it, and keeps loaded meshes across recompiles (canvas.js
+// _meshCache). So a mesh golden sets its mesh state EXPLICITLY through the
+// renderer's own host API, after the demo's own loads have settled, in the
+// order nm-render uses (qt/tools/nm-render/host_meshes.h): each built-in
+// default via loadOBJFromURL, then the fixture's sidecar
+// parity/programs/<name>.obj via loadOBJFromString into mesh0, or an empty
+// mesh0 when the fixture supplies nothing. Graphs that read no mesh texture
+// and have no sidecar skip all of this, so their protocol is unchanged.
+// Keep this block identical in export-and-render.mjs and batch-golden.mjs.
+const MESH_TEXTURE_INPUT = /^global_mesh\d+_(positions|normals|uvs)/
+
+async function meshPlan (graph, dslPath) {
+  const sidecar = dslPath.replace(/\.dsl$/, '.obj')
+  const objText = existsSync(sidecar) ? readFileSync(sidecar, 'utf8') : null
+  const readsMesh = (graph.passes || []).some(pass =>
+    Object.values(pass.inputs || {}).some(id => typeof id === 'string' && MESH_TEXTURE_INPUT.test(id)))
+  if (!readsMesh && objText === null) return null
+  const builtins = []
+  const seenSteps = new Set()
+  for (const pass of graph.passes || []) {
+    if (!pass.namespace || !pass.func) continue
+    const stepKey = `${pass.stepIndex}|${pass.namespace}/${pass.func}`
+    if (seenSteps.has(stepKey)) continue
+    seenSteps.add(stepKey)
+    const mod = await import(pathToFileURL(join(EFFECTS_DIR, pass.namespace, pass.func, 'definition.js')).href)
+    const def = typeof mod.default === 'function' ? new mod.default() : mod.default
+    if (!def?.externalMesh || !def.builtinMeshes) continue
+    const first = Object.values(def.builtinMeshes)[0]
+    if (first) builtins.push({ meshId: def.externalMesh, path: first })
+  }
+  return { objText, builtins }
+}
+
+async function applyMeshPlan (page, plan) {
+  // The demo sets #status to 'compiled successfully' after it rebuilds the
+  // controls, which starts its own built-in mesh loads ('loading...').
+  await page.waitForFunction(() => {
+    if ((document.getElementById('status')?.textContent || '') !== 'compiled successfully') return false
+    return [...document.querySelectorAll('.mesh-status')].every(el => el.textContent !== 'loading...')
+  }, null, { timeout: STATUS_TIMEOUT })
+  const results = await page.evaluate(async ({ objText, builtins }) => {
+    const r = window.__noisemakerCanvasRenderer
+    const out = []
+    for (const b of builtins) out.push(await r.loadOBJFromURL(`${r._basePath}/${b.path}`, b.meshId))
+    if (objText !== null) out.push(await r.loadOBJFromString(objText, 'mesh0'))
+    else if (builtins.length === 0) out.push(await r.loadOBJFromString('', 'mesh0'))
+    return out
+  }, plan)
+  const failed = results.filter(res => !res?.success)
+  if (failed.length) throw new Error(`mesh load failed: ${JSON.stringify(failed)}`)
+  return results
+}
+
 // Mints ONE program's golden on an already-set-up `page`. Verbatim copy of
 // export-and-render.mjs's own runSeconds===0 body (resize/pin, o0-size poll,
 // round-3 state-respawn clear, 8-frame render, capture) plus its own
@@ -201,14 +258,15 @@ async function capture (page, globals) {
 // GAP-010: that golden was byte-identical to a mint of the default program).
 // The wait now requires graph.source === the trimmed DSL (the demo compiles
 // `editor.value.trim()`) and !isCompiling, with the arguments in order.
-async function mintOne (page, globals, opts, dsl, expectedPassCount, programName) {
-  await page.evaluate((src) => {
+async function mintOne (page, globals, opts, dsl, expectedPassCount, programName, meshes) {
+  await page.evaluate(({ src, resetStatus }) => {
     const editor = document.getElementById('dsl-editor')
     const runBtn = document.getElementById('dsl-run-btn')
+    if (resetStatus) document.getElementById('status').textContent = ''
     editor.value = src
     editor.dispatchEvent(new Event('input', { bubbles: true }))
     runBtn.click()
-  }, dsl)
+  }, { src: dsl, resetStatus: meshes !== null })
   await page.waitForFunction((args) => {
     const { src, expectedPassCount } = args
     const s = (document.getElementById('status')?.textContent || '').toLowerCase()
@@ -234,6 +292,8 @@ async function mintOne (page, globals, opts, dsl, expectedPassCount, programName
     process.stderr.write(`[batch-golden] WARNING: ${programName}: passes count changed again after settle ` +
       `(expected ${expectedPassCount}, now ${settled.passes}) -- possible further race, re-minting this fixture is recommended\n`)
   }
+
+  if (meshes) await applyMeshPlan(page, meshes)
 
   await page.evaluate(() => {
     if (window.__noisemakerSetPaused) window.__noisemakerSetPaused(true)
@@ -432,7 +492,8 @@ async function main () {
           const graphPath = join(opts.outDir, `${programName}.graph.json`)
           writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
 
-          const pngBuffer = await mintOne(page, globals, opts, dsl, graph.passes?.length, programName)
+          const meshes = await meshPlan(graph, dslPath)
+          const pngBuffer = await mintOne(page, globals, opts, dsl, graph.passes?.length, programName, meshes)
           const pngPath = join(opts.outDir, `${programName}.golden.png`)
           writeFileSync(pngPath, pngBuffer)
 

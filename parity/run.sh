@@ -25,6 +25,11 @@ PY="$ROOT/parity/.venv/bin/python"
 GRAPH="$ROOT/parity/out/$NAME.graph.json"
 GOLD="$ROOT/parity/out/$NAME.golden.png"
 CAND="$ROOT/parity/out/$NAME.candidate.png"
+# Optional mesh0 input: the fixture's sidecar OBJ (the golden harness loads
+# the same file; see meshPlan in export-and-render.mjs).
+MESH="$ROOT/parity/programs/$NAME.obj"
+MESH_ARGS=()
+[ -f "$MESH" ] && MESH_ARGS=(--mesh "$MESH")
 
 [ -f "$GRAPH" ] || { echo "missing graph: $GRAPH (run: node parity/export-and-render.mjs parity/programs/$NAME.dsl parity/out)"; exit 2; }
 [ -f "$GOLD" ]  || { echo "missing golden: $GOLD (run the reference harness)"; exit 2; }
@@ -32,7 +37,7 @@ CAND="$ROOT/parity/out/$NAME.candidate.png"
 if [ "${SKIP_RENDER:-0}" != "1" ]; then
 	rm -f "$CAND"
 	set +e
-	render_log=$("$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" 2>&1)
+	render_log=$("$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" ${MESH_ARGS[@]+"${MESH_ARGS[@]}"} 2>&1)
 	render_rc=$?
 	set -e
 	printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
