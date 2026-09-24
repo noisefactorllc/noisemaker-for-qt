@@ -40,7 +40,7 @@ public:
     ~Viewer() override;
 
     // Highest GL error code observed since initializeGL() (0 / GL_NO_ERROR
-    // if none). Polled explicitly after each render() / readSurface() call
+    // if none). Polled explicitly after each render() / present call
     // rather than assumed absent — see paintGL() / checkGlErrors().
     unsigned int lastGlError() const { return m_lastGlError; }
 
@@ -50,12 +50,20 @@ public:
     // crash on a null graph).
     bool isReady() const { return m_ready; }
 
+    // Frames presented since the last initializeGL(), and the backend's
+    // current render size in device pixels (for --selfcheck).
+    int framesRendered() const { return m_framesRendered; }
+    QSize renderSize() const { return m_renderSize; }
+
 protected:
     void initializeGL() override;
+    void resizeGL(int w, int h) override;
     void paintGL() override;
 
 private:
     void checkGlErrors(const char* where);
+    QSize pixelSize() const;
+    void releaseGlObjects();
 
     // Connected (in initializeGL()) to THIS call's context's own
     // QOpenGLContext::aboutToBeDestroyed() -- the canonical Qt pattern for
@@ -93,6 +101,10 @@ private:
     std::unique_ptr<nm::Backend> m_backend;
     bool m_ready = false;
     int m_initializeCount = 0; // >0 on the 2nd+ call to initializeGL() -- re-entry detection only
+
+    unsigned int m_readFbo = 0; // reads the backend's render surface for the blit (paintGL)
+    int m_framesRendered = 0;
+    QSize m_renderSize;
 
     QElapsedTimer m_clock;   // wall clock -> normalized loop time (paintGL)
     QTimer m_timer;          // ~60fps repaint driver

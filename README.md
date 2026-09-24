@@ -33,8 +33,10 @@ Unlike the HLSL/GDShader ports, this port shares the reference's shader *languag
   or `--graph <json>` (a pre-exported graph) in, a PNG out. Drives the parity harness and doubles
   as a standalone batch renderer.
 - **`examples/viewer`** — a minimal live `QOpenGLWidget` embedding: DSL in (the live compiler path,
-  `nm::compileGraph`), an animated render out, at roughly 60fps. This demonstrates how to embed the library in a Qt application. Widgets/OpenGLWidgets are a dependency of
-  this example only, never of `libnoisemaker-qt` itself.
+  `nm::compileGraph`), an animated render out, at roughly 60fps. It follows the window size with
+  `nm::Backend::resize()` and presents each frame with a GPU blit of
+  `nm::Backend::renderSurfaceTexture()`. Widgets/OpenGLWidgets are a dependency of this example
+  only, never of `libnoisemaker-qt` itself.
 
 ## Requirements
 
@@ -69,10 +71,12 @@ With no installed `noisemaker-qt` package on `CMAKE_PREFIX_PATH`, this builds ag
 ```sh
 cmake -B examples/viewer/build -S examples/viewer -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
 cmake --build examples/viewer/build
-examples/viewer/build/viewer              # opens a window with a live animated render
-examples/viewer/build/viewer --selfcheck  # headless-friendly: renders ~3s, screenshots to
-                                           # /tmp/viewer.png, asserts the result is non-flat and
-                                           # that no GL error was observed, exits 0 (pass) / 1 (fail)
+examples/viewer/build/viewer              # opens a resizable window with a live animated render
+examples/viewer/build/viewer --selfcheck  # renders 30 frames, resizes the window to 640x360 and
+                                           # renders 30 more; each grab must match the window's
+                                           # pixel size, be non-flat and show no GL error. Saves
+                                           # viewer.png in the temp directory (or a path given
+                                           # after --selfcheck); exits 0 (pass) / 1 (fail)
 ```
 
 ### Build the viewer against an *installed* package instead

@@ -2,8 +2,8 @@
 
 #include <QDir>
 #include <QOpenGLContext>
+#include <QOpenGLExtraFunctions>
 #include <QOpenGLFunctions>
-#include <QPainter>
 
 #include <cmath>
 #include <cstdio>
@@ -194,9 +194,7 @@ QString resolveDataRoot() {
 } // namespace
 
 Viewer::Viewer(QWidget* parent) : QOpenGLWidget(parent) {
-    setFixedSize(512, 512); // nm::Backend::setup() takes a fixed size; live
-                             // resize would need to re-run setup() with a
-                             // new size, out of scope for this example.
+    resize(512, 512); // resizable: resizeGL() calls nm::Backend::resize()
     m_timer.setInterval(16); // ~60fps
     connect(&m_timer, &QTimer::timeout, this, [this] { update(); });
 }
@@ -220,10 +218,27 @@ Viewer::~Viewer() {
     // alive; only ~QOpenGLWidget() (which runs AFTER this body) tears it
     // down.
     makeCurrent();
+    releaseGlObjects();
+    doneCurrent();
+}
+
+// The backend renders at the widget's size in device pixels, so the blit
+// in paintGL() is 1:1 on high-DPI screens.
+QSize Viewer::pixelSize() const {
+    const qreal ratio = devicePixelRatioF();
+    return QSize(qMax(1, qRound(width() * ratio)), qMax(1, qRound(height() * ratio)));
+}
+
+// Frees this widget's GL objects and the Backend's. The context must be
+// current.
+void Viewer::releaseGlObjects() {
+    if (m_readFbo != 0) {
+        context()->functions()->glDeleteFramebuffers(1, &m_readFbo);
+        m_readFbo = 0;
+    }
     if (m_backend) {
         m_backend->releaseGl();
     }
-    doneCurrent();
 }
 
 void Viewer::checkGlErrors(const char* where) {
@@ -252,7 +267,7 @@ void Viewer::cleanupGl() {
                   "viewer: context aboutToBeDestroyed -- releasing this Backend's GL resources "
                   "before teardown\n");
     makeCurrent(); // the dying context is still valid here -- see initializeGL()'s comment
-    m_backend->releaseGl();
+    releaseGlObjects();
     doneCurrent();
 }
 
@@ -319,7 +334,8 @@ void Viewer::initializeGL() {
         // nm-render's main.cpp uses). This is the brief's literal ask:
         // "QOpenGLWidget subclass driving nm::Backend with the widget's
         // context."
-        m_backend->setup(context(), dataRoot, size());
+        m_backend->setup(context(), dataRoot, pixelSize());
+        m_renderSize = pixelSize();
     } catch (const std::exception& e) {
         std::fprintf(stderr, "viewer: initialization failed: %s\n", e.what());
         return; // m_ready stays false; paintGL() below no-ops rather than
@@ -328,8 +344,19 @@ void Viewer::initializeGL() {
     checkGlErrors("initializeGL");
 
     m_ready = true;
+    m_framesRendered = 0;
     m_clock.start();
     m_timer.start();
+}
+
+void Viewer::resizeGL(int, int) {
+    // nm::Backend::resize() (reference Pipeline.resize) recreates every
+    // surface at the new size; feedback state starts over, as in the
+    // reference.
+    if (!m_ready || pixelSize() == m_renderSize) return;
+    m_backend->resize(pixelSize());
+    m_renderSize = pixelSize();
+    checkGlErrors("resize");
 }
 
 void Viewer::paintGL() {
@@ -339,20 +366,19 @@ void Viewer::paintGL() {
     m_backend->render(m_graph, t);
     checkGlErrors("render");
 
-    // nm::Backend renders into ITS OWN offscreen FBOs/textures (one per
-    // texId — see docs/GRAPH-JSON-SCHEMA.md "Qt consumer"), never into
-    // "whatever framebuffer happens to be bound" — so presenting a frame
-    // means an explicit CPU round trip: readSurface() (glReadPixels, the
-    // same call nm-render's PNG path uses) then QPainter to composite the
-    // QImage onto THIS widget's own framebuffer. A GPU-side blit would
-    // avoid the round trip but needs a raw texture/FBO handle
-    // nm::Backend's public API doesn't expose (setup/render/readSurface
-    // only — qt/noisemaker/runtime/backend.h, renderer-track-owned, not
-    // this task's to extend) — an acceptable trade for "the smallest
-    // honest demonstration" at this resolution.
-    const QImage frame = m_backend->readSurface();
-    checkGlErrors("readSurface");
-
-    QPainter painter(this);
-    painter.drawImage(rect(), frame);
+    // Present on the GPU: nm::Backend renders into its own textures, and
+    // renderSurfaceTexture() names the one render(o2) presents. Attach it
+    // to a read framebuffer and blit it into this widget's framebuffer.
+    // Both are bottom-up GL images, so no flip is needed.
+    const nm::Backend::SurfaceTexture surface = m_backend->renderSurfaceTexture();
+    QOpenGLExtraFunctions* f = context()->extraFunctions();
+    if (m_readFbo == 0) f->glGenFramebuffers(1, &m_readFbo);
+    f->glBindFramebuffer(GL_READ_FRAMEBUFFER, m_readFbo);
+    f->glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surface.texture, 0);
+    f->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, defaultFramebufferObject());
+    f->glBlitFramebuffer(0, 0, surface.size.width(), surface.size.height(), 0, 0, m_renderSize.width(),
+                         m_renderSize.height(), GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    f->glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
+    checkGlErrors("present");
+    ++m_framesRendered;
 }
