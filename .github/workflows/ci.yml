@@ -22,6 +22,10 @@ name: CI
 #                 the strict default tolerance. Software-rasterizer NEAR
 #                 results must be derived from this job's own evidence. It
 #                 also runs the AnalyserNode gate against the same Chromium.
+#   render-smoke-windows
+#                 The same golden minting and grading on Windows (Chromium on
+#                 Windows, nm-render on the Mesa llvmpipe opengl32sw.dll), and
+#                 the filter/text gate against Qt's DirectWrite font engine.
 
 on:
   push:
@@ -301,5 +305,155 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: render-smoke
+          path: parity/out/
+          if-no-files-found: warn
+
+  render-smoke-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Keep checkouts byte-identical to Linux
+        # Git for Windows converts LF to CRLF on checkout. The golden harness
+        # waits for graph.source (the demo editor value, newlines normalized
+        # to LF) to equal the DSL file text, so CRLF fixtures never match.
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out the reference at the STATUS.md content pin
+        run: |
+          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
+          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          echo "reference pin: $pin"
+          ref="$RUNNER_TEMP/noisemaker"
+          git clone -c core.symlinks=false --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$ref"
+          git -C "$ref" checkout --detach "$pin"
+          git -C "$ref" rev-parse HEAD
+          # The reference's shaders/share is a git symlink to ../share (the
+          # built-in meshes that meshLoader loads from the shaders base
+          # path). Without symlinks git writes a plain file that holds the
+          # link target. Replace that file with a real copy of share/.
+          if [ -L "$ref/shaders/share" ] || [ ! -f "$ref/shaders/share" ] \
+            || ! printf '../share' | cmp -s - "$ref/shaders/share"; then
+            echo "reference shaders/share is not the expected '../share' placeholder file; check the reference layout"
+            exit 1
+          fi
+          rm "$ref/shaders/share"
+          cp -R "$ref/share" "$ref/shaders/share"
+          diff -r "$ref/share" "$ref/shaders/share"
+          test -f "$ref/shaders/share/meshes/sphere.obj"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the reference engine and headless Chromium
+        run: |
+          cd "$RUNNER_TEMP/noisemaker"
+          npm ci
+          npx playwright install chromium
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION_WINDOWS }}
+          arch: ${{ env.QT_ARCH_WINDOWS }}
+          cache: true
+
+      - name: Build nm-render and text_texture_dump
+        id: build
+        run: |
+          cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build qt/build --config Release --parallel --target nm-render text_texture_dump
+
+      - name: Install Mesa llvmpipe opengl32sw.dll
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
+          $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
+          7z x mesa.7z -omesa | Out-Null
+          # Same placement as build-test: with QT_OPENGL=software Qt loads
+          # opengl32sw.dll from the executable's directory.
+          Copy-Item mesa/x64/*.dll qt/build/Release
+          Copy-Item mesa/x64/opengl32.dll qt/build/Release/opengl32sw.dll
+          Get-ChildItem qt/build/Release/*.dll | Select-Object Name, Length
+
+      - name: Python compare environment
+        run: |
+          python -m venv parity/.venv
+          parity/.venv/Scripts/python.exe -m pip install numpy pillow
+
+      - name: Chromium WebGL renderer
+        env:
+          SHADE_SWIFTSHADER: "1"
+        run: |
+          cat > "$RUNNER_TEMP/webgl-renderer.mjs" <<'EOF'
+          // Launches Chromium with the golden harness's WebGL2 arguments
+          // (vendor/shade-mcp browser-session getBrowserLaunchOptions) and
+          // prints the renderer the goldens come from.
+          import { join } from 'node:path'
+          import { pathToFileURL } from 'node:url'
+          const { chromium } = await import(pathToFileURL(join(process.env.NM_REFERENCE_ROOT, 'node_modules', 'playwright', 'index.mjs')).href)
+          const browser = await chromium.launch({ headless: true, args: ['--disable-gpu-sandbox', '--enable-unsafe-swiftshader'] })
+          const page = await browser.newPage()
+          console.log(await page.evaluate(() => {
+            const gl = document.createElement('canvas').getContext('webgl2')
+            if (!gl) return 'no WebGL2 context'
+            const info = gl.getExtension('WEBGL_debug_renderer_info')
+            return [gl.getParameter(gl.VERSION), info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'renderer masked'].join(' | ')
+          }))
+          console.log(`Chromium ${browser.version()}`)
+          await browser.close()
+          EOF
+          NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" node "$RUNNER_TEMP/webgl-renderer.mjs"
+
+      - name: Mint goldens with the reference engine
+        env:
+          SHADE_HEADLESS: "1"
+          # getBrowserLaunchOptions adds --enable-unsafe-swiftshader, so
+          # Chromium can use SwiftShader when the runner has no GPU.
+          SHADE_SWIFTSHADER: "1"
+        run: |
+          export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
+          mkdir -p parity/out
+          for name in $SMOKE_FIXTURES; do
+            node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2
+          done
+
+      - name: Render and grade candidates (strict tolerance, llvmpipe)
+        env:
+          GALLIUM_DRIVER: llvmpipe
+          QT_OPENGL: software
+        run: |
+          export NM_RENDER="$PWD/qt/build/Release/nm-render.exe"
+          status=0
+          for name in $SMOKE_FIXTURES; do
+            bash parity/run.sh "$name" || status=1
+          done
+          exit $status
+
+      - name: filter/text gate (Chromium oracle, DirectWrite)
+        # Runs after a render failure too, so both results are reported.
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          # Node gets a Windows path (D:/a/...), not the MSYS form.
+          workspace=$(pwd -W)
+          export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
+          export NM_TEXT_TEXTURE_DUMP="$workspace/qt/build/tests/Release/text_texture_dump.exe"
+          node parity/check_text_canvas.mjs
+
+      - name: Upload smoke images
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: render-smoke-windows
           path: parity/out/
           if-no-files-found: warn
