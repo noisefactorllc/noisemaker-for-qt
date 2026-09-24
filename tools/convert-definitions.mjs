@@ -216,6 +216,14 @@ function convertEffect (instance, namespace, name, existing) {
   // it to the per-step id `${externalTexture}_step_${N}`; without it the input falls
   // through to a node-local texture that no host can address.
   if (instance.externalTexture !== undefined) def.externalTexture = instance.externalTexture
+  // Host-supplied mesh input (meshLoader -> mesh0) and the built-in OBJ files a host
+  // offers for it. builtinMeshes becomes an array of {name, path} because the reference
+  // demo host loads the FIRST entry by default (demo-ui.js _createMeshInputSection) and a
+  // Qt QJsonObject would sort the keys. Paths stay relative to the data root.
+  if (instance.externalMesh !== undefined) def.externalMesh = instance.externalMesh
+  if (instance.builtinMeshes !== undefined) {
+    def.builtinMeshes = Object.entries(instance.builtinMeshes).map(([name, path]) => ({ name, path }))
+  }
   if (instance.hidden) def.hidden = true
   if (instance.deprecatedBy) def.deprecatedBy = instance.deprecatedBy
 

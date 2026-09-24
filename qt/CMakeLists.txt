@@ -44,11 +44,11 @@ add_library(noisemaker-qt::noisemaker-qt ALIAS noisemaker-qt)
 target_compile_options(noisemaker-qt PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-ffp-contract=off>)
 
-# Runtime data tree (shaders/ and effects/) for nm::Backend::setup() and
-# nm::EffectRegistry::loadAll(). Visible to a parent project through the
-# cache and through a target property.
+# Runtime data tree (shaders/, effects/ and share/meshes/) for
+# nm::Backend::setup() and nm::EffectRegistry::loadAll(). Visible to a
+# parent project through the cache and through a target property.
 set(NOISEMAKER_QT_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/noisemaker"
-    CACHE INTERNAL "noisemaker-qt runtime data root (shaders/, effects/)")
+    CACHE INTERNAL "noisemaker-qt runtime data root (shaders/, effects/, share/)")
 set(NOISEMAKER_QT_DATA_DIR "${NOISEMAKER_QT_DATA_ROOT}"
     CACHE INTERNAL "Alias of NOISEMAKER_QT_DATA_ROOT")
 set_target_properties(noisemaker-qt PROPERTIES
@@ -111,6 +111,9 @@ if(NM_QT_INSTALL)
     install(DIRECTORY noisemaker/effects DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
     # filter/text's default family (nm::registerBundledFonts), with its OFL.
     install(DIRECTORY noisemaker/fonts DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
+    # Built-in OBJ meshes (effect definition builtinMeshes paths, relative to
+    # the data root) that hosts load for render/meshLoader.
+    install(DIRECTORY noisemaker/share DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
 
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/noisemaker-qt-config.cmake.in

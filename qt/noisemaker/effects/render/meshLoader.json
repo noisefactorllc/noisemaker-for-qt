@@ -25,5 +25,36 @@
     }
   ],
   "textures": {},
-  "defaultProgram": "search render\n\nmeshLoader()\n.meshRender()\n.write(o0)"
+  "defaultProgram": "search render\n\nmeshLoader()\n.meshRender()\n.write(o0)",
+  "externalMesh": "mesh0",
+  "builtinMeshes": [
+    {
+      "name": "sphere",
+      "path": "share/meshes/sphere.obj"
+    },
+    {
+      "name": "cube",
+      "path": "share/meshes/cube.obj"
+    },
+    {
+      "name": "torus",
+      "path": "share/meshes/torus.obj"
+    },
+    {
+      "name": "cylinder",
+      "path": "share/meshes/cylinder.obj"
+    },
+    {
+      "name": "cone",
+      "path": "share/meshes/cone.obj"
+    },
+    {
+      "name": "capsule",
+      "path": "share/meshes/capsule.obj"
+    },
+    {
+      "name": "icosphere",
+      "path": "share/meshes/icosphere.obj"
+    }
+  ]
 }
