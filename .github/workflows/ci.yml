@@ -150,8 +150,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Sync ships the library to macOS 13.0; building for that target
+          # catches APIs Apple's SDK marks newer (floating-point to_chars
+          # needs 13.3).
           - os: macos-latest
             flags: -Wall -Wextra -Wpedantic -Werror
+            deployment_target: "13.0"
           - os: ubuntu-latest
             flags: -Wall -Wextra -Wpedantic -Werror
           - os: windows-latest
@@ -174,7 +178,7 @@ jobs:
           # Git Bash would rewrite /W4-style MSVC flags as paths (first CI
           # run 35968600167 failed at configure).
           MSYS_NO_PATHCONV: "1"
-        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release -DNM_QT_BUILD_QUICK=ON "-DCMAKE_CXX_FLAGS=${{ matrix.flags }}"
+        run: cmake -S qt -B build -DCMAKE_BUILD_TYPE=Release -DNM_QT_BUILD_QUICK=ON "-DCMAKE_CXX_FLAGS=${{ matrix.flags }}" ${{ matrix.deployment_target && format('-DCMAKE_OSX_DEPLOYMENT_TARGET={0}', matrix.deployment_target) || '' }}
 
       - name: Build library, nm-render and tests
         run: cmake --build build --config Release --parallel
