@@ -84,7 +84,7 @@ These entries record missing qualification. They do not infer implementation def
 - Dependencies: Resolve immutable authority inputs. Preserve historical goldens and provenance.
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
-- Last verification: 2026-09-24. A full sweep graded 347 of 347 fixtures: 298 PASS, 47 NEAR, 2 FAIL, 0 CHAOS, 0 skipped. See GAP-010, GAP-011 and the sweep evidence below. Only macOS was measured.
+- Last verification: 2026-09-24. A full sweep at pin c9ee8a04 with fresh goldens graded 353 of 353 fixtures: 305 PASS, 46 NEAR, 2 FAIL (fibers, scratches: GAP-025), 0 CHAOS, 0 skipped. parity/sweep.sh regenerated the ledger (c6893a9). The earlier sweep graded 347 of 347: 298 PASS, 47 NEAR, 2 FAIL. See GAP-010, GAP-011, GAP-019, GAP-026, and the sweep evidence below. Only macOS was measured for the full suite. CI render-smoke grades 6 fixtures on Linux and Windows llvmpipe against SwiftShader goldens: 5 pass, and meshRenderCustom fails on edge ties (GAP-033).
 
 ### GAP-002: installed developer workflow qualification
 
@@ -468,16 +468,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-026: goldens of async and host inputs depend on capture timing
 
-- Status: open. Priority: P2. Category: verification.
-- Affected scope: parity/export-and-render.mjs, parity/batch-golden.mjs; fixtures with asyncInit overlays (fibers, scratches, strayHair) and with host text (text).
+- Status: closed. Priority: P2. Category: verification.
+- Affected scope: parity/export-and-render.mjs, parity/batch-golden.mjs, parity/run.sh, parity/make-batch-manifest.py, qt/tools/nm-render/main.cpp; fixtures with asyncInit overlays (fibers, scratches, strayHair) and with host text (text).
 - Expected behavior: A golden captures a defined state: async overlays complete and quiescent, and host inputs identical to what the candidate receives.
-- Observed behavior: Three single fixed-harness mints of fibers gave mint1 == mint2 while mint3 differed by 28 px: the capture lands at an arbitrary point of the progressive trace. The reference demo UI draws "Hello World" into textTex 50 ms after creating the controls (setTimeout), so under load the sweep golden for text included it (2944 px differ from the candidate) while quiet mints did not (4 px). nm-render supplies no textTex, so the text fixture only tests an empty-text passthrough.
-- Evidence: GAP-001 sweep 1 (load average about 96): text FAIL max 204 ssim 0.972. Three quiet single mints of text at load average 8 were byte-identical.
-- Next action: Make minting wait for asyncInit completion and debounce quiescence before the 8-frame protocol; give the text fixture a defined text input on both sides (the same rasterized textTex fed to nm-render, or the host text cleared on the reference side).
+- Observed behavior: The minters size the demo before the load. They then wait until no asyncInit promise is pending, no regeneration is debounced, and every sampled external texture is uploaded. They save each external texture, and nm-render uploads it through --external-texture. The text fixture now composites the reference's own "Hello World" on both sides and passes at max 1.
+- Evidence: 3 quiet mints and 1 mint under 16 busy processes on 10 cores were byte-identical per fixture for fibers, scratches, strayHair, text, and text.textTex_step_1.png. The batch mint equals the single mints. The other 345 goldens did not change between the old-protocol and new-protocol sweeps. The 4 new harness contract tests fail on the old minters and pass now. Python harness 43 OK; ctest 22/22. Integration check: two text mints are byte-identical (golden, graph, and textTex), and run.sh text passes at max 1.000, ssim 1.0. Commits 1e0f8ca and 2d7e54f.
+- Next action: None. The asyncInit overlays themselves are GAP-025.
 - Dependencies: None.
-- Acceptance criteria: Repeated mints of each affected fixture are byte-identical across quiet and loaded runs, and the text fixture exercises real text.
-- Required checks: Three mints per affected fixture compared with cmp, one under load; parity/run.sh.
-- Last verification: 2026-09-24. Open.
+- Acceptance criteria: Repeated mints of each affected fixture are byte-identical across quiet and loaded runs, and the text fixture exercises real text. Met.
+- Required checks: Three mints per affected fixture compared with cmp, one under load; parity/run.sh text; the harness contract tests.
+- Last verification: 2026-09-24, macOS (Apple M4). Follow-ups: GAP-034 and GAP-035.
 
 ### GAP-027: filter/text rasterization differs from a browser canvas
 
@@ -485,12 +485,12 @@ These entries record missing qualification. They do not infer implementation def
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
 - Observed behavior: Layout matches within 1 px (centroid). Chromium's glyph masks are heavier: the port draws 0.76 to 0.95 of Chromium's coverage. Qt shapes variable fonts with the default instance's GPOS kerning: at Nunito wght 800 and 102 px, "Heavy" is 4.4 px narrower. Generic families resolve to Qt's default families, not the browser's. Before 167a62c, FreeType slanted synthetic italic by about 12 degrees, not Chromium's skew of 1/4; the italic case missed the centroid bound by 0.38 px.
-- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996.
-- Next action: Measure on Windows (DirectWrite). Re-check kerning when Qt applies variation deltas in shaping.
+- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996. First Windows result (CI run 36034701739, a8aa2a2, Qt 6.10.3, DirectWrite): 9/10. extrabold-rot fails with centroid d=(0.205, -1.395) against the 1.0 bound. The case is rotated -90 degrees, so dy lies along the text direction. The same case gives (0.158, -0.277) on macOS and (0.165, -0.371) on Linux. The other 9 pass with coverage 0.80 to 1.005.
+- Next action: Find why DirectWrite lays out "Heavy" at wght 800 about 1.1 px longer than CoreText, FreeType, and Chromium, and fix it if the renderer can take advances engine-independently. Re-check kerning when Qt applies variation deltas in shaping.
 - Dependencies: Qt font shaping (external).
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
-- Last verification: 2026-09-24, macOS (CoreText and FreeType engines) and Linux CI.
+- Last verification: 2026-09-24, macOS (CoreText and FreeType engines), Linux CI, and Windows CI.
 
 ### GAP-028: compileGraph failures did not say what was wrong
 
@@ -556,6 +556,45 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: loadAll on a root without effects/ throws with the directory in the message; nm-render with a wrong root prints it.
 - Required checks: test_registry; ctest.
 - Last verification: 2026-09-24, macOS arm64.
+
+### GAP-033: SwiftShader goldens differ from llvmpipe and Metal on edge ties
+
+- Status: open. Priority: P3. Category: verification.
+- Affected scope: CI render-smoke and render-smoke-windows goldens (Chromium, ANGLE on Vulkan, SwiftShader); meshRenderCustom.
+- Expected behavior: A CI golden and its candidate differ only where the port differs from the reference.
+- Observed behavior: meshRenderCustom fails on Linux and Windows CI: max 181, mean 0.0426, ssim 0.99948. Exactly 16 pixels differ by more than 2. They sit on the prism's two long silhouette edges at a fixed (+7, +20) px step, where pixel centres lie on the edge. The reference on SwiftShader covers them; the reference on Metal and the port on llvmpipe do not.
+- Evidence: CI run 36034701739 (a8aa2a2): the goldens and the candidates are byte-identical between Linux and Windows. Chromium 153.0.8010.12 reports "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)))". Linux arm64 Docker preflight: the reference's Metal golden against the llvmpipe candidate is max 1; the SwiftShader golden against the Metal golden differs in the same 16 pixels. On macOS the port is bit-exact (GAP-019).
+- Next action: Mint CI goldens on the candidate's rasterizer (Chromium ANGLE-GL over Mesa llvmpipe) and grade all smoke fixtures, or record why no such path exists on Windows. Do not change tolerances or drop the fixture.
+- Dependencies: None.
+- Acceptance criteria: meshRenderCustom passes at 2.001/0.98 in both CI smoke jobs with same-rasterizer goldens.
+- Required checks: render-smoke and render-smoke-windows.
+- Last verification: 2026-09-24.
+
+### GAP-034: timed navierStokes goldens vary between mints
+
+- Status: open. Priority: P3. Category: verification.
+- Affected scope: the timed fixture path of parity/export-and-render.mjs; navierStokes.
+- Expected behavior: Two mints of a timed fixture are byte-identical.
+- Observed behavior: Two mints differ on 1.5k to 5k pixels by 1 or 2 levels. The timed mode has no state reset. The ledger max for navierStokes moved between 2 and 7 across sweeps.
+- Evidence: The full sweep at c9ee8a04, macOS arm64, 2026-09-24. The difference stays inside the fixture's 10.001 NEAR bound.
+- Next action: Reset stateful surfaces before the timed protocol, as the 8-frame protocol does. Then mint twice and compare with cmp.
+- Dependencies: None.
+- Acceptance criteria: Two timed mints are byte-identical.
+- Required checks: Two mints compared with cmp; parity/run.sh on the timed fixtures.
+- Last verification: 2026-09-24.
+
+### GAP-035: the live-DSL sweep does not pass external textures
+
+- Status: open. Priority: P3. Category: verification.
+- Affected scope: parity/sweep.sh with NM_LIVE_DSL=1 (nm-render --dsl); the text fixture.
+- Expected behavior: The live-DSL sweep gives each fixture the same host inputs as the graph sweep.
+- Observed behavior: The live-DSL path passes --mesh but not --external-texture, so the text fixture fails in that mode.
+- Evidence: Source inspection of parity/sweep.sh after 2d7e54f.
+- Next action: Pass each saved out/<program>.<texId>.png as --external-texture in the live-DSL path.
+- Dependencies: None.
+- Acceptance criteria: NM_LIVE_DSL=1 parity/sweep.sh grades text as PASS.
+- Required checks: The live-DSL sweep on text.
+- Last verification: 2026-09-24.
 
 ## 5. Ordered next actions
 
