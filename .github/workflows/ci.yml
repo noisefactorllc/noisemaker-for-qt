@@ -39,6 +39,14 @@ env:
   # package links the AGL framework, which the current macOS SDK lacks
   # (first CI run 35968600167: "ld: framework 'AGL' not found").
   QT_VERSION: "6.11.1"
+  # Windows: Qt 6.11 moved its Windows packages to per-arch directories
+  # (windows_x86/desktop/qt6_6111/qt6_6111_msvc2022_64/), which aqtinstall
+  # 3.3.0, the newest release, cannot read ("Failed to locate XML data for Qt
+  # version '6.11.1'", CI run 35970287679). 6.10.3 keeps the layout aqt
+  # reads; verified locally: `aqt install-qt windows desktop 6.10.3
+  # win64_msvc2022_64 --archives qtbase` installs Qt6Core, Qt6Gui, Qt6OpenGL.
+  QT_VERSION_WINDOWS: "6.10.3"
+  QT_ARCH_WINDOWS: win64_msvc2022_64
   # pal1000/mesa-dist-win release-msvc archive (llvmpipe opengl32.dll).
   MESA_WIN_URL: https://github.com/pal1000/mesa-dist-win/releases/download/26.2.1/mesa3d-26.2.1-release-msvc.7z
   MESA_WIN_SHA256: 78a0305844074535e73dfb6dcb5eb2a65f1d9dc445102e1f4c3c3e97dace19bf
@@ -59,7 +67,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
-          version: ${{ env.QT_VERSION }}
+          version: ${{ runner.os == 'Windows' && env.QT_VERSION_WINDOWS || env.QT_VERSION }}
+          arch: ${{ runner.os == 'Windows' && env.QT_ARCH_WINDOWS || '' }}
           cache: true
 
       - name: Install Linux GL and X11 runtime
@@ -142,7 +151,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
-          version: ${{ env.QT_VERSION }}
+          version: ${{ runner.os == 'Windows' && env.QT_VERSION_WINDOWS || env.QT_VERSION }}
+          arch: ${{ runner.os == 'Windows' && env.QT_ARCH_WINDOWS || '' }}
           cache: true
 
       - name: Configure
