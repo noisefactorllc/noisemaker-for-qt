@@ -9,6 +9,8 @@
 
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLocale>
+#include <QStringList>
 
 #include <charconv>
 #include <cmath>
@@ -256,6 +258,62 @@ QJsonObject normalizeGraph(const QString& id, const QString& source, const QJson
 
 } // namespace
 
+namespace {
+
+// JS String(value) for the JSON values a diagnostic location holds.
+QString jsString(const QJsonValue& value) {
+    switch (value.type()) {
+        case QJsonValue::Undefined:
+            return QStringLiteral("undefined");
+        case QJsonValue::Null:
+            return QStringLiteral("null");
+        case QJsonValue::Bool:
+            return value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
+        case QJsonValue::Double:
+            return QString::number(value.toDouble(), 'g', QLocale::FloatingPointShortest);
+        case QJsonValue::String:
+            return value.toString();
+        case QJsonValue::Array:
+        case QJsonValue::Object:
+            break;
+    }
+    return QStringLiteral("[object Object]");
+}
+
+} // namespace
+
+CompilationError::CompilationError(const QString& code, const QJsonArray& diagnostics, const QJsonArray& errors)
+    : std::runtime_error(format(code, diagnostics, errors).toStdString()),
+      code_(code),
+      diagnostics_(diagnostics),
+      errors_(errors) {}
+
+QString CompilationError::format(const QString& code, const QJsonArray& diagnostics, const QJsonArray& errors) {
+    QStringList parts;
+    if (code == QStringLiteral("ERR_COMPILATION_FAILED")) {
+        for (const QJsonValue& dv : diagnostics) {
+            const QJsonObject d = dv.toObject();
+            if (d.value(QStringLiteral("severity")).toString() != QStringLiteral("error")) continue;
+            QString msg = d.value(QStringLiteral("message")).toString();
+            if (msg.isEmpty()) msg = QStringLiteral("Unknown error");
+            if (d.value(QStringLiteral("location")).isObject()) {
+                const QJsonObject location = d.value(QStringLiteral("location")).toObject();
+                msg += QStringLiteral(" (line %1, col %2)")
+                           .arg(jsString(location.value(QStringLiteral("line"))),
+                                jsString(location.value(QStringLiteral("column"))));
+            }
+            parts.append(msg);
+        }
+        const QString joined = parts.join(QStringLiteral("; "));
+        return joined.isEmpty() ? QStringLiteral("Unknown compilation error") : joined;
+    }
+    for (const QJsonValue& ev : errors) {
+        const QJsonValue message = ev.toObject().value(QStringLiteral("message"));
+        parts.append(message.isString() && !message.toString().isEmpty() ? message.toString() : jsString(ev));
+    }
+    return parts.join(QStringLiteral("; "));
+}
+
 QString hashSource(const QString& source) {
     uint32_t hash = 0;
     for (const QChar ch : source) {
@@ -276,13 +334,13 @@ QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry) {
     const QJsonArray diagnostics = validated.value(QStringLiteral("diagnostics")).toArray();
     for (const QJsonValue& dv : diagnostics) {
         if (dv.toObject().value(QStringLiteral("severity")).toString() == QStringLiteral("error")) {
-            throw std::runtime_error("ERR_COMPILATION_FAILED: validate() reported an error-severity diagnostic");
+            throw CompilationError(QStringLiteral("ERR_COMPILATION_FAILED"), diagnostics, QJsonArray());
         }
     }
 
     ExpandResult expanded = nm::expand(validated, registry);
     if (!expanded.errors.isEmpty()) {
-        throw std::runtime_error("ERR_EXPANSION_FAILED: expand() reported one or more errors");
+        throw CompilationError(QStringLiteral("ERR_EXPANSION_FAILED"), QJsonArray(), expanded.errors);
     }
 
     QVector<PassIO> passIOs;

@@ -171,6 +171,49 @@ int main() {
     }
 
     // ======================================================================
+    // compileGraph failures carry what compiler.js throws: the code plus the
+    // diagnostics (or expand errors), and what() is compiler.js
+    // formatError's text. Expected strings were minted from the reference's
+    // own formatError applied to compileGraph's throw (reference c9ee8a04).
+    // ======================================================================
+    {
+        QString code;
+        QString text;
+        QJsonArray diagnostics;
+        try {
+            nm::compileGraphJson(QStringLiteral("search synth, filter\nnoise().write(o0)\nread(o0).blur().read(o1).write(o2)\n"
+                                                "noise(octaves: [1, 2]).write(o3)\nnoise(seed: bogus).write(o4)\nrender(o0)\n"),
+                                 registry());
+        } catch (const nm::CompilationError& e) {
+            code = e.code();
+            text = QString::fromUtf8(e.what());
+            diagnostics = e.diagnostics();
+        }
+        check(code == QStringLiteral("ERR_COMPILATION_FAILED"), "compile failure: code ERR_COMPILATION_FAILED");
+        check(diagnostics.size() == 2 && diagnostics.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S001")
+                  && diagnostics.at(1).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003"),
+              "compile failure: carries the validate() diagnostics (S001, S003)");
+        check(text == QStringLiteral("read() is a starter node and cannot be chained inline. Use standalone read() to start a "
+                                     "new chain.: '[Read]' (line 3, col 17); Variable used before assignment: 'bogus'"),
+              "compile failure: what() is the reference formatError text, with line and column");
+
+        code.clear();
+        text.clear();
+        QJsonArray errors;
+        try {
+            nm::compileGraphJson(QStringLiteral("search synth\nlet x = 1\n"), registry());
+        } catch (const nm::CompilationError& e) {
+            code = e.code();
+            text = QString::fromUtf8(e.what());
+            errors = e.errors();
+        }
+        check(code == QStringLiteral("ERR_EXPANSION_FAILED") && errors.size() == 1,
+              "expansion failure: code ERR_EXPANSION_FAILED with the expand() errors");
+        check(text == QStringLiteral("No render surface specified and no write() found - add render(oN) or write(oN)"),
+              "expansion failure: what() is the reference formatError text");
+    }
+
+    // ======================================================================
     // Palette expansion (reference/03 §7). classicNoisedeck.noise()'s
     // default `palette:2` (1-based) -> PALETTES[1] = fiveG. Distinctive
     // non-round floats rule out "still just the plain vec3 default"

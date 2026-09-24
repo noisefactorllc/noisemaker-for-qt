@@ -23,14 +23,45 @@
 // module's JSON differs from the oracle's — exactly what the GRAPH gate
 // (parity/check_graph.mjs) already checks.
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
+
+#include <stdexcept>
 
 #include "../runtime/graph.h"
 
 namespace nm {
 
 class EffectRegistry;
+
+// The objects compiler.js compileGraph() throws: {code:
+// 'ERR_COMPILATION_FAILED', diagnostics} when validate() reports an
+// error-severity diagnostic, and {code: 'ERR_EXPANSION_FAILED', errors} when
+// expand() returns errors. what() is the text the reference formats for them
+// (compiler.js formatError, which recompile() logs; Noisedeck's demo-ui
+// formatCompilationError builds the same text for ERR_COMPILATION_FAILED):
+// each error-severity diagnostic's message plus " (line L, col C)" when it
+// has a location, joined by "; ", or each expand error's message.
+class CompilationError : public std::runtime_error {
+public:
+    CompilationError(const QString& code, const QJsonArray& diagnostics, const QJsonArray& errors);
+
+    // "ERR_COMPILATION_FAILED" or "ERR_EXPANSION_FAILED".
+    const QString& code() const { return code_; }
+    // Every validate() diagnostic, warnings included (ERR_COMPILATION_FAILED).
+    const QJsonArray& diagnostics() const { return diagnostics_; }
+    // expand()'s errors, [{message[, step]}] (ERR_EXPANSION_FAILED).
+    const QJsonArray& errors() const { return errors_; }
+
+    // compiler.js formatError for the two codes above.
+    static QString format(const QString& code, const QJsonArray& diagnostics, const QJsonArray& errors);
+
+private:
+    QString code_;
+    QJsonArray diagnostics_;
+    QJsonArray errors_;
+};
 
 // JS `hashSource` (compiler.js): `hash=((hash<<5)-hash)+charCodeAt(i)`,
 // ToInt32 each step (`hash & hash`), then `.toString(36)`. Uses uint32_t
@@ -45,7 +76,7 @@ QString hashSource(const QString& source);
 // extractTextureSpecs -> normalizeGraph, returning the normalized GRAPH
 // JSON (docs/GRAPH-JSON-SCHEMA.md) — the EXACT shape
 // tools/dump-graph.mjs's oracle produces for the same `source` and
-// effect catalog. Throws std::runtime_error mirroring compiler.js's
+// effect catalog. Throws nm::CompilationError mirroring compiler.js's
 // ERR_COMPILATION_FAILED (a validate() diagnostic with severity:"error")
 // / ERR_EXPANSION_FAILED (expand() returned errors); nm::DslSyntaxError /
 // nm::UnsupportedDsl propagate unchanged from the lex/parse/validate/
