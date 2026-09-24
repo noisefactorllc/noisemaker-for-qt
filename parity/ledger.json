@@ -1345,18 +1345,18 @@
     "mode": "density: 1",
     "golden": "parity/out/fibers.golden.png",
     "candidate": "parity/out/fibers.candidate.png",
-    "verdict": "FAIL",
-    "max_abs_diff": 126.0,
-    "mean_abs_diff": 9.600090980529785,
-    "ssim": 0.0034018168225884438,
-    "passed": false,
+    "verdict": "PASS",
+    "max_abs_diff": 1.0000001192092896,
+    "mean_abs_diff": 3.814696901827119e-05,
+    "ssim": 1.0000001192092896,
+    "passed": true,
     "skipped": false,
     "policy": {
-      "tolerance": 122.001,
-      "ssim_min": 0.93,
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "comparison child exited nonzero"
+      "reason": "strict RGBA8 float round-trip allowance"
     }
   },
   {
@@ -3259,10 +3259,10 @@
       "parity/out/navierStokes.candidate.t25.png",
       "parity/out/navierStokes.candidate.t30.png"
     ],
-    "verdict": "NEAR",
-    "max_abs_diff": 6.999999523162842,
-    "mean_abs_diff": 0.5610542297363281,
-    "ssim": 0.9990310072898865,
+    "verdict": "PASS",
+    "max_abs_diff": 1.9999998807907104,
+    "mean_abs_diff": 0.0190811138600111,
+    "ssim": 0.9999669194221497,
     "passed": true,
     "skipped": false,
     "policy": {
@@ -3277,9 +3277,9 @@
         "time_seconds": 5,
         "golden": "parity/out/navierStokes.golden.t5.png",
         "candidate": "parity/out/navierStokes.candidate.t5.png",
-        "max_abs_diff": 6.999999523162842,
-        "mean_abs_diff": 0.5610542297363281,
-        "ssim": 0.9990310072898865,
+        "max_abs_diff": 1.000003695487976,
+        "mean_abs_diff": 0.004024505615234375,
+        "ssim": 0.9999939799308777,
         "passed": true,
         "policy_matches": true
       },
@@ -3287,9 +3287,9 @@
         "time_seconds": 10,
         "golden": "parity/out/navierStokes.golden.t10.png",
         "candidate": "parity/out/navierStokes.candidate.t10.png",
-        "max_abs_diff": 2.0000035762786865,
-        "mean_abs_diff": 0.06060027703642845,
-        "ssim": 0.9998612403869629,
+        "max_abs_diff": 1.9999998807907104,
+        "mean_abs_diff": 0.0190811138600111,
+        "ssim": 0.9999669194221497,
         "passed": true,
         "policy_matches": true
       },
@@ -3298,8 +3298,8 @@
         "golden": "parity/out/navierStokes.golden.t15.png",
         "candidate": "parity/out/navierStokes.candidate.t15.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.004734039306640625,
-        "ssim": 0.9999924898147583,
+        "mean_abs_diff": 0.005344390869140625,
+        "ssim": 0.9999915361404419,
         "passed": true,
         "policy_matches": true
       },
@@ -3307,9 +3307,9 @@
         "time_seconds": 20,
         "golden": "parity/out/navierStokes.golden.t20.png",
         "candidate": "parity/out/navierStokes.candidate.t20.png",
-        "max_abs_diff": 2.0000035762786865,
-        "mean_abs_diff": 0.03652573004364967,
-        "ssim": 0.9999238848686218,
+        "max_abs_diff": 1.000003695487976,
+        "mean_abs_diff": 0.010913848876953125,
+        "ssim": 0.9999840259552002,
         "passed": true,
         "policy_matches": true
       },
@@ -3318,8 +3318,8 @@
         "golden": "parity/out/navierStokes.golden.t25.png",
         "candidate": "parity/out/navierStokes.candidate.t25.png",
         "max_abs_diff": 1.000003695487976,
-        "mean_abs_diff": 0.004791259765625,
-        "ssim": 0.999992847442627,
+        "mean_abs_diff": 0.0040435791015625,
+        "ssim": 0.9999936819076538,
         "passed": true,
         "policy_matches": true
       },
@@ -3327,9 +3327,9 @@
         "time_seconds": 30,
         "golden": "parity/out/navierStokes.golden.t30.png",
         "candidate": "parity/out/navierStokes.candidate.t30.png",
-        "max_abs_diff": 1.9999998807907104,
-        "mean_abs_diff": 0.021602630615234375,
-        "ssim": 0.9999605417251587,
+        "max_abs_diff": 1.000003695487976,
+        "mean_abs_diff": 0.01151275634765625,
+        "ssim": 0.999983012676239,
         "passed": true,
         "policy_matches": true
       }
@@ -4961,18 +4961,18 @@
     "mode": "default",
     "golden": "parity/out/scratches.golden.png",
     "candidate": "parity/out/scratches.candidate.png",
-    "verdict": "FAIL",
-    "max_abs_diff": 147.0,
-    "mean_abs_diff": 2.0921974182128906,
-    "ssim": 0.18033467233181,
-    "passed": false,
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
     "skipped": false,
     "policy": {
-      "tolerance": 147.001,
-      "ssim_min": 0.75,
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "comparison child exited nonzero"
+      "reason": "strict RGBA8 float round-trip allowance"
     }
   },
   {
@@ -5761,18 +5761,18 @@
     "mode": "default",
     "golden": "parity/out/strayHair.golden.png",
     "candidate": "parity/out/strayHair.candidate.png",
-    "verdict": "NEAR",
-    "max_abs_diff": 79.0,
-    "mean_abs_diff": 0.01500701904296875,
-    "ssim": 0.9982720613479614,
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
     "passed": true,
     "skipped": false,
     "policy": {
-      "tolerance": 79.001,
-      "ssim_min": 0.998,
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
       "strict_tolerance": 2.001,
       "strict_ssim_min": 0.98,
-      "reason": "near-zero Sobel/gradient singularity makes the edge-following stroke angle discontinuous across GPU compilers"
+      "reason": "strict RGBA8 float round-trip allowance"
     }
   },
   {
