@@ -236,12 +236,12 @@ int main(int argc, char** argv) {
                           && hostFile.readAll() == outFile.readAll();
         check(host.exitCode == 0 && replaced.exitCode == 0 && same,
               "--external-texture node_1_overlayTex replaces the fibers overlay with the host PNG");
-        const Result unknown = runIn(nmRender,
+        const Result absentNode = runIn(nmRender,
                                      QStringList{QStringLiteral("--dsl"), fibers, QStringLiteral("--out"), outPng,
                                                  QStringLiteral("--external-texture"), QStringLiteral("node_9_overlayTex=") + hostPng}
                                          + size,
                                      scratch.path(), sourceDataRoot);
-        check(unknown.exitCode == 1 && unknown.err.contains(QStringLiteral("not sampled by this graph")),
+        check(absentNode.exitCode == 1 && absentNode.err.contains(QStringLiteral("not sampled by this graph")),
               "an overlay id of a node the graph does not have exits 1");
     }
 
