@@ -2,9 +2,6 @@
 
 #include "compiler/dsl_compiler.h"
 #include "compiler/effect_registry.h"
-#include "compiler/lexer.h"
-#include "compiler/parser.h"
-#include "compiler/validator.h"
 #include "runtime/audio_state.h"
 #include "runtime/backend.h"
 #include "runtime/midi_state.h"
@@ -120,30 +117,6 @@ QByteArray readProgram(const QString& path) {
     return file.readAll();
 }
 
-// Validation errors, one per line with their source location, before
-// compiling: the compiler's own exception names only the failed stage.
-void reportDiagnostics(const QString& path, const QString& source, nm::EffectRegistry& registry) {
-    const QJsonObject validated = nm::validate(nm::parse(nm::lex(source)), registry);
-    int errors = 0;
-    for (const QJsonValue& value : validated.value(QStringLiteral("diagnostics")).toArray()) {
-        const QJsonObject diagnostic = value.toObject();
-        if (diagnostic.value(QStringLiteral("severity")).toString() != QStringLiteral("error")) continue;
-        const QJsonObject location = diagnostic.value(QStringLiteral("location")).toObject();
-        const QString where = location.isEmpty()
-            ? path
-            : QStringLiteral("%1:%2:%3").arg(path).arg(location.value(QStringLiteral("line")).toInt())
-                  .arg(location.value(QStringLiteral("column")).toInt());
-        std::fprintf(stderr, "%s: error %s: %s\n", where.toUtf8().constData(),
-                     diagnostic.value(QStringLiteral("code")).toString().toUtf8().constData(),
-                     diagnostic.value(QStringLiteral("message")).toString().toUtf8().constData());
-        ++errors;
-    }
-    if (errors) {
-        throw std::runtime_error(QStringLiteral("'%1' has %2 error%3").arg(path).arg(errors)
-                                     .arg(errors == 1 ? QString() : QStringLiteral("s")).toStdString());
-    }
-}
-
 void note(const QString& text) {
     std::fprintf(stderr, "note: %s\n", text.toUtf8().constData());
 }
@@ -214,9 +187,7 @@ int main(int argc, char** argv) {
 
         nm::EffectRegistry registry;
         registry.loadAll(dataRoot);
-        const QString source = QString::fromUtf8(readProgram(options.program));
-        reportDiagnostics(options.program, source, registry);
-        nm::Graph graph = nm::compileGraph(source, registry);
+        nm::Graph graph = nm::compileGraph(QString::fromUtf8(readProgram(options.program)), registry);
 
         nm::Backend backend;
         backend.setup(nullptr, dataRoot, options.size);
