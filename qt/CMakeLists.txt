@@ -120,6 +120,10 @@ if(NM_QT_INSTALL)
     )
     if(NM_QT_BUILD_TOOLS)
         # nm-render finds the installed data at <bindir>/../share/noisemaker-qt/noisemaker.
+        # Keep the Qt library directory in the installed binary's rpath: Qt's
+        # own macOS and Linux packages name their libraries @rpath/..., and
+        # the install step drops the build-tree rpath.
+        set_target_properties(nm-render PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
         install(TARGETS nm-render RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()
     if(NM_QT_BUILD_QUICK)
