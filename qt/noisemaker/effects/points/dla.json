@@ -12,7 +12,10 @@
     "stateSize": {
       "type": "int",
       "default": 256,
-      "uniform": "stateSize"
+      "uniform": "stateSize",
+      "ui": {
+        "control": false
+      }
     },
     "anchorDensity": {
       "type": "float",

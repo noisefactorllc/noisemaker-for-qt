@@ -13,7 +13,10 @@
     "stateSize": {
       "type": "int",
       "default": 512,
-      "uniform": "stateSize"
+      "uniform": "stateSize",
+      "ui": {
+        "control": false
+      }
     },
     "mode": {
       "type": "int",

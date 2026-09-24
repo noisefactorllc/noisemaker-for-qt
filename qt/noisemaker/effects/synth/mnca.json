@@ -31,7 +31,10 @@
       "default": 1,
       "uniform": "seed",
       "min": 1,
-      "max": 100
+      "max": 100,
+      "ui": {
+        "control": false
+      }
     },
     "smoothing": {
       "type": "int",
@@ -155,7 +158,10 @@
       "default": 0,
       "uniform": "source",
       "min": 0,
-      "max": 7
+      "max": 7,
+      "ui": {
+        "control": false
+      }
     }
   },
   "passes": [

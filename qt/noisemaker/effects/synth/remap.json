@@ -50,7 +50,10 @@
       "default": 0,
       "uniform": "zone0_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_alpha": {
       "type": "float",
@@ -67,7 +70,10 @@
         1,
         1
       ],
-      "uniform": "zone0_bounds"
+      "uniform": "zone0_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v0": {
       "type": "vec4",
@@ -77,7 +83,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v0"
+      "uniform": "zone0_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v1": {
       "type": "vec4",
@@ -87,7 +96,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v1"
+      "uniform": "zone0_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v2": {
       "type": "vec4",
@@ -97,7 +109,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v2"
+      "uniform": "zone0_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v3": {
       "type": "vec4",
@@ -107,7 +122,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v3"
+      "uniform": "zone0_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v4": {
       "type": "vec4",
@@ -117,7 +135,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v4"
+      "uniform": "zone0_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v5": {
       "type": "vec4",
@@ -127,7 +148,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v5"
+      "uniform": "zone0_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v6": {
       "type": "vec4",
@@ -137,7 +161,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v6"
+      "uniform": "zone0_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v7": {
       "type": "vec4",
@@ -147,7 +174,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v7"
+      "uniform": "zone0_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v8": {
       "type": "vec4",
@@ -157,7 +187,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v8"
+      "uniform": "zone0_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v9": {
       "type": "vec4",
@@ -167,7 +200,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v9"
+      "uniform": "zone0_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v10": {
       "type": "vec4",
@@ -177,7 +213,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v10"
+      "uniform": "zone0_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v11": {
       "type": "vec4",
@@ -187,7 +226,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v11"
+      "uniform": "zone0_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v12": {
       "type": "vec4",
@@ -197,7 +239,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v12"
+      "uniform": "zone0_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v13": {
       "type": "vec4",
@@ -207,7 +252,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v13"
+      "uniform": "zone0_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v14": {
       "type": "vec4",
@@ -217,7 +265,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v14"
+      "uniform": "zone0_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v15": {
       "type": "vec4",
@@ -227,7 +278,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v15"
+      "uniform": "zone0_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v16": {
       "type": "vec4",
@@ -237,7 +291,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v16"
+      "uniform": "zone0_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v17": {
       "type": "vec4",
@@ -247,7 +304,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v17"
+      "uniform": "zone0_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v18": {
       "type": "vec4",
@@ -257,7 +317,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v18"
+      "uniform": "zone0_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v19": {
       "type": "vec4",
@@ -267,7 +330,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v19"
+      "uniform": "zone0_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v20": {
       "type": "vec4",
@@ -277,7 +343,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v20"
+      "uniform": "zone0_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v21": {
       "type": "vec4",
@@ -287,7 +356,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v21"
+      "uniform": "zone0_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v22": {
       "type": "vec4",
@@ -297,7 +369,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v22"
+      "uniform": "zone0_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v23": {
       "type": "vec4",
@@ -307,7 +382,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v23"
+      "uniform": "zone0_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v24": {
       "type": "vec4",
@@ -317,7 +395,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v24"
+      "uniform": "zone0_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v25": {
       "type": "vec4",
@@ -327,7 +408,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v25"
+      "uniform": "zone0_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v26": {
       "type": "vec4",
@@ -337,7 +421,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v26"
+      "uniform": "zone0_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v27": {
       "type": "vec4",
@@ -347,7 +434,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v27"
+      "uniform": "zone0_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v28": {
       "type": "vec4",
@@ -357,7 +447,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v28"
+      "uniform": "zone0_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v29": {
       "type": "vec4",
@@ -367,7 +460,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v29"
+      "uniform": "zone0_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v30": {
       "type": "vec4",
@@ -377,7 +473,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v30"
+      "uniform": "zone0_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone0_v31": {
       "type": "vec4",
@@ -387,7 +486,10 @@
         0,
         0
       ],
-      "uniform": "zone0_v31"
+      "uniform": "zone0_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_tex": {
       "type": "surface",
@@ -399,7 +501,10 @@
       "default": 0,
       "uniform": "zone1_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_alpha": {
       "type": "float",
@@ -416,7 +521,10 @@
         1,
         1
       ],
-      "uniform": "zone1_bounds"
+      "uniform": "zone1_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v0": {
       "type": "vec4",
@@ -426,7 +534,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v0"
+      "uniform": "zone1_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v1": {
       "type": "vec4",
@@ -436,7 +547,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v1"
+      "uniform": "zone1_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v2": {
       "type": "vec4",
@@ -446,7 +560,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v2"
+      "uniform": "zone1_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v3": {
       "type": "vec4",
@@ -456,7 +573,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v3"
+      "uniform": "zone1_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v4": {
       "type": "vec4",
@@ -466,7 +586,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v4"
+      "uniform": "zone1_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v5": {
       "type": "vec4",
@@ -476,7 +599,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v5"
+      "uniform": "zone1_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v6": {
       "type": "vec4",
@@ -486,7 +612,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v6"
+      "uniform": "zone1_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v7": {
       "type": "vec4",
@@ -496,7 +625,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v7"
+      "uniform": "zone1_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v8": {
       "type": "vec4",
@@ -506,7 +638,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v8"
+      "uniform": "zone1_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v9": {
       "type": "vec4",
@@ -516,7 +651,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v9"
+      "uniform": "zone1_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v10": {
       "type": "vec4",
@@ -526,7 +664,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v10"
+      "uniform": "zone1_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v11": {
       "type": "vec4",
@@ -536,7 +677,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v11"
+      "uniform": "zone1_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v12": {
       "type": "vec4",
@@ -546,7 +690,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v12"
+      "uniform": "zone1_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v13": {
       "type": "vec4",
@@ -556,7 +703,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v13"
+      "uniform": "zone1_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v14": {
       "type": "vec4",
@@ -566,7 +716,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v14"
+      "uniform": "zone1_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v15": {
       "type": "vec4",
@@ -576,7 +729,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v15"
+      "uniform": "zone1_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v16": {
       "type": "vec4",
@@ -586,7 +742,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v16"
+      "uniform": "zone1_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v17": {
       "type": "vec4",
@@ -596,7 +755,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v17"
+      "uniform": "zone1_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v18": {
       "type": "vec4",
@@ -606,7 +768,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v18"
+      "uniform": "zone1_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v19": {
       "type": "vec4",
@@ -616,7 +781,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v19"
+      "uniform": "zone1_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v20": {
       "type": "vec4",
@@ -626,7 +794,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v20"
+      "uniform": "zone1_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v21": {
       "type": "vec4",
@@ -636,7 +807,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v21"
+      "uniform": "zone1_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v22": {
       "type": "vec4",
@@ -646,7 +820,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v22"
+      "uniform": "zone1_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v23": {
       "type": "vec4",
@@ -656,7 +833,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v23"
+      "uniform": "zone1_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v24": {
       "type": "vec4",
@@ -666,7 +846,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v24"
+      "uniform": "zone1_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v25": {
       "type": "vec4",
@@ -676,7 +859,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v25"
+      "uniform": "zone1_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v26": {
       "type": "vec4",
@@ -686,7 +872,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v26"
+      "uniform": "zone1_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v27": {
       "type": "vec4",
@@ -696,7 +885,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v27"
+      "uniform": "zone1_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v28": {
       "type": "vec4",
@@ -706,7 +898,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v28"
+      "uniform": "zone1_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v29": {
       "type": "vec4",
@@ -716,7 +911,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v29"
+      "uniform": "zone1_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v30": {
       "type": "vec4",
@@ -726,7 +924,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v30"
+      "uniform": "zone1_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone1_v31": {
       "type": "vec4",
@@ -736,7 +937,10 @@
         0,
         0
       ],
-      "uniform": "zone1_v31"
+      "uniform": "zone1_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_tex": {
       "type": "surface",
@@ -748,7 +952,10 @@
       "default": 0,
       "uniform": "zone2_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_alpha": {
       "type": "float",
@@ -765,7 +972,10 @@
         1,
         1
       ],
-      "uniform": "zone2_bounds"
+      "uniform": "zone2_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v0": {
       "type": "vec4",
@@ -775,7 +985,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v0"
+      "uniform": "zone2_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v1": {
       "type": "vec4",
@@ -785,7 +998,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v1"
+      "uniform": "zone2_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v2": {
       "type": "vec4",
@@ -795,7 +1011,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v2"
+      "uniform": "zone2_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v3": {
       "type": "vec4",
@@ -805,7 +1024,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v3"
+      "uniform": "zone2_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v4": {
       "type": "vec4",
@@ -815,7 +1037,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v4"
+      "uniform": "zone2_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v5": {
       "type": "vec4",
@@ -825,7 +1050,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v5"
+      "uniform": "zone2_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v6": {
       "type": "vec4",
@@ -835,7 +1063,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v6"
+      "uniform": "zone2_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v7": {
       "type": "vec4",
@@ -845,7 +1076,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v7"
+      "uniform": "zone2_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v8": {
       "type": "vec4",
@@ -855,7 +1089,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v8"
+      "uniform": "zone2_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v9": {
       "type": "vec4",
@@ -865,7 +1102,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v9"
+      "uniform": "zone2_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v10": {
       "type": "vec4",
@@ -875,7 +1115,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v10"
+      "uniform": "zone2_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v11": {
       "type": "vec4",
@@ -885,7 +1128,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v11"
+      "uniform": "zone2_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v12": {
       "type": "vec4",
@@ -895,7 +1141,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v12"
+      "uniform": "zone2_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v13": {
       "type": "vec4",
@@ -905,7 +1154,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v13"
+      "uniform": "zone2_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v14": {
       "type": "vec4",
@@ -915,7 +1167,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v14"
+      "uniform": "zone2_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v15": {
       "type": "vec4",
@@ -925,7 +1180,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v15"
+      "uniform": "zone2_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v16": {
       "type": "vec4",
@@ -935,7 +1193,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v16"
+      "uniform": "zone2_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v17": {
       "type": "vec4",
@@ -945,7 +1206,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v17"
+      "uniform": "zone2_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v18": {
       "type": "vec4",
@@ -955,7 +1219,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v18"
+      "uniform": "zone2_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v19": {
       "type": "vec4",
@@ -965,7 +1232,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v19"
+      "uniform": "zone2_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v20": {
       "type": "vec4",
@@ -975,7 +1245,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v20"
+      "uniform": "zone2_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v21": {
       "type": "vec4",
@@ -985,7 +1258,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v21"
+      "uniform": "zone2_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v22": {
       "type": "vec4",
@@ -995,7 +1271,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v22"
+      "uniform": "zone2_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v23": {
       "type": "vec4",
@@ -1005,7 +1284,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v23"
+      "uniform": "zone2_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v24": {
       "type": "vec4",
@@ -1015,7 +1297,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v24"
+      "uniform": "zone2_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v25": {
       "type": "vec4",
@@ -1025,7 +1310,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v25"
+      "uniform": "zone2_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v26": {
       "type": "vec4",
@@ -1035,7 +1323,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v26"
+      "uniform": "zone2_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v27": {
       "type": "vec4",
@@ -1045,7 +1336,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v27"
+      "uniform": "zone2_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v28": {
       "type": "vec4",
@@ -1055,7 +1349,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v28"
+      "uniform": "zone2_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v29": {
       "type": "vec4",
@@ -1065,7 +1362,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v29"
+      "uniform": "zone2_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v30": {
       "type": "vec4",
@@ -1075,7 +1375,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v30"
+      "uniform": "zone2_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone2_v31": {
       "type": "vec4",
@@ -1085,7 +1388,10 @@
         0,
         0
       ],
-      "uniform": "zone2_v31"
+      "uniform": "zone2_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_tex": {
       "type": "surface",
@@ -1097,7 +1403,10 @@
       "default": 0,
       "uniform": "zone3_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_alpha": {
       "type": "float",
@@ -1114,7 +1423,10 @@
         1,
         1
       ],
-      "uniform": "zone3_bounds"
+      "uniform": "zone3_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v0": {
       "type": "vec4",
@@ -1124,7 +1436,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v0"
+      "uniform": "zone3_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v1": {
       "type": "vec4",
@@ -1134,7 +1449,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v1"
+      "uniform": "zone3_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v2": {
       "type": "vec4",
@@ -1144,7 +1462,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v2"
+      "uniform": "zone3_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v3": {
       "type": "vec4",
@@ -1154,7 +1475,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v3"
+      "uniform": "zone3_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v4": {
       "type": "vec4",
@@ -1164,7 +1488,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v4"
+      "uniform": "zone3_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v5": {
       "type": "vec4",
@@ -1174,7 +1501,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v5"
+      "uniform": "zone3_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v6": {
       "type": "vec4",
@@ -1184,7 +1514,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v6"
+      "uniform": "zone3_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v7": {
       "type": "vec4",
@@ -1194,7 +1527,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v7"
+      "uniform": "zone3_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v8": {
       "type": "vec4",
@@ -1204,7 +1540,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v8"
+      "uniform": "zone3_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v9": {
       "type": "vec4",
@@ -1214,7 +1553,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v9"
+      "uniform": "zone3_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v10": {
       "type": "vec4",
@@ -1224,7 +1566,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v10"
+      "uniform": "zone3_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v11": {
       "type": "vec4",
@@ -1234,7 +1579,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v11"
+      "uniform": "zone3_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v12": {
       "type": "vec4",
@@ -1244,7 +1592,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v12"
+      "uniform": "zone3_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v13": {
       "type": "vec4",
@@ -1254,7 +1605,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v13"
+      "uniform": "zone3_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v14": {
       "type": "vec4",
@@ -1264,7 +1618,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v14"
+      "uniform": "zone3_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v15": {
       "type": "vec4",
@@ -1274,7 +1631,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v15"
+      "uniform": "zone3_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v16": {
       "type": "vec4",
@@ -1284,7 +1644,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v16"
+      "uniform": "zone3_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v17": {
       "type": "vec4",
@@ -1294,7 +1657,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v17"
+      "uniform": "zone3_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v18": {
       "type": "vec4",
@@ -1304,7 +1670,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v18"
+      "uniform": "zone3_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v19": {
       "type": "vec4",
@@ -1314,7 +1683,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v19"
+      "uniform": "zone3_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v20": {
       "type": "vec4",
@@ -1324,7 +1696,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v20"
+      "uniform": "zone3_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v21": {
       "type": "vec4",
@@ -1334,7 +1709,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v21"
+      "uniform": "zone3_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v22": {
       "type": "vec4",
@@ -1344,7 +1722,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v22"
+      "uniform": "zone3_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v23": {
       "type": "vec4",
@@ -1354,7 +1735,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v23"
+      "uniform": "zone3_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v24": {
       "type": "vec4",
@@ -1364,7 +1748,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v24"
+      "uniform": "zone3_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v25": {
       "type": "vec4",
@@ -1374,7 +1761,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v25"
+      "uniform": "zone3_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v26": {
       "type": "vec4",
@@ -1384,7 +1774,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v26"
+      "uniform": "zone3_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v27": {
       "type": "vec4",
@@ -1394,7 +1787,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v27"
+      "uniform": "zone3_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v28": {
       "type": "vec4",
@@ -1404,7 +1800,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v28"
+      "uniform": "zone3_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v29": {
       "type": "vec4",
@@ -1414,7 +1813,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v29"
+      "uniform": "zone3_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v30": {
       "type": "vec4",
@@ -1424,7 +1826,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v30"
+      "uniform": "zone3_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone3_v31": {
       "type": "vec4",
@@ -1434,7 +1839,10 @@
         0,
         0
       ],
-      "uniform": "zone3_v31"
+      "uniform": "zone3_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_tex": {
       "type": "surface",
@@ -1446,7 +1854,10 @@
       "default": 0,
       "uniform": "zone4_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_alpha": {
       "type": "float",
@@ -1463,7 +1874,10 @@
         1,
         1
       ],
-      "uniform": "zone4_bounds"
+      "uniform": "zone4_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v0": {
       "type": "vec4",
@@ -1473,7 +1887,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v0"
+      "uniform": "zone4_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v1": {
       "type": "vec4",
@@ -1483,7 +1900,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v1"
+      "uniform": "zone4_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v2": {
       "type": "vec4",
@@ -1493,7 +1913,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v2"
+      "uniform": "zone4_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v3": {
       "type": "vec4",
@@ -1503,7 +1926,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v3"
+      "uniform": "zone4_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v4": {
       "type": "vec4",
@@ -1513,7 +1939,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v4"
+      "uniform": "zone4_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v5": {
       "type": "vec4",
@@ -1523,7 +1952,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v5"
+      "uniform": "zone4_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v6": {
       "type": "vec4",
@@ -1533,7 +1965,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v6"
+      "uniform": "zone4_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v7": {
       "type": "vec4",
@@ -1543,7 +1978,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v7"
+      "uniform": "zone4_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v8": {
       "type": "vec4",
@@ -1553,7 +1991,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v8"
+      "uniform": "zone4_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v9": {
       "type": "vec4",
@@ -1563,7 +2004,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v9"
+      "uniform": "zone4_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v10": {
       "type": "vec4",
@@ -1573,7 +2017,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v10"
+      "uniform": "zone4_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v11": {
       "type": "vec4",
@@ -1583,7 +2030,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v11"
+      "uniform": "zone4_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v12": {
       "type": "vec4",
@@ -1593,7 +2043,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v12"
+      "uniform": "zone4_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v13": {
       "type": "vec4",
@@ -1603,7 +2056,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v13"
+      "uniform": "zone4_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v14": {
       "type": "vec4",
@@ -1613,7 +2069,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v14"
+      "uniform": "zone4_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v15": {
       "type": "vec4",
@@ -1623,7 +2082,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v15"
+      "uniform": "zone4_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v16": {
       "type": "vec4",
@@ -1633,7 +2095,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v16"
+      "uniform": "zone4_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v17": {
       "type": "vec4",
@@ -1643,7 +2108,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v17"
+      "uniform": "zone4_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v18": {
       "type": "vec4",
@@ -1653,7 +2121,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v18"
+      "uniform": "zone4_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v19": {
       "type": "vec4",
@@ -1663,7 +2134,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v19"
+      "uniform": "zone4_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v20": {
       "type": "vec4",
@@ -1673,7 +2147,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v20"
+      "uniform": "zone4_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v21": {
       "type": "vec4",
@@ -1683,7 +2160,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v21"
+      "uniform": "zone4_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v22": {
       "type": "vec4",
@@ -1693,7 +2173,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v22"
+      "uniform": "zone4_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v23": {
       "type": "vec4",
@@ -1703,7 +2186,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v23"
+      "uniform": "zone4_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v24": {
       "type": "vec4",
@@ -1713,7 +2199,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v24"
+      "uniform": "zone4_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v25": {
       "type": "vec4",
@@ -1723,7 +2212,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v25"
+      "uniform": "zone4_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v26": {
       "type": "vec4",
@@ -1733,7 +2225,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v26"
+      "uniform": "zone4_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v27": {
       "type": "vec4",
@@ -1743,7 +2238,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v27"
+      "uniform": "zone4_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v28": {
       "type": "vec4",
@@ -1753,7 +2251,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v28"
+      "uniform": "zone4_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v29": {
       "type": "vec4",
@@ -1763,7 +2264,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v29"
+      "uniform": "zone4_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v30": {
       "type": "vec4",
@@ -1773,7 +2277,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v30"
+      "uniform": "zone4_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone4_v31": {
       "type": "vec4",
@@ -1783,7 +2290,10 @@
         0,
         0
       ],
-      "uniform": "zone4_v31"
+      "uniform": "zone4_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_tex": {
       "type": "surface",
@@ -1795,7 +2305,10 @@
       "default": 0,
       "uniform": "zone5_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_alpha": {
       "type": "float",
@@ -1812,7 +2325,10 @@
         1,
         1
       ],
-      "uniform": "zone5_bounds"
+      "uniform": "zone5_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v0": {
       "type": "vec4",
@@ -1822,7 +2338,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v0"
+      "uniform": "zone5_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v1": {
       "type": "vec4",
@@ -1832,7 +2351,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v1"
+      "uniform": "zone5_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v2": {
       "type": "vec4",
@@ -1842,7 +2364,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v2"
+      "uniform": "zone5_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v3": {
       "type": "vec4",
@@ -1852,7 +2377,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v3"
+      "uniform": "zone5_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v4": {
       "type": "vec4",
@@ -1862,7 +2390,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v4"
+      "uniform": "zone5_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v5": {
       "type": "vec4",
@@ -1872,7 +2403,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v5"
+      "uniform": "zone5_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v6": {
       "type": "vec4",
@@ -1882,7 +2416,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v6"
+      "uniform": "zone5_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v7": {
       "type": "vec4",
@@ -1892,7 +2429,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v7"
+      "uniform": "zone5_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v8": {
       "type": "vec4",
@@ -1902,7 +2442,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v8"
+      "uniform": "zone5_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v9": {
       "type": "vec4",
@@ -1912,7 +2455,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v9"
+      "uniform": "zone5_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v10": {
       "type": "vec4",
@@ -1922,7 +2468,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v10"
+      "uniform": "zone5_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v11": {
       "type": "vec4",
@@ -1932,7 +2481,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v11"
+      "uniform": "zone5_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v12": {
       "type": "vec4",
@@ -1942,7 +2494,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v12"
+      "uniform": "zone5_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v13": {
       "type": "vec4",
@@ -1952,7 +2507,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v13"
+      "uniform": "zone5_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v14": {
       "type": "vec4",
@@ -1962,7 +2520,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v14"
+      "uniform": "zone5_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v15": {
       "type": "vec4",
@@ -1972,7 +2533,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v15"
+      "uniform": "zone5_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v16": {
       "type": "vec4",
@@ -1982,7 +2546,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v16"
+      "uniform": "zone5_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v17": {
       "type": "vec4",
@@ -1992,7 +2559,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v17"
+      "uniform": "zone5_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v18": {
       "type": "vec4",
@@ -2002,7 +2572,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v18"
+      "uniform": "zone5_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v19": {
       "type": "vec4",
@@ -2012,7 +2585,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v19"
+      "uniform": "zone5_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v20": {
       "type": "vec4",
@@ -2022,7 +2598,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v20"
+      "uniform": "zone5_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v21": {
       "type": "vec4",
@@ -2032,7 +2611,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v21"
+      "uniform": "zone5_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v22": {
       "type": "vec4",
@@ -2042,7 +2624,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v22"
+      "uniform": "zone5_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v23": {
       "type": "vec4",
@@ -2052,7 +2637,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v23"
+      "uniform": "zone5_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v24": {
       "type": "vec4",
@@ -2062,7 +2650,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v24"
+      "uniform": "zone5_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v25": {
       "type": "vec4",
@@ -2072,7 +2663,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v25"
+      "uniform": "zone5_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v26": {
       "type": "vec4",
@@ -2082,7 +2676,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v26"
+      "uniform": "zone5_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v27": {
       "type": "vec4",
@@ -2092,7 +2689,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v27"
+      "uniform": "zone5_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v28": {
       "type": "vec4",
@@ -2102,7 +2702,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v28"
+      "uniform": "zone5_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v29": {
       "type": "vec4",
@@ -2112,7 +2715,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v29"
+      "uniform": "zone5_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v30": {
       "type": "vec4",
@@ -2122,7 +2728,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v30"
+      "uniform": "zone5_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone5_v31": {
       "type": "vec4",
@@ -2132,7 +2741,10 @@
         0,
         0
       ],
-      "uniform": "zone5_v31"
+      "uniform": "zone5_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_tex": {
       "type": "surface",
@@ -2144,7 +2756,10 @@
       "default": 0,
       "uniform": "zone6_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_alpha": {
       "type": "float",
@@ -2161,7 +2776,10 @@
         1,
         1
       ],
-      "uniform": "zone6_bounds"
+      "uniform": "zone6_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v0": {
       "type": "vec4",
@@ -2171,7 +2789,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v0"
+      "uniform": "zone6_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v1": {
       "type": "vec4",
@@ -2181,7 +2802,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v1"
+      "uniform": "zone6_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v2": {
       "type": "vec4",
@@ -2191,7 +2815,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v2"
+      "uniform": "zone6_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v3": {
       "type": "vec4",
@@ -2201,7 +2828,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v3"
+      "uniform": "zone6_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v4": {
       "type": "vec4",
@@ -2211,7 +2841,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v4"
+      "uniform": "zone6_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v5": {
       "type": "vec4",
@@ -2221,7 +2854,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v5"
+      "uniform": "zone6_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v6": {
       "type": "vec4",
@@ -2231,7 +2867,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v6"
+      "uniform": "zone6_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v7": {
       "type": "vec4",
@@ -2241,7 +2880,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v7"
+      "uniform": "zone6_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v8": {
       "type": "vec4",
@@ -2251,7 +2893,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v8"
+      "uniform": "zone6_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v9": {
       "type": "vec4",
@@ -2261,7 +2906,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v9"
+      "uniform": "zone6_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v10": {
       "type": "vec4",
@@ -2271,7 +2919,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v10"
+      "uniform": "zone6_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v11": {
       "type": "vec4",
@@ -2281,7 +2932,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v11"
+      "uniform": "zone6_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v12": {
       "type": "vec4",
@@ -2291,7 +2945,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v12"
+      "uniform": "zone6_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v13": {
       "type": "vec4",
@@ -2301,7 +2958,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v13"
+      "uniform": "zone6_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v14": {
       "type": "vec4",
@@ -2311,7 +2971,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v14"
+      "uniform": "zone6_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v15": {
       "type": "vec4",
@@ -2321,7 +2984,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v15"
+      "uniform": "zone6_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v16": {
       "type": "vec4",
@@ -2331,7 +2997,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v16"
+      "uniform": "zone6_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v17": {
       "type": "vec4",
@@ -2341,7 +3010,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v17"
+      "uniform": "zone6_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v18": {
       "type": "vec4",
@@ -2351,7 +3023,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v18"
+      "uniform": "zone6_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v19": {
       "type": "vec4",
@@ -2361,7 +3036,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v19"
+      "uniform": "zone6_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v20": {
       "type": "vec4",
@@ -2371,7 +3049,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v20"
+      "uniform": "zone6_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v21": {
       "type": "vec4",
@@ -2381,7 +3062,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v21"
+      "uniform": "zone6_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v22": {
       "type": "vec4",
@@ -2391,7 +3075,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v22"
+      "uniform": "zone6_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v23": {
       "type": "vec4",
@@ -2401,7 +3088,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v23"
+      "uniform": "zone6_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v24": {
       "type": "vec4",
@@ -2411,7 +3101,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v24"
+      "uniform": "zone6_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v25": {
       "type": "vec4",
@@ -2421,7 +3114,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v25"
+      "uniform": "zone6_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v26": {
       "type": "vec4",
@@ -2431,7 +3127,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v26"
+      "uniform": "zone6_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v27": {
       "type": "vec4",
@@ -2441,7 +3140,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v27"
+      "uniform": "zone6_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v28": {
       "type": "vec4",
@@ -2451,7 +3153,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v28"
+      "uniform": "zone6_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v29": {
       "type": "vec4",
@@ -2461,7 +3166,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v29"
+      "uniform": "zone6_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v30": {
       "type": "vec4",
@@ -2471,7 +3179,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v30"
+      "uniform": "zone6_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone6_v31": {
       "type": "vec4",
@@ -2481,7 +3192,10 @@
         0,
         0
       ],
-      "uniform": "zone6_v31"
+      "uniform": "zone6_v31",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_tex": {
       "type": "surface",
@@ -2493,7 +3207,10 @@
       "default": 0,
       "uniform": "zone7_count",
       "min": 0,
-      "max": 64
+      "max": 64,
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_alpha": {
       "type": "float",
@@ -2510,7 +3227,10 @@
         1,
         1
       ],
-      "uniform": "zone7_bounds"
+      "uniform": "zone7_bounds",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v0": {
       "type": "vec4",
@@ -2520,7 +3240,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v0"
+      "uniform": "zone7_v0",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v1": {
       "type": "vec4",
@@ -2530,7 +3253,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v1"
+      "uniform": "zone7_v1",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v2": {
       "type": "vec4",
@@ -2540,7 +3266,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v2"
+      "uniform": "zone7_v2",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v3": {
       "type": "vec4",
@@ -2550,7 +3279,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v3"
+      "uniform": "zone7_v3",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v4": {
       "type": "vec4",
@@ -2560,7 +3292,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v4"
+      "uniform": "zone7_v4",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v5": {
       "type": "vec4",
@@ -2570,7 +3305,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v5"
+      "uniform": "zone7_v5",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v6": {
       "type": "vec4",
@@ -2580,7 +3318,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v6"
+      "uniform": "zone7_v6",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v7": {
       "type": "vec4",
@@ -2590,7 +3331,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v7"
+      "uniform": "zone7_v7",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v8": {
       "type": "vec4",
@@ -2600,7 +3344,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v8"
+      "uniform": "zone7_v8",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v9": {
       "type": "vec4",
@@ -2610,7 +3357,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v9"
+      "uniform": "zone7_v9",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v10": {
       "type": "vec4",
@@ -2620,7 +3370,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v10"
+      "uniform": "zone7_v10",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v11": {
       "type": "vec4",
@@ -2630,7 +3383,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v11"
+      "uniform": "zone7_v11",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v12": {
       "type": "vec4",
@@ -2640,7 +3396,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v12"
+      "uniform": "zone7_v12",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v13": {
       "type": "vec4",
@@ -2650,7 +3409,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v13"
+      "uniform": "zone7_v13",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v14": {
       "type": "vec4",
@@ -2660,7 +3422,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v14"
+      "uniform": "zone7_v14",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v15": {
       "type": "vec4",
@@ -2670,7 +3435,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v15"
+      "uniform": "zone7_v15",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v16": {
       "type": "vec4",
@@ -2680,7 +3448,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v16"
+      "uniform": "zone7_v16",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v17": {
       "type": "vec4",
@@ -2690,7 +3461,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v17"
+      "uniform": "zone7_v17",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v18": {
       "type": "vec4",
@@ -2700,7 +3474,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v18"
+      "uniform": "zone7_v18",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v19": {
       "type": "vec4",
@@ -2710,7 +3487,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v19"
+      "uniform": "zone7_v19",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v20": {
       "type": "vec4",
@@ -2720,7 +3500,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v20"
+      "uniform": "zone7_v20",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v21": {
       "type": "vec4",
@@ -2730,7 +3513,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v21"
+      "uniform": "zone7_v21",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v22": {
       "type": "vec4",
@@ -2740,7 +3526,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v22"
+      "uniform": "zone7_v22",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v23": {
       "type": "vec4",
@@ -2750,7 +3539,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v23"
+      "uniform": "zone7_v23",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v24": {
       "type": "vec4",
@@ -2760,7 +3552,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v24"
+      "uniform": "zone7_v24",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v25": {
       "type": "vec4",
@@ -2770,7 +3565,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v25"
+      "uniform": "zone7_v25",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v26": {
       "type": "vec4",
@@ -2780,7 +3578,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v26"
+      "uniform": "zone7_v26",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v27": {
       "type": "vec4",
@@ -2790,7 +3591,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v27"
+      "uniform": "zone7_v27",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v28": {
       "type": "vec4",
@@ -2800,7 +3604,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v28"
+      "uniform": "zone7_v28",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v29": {
       "type": "vec4",
@@ -2810,7 +3617,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v29"
+      "uniform": "zone7_v29",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v30": {
       "type": "vec4",
@@ -2820,7 +3630,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v30"
+      "uniform": "zone7_v30",
+      "ui": {
+        "hidden": true
+      }
     },
     "zone7_v31": {
       "type": "vec4",
@@ -2830,7 +3643,10 @@
         0,
         0
       ],
-      "uniform": "zone7_v31"
+      "uniform": "zone7_v31",
+      "ui": {
+        "hidden": true
+      }
     }
   },
   "passes": [

@@ -109,7 +109,10 @@
         1024,
         1024
       ],
-      "uniform": "imageSize"
+      "uniform": "imageSize",
+      "ui": {
+        "control": false
+      }
     }
   },
   "passes": [

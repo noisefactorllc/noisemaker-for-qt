@@ -71,7 +71,10 @@ try {
 
 // Project one global/param spec. Drops UI-only metadata (ui, category, label,
 // enabledBy) which the renderer never reads; keeps everything that influences
-// uniforms, defines, defaults, ranges and enum mappings.
+// uniforms, defines, defaults, ranges and enum mappings. The exception is
+// `ui.control: false` and `ui.hidden: true`: the demo host shows no control for
+// such a param, so it does not coerce the param's function value
+// (nm::hasHostControl).
 function projectGlobal (spec) {
   const out = {}
   if (spec.type !== undefined) out.type = spec.type
@@ -89,6 +92,11 @@ function projectGlobal (spec) {
   if (spec.zero !== undefined) out.zero = spec.zero
   if (spec.choices !== undefined) out.choices = spec.choices
   if (spec.colorModeUniform !== undefined) out.colorModeUniform = spec.colorModeUniform
+  if (spec.ui?.control === false || spec.ui?.hidden === true) {
+    out.ui = {}
+    if (spec.ui.control === false) out.ui.control = false
+    if (spec.ui.hidden === true) out.ui.hidden = true
+  }
   return out
 }
 

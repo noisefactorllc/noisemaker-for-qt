@@ -156,7 +156,10 @@
     "paletteMode": {
       "type": "int",
       "default": 0,
-      "uniform": "paletteMode"
+      "uniform": "paletteMode",
+      "ui": {
+        "control": false
+      }
     },
     "paletteOffset": {
       "type": "vec3",
@@ -165,7 +168,10 @@
         0.6,
         0.63
       ],
-      "uniform": "paletteOffset"
+      "uniform": "paletteOffset",
+      "ui": {
+        "hidden": true
+      }
     },
     "paletteAmp": {
       "type": "vec3",
@@ -174,7 +180,10 @@
         0.5,
         0.5
       ],
-      "uniform": "paletteAmp"
+      "uniform": "paletteAmp",
+      "ui": {
+        "hidden": true
+      }
     },
     "paletteFreq": {
       "type": "vec3",
@@ -183,7 +192,10 @@
         1,
         1
       ],
-      "uniform": "paletteFreq"
+      "uniform": "paletteFreq",
+      "ui": {
+        "hidden": true
+      }
     },
     "palettePhase": {
       "type": "vec3",
@@ -192,7 +204,10 @@
         0.1,
         0
       ],
-      "uniform": "palettePhase"
+      "uniform": "palettePhase",
+      "ui": {
+        "hidden": true
+      }
     },
     "cyclePalette": {
       "type": "int",

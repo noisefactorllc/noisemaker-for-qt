@@ -12,7 +12,10 @@
     "stateSize": {
       "type": "int",
       "default": 256,
-      "uniform": "stateSize"
+      "uniform": "stateSize",
+      "ui": {
+        "control": false
+      }
     },
     "attractor": {
       "type": "int",
@@ -38,7 +41,10 @@
     "viewMode": {
       "type": "int",
       "default": 1,
-      "uniform": "viewMode"
+      "uniform": "viewMode",
+      "ui": {
+        "control": false
+      }
     }
   },
   "passes": [

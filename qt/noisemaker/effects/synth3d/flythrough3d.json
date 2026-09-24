@@ -73,7 +73,10 @@
       "default": 0,
       "uniform": "seed",
       "min": 0,
-      "max": 100
+      "max": 100,
+      "ui": {
+        "control": false
+      }
     }
   },
   "passes": [

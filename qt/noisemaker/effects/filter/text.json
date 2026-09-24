@@ -80,7 +80,10 @@
     },
     "style": {
       "type": "string",
-      "default": ""
+      "default": "",
+      "ui": {
+        "hidden": true
+      }
     }
   },
   "passes": [

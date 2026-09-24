@@ -18,6 +18,9 @@
         "v32": 32,
         "v64": 64,
         "v128": 128
+      },
+      "ui": {
+        "control": false
       }
     },
     "filtering": {

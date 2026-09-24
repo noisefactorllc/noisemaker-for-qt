@@ -18,6 +18,9 @@
         "v32": 32,
         "v64": 64,
         "v128": 128
+      },
+      "ui": {
+        "control": false
       }
     },
     "density": {
@@ -54,7 +57,10 @@
         0,
         1
       ],
-      "uniform": "cubeBasis"
+      "uniform": "cubeBasis",
+      "ui": {
+        "control": false
+      }
     },
     "bgColor": {
       "type": "color",

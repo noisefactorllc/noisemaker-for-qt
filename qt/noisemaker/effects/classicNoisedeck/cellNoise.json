@@ -66,7 +66,10 @@
     "paletteMode": {
       "type": "int",
       "default": 4,
-      "uniform": "paletteMode"
+      "uniform": "paletteMode",
+      "ui": {
+        "control": false
+      }
     },
     "seed": {
       "type": "int",
@@ -155,7 +158,10 @@
         0.5,
         0.5
       ],
-      "uniform": "paletteOffset"
+      "uniform": "paletteOffset",
+      "ui": {
+        "hidden": true
+      }
     },
     "cyclePalette": {
       "type": "int",
@@ -174,7 +180,10 @@
         0.5,
         0.5
       ],
-      "uniform": "paletteAmp"
+      "uniform": "paletteAmp",
+      "ui": {
+        "hidden": true
+      }
     },
     "rotatePalette": {
       "type": "float",
@@ -190,7 +199,10 @@
         2,
         2
       ],
-      "uniform": "paletteFreq"
+      "uniform": "paletteFreq",
+      "ui": {
+        "hidden": true
+      }
     },
     "repeatPalette": {
       "type": "int",
@@ -206,7 +218,10 @@
         1,
         1
       ],
-      "uniform": "palettePhase"
+      "uniform": "palettePhase",
+      "ui": {
+        "hidden": true
+      }
     },
     "tex": {
       "type": "surface",
