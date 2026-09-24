@@ -22,7 +22,8 @@
   ],
   "licenses": [
     { "from": "LICENSE", "to": "LICENSES/noisemaker-for-qt-LICENSE.txt" },
-    { "from": "qt/noisemaker/fonts/Nunito/OFL.txt", "to": "LICENSES/Nunito-OFL.txt" }
+    { "from": "qt/noisemaker/fonts/Nunito/OFL.txt", "to": "LICENSES/Nunito-OFL.txt" },
+    { "from": "qt/noisemaker/compiler/acorn-LICENSE.txt", "to": "LICENSES/acorn-MIT.txt" }
   ],
   "requireFiles": [
     "src/main.cpp",
@@ -30,6 +31,7 @@
     "fonts/Nunito/Nunito-VariableFont_wght.ttf",
     "fonts/Nunito/OFL.txt",
     "LICENSES/Nunito-OFL.txt",
+    "LICENSES/acorn-MIT.txt",
     "share/meshes/sphere.obj"
   ],
   "shaderLayout": {
