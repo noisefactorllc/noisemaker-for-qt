@@ -41,8 +41,8 @@
   "compat": {
     "mode": "list",
     "fromDefs": "qt/noisemaker/effects",
-    "excludeNames": ["media", "scope", "spectrum"],
-    "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair", "filter/text", "render/meshLoader", "render/meshRender", "synth/roll"]
+    "excludeNames": [],
+    "excludeIds": ["filter/fibers", "filter/scratches", "filter/strayHair", "render/meshLoader", "render/meshRender"]
   },
   "engineBytesFrom": ["engine/", "effects/", "fonts/"]
 }
