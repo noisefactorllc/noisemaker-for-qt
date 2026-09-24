@@ -18,6 +18,8 @@
 #include "../noisemaker/compiler/parser.h"
 
 #include <QJsonArray>
+
+#include <utility>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QString>
@@ -566,6 +568,85 @@ int main() {
                       QStringLiteral("parser diagnostic location column matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
             }
             check(caught, QStringLiteral("throws DslSyntaxError for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+    }
+
+    // ==================================================================
+    // Structured subchain diagnostics (P006): the reference's
+    // shaders/tests/test_diagnostic_locations.js cases at 30c47030
+    // ==================================================================
+    {
+        struct SubchainCase {
+            const char* name;
+            QString source;
+            QString message;
+            int line;
+            int column;
+        };
+        const QVector<SubchainCase> cases = {
+            {"non-string argument", QStringLiteral("search synth\nread(o0).subchain(name: 1) { .diagProbe() }"), QStringLiteral("Expected string value for subchain name at line 2 col 25"), 2, 25},
+            {"argument at EOF", QStringLiteral("search synth\nread(o0).subchain(name:"), QStringLiteral("Expected string value for subchain name at line 2 col 24"), 2, 24},
+            {"missing body dot", QStringLiteral("search synth\nread(o0).subchain() { diagProbe() }"), QStringLiteral("Expected '.' before chain element in subchain body at line 2 col 23"), 2, 23},
+            {"body at EOF", QStringLiteral("search synth\nread(o0).subchain() {"), QStringLiteral("Expected '.' before chain element in subchain body at line 2 col 22"), 2, 22},
+            {"empty body", QStringLiteral("search synth\nread(o0).subchain() {}"), QStringLiteral("Subchain body cannot be empty at line 2 col 10"), 2, 10},
+            {"comment-only body", QStringLiteral("search synth\nread(o0).subchain() { /* empty */ }"), QStringLiteral("Subchain body cannot be empty at line 2 col 10"), 2, 10},
+            {"CRLF tab and UTF-16 argument", QString::fromUtf8("// \xF0\x9F\x98\x80\r\nsearch synth\r\n\tread(o0).subchain(name: \"\xF0\x9F\x98\x80\", id: 1) { .diagProbe() }"), QStringLiteral("Expected string value for subchain id at line 3 col 36"), 3, 36},
+            {"missing dot after comment", QString::fromUtf8("search synth\nread(o0).subchain() { /* \xF0\x9F\x98\x80 */ missing() }"), QStringLiteral("Expected '.' before chain element in subchain body at line 2 col 32"), 2, 32},
+            {"unclosed nonempty body", QStringLiteral("search synth\nread(o0).subchain() { .diagProbe()"), QStringLiteral("Expected '.' before chain element in subchain body at line 2 col 35"), 2, 35},
+        };
+        for (const auto& c : cases) {
+            bool caught = false;
+            try {
+                parseSrc(c.source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                const QJsonObject d = err.diagnostic();
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(err.message() == c.message && d.value(QStringLiteral("code")).toString() == QStringLiteral("P006")
+                          && d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser")
+                          && d.value(QStringLiteral("severity")).toString() == QStringLiteral("error")
+                          && d.value(QStringLiteral("message")).toString() == c.message && d.value(QStringLiteral("span")).isNull()
+                          && loc.value(QStringLiteral("line")).toInt() == c.line
+                          && loc.value(QStringLiteral("column")).toInt() == c.column,
+                      QStringLiteral("subchain P006 diagnostic matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caught, QStringLiteral("throws DslSyntaxError for subchain %1").arg(QLatin1String(c.name)).toUtf8().constData());
+
+            // Tokens without coordinates: the same code, and a null location.
+            QJsonArray bare;
+            for (const QJsonValue& val : nm::lex(c.source)) {
+                QJsonObject tok = val.toObject();
+                tok.remove(QStringLiteral("line"));
+                tok.remove(QStringLiteral("col"));
+                bare.append(tok);
+            }
+            bool caughtBare = false;
+            try {
+                nm::parse(bare);
+            } catch (const nm::DslSyntaxError& err) {
+                caughtBare = true;
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P006") && d.value(QStringLiteral("location")).isNull()
+                          && d.value(QStringLiteral("message")).toString() == err.message(),
+                      QStringLiteral("subchain P006 location is null without coordinates for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+            }
+            check(caughtBare, QStringLiteral("throws DslSyntaxError for coordinate-free subchain %1").arg(QLatin1String(c.name)).toUtf8().constData());
+        }
+
+        // Shared expectations inside a subchain keep their own codes.
+        const QVector<std::pair<QString, std::pair<QString, QString>>> precedence = {
+            {QStringLiteral("search synth\nread(o0).subchain(1) {}"), {QStringLiteral("P002"), QStringLiteral("Expect ')' after subchain arguments at line 2 col 19")}},
+            {QStringLiteral("search synth\nread(o0).subchain() { . }"), {QStringLiteral("P001"), QStringLiteral("Expected identifier at line 2 col 25")}},
+        };
+        for (const auto& [source, expected] : precedence) {
+            bool caught = false;
+            try {
+                parseSrc(source);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = err.message() == expected.second
+                         && err.diagnostic().value(QStringLiteral("code")).toString() == expected.first;
+            }
+            check(caught, QStringLiteral("subchain keeps %1 for: %2").arg(expected.first, expected.second).toUtf8().constData());
         }
     }
 

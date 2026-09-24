@@ -640,8 +640,7 @@ QJsonObject Parser::parseWriteCall() {
 }
 
 QJsonObject Parser::parseSubchainCall() {
-    const int tokenLine = peek().line;
-    const int tokenCol = peek().col;
+    const Token nameToken = peek();
 
     advance(); // consume 'subchain'
     expect(TokenType::LPAREN, QStringLiteral("Expect '(' after subchain"));
@@ -667,9 +666,8 @@ QJsonObject Parser::parseSubchainCall() {
                 const QString key = advance().lexeme;
                 advance(); // consume ':'
                 if (peek().type != TokenType::STRING) {
-                    const Token p = peek();
-                    throw DslSyntaxError::at(QStringLiteral("Expected string value for subchain %1").arg(key),
-                                              p.line, p.col);
+                    throw parserErrorAt(QStringLiteral("P006"), QStringLiteral("Expected string value for subchain %1").arg(key),
+                                        peek());
                 }
                 QJsonObject val;
                 val.insert(QStringLiteral("type"), NodeKind::String);
@@ -687,9 +685,8 @@ QJsonObject Parser::parseSubchainCall() {
         const QJsonArray leadingComments = collectComments();
         if (peek().type == TokenType::RBRACE) break;
         if (peek().type != TokenType::DOT) {
-            const Token p = peek();
-            throw DslSyntaxError::at(QStringLiteral("Expected '.' before chain element in subchain body"), p.line,
-                                      p.col);
+            throw parserErrorAt(QStringLiteral("P006"), QStringLiteral("Expected '.' before chain element in subchain body"),
+                                peek());
         }
         advance(); // consume '.'
         const QJsonArray postDotComments = collectComments();
@@ -703,7 +700,7 @@ QJsonObject Parser::parseSubchainCall() {
     expect(TokenType::RBRACE, QStringLiteral("Expect '}' to end subchain body"));
 
     if (body.isEmpty()) {
-        throw DslSyntaxError::at(QStringLiteral("Subchain body cannot be empty"), tokenLine, tokenCol);
+        throw parserErrorAt(QStringLiteral("P006"), QStringLiteral("Subchain body cannot be empty"), nameToken);
     }
 
     // Reference: `kwargs.name?.value || null` -- a FALSY-OR, so an
@@ -720,7 +717,7 @@ QJsonObject Parser::parseSubchainCall() {
     node.insert(QStringLiteral("name"), resolveFalsyStringOrNull(QStringLiteral("name")));
     node.insert(QStringLiteral("id"), resolveFalsyStringOrNull(QStringLiteral("id")));
     node.insert(QStringLiteral("body"), body);
-    node.insert(QStringLiteral("loc"), ast::loc(tokenLine, tokenCol));
+    node.insert(QStringLiteral("loc"), ast::loc(nameToken.line, nameToken.col));
     return node;
 }
 
