@@ -80,9 +80,9 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/, qt/tests/, examples/viewer/, parity/, STATUS.md
 - Expected behavior: Reproducible evidence binds each supported claim to the port and authority revisions.
-- Observed behavior: At reference 30c47030 the macOS ledger grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped; the compiler gates are 379 of 379. The 44 NEAR entries pass only at fixture-specific tolerances. Outside macOS, rendered parity covers the 6 CI smoke fixtures (Linux and Windows llvmpipe, max 0).
+- Observed behavior: At reference 30c47030 the macOS ledger grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped; the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); fibers, scratches, and strayHair grade at max 0 with the reference's overlays in a Linux Docker run of the job (511faaf; CI pending). All 44 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
 - Evidence: [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) and section 3.
-- Next action: (1) Triage the 44 NEAR entries into fixable and inherent, with the mechanism for each, and make exact what operation order can fix (GAP-011 is the precedent). (2) Grade the full suite on Linux llvmpipe in CI against same-rasterizer goldens (the GAP-033 method).
+- Next action: Record the first CI run of the patched llvmpipe job (511faaf). Keep the 44 macOS tol_for() entries with their mechanism: the port cannot change its byte-identical shaders to match ANGLE's compiler.
 - Dependencies: None.
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
@@ -650,14 +650,26 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: parity/run.sh on the new fixtures; the full sweep.
 - Last verification: 2026-09-24.
 
+### GAP-040: the reference's overlay canvas differs by platform
+
+- Status: open. Priority: P3. Category: authority.
+- Affected scope: filter/fibers, filter/scratches, filter/strayHair; the reference's asyncInit 2D canvas; qt/noisemaker/runtime/stroke_canvas.{h,cpp}.
+- Expected behavior: One overlay for a given program, whatever the host.
+- Observed behavior: Chromium draws the overlay canvas with Skia Graphite on Metal on macOS and with Skia Ganesh on GL (ANGLE over Mesa llvmpipe) on Linux. The stroke lists are bit-identical on both, but the canvas pixels differ: fibers 90246, scratches 16492, strayHair 134 of 262144 values. The Linux output also depends on flush points. The port models the Graphite/Metal canvas, so it matches the macOS reference and differs from the Linux one.
+- Evidence: Linux arm64 Docker with the parity-llvmpipe.yml setup (chrome://gpu: "Skia Backend: GaneshGL"), goldens byte-identical to CI run 36055292025's x86_64 goldens. The port's own trace grades fibers max 67, scratches 147, strayHair 78 there; the Qt candidates are the same on Linux and macOS (max 0 to 1). Since 511faaf the llvmpipe job grades these three with the reference's own overlays (NM_REFERENCE_OVERLAYS=1): max 0.
+- Next action: None in the port. The canvas model stays qualified on macOS Graphite/Metal (check_async_overlay.mjs); a reference that must look the same everywhere would need a platform-independent canvas.
+- Dependencies: The reference's canvas (external).
+- Acceptance criteria: The reference overlay is the same on every platform, or this divergence stays recorded.
+- Required checks: check_async_overlay.mjs on macOS; the llvmpipe job with the reference overlays.
+- Last verification: 2026-09-24.
+
 ## 5. Ordered next actions
 
-1. GAP-001: triage the 44 NEAR entries into fixable and inherent, and make the fixable ones exact.
-2. GAP-001: grade the full suite on Linux llvmpipe in CI against same-rasterizer goldens.
-3. GAP-038: trace overlays off the render thread for live hosts.
-4. GAP-002: run the installed workflow on Windows.
-5. GAP-039, GAP-027: rendered Func fixtures; generic font families.
-6. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-031 waits for a definition that uses countUniform.
+1. GAP-001: confirm the patched llvmpipe job in CI (all 353 at the strict tolerance). Done: the NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job.
+2. GAP-038: trace overlays off the render thread for live hosts.
+3. GAP-002: run the installed workflow on Windows.
+4. GAP-039, GAP-027: rendered Func fixtures; generic font families.
+5. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 

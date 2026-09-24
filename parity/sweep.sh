@@ -161,6 +161,12 @@ defer_reason() {
 # task-T5-report.md round 3: the harness race that used to make physarum/
 # agentsPoints look chaotic is fixed, so a sibling's NEAR entry is not
 # evidence of anything here until re-observed).
+#
+# Every loosening below is a macOS-only compiler effect: the goldens go
+# through ANGLE's GLSL-to-Metal translation and the candidates through
+# Apple's GL compiler on the same GPU. On Linux llvmpipe, where Chromium's
+# ANGLE GL and nm-render share Mesa's compiler, all 44 of these fixtures
+# are bit-exact (parity-llvmpipe.yml, CI run 36055292025).
 tol_for() {
 	case "$1" in
 		# --- Fractal basin/escape-boundary chaos (godot's newton mechanism,
