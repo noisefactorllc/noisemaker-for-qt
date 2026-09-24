@@ -6,6 +6,7 @@
 #include <QRegularExpression>
 #include <QStringList>
 
+#include <algorithm>
 #include <cmath>
 
 namespace nm {
@@ -219,6 +220,64 @@ QJsonValue convertParameterForUniform(const QJsonValue& value, const QJsonObject
         return value;
     }
     return value;
+}
+
+bool isFunctionValue(const QJsonValue& value) {
+    if (!value.isObject() || isAutomationControlled(value)) return false;
+    const QJsonObject object = value.toObject();
+    for (auto it = object.begin(); it != object.end(); ++it) {
+        const QString& key = it.key();
+        if (key != QStringLiteral("fn") && key != QStringLiteral("min") && key != QStringLiteral("max")
+            && key != QStringLiteral("_ast")) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool hasHostControl(const QJsonObject& spec) {
+    const QJsonObject ui = spec.value(QStringLiteral("ui")).toObject();
+    const QJsonValue control = ui.value(QStringLiteral("control"));
+    const QJsonValue hidden = ui.value(QStringLiteral("hidden"));
+    return !(control.isBool() && !control.toBool()) && !(hidden.isBool() && hidden.toBool());
+}
+
+QJsonValue resolveFunctionValue(const QJsonObject& spec) {
+    const QString type = spec.value(QStringLiteral("type")).toString();
+    QJsonValue validated;
+    if (type == QStringLiteral("float") || type == QStringLiteral("int")) {
+        // _validateValue: parseFloat/parseInt of the object is NaN, so
+        // `spec.default ?? 0`, then Math.max(min, v) and Math.min(max, v).
+        const QJsonValue fallback = spec.value(QStringLiteral("default"));
+        double number = 0.0;
+        if (fallback.isDouble()) {
+            number = fallback.toDouble();
+        } else if (!fallback.isUndefined() && !fallback.isNull()) {
+            return QJsonValue(QJsonValue::Undefined);
+        }
+        const QJsonValue minimum = spec.value(QStringLiteral("min"));
+        const QJsonValue maximum = spec.value(QStringLiteral("max"));
+        if (minimum.isDouble()) number = std::max(minimum.toDouble(), number);
+        if (maximum.isDouble()) number = std::min(maximum.toDouble(), number);
+        validated = number;
+    } else if (type == QStringLiteral("boolean")) {
+        validated = true; // Boolean(object)
+    } else if (type == QStringLiteral("vec2") || type == QStringLiteral("vec3") || type == QStringLiteral("vec4")
+               || type == QStringLiteral("color")) {
+        // A non-array value takes `spec.default || zeros`.
+        const QJsonValue fallback = spec.value(QStringLiteral("default"));
+        if (jsTruthy(fallback)) {
+            validated = fallback;
+        } else {
+            const int size = type == QStringLiteral("vec2") ? 2 : type == QStringLiteral("vec4") ? 4 : 3;
+            QJsonArray zeros;
+            for (int i = 0; i < size; ++i) zeros.append(0);
+            validated = zeros;
+        }
+    } else {
+        return QJsonValue(QJsonValue::Undefined);
+    }
+    return convertParameterForUniform(validated, spec, nullptr);
 }
 
 } // namespace nm

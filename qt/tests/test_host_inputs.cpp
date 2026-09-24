@@ -1,8 +1,9 @@
 // Host-input runtime APIs on nm::Backend: external textures
 // (updateTextureFromSource / setExternalTexture), live parameter updates
-// (applyStepParameterValues / setUniform), and engine time globals
-// (deltaTime / frame / syncTime / normalizedLoopTime). Plain executable,
-// run from the repo root (WORKING_DIRECTORY in CMakeLists.txt).
+// (applyStepParameterValues / setUniform), function-valued params, and
+// engine time globals (deltaTime / frame / syncTime / normalizedLoopTime).
+// Plain executable, run from the repo root (WORKING_DIRECTORY in
+// CMakeLists.txt).
 
 #include "../noisemaker/compiler/dsl_compiler.h"
 #include "../noisemaker/compiler/effect_registry.h"
@@ -290,6 +291,132 @@ void testLiveParameters(nm::EffectRegistry& registry) {
     check(mode.toInt() == 11, "enum names resolve through the registry enums");
 }
 
+QImage renderFrames(nm::EffectRegistry& registry, const char* source, int frames) {
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, QSize(32, 32));
+    const nm::Graph graph = compile(registry, source);
+    for (int i = 0; i < frames; ++i) backend.render(graph, 0.25);
+    return backend.readSurface();
+}
+
+QJsonObject spec(const char* type, const QJsonValue& fallback = QJsonValue(QJsonValue::Undefined)) {
+    QJsonObject result{{QStringLiteral("type"), QString::fromUtf8(type)}};
+    if (!fallback.isUndefined()) result.insert(QStringLiteral("default"), fallback);
+    return result;
+}
+
+QJsonObject ranged(QJsonObject base, const QJsonValue& minimum, const QJsonValue& maximum) {
+    if (!minimum.isUndefined()) base.insert(QStringLiteral("min"), minimum);
+    if (!maximum.isUndefined()) base.insert(QStringLiteral("max"), maximum);
+    return base;
+}
+
+void testFunctionValues(nm::EffectRegistry& registry) {
+    const QJsonValue none(QJsonValue::Undefined);
+    const QJsonObject range{{QStringLiteral("min"), 1}, {QStringLiteral("max"), 8}};
+    QJsonObject stateValue = range;
+    stateValue.insert(QStringLiteral("_ast"),
+                      QJsonObject{{QStringLiteral("type"), QStringLiteral("Ident")}, {QStringLiteral("name"), "time"}});
+    check(nm::isFunctionValue(QJsonObject()) && nm::isFunctionValue(range) && nm::isFunctionValue(stateValue),
+          "{}, {min, max} and {min, max, _ast} are function values");
+    QJsonObject oscillatorAst = range;
+    oscillatorAst.insert(QStringLiteral("_ast"), QJsonObject{{QStringLiteral("type"), QStringLiteral("Oscillator")}});
+    QJsonObject extraKey = range;
+    extraKey.insert(QStringLiteral("value"), 1);
+    check(!nm::isFunctionValue(QJsonObject{{QStringLiteral("type"), QStringLiteral("Oscillator")}})
+              && !nm::isFunctionValue(oscillatorAst)
+              && !nm::isFunctionValue(QJsonObject{{QStringLiteral("_varRef"), QStringLiteral("o")}})
+              && !nm::isFunctionValue(extraKey) && !nm::isFunctionValue(QJsonArray{1, 2}) && !nm::isFunctionValue(3),
+          "automation values, other objects, arrays and numbers are not function values");
+
+    auto withUi = [](const char* key, const QJsonValue& value) {
+        return QJsonObject{{QStringLiteral("ui"), QJsonObject{{QString::fromUtf8(key), value}}}};
+    };
+    check(nm::hasHostControl(QJsonObject()) && nm::hasHostControl(withUi("control", QStringLiteral("dropdown")))
+              && !nm::hasHostControl(withUi("control", false)) && !nm::hasHostControl(withUi("hidden", true)),
+          "hasHostControl is false only for ui.control false or ui.hidden true");
+
+    check(nm::resolveFunctionValue(ranged(spec("float", 5), 0, 50)) == QJsonValue(5.0)
+              && nm::resolveFunctionValue(ranged(spec("float", 80), none, 50)) == QJsonValue(50.0)
+              && nm::resolveFunctionValue(ranged(spec("float", -3), 0, none)) == QJsonValue(0.0)
+              && nm::resolveFunctionValue(spec("float")) == QJsonValue(0.0),
+          "a float function value takes the default (0 when absent), clamped to min and max");
+    check(nm::resolveFunctionValue(ranged(spec("int", 2.5), 1, 8)) == QJsonValue(3.0),
+          "an int function value takes the default, rounded");
+    check(nm::resolveFunctionValue(spec("boolean", false)) == QJsonValue(true), "a boolean function value is true");
+    check(nm::resolveFunctionValue(spec("vec2", QJsonArray{1024, 1024})) == QJsonValue(QJsonArray{1024, 1024})
+              && nm::resolveFunctionValue(spec("vec3")) == QJsonValue(QJsonArray{0.0, 0.0, 0.0})
+              && nm::resolveFunctionValue(spec("vec4")) == QJsonValue(QJsonArray{0.0, 0.0, 0.0, 0.0})
+              && nm::resolveFunctionValue(spec("color", QStringLiteral("#ff0000")))
+                     == QJsonValue(QJsonArray{1.0, 0.0, 0.0}),
+          "vector and color function values take the default, else zeros");
+    check(nm::resolveFunctionValue(spec("member", 1)).isUndefined()
+              && nm::resolveFunctionValue(spec("palette", 2)).isUndefined(),
+          "other types leave the function value unchanged");
+
+    // Each program with function values draws what the program with the
+    // resolved values draws.
+    struct Case {
+        const char* functions;
+        const char* resolved;
+        int frames;
+        const char* description;
+    };
+    const Case cases[] = {
+        {"search synth\nnoise(ridges: () => frame % 2 > 0, octaves: 3).write(o0)\nrender(o0)",
+         "search synth\nnoise(ridges: true, octaves: 3).write(o0)\nrender(o0)", 1,
+         "a boolean arrow function renders as true"},
+        {"search synth, filter\nnoise(octaves: () => 9, seed: () => seed + 1, speed: () => time)"
+         ".blur(radiusX: () => time % 10, radiusY: () => 3).write(o0)\nrender(o0)",
+         "search synth, filter\nnoise().blur().write(o0)\nrender(o0)", 1,
+         "numeric arrow functions render as their defaults"},
+        {"search synth\nnoise(octaves: frame, ridges: time, seed: time).write(o0)\nrender(o0)",
+         "search synth\nnoise(ridges: true).write(o0)\nrender(o0)", 1,
+         "bare state values render as the defaults and true"},
+        {"search synth\ncellularAutomata(seed: 1, zoom: () => 8).write(o0)\nrender(o0)",
+         "search synth\ncellularAutomata(seed: 1, zoom: 32).write(o0)\nrender(o0)", 4,
+         "a chain-scoped function value (zoom_chain_0) renders as the default"},
+        {"search points, synth, render\nsolid().pointsEmit(stateSize: () => 128).physarum().pointsRender()"
+         ".write(o0)\nrender(o0)",
+         "search points, synth, render\nsolid().pointsEmit(stateSize: 256).physarum().pointsRender()"
+         ".write(o0)\nrender(o0)", 4,
+         "a node-scoped function value (stateSize_node_1) renders as the default in every pipeline pass"},
+        {"search synth3d, render\nnoise3d(volumeSize: () => 16).render3d().write(o0)\nrender(o0)",
+         "search synth3d, render\nnoise3d(volumeSize: 64).render3d().write(o0)\nrender(o0)", 1,
+         "a volumeSize function value reaches the consumer that inherits it"},
+    };
+    for (const Case& c : cases) {
+        check(renderFrames(registry, c.functions, c.frames) == renderFrames(registry, c.resolved, c.frames),
+              c.description);
+    }
+
+    // A param without a host control keeps the object, which binds as 0.
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, QSize(32, 32));
+    const nm::Graph hidden =
+        compile(registry, "search synth\ncellularAutomata(seed: () => 3, zoom: 1).write(o0)\nrender(o0)");
+    for (int i = 0; i < 4; ++i) backend.render(hidden, 0.25);
+    check(nm::isFunctionValue(hidden.passes.first().uniforms.value(QStringLiteral("seed"))),
+          "render() resolves a copy; the caller's graph keeps the compiled value");
+    nm::Backend zeroBackend;
+    zeroBackend.setup(nullptr, kDataRoot, QSize(32, 32));
+    nm::Graph zero = hidden;
+    zeroBackend.setUniform(zero, QStringLiteral("seed"), 0);
+    for (int i = 0; i < 4; ++i) zeroBackend.render(zero, 0.25);
+    check(backend.readSurface() == zeroBackend.readSurface(), "a function value without a host control binds as 0");
+
+    // A live parameter update replaces the function value.
+    nm::Backend live;
+    live.setup(nullptr, kDataRoot, QSize(32, 32));
+    nm::Graph flicker = compile(registry, cases[0].functions);
+    live.applyStepParameterValues(flicker, registry,
+        QJsonObject{{QStringLiteral("step_0"), QJsonObject{{QStringLiteral("ridges"), false}}}});
+    live.render(flicker, 0.25);
+    check(live.readSurface()
+              == renderFrames(registry, "search synth\nnoise(ridges: false, octaves: 3).write(o0)\nrender(o0)", 1),
+          "applyStepParameterValues replaces a function value");
+}
+
 void testFeedbackPersistsAcrossUpdates(nm::EffectRegistry& registry) {
     const char* source = "search synth, filter\nsolid(color: #ff0000).feedback(mix: 50).write(o0)\nrender(o0)";
 
@@ -379,6 +506,7 @@ int main(int argc, char** argv) {
     testMediaLetterbox(registry);
     testTextUpload(registry);
     testLiveParameters(registry);
+    testFunctionValues(registry);
     testFeedbackPersistsAcrossUpdates(registry);
     testEngineTime(registry);
 

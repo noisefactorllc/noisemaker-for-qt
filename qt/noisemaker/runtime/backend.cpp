@@ -1871,13 +1871,23 @@ void Backend::bindUniforms(const CompiledProgram& program, const Pass& pass) {
     }
 }
 
-QJsonObject Backend::loadEffectUniformLayout(const QString& ns, const QString& func) {
+// The effect definition JSON of `ns/func`, read once per Backend.
+const QJsonObject& Backend::effectDefinition(const QString& ns, const QString& func) {
     const QString key = ns + QLatin1Char('/') + func;
-    const auto cached = m_uniformLayoutCache.constFind(key);
-    if (cached != m_uniformLayoutCache.constEnd()) {
-        return cached.value();
+    auto cached = m_effectDefinitionCache.find(key);
+    if (cached == m_effectDefinitionCache.end()) {
+        QJsonObject definition;
+        QFile file(QStringLiteral("%1/effects/%2/%3.json").arg(m_dataRoot, ns, func));
+        if (file.open(QIODevice::ReadOnly)) {
+            const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            if (doc.isObject()) definition = doc.object();
+        }
+        cached = m_effectDefinitionCache.insert(key, definition);
     }
+    return cached.value();
+}
 
+QJsonObject Backend::loadEffectUniformLayout(const QString& ns, const QString& func) {
     // Read straight from the local effect JSON, not the compiled graph's
     // own `programs` bookkeeping object -- confirmed empirically (minting
     // synth/remap and inspecting the real exported graph) that `programs`
@@ -1886,16 +1896,48 @@ QJsonObject Backend::loadEffectUniformLayout(const QString& ns, const QString& f
     // uniformLayout from their local effect JSON copy for the identical
     // reason (nm_backend.gd `_load_effect_def`; td_backend.py
     // `_effect_uniform_layout`).
-    QJsonObject layout;
-    QFile file(QStringLiteral("%1/effects/%2/%3.json").arg(m_dataRoot, ns, func));
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) {
-            layout = doc.object().value(QStringLiteral("uniformLayout")).toObject();
+    return effectDefinition(ns, func).value(QStringLiteral("uniformLayout")).toObject();
+}
+
+// Reference demo host (demo/shaders/lib/demo-ui.js _createControlGroup,
+// program-state.js setValue / _applyToPipeline): after a program loads, the
+// control of each param sets the param's value through
+// ProgramState._validateValue, and _applyToPipeline writes the converted
+// value into the step's passes, the param's _node_N / _chain_N variant and
+// every pass that carries that variant. The function-valued params
+// (isFunctionValue) are the only ones this changes. A param without a host
+// control keeps the object, which binds as 0 (see backend.h).
+void Backend::resolveFunctionValues(Graph& graph) {
+    for (int passIndex = 0; passIndex < graph.passes.size(); ++passIndex) {
+        const Pass& pass = graph.passes.at(passIndex);
+        if (pass.stepIndex < 0 || pass.effectNamespace.isEmpty() || pass.func.isEmpty()) continue;
+        bool hasFunctionValue = false;
+        for (auto it = pass.uniforms.begin(); it != pass.uniforms.end() && !hasFunctionValue; ++it) {
+            hasFunctionValue = isFunctionValue(it.value());
+        }
+        if (!hasFunctionValue) continue;
+
+        const QJsonObject globals =
+            effectDefinition(pass.effectNamespace, pass.func).value(QStringLiteral("globals")).toObject();
+        for (auto it = globals.begin(); it != globals.end(); ++it) {
+            const QJsonObject spec = it.value().toObject();
+            if (!hasHostControl(spec)) continue;
+            const QString specUniform = spec.value(QStringLiteral("uniform")).toString();
+            const QString uniformName = specUniform.isEmpty() ? it.key() : specUniform;
+            Pass& target = graph.passes[passIndex];
+            // Consumer passes take volumeSize from the upstream emitter.
+            if (uniformName == QStringLiteral("volumeSize") && target.inheritsVolumeSize) continue;
+            if (!isFunctionValue(target.uniforms.value(uniformName))) continue;
+            const QJsonValue resolved = resolveFunctionValue(spec);
+            if (resolved.isUndefined()) continue;
+            target.uniforms.insert(uniformName, resolved);
+            const QString scopedName = target.scopedParams.value(uniformName).toString();
+            if (!scopedName.isEmpty()) {
+                target.uniforms.insert(scopedName, resolved);
+                broadcastChainScopedParam(graph, passIndex, uniformName, scopedName, m_maxTextureSize);
+            }
         }
     }
-    m_uniformLayoutCache.insert(key, layout);
-    return layout;
 }
 
 void Backend::bindUniformBlock(const CompiledProgram& program, const Pass& pass) {
@@ -2466,6 +2508,7 @@ void Backend::renderInternal(
     std::optional<double> presentationTimestamp) {
     makeOwnedContextCurrent();
     Graph effectiveGraph = graph;
+    resolveFunctionValues(effectiveGraph);
     if (detail::clampGraphVolumeSizes(effectiveGraph, m_maxTextureSize)
         && !m_warnedVolumeClamp) {
         qWarning().noquote()

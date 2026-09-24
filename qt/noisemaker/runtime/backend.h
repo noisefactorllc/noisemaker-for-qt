@@ -266,6 +266,21 @@ public:
     // uniforms. Engine uniforms (time, resolution, ...) always win.
     void setUniform(Graph& graph, const QString& name, const QJsonValue& value);
 
+    // Function-valued params (parameters.h isFunctionValue): an arrow
+    // function or a bare state value such as `time` compiles to an object
+    // that no runtime evaluates. render() binds what the reference demo host
+    // shows after it loads the program. A param with a host control takes
+    // resolveFunctionValue(spec): float and int the spec default (0 if none)
+    // clamped to min/max, int rounded; boolean true; vec2/vec3/vec4/color the
+    // spec default, else zeros. The value also goes to the param's _node_N /
+    // _chain_N variant and every pass that carries it; a pass that inherits
+    // volumeSize takes the emitter's value. A param without a host control
+    // (ui.control false or ui.hidden true) keeps the object, which binds as
+    // 0 (the reference binds NaN: WebGL2 makes it 0 for an int uniform and
+    // NaN for a float). render() changes only its per-frame copy of the
+    // graph and reads each effect definition once per Backend.
+    // applyStepParameterValues and setUniform replace a function value.
+
     // ------------------------------------------------ engine time
     // render(t) takes normalized loop time t in [0, 1). The reference host
     // derives it as (elapsedSeconds % loopDuration) / loopDuration with a
@@ -395,7 +410,9 @@ private:
     GpuSurface& resolveOutputSurface(const Graph& graph, const QString& texId);
     QString currentRenderSurfaceId() const;
     const GpuSurface* currentRenderSurface() const;
+    const QJsonObject& effectDefinition(const QString& ns, const QString& func);
     QJsonObject loadEffectUniformLayout(const QString& ns, const QString& func);
+    void resolveFunctionValues(Graph& graph);
     void uploadMidiNoteGrid();
 
     QOpenGLContext* m_context = nullptr;
@@ -421,7 +438,7 @@ private:
 
     PingPongState m_pingpong;                     // cross-frame ping-pong bookkeeping (pingpong.h)
     QJsonObject m_mergedUniforms;                  // this render()'s graph-wide uniform merge
-    QHash<QString, QJsonObject> m_uniformLayoutCache; // "ns/func" -> effect JSON's uniformLayout ({} if none)
+    QHash<QString, QJsonObject> m_effectDefinitionCache; // "ns/func" -> effect JSON ({} if unreadable)
     struct ExternalTexture {
         unsigned int handle = 0;
         int width = 0;
