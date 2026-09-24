@@ -27,6 +27,7 @@ class QOpenGLFunctions_4_1_Core;
 
 namespace nm {
 
+class AsyncOverlays;
 class EffectRegistry;
 
 // Options for Backend::updateTextureFromSource (reference backend
@@ -95,6 +96,11 @@ public:
     // aspectRatio/renderScale) are recomputed from `t` and `size` on every
     // call. Does not internally loop for settle frames — callers that need
     // N settle iterations call this N times (see nm-render `--frames`).
+    // Before the passes run, render() generates and uploads the CPU overlay
+    // of every asyncInit effect (filter/fibers, filter/scratches,
+    // filter/strayHair) whose seed, density or render size changed since
+    // its last upload, so the first frame already shows the completed
+    // overlay (async_overlay.h).
     void render(const Graph& graph, double t);
     void render(const Graph& graph, double t, double presentationTimestamp);
 
@@ -398,6 +404,7 @@ private:
     QJsonObject m_audioState;
     SinkManager m_sinkManager;
     std::vector<std::weak_ptr<FrameExportQueue>> m_frameExportQueues;
+    std::unique_ptr<AsyncOverlays> m_asyncOverlays; // asyncInit overlay uploads (async_overlay.h)
 };
 
 } // namespace nm

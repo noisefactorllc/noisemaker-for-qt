@@ -1,5 +1,6 @@
 #include "backend.h"
 
+#include "async_overlay.h"
 #include "device_limits.h"
 #include "obj_parser.h"
 #include "parameters.h"
@@ -1227,6 +1228,7 @@ void Backend::releaseGl() {
         }
     }
     m_externalTextures.clear();
+    if (m_asyncOverlays) m_asyncOverlays->clear(); // their textures were external textures
     if (m_midiNoteGridTexture != 0) {
         m_gl->glDeleteTextures(1, &m_midiNoteGridTexture);
         m_midiNoteGridTexture = 0;
@@ -2440,6 +2442,12 @@ void Backend::renderInternal(
     if (deltaTime < 0.0) deltaTime = 1.0 / 60.0 / 10.0;
     m_lastTime = t;
     m_deltaTime = deltaTime;
+
+    // reference Pipeline.initAsyncEffects / checkAsyncRegen: the CPU-traced
+    // overlay textures of asyncInit effects, generated to completion before
+    // the passes that sample them (async_overlay.h explains the choice).
+    if (!m_asyncOverlays) m_asyncOverlays = std::make_unique<AsyncOverlays>();
+    m_asyncOverlays->sync(*this, effectiveGraph, m_size, m_globalUniforms);
 
     m_time = t;
     m_currentRenderSurface = effectiveGraph.renderSurface;

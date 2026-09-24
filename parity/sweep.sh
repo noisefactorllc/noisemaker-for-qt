@@ -171,14 +171,10 @@ tol_for() {
 		mandelbrot)  echo "255 0.93" ;;  # observed max=248 (0.24% px), ssim=0.9342 -- lower SSIM than julia/newton (this repo's single-window global SSIM is more sensitive to a bright boundary trace against a darker field than a proper windowed SSIM would be; pixel-count share is comparable to julia/newton, not larger)
 		# --- Edge-following-angle instability near a Sobel/gradient
 		# near-zero singularity (godot's hatchPencil/strokesSmudge
-		# mechanism; fibers/strayHair/scratches are qt-local names for the
-		# same underlying directional-stroke primitive, re-observed here).
+		# mechanism, re-observed here).
 		hatchPencil|hatchReferenceColoredPencil|hatchReferenceColoredPencilLeftDiag) echo "241.001 0.999" ;; # coloredPencil/pencil stroke-mask step() flips at the atan(grad) singularity; 207-241 px across the 3 modes (0.011-0.017%), ssim>=0.9998
 		strokesReferenceSmudge) echo "65.001 0.999" ;; # same smudge edge-angle instability as strokesSmudge below; 0.92% px, ssim=0.99998
 		strokesSmudge)          echo "57.001 0.999" ;; # 1.17% px (exceeds the family's usual <0.03% ceiling, same as godot's own strokesSmudge note -- flagged, not silently widened), ssim=0.99997
-		fibers)     echo "122.001 0.93" ;;  # 0.24% px, ssim=0.9331 -- same singularity class, lower SSIM for the same global-SSIM-sensitivity reason as mandelbrot above
-		strayHair)  echo "79.001 0.998" ;;  # 0.06% px, ssim=0.99827 -- a handful of sparse stroke-fragment pixels (diff heatmap: one short streak), tightest bar in this class
-		scratches)  echo "147.001 0.75" ;;  # 0.29% px, ssim=0.76117 -- several short diverging stroke fragments (diff heatmap), same mechanism; SSIM outlier flagged explicitly like strokesSmudge, not hidden
 		# --- Kuwahara equal-variance sector-selection tie (godot's oilPaint
 		# mechanism, re-observed here across all 12 mode variants at once:
 		# a sub-ULP cross-GPU rounding difference at a variance tie flips
@@ -268,7 +264,7 @@ tol_for() {
 reason_for() {
 	case "$1" in
 		newton|julia|mandelbrot) echo "iterative escape/root-basin classification is chaotic under cross-backend floating-point rounding at the boundary (diff heatmap traces the set boundary exactly)" ;;
-		hatchPencil|hatchReferenceColoredPencil|hatchReferenceColoredPencilLeftDiag|strokesReferenceSmudge|strokesSmudge|fibers|strayHair|scratches) echo "near-zero Sobel/gradient singularity makes the edge-following stroke angle discontinuous across GPU compilers" ;;
+		hatchPencil|hatchReferenceColoredPencil|hatchReferenceColoredPencilLeftDiag|strokesReferenceSmudge|strokesSmudge) echo "near-zero Sobel/gradient singularity makes the edge-following stroke angle discontinuous across GPU compilers" ;;
 		oilPaint|oilPaintReferenceDaubs|oilPaintFresco|oilPaintReferenceFresco|oilPaintDryBrush|oilPaintReferenceDryBrush|oilPaintSponge|oilPaintReferenceSponge|oilPaintKnife|oilPaintReferenceKnife|oilPaintFacet|oilPaintReferenceFacet) echo "Kuwahara equal-variance sector selection is discontinuous at cross-GPU rounding ties" ;;
 		ditherErrorDiffusion|ditherReferenceErrorDiffusion) echo "Floyd-Steinberg block resimulation cascades an isolated quantization tie" ;;
 		rotate|distortion|refract|lightingRefl|scatterAniso|pondRipplesReferenceAround|tunnel|edge) echo "texture-coordinate boundary ties can select adjacent texels across this GPU vs the reference's ANGLE/WebGL2 path" ;;
