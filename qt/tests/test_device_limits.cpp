@@ -172,8 +172,28 @@ int main(int argc, char** argv) {
                 gl.glGetTexLevelParameteriv(
                     GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &dynInternalFormat);
                 gl.glBindTexture(GL_TEXTURE_2D, 0);
-                check(dynInternalFormat == GL_RGBA16F,
-                      "recreated texture has GL_RGBA16F internal format");
+                // The recreated texture must have the storage this driver
+                // gives any GL_RGBA16F allocation. Apple's Software Renderer
+                // (the GL on GPU-less macOS VMs, e.g. GitHub-hosted runners)
+                // stores and reports GL_RGBA16F as GL_RGBA32F; Apple GPUs
+                // report GL_RGBA16F. A fresh RGBA16F probe texture gives the
+                // expected value, and it may never be less precise.
+                GLuint probe = 0;
+                gl.glGenTextures(1, &probe);
+                gl.glBindTexture(GL_TEXTURE_2D, probe);
+                gl.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 2, 2, 0, GL_RGBA, GL_HALF_FLOAT, nullptr);
+                int probeInternalFormat = 0;
+                gl.glGetTexLevelParameteriv(
+                    GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &probeInternalFormat);
+                gl.glBindTexture(GL_TEXTURE_2D, 0);
+                gl.glDeleteTextures(1, &probe);
+                std::printf("  GL_RENDERER %s: RGBA16F probe reports 0x%04x, recreated texture 0x%04x\n",
+                            reinterpret_cast<const char*>(gl.glGetString(GL_RENDERER)),
+                            probeInternalFormat, dynInternalFormat);
+                check(probeInternalFormat == GL_RGBA16F || probeInternalFormat == GL_RGBA32F,
+                      "the driver stores RGBA16F at half or full float precision");
+                check(dynInternalFormat == probeInternalFormat,
+                      "recreated texture has the driver's RGBA16F storage");
 
                 const nm::GpuSurface& dynThird = cache.get(
                     dynamicGraph, QStringLiteral("dyn"), QSize(2, 2));
