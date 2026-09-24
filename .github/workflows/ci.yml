@@ -129,7 +129,11 @@ jobs:
 
       - name: ctest (macOS)
         if: runner.os == 'macOS'
-        run: ctest --test-dir build --output-on-failure
+        # test_device_limits runs with -V so a passing run still logs
+        # GL_RENDERER and the RGBA16F probe and recreated formats (GAP-021).
+        run: |
+          ctest --test-dir build --output-on-failure -E '^test_device_limits$'
+          ctest --test-dir build --output-on-failure -V -R '^test_device_limits$'
 
   warnings:
     name: warnings-as-errors (${{ matrix.os }})
