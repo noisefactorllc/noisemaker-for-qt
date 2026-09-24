@@ -44,12 +44,21 @@ void fft(std::vector<double>& re, std::vector<double>& im) {
 
 // Web Audio "speakers" down-mix of one interleaved frame to mono, in the
 // operation order of Chromium's AudioBus down-mix: each scaled channel is
-// accumulated with a fused multiply-add (vector_math::Vsma), which is what
-// arm64 Chromium computes (measured by parity/check_audio_analyzer.mjs).
+// accumulated in turn (vector_math::Vsma). Chromium's result differs by
+// architecture, and parity/check_audio_analyzer.mjs measured both:
+//   - arm64 Chromium 151: a fused multiply-add per term;
+//   - x86_64 Chromium 153 (GitHub ubuntu runner): a separate multiply and
+//     add per term (CI run 35970287679 matched the unfused sum).
 // Scales of 0.5 and 0.25 are exact, so only the 5.1 sqrt(0.5) terms depend
-// on the fusion; a non-fused platform differs there by at most one ulp.
+// on this. qt/CMakeLists.txt builds this file with -ffp-contract=off so the
+// unfused path is never contracted into an FMA.
 float accumulate(float sum, float sample, float scale) {
+#if defined(__aarch64__) || defined(_M_ARM64)
     return std::fma(sample, scale, sum);
+#else
+    const float scaled = sample * scale;
+    return sum + scaled;
+#endif
 }
 
 float downMix(const float* frame, int channels) {

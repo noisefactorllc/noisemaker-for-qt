@@ -413,6 +413,32 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: compiler gates and a render fixture.
 - Last verification: 2026-09-24.
 
+### GAP-021: RGBA16F recreation check assumed the driver reports RGBA16F
+
+- Status: open. Priority: P2. Category: verification.
+- Affected scope: qt/tests/test_device_limits.cpp; macOS runners without a GPU.
+- Expected behavior: The test checks that a format change recreates the surface with the driver's storage for the requested format.
+- Observed behavior: CI run 35970287679 (macos-latest) failed "recreated texture has GL_RGBA16F internal format". The test took 78.27 s, which suggests a software renderer.
+- Evidence: A CGL probe on this Mac: Apple M4 reports RGBA16F as 0x881a. The Apple Software Renderer (4.1 APPLE-23.1.1) reports it as 0x8814 (RGBA32F), also after delete and reallocation. This is driver storage, not a SurfaceCache bug.
+- Next action: Confirm the renderer name and the probe value in the next macOS CI log.
+- Dependencies: A pushed CI run.
+- Acceptance criteria: macos-latest test_device_limits passes. The log shows GL_RENDERER and matching probe and recreated formats.
+- Required checks: `gh run view` log of test_device_limits on macos-latest.
+- Last verification: 2026-09-24. Local Apple M4: probe 0x881a, recreated 0x881a, test passes.
+
+### GAP-022: AnalyserNode 5.1 down-mix rounding differs by CPU architecture
+
+- Status: open. Priority: P2. Category: verification.
+- Affected scope: qt/noisemaker/runtime/audio_analyzer.cpp, parity/check_audio_analyzer.mjs.
+- Expected behavior: Time-domain data matches the Chromium on the same architecture exactly, for 5.1 input too.
+- Observed behavior: CI run 35970287679 (ubuntu x86_64, Chromium 153.0.8010.12) failed the surround-5.1 case: 8983 time-domain mismatches, AUDIO_ANALYZER 476/570. At index 914, x86 Chromium gave 0.8555886149406433, the unfused value. arm64 Chromium gives the fused value 0.8555885553359985.
+- Evidence: The down-mix now uses std::fma on arm64 and a separate multiply and add elsewhere. The file builds with -ffp-contract=off. The oracle stays the Chromium running on that machine, with the same tolerance and all 570 reads.
+- Next action: Read the x86 render-smoke log for AUDIO_ANALYZER 570/570.
+- Dependencies: A pushed CI run.
+- Acceptance criteria: 570/570 on arm64 (local) and on x86_64 (CI), with the tolerances unchanged.
+- Required checks: check_audio_analyzer.mjs on both architectures.
+- Last verification: 2026-09-24. arm64 local: 570/570, 0 time-domain mismatches. x86_64 unverified.
+
 ## 5. Ordered next actions
 
 1. Resolve authority identities for GAP-001. Retain earlier denominators, goldens, tolerances, and exclusions.

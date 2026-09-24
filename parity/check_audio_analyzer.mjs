@@ -134,7 +134,7 @@ try {
         }, c)
         oracle.push({ name: c.name, reads: result })
     }
-    console.log(`[INFO] oracle: ${await browser.version()}`)
+    console.log(`[INFO] oracle: Chromium ${await browser.version()} on ${process.platform}-${process.arch}`)
 } finally {
     await browser.close()
 }
