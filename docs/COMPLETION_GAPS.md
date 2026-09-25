@@ -80,7 +80,7 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/, qt/tests/, examples/viewer/, parity/, STATUS.md
 - Expected behavior: Reproducible evidence binds each supported claim to the port and authority revisions.
-- Observed behavior: At reference 30c47030 the macOS ledger grades 360 of 360: 316 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (7 function-value fixtures added by GAP-039; the other 353 rows unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there. All 44 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
+- Observed behavior: At reference 30c47030 the macOS ledger grades 361 of 361: 316 PASS, 45 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (GAP-039 added 7 function-value fixtures and GAP-042 agentsPointsState256; the earlier rows are unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there. All 45 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
 - Evidence: [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) and section 3.
 - Next action: Keep the 44 macOS tol_for() entries with their mechanism: the port cannot change its byte-identical shaders to match ANGLE's compiler. The llvmpipe job is the exact-parity check on every push that touches qt/, parity/, tools/, or STATUS.md.
 - Dependencies: None.
@@ -678,14 +678,14 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-042: pointsEmit with an explicit stateSize fails strict parity
 
-- Status: open. Priority: P2. Category: implementation.
+- Status: closed. Priority: P2. Category: implementation.
 - Affected scope: render/pointsEmit and its consumers (agentsPoints); nm::Backend points state sizing.
 - Expected behavior: `pointsEmit(stateSize: x256)` renders as the reference renders it.
-- Observed behavior: agentsPoints.dsl with `pointsEmit(stateSize: x256)` fails the strict tolerance: 5 pixels, max 132, SSIM 0.9999. The golden is the same from a batch and a single mint. The committed fixture, with the default stateSize, passes.
-- Evidence: Found while building GAP-039's node-scoped fixture, macOS arm64, reference 30c47030, 2026-09-24. It fails the same way with a plain value, so it is not a function-value effect.
-- Next action: Add the variant as a fixture and find the mechanism: trace the 5 pixels to their agents, and compare the state textures of both engines at each frame.
+- Observed behavior: agentsPoints with `pointsEmit(stateSize: x256)` differs from the reference on macOS in 5 of 65536 pixels (max 132, SSIM 0.9999), also at a 512x512 canvas (max 92): one or two agents of the chaotic flow land a pixel apart after 8 frames. x512 and x1024 are bit-exact. On Linux llvmpipe, where the reference and the port share Mesa's GLSL compiler, the fixture is bit-exact, so this is the macOS compiler effect of the other NEAR entries, not a port defect.
+- Evidence: Fixture parity/programs/agentsPointsState256.dsl (d0b502a). llvmpipe CI run 36077644490: PASS max 0.000, ssim 1.00000; that sweep 361/361. macOS sweep: NEAR at tol_for 132.001/0.999 with the mechanism recorded in parity/sweep.sh. Reference 30c47030.
+- Next action: None.
 - Dependencies: None.
-- Acceptance criteria: The variant passes at 2.001/0.98 against reference goldens, or its mechanism is recorded with evidence.
+- Acceptance criteria: The variant passes at 2.001/0.98 against same-compiler reference goldens, and any macOS tolerance entry records the mechanism with that evidence.
 - Required checks: parity/run.sh on the new fixture; the full sweep.
 - Last verification: 2026-09-24.
 
@@ -704,11 +704,10 @@ These entries record missing qualification. They do not infer implementation def
 
 ## 5. Ordered next actions
 
-1. Done: GAP-001's NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values.
+1. Done: GAP-001's NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-042 (a macOS compiler effect).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. GAP-042: pointsEmit with an explicit stateSize (5 px, max 132).
-4. GAP-027: generic font families. GAP-041: batch-mint program state. GAP-043: hidden float function values.
-5. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
+3. GAP-027: generic font families. GAP-041: batch-mint program state. GAP-043: hidden float function values.
+4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 

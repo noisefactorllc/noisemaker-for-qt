@@ -40,6 +40,26 @@
     }
   },
   {
+    "program": "agentsPointsState256",
+    "effect": "filter/pointsRender",
+    "mode": "density: 100, intensity: 74.59, inputIntensity: 21.46",
+    "golden": "parity/out/agentsPointsState256.golden.png",
+    "candidate": "parity/out/agentsPointsState256.candidate.png",
+    "verdict": "NEAR",
+    "max_abs_diff": 132.0,
+    "mean_abs_diff": 0.001995086669921875,
+    "ssim": 0.9999036192893982,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 132.001,
+      "ssim_min": 0.999,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "a chaotic agent flow moves one or two of 65536 agents by a pixel after 8 frames under cross-compiler rounding; bit-exact on llvmpipe"
+    }
+  },
+  {
     "program": "alphaMask",
     "effect": "filter/alphaMask",
     "mode": "tex: o0",

@@ -165,8 +165,8 @@ defer_reason() {
 # Every loosening below is a macOS-only compiler effect: the goldens go
 # through ANGLE's GLSL-to-Metal translation and the candidates through
 # Apple's GL compiler on the same GPU. On Linux llvmpipe, where Chromium's
-# ANGLE GL and nm-render share Mesa's compiler, all 44 of these fixtures
-# are bit-exact (parity-llvmpipe.yml, CI run 36055292025).
+# ANGLE GL and nm-render share Mesa's compiler, all 45 of these fixtures
+# are bit-exact (parity-llvmpipe.yml, CI runs 36055292025 and 36077644490).
 tol_for() {
 	case "$1" in
 		# --- Fractal basin/escape-boundary chaos (godot's newton mechanism,
@@ -269,6 +269,11 @@ tol_for() {
 		# surface), this is an ordinary sparse boundary tie like the classes
 		# above, not a whole-image divergence.
 		convolutionFeedback) echo "9.001 0.999" ;; # 0.35% px, ssim=1.00000
+		# --- Chaotic agent flow at stateSize x256 (GAP-042). One or two of
+		# the 65536 agents of `flow(behavior: chaotic)` land a pixel apart
+		# after 8 frames; x512 and x1024 are bit-exact. Bit-exact on llvmpipe
+		# (parity-llvmpipe.yml, CI run 36077644490), so a macOS compiler effect.
+		agentsPointsState256) echo "132.001 0.999" ;; # 5/65536 px (0.0076%), max 132, ssim=0.99990
 		*)      echo "2.001 0.98" ;;  # 2.001 = epsilon-tolerant "<=2" (compare.py float round-trip)
 	esac
 }
@@ -285,6 +290,7 @@ reason_for() {
 		unsharpMask) echo "separable Gaussian subtraction and rescaling amplify isolated sub-LSB residuals" ;;
 		median) echo "quickselect can choose a different equal-valued candidate at packed comparison ties (task-T5-report.md Episode 4: noise() 1-ULP input)" ;;
 		step) echo "step() threshold tie flips at a near-boundary input value" ;;
+		agentsPointsState256) echo "a chaotic agent flow moves one or two of 65536 agents by a pixel after 8 frames under cross-compiler rounding; bit-exact on llvmpipe" ;;
 		heightmap3d_landscape) echo "isometric voxel DDA: the ray origin lies 0.49 ulp from a voxel-edge tie, so the shader compiler's association of the origin sum selects one of two adjacent voxels" ;;
 		*) echo "strict RGBA8 float round-trip allowance" ;;
 	esac
