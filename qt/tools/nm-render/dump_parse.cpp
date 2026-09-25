@@ -37,6 +37,27 @@ QString findValue(const QStringList& args, const QString& flag) {
     return args.at(idx + 1);
 }
 
+static QJsonValue stripNonEnumerable(const QJsonValue& val) {
+    if (val.isObject()) {
+        const QJsonObject in = val.toObject();
+        QJsonObject res;
+        for (auto it = in.begin(); it != in.end(); ++it) {
+            if (it.key() == QStringLiteral("subchainArgumentDiagnostics")) continue;
+            res.insert(it.key(), stripNonEnumerable(it.value()));
+        }
+        return res;
+    }
+    if (val.isArray()) {
+        const QJsonArray in = val.toArray();
+        QJsonArray res;
+        for (const QJsonValue& v : in) {
+            res.append(stripNonEnumerable(v));
+        }
+        return res;
+    }
+    return val;
+}
+
 int handleDumpAst(const QStringList& args) {
     const QString path = findValue(args, QStringLiteral("--dump-ast"));
     if (path.isEmpty()) {
@@ -56,7 +77,7 @@ int handleDumpAst(const QStringList& args) {
         const QJsonArray tokens = nm::lex(src);
         const QJsonObject ast = nm::parse(tokens);
         out.insert(QStringLiteral("ok"), true);
-        out.insert(QStringLiteral("ast"), ast);
+        out.insert(QStringLiteral("ast"), stripNonEnumerable(ast).toObject());
     } catch (const nm::DslSyntaxError& e) {
         out.insert(QStringLiteral("ok"), false);
         out.insert(QStringLiteral("error"), e.message());

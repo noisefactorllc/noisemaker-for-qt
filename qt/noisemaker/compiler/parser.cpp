@@ -149,13 +149,15 @@ int hexPairToInt(const QString& pair) {
 
 class Parser {
 public:
-    explicit Parser(QVector<Token> tokens) : tokens_(std::move(tokens)) {}
+    explicit Parser(QVector<Token> tokens, bool strictSubchainArguments = false)
+        : tokens_(std::move(tokens)), strictSubchainArguments_(strictSubchainArguments) {}
 
     QJsonObject parseProgram();
 
 private:
     QVector<Token> tokens_;
     int current_ = 0;
+    bool strictSubchainArguments_ = false;
 
     // Track the search order for the program (set by the search
     // directive -- REQUIRED). hasSearch_ mirrors the reference's
@@ -184,7 +186,8 @@ private:
     static DslSyntaxError makeParserError(const QString& code, const QString& message,
                                          int line = -1, int col = -1,
                                          bool hasLine = false, bool hasCol = false,
-                                         const QJsonObject& pos = QJsonObject()) {
+                                         const QJsonObject& pos = QJsonObject(),
+                                         const QString& severityOverride = QString()) {
         bool hasPosition = false;
         int pLine = 0, pCol = 0, pStart = -1, pEnd = -1;
         if (!pos.isEmpty()) {
@@ -207,7 +210,8 @@ private:
         QJsonObject diagnostic;
         diagnostic.insert(QStringLiteral("code"), code);
         diagnostic.insert(QStringLiteral("stage"), diagStage(code));
-        diagnostic.insert(QStringLiteral("severity"), diagSeverity(code));
+        const QString severity = severityOverride.isEmpty() ? diagSeverity(code) : severityOverride;
+        diagnostic.insert(QStringLiteral("severity"), severity);
         diagnostic.insert(QStringLiteral("message"), message);
         if (hasPosition) {
             QJsonObject loc;
@@ -236,7 +240,8 @@ private:
         return DslSyntaxError(message, errLine, errCol, diagnostic);
     }
 
-    DslSyntaxError parserError(const QString& code, const QString& message, const Token& t) const {
+    DslSyntaxError parserError(const QString& code, const QString& message, const Token& t,
+                               const QString& severityOverride = QString()) const {
         QJsonObject pos;
         if (t.hasPosition) {
             pos.insert(QStringLiteral("line"), t.posLine);
@@ -246,7 +251,7 @@ private:
         }
         const bool hasLine = (t.line > 0 && (t.rawLine.isEmpty() || t.hasLine));
         const bool hasCol = (t.col > 0 && (t.rawCol.isEmpty() || t.hasCol));
-        return makeParserError(code, message, t.line, t.col, hasLine, hasCol, pos);
+        return makeParserError(code, message, t.line, t.col, hasLine, hasCol, pos, severityOverride);
     }
 
     DslSyntaxError parserErrorAt(const QString& code, const QString& core, const Token& t, const QString& suffix = QString()) const {
@@ -723,6 +728,40 @@ QJsonObject Parser::parseSubchainCall() {
     advance(); // consume 'subchain'
     expect(TokenType::LPAREN, QStringLiteral("Expect '(' after subchain"));
 
+    // Machine-readable subchain-argument reports. Order follows the
+    // offending token in the source. Default mode collects them onto the
+    // Subchain node as non-enumerable metadata (surfaced by validate());
+    // strict mode throws with the same codes.
+    QJsonArray argDiagnostics;
+    auto reportArgIssue = [&](const QString& code, const QString& message, const Token& token) {
+        if (strictSubchainArguments_) {
+            throw parserError(code, message, token, QStringLiteral("error"));
+        }
+        QJsonObject report;
+        report.insert(QStringLiteral("code"), code);
+        report.insert(QStringLiteral("message"), message);
+        report.insert(QStringLiteral("severity"), diagSeverity(code));
+        if (token.hasPosition) {
+            QJsonObject loc;
+            loc.insert(QStringLiteral("line"), token.posLine);
+            loc.insert(QStringLiteral("column"), token.posColumn);
+            report.insert(QStringLiteral("location"), loc);
+
+            QJsonObject span;
+            span.insert(QStringLiteral("start"), token.posStart);
+            span.insert(QStringLiteral("end"), token.posEnd);
+            report.insert(QStringLiteral("span"), span);
+        } else if (token.line > 0 && token.col > 0 && (token.rawLine.isEmpty() || token.hasLine) && (token.rawCol.isEmpty() || token.hasCol)) {
+            QJsonObject loc;
+            loc.insert(QStringLiteral("line"), token.line);
+            loc.insert(QStringLiteral("column"), token.col);
+            report.insert(QStringLiteral("location"), loc);
+        }
+        argDiagnostics.append(report);
+    };
+
+    static const QStringList subchainKeys = { QStringLiteral("name"), QStringLiteral("id") };
+
     // key -> {type:'String', value:...}; ANY identifier key is syntactically
     // accepted here (matches the reference), but only "name"/"id" are ever
     // read back below -- everything else is silently discarded.
@@ -741,17 +780,40 @@ QJsonObject Parser::parseSubchainCall() {
         } else if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
             // Keyword arguments: subchain(name: "...", id: "...")
             while (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
-                const QString key = advance().lexeme;
+                const Token keyToken = advance();
+                const QString key = keyToken.lexeme;
                 advance(); // consume ':'
                 if (peek().type != TokenType::STRING) {
                     throw parserErrorAt(QStringLiteral("P006"), QStringLiteral("Expected string value for subchain %1").arg(key),
                                         peek());
                 }
+                const QString value = advance().lexeme;
+                if (!subchainKeys.contains(key)) {
+                    reportArgIssue(
+                        QStringLiteral("P008"),
+                        QStringLiteral("Unknown subchain argument '%1' at line %2 col %3. Valid keys: name, id. The value is discarded.")
+                            .arg(key).arg(keyToken.line).arg(keyToken.col),
+                        keyToken);
+                } else if (kwargs.contains(key)) {
+                    reportArgIssue(
+                        QStringLiteral("P009"),
+                        QStringLiteral("Duplicate subchain argument '%1' at line %2 col %3. The last value wins.")
+                            .arg(key).arg(keyToken.line).arg(keyToken.col),
+                        keyToken);
+                }
                 QJsonObject val;
                 val.insert(QStringLiteral("type"), NodeKind::String);
-                val.insert(QStringLiteral("value"), advance().lexeme);
+                val.insert(QStringLiteral("value"), value);
                 kwargs.insert(key, val);
-                if (peek().type == TokenType::COMMA) advance();
+                if (peek().type == TokenType::COMMA) {
+                    advance(); // consume ','
+                } else if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
+                    reportArgIssue(
+                        QStringLiteral("P010"),
+                        QStringLiteral("Missing ',' between subchain arguments at line %1 col %2")
+                            .arg(peek().line).arg(peek().col),
+                        peek());
+                }
             }
         }
     }
@@ -796,6 +858,9 @@ QJsonObject Parser::parseSubchainCall() {
     node.insert(QStringLiteral("id"), resolveFalsyStringOrNull(QStringLiteral("id")));
     node.insert(QStringLiteral("body"), body);
     node.insert(QStringLiteral("loc"), ast::loc(nameToken.line, nameToken.col));
+    if (!argDiagnostics.isEmpty()) {
+        node.insert(QStringLiteral("subchainArgumentDiagnostics"), argDiagnostics);
+    }
     return node;
 }
 
@@ -1533,13 +1598,14 @@ QJsonObject Parser::parsePrimary() {
 
 } // namespace
 
-QJsonObject parse(const QJsonArray& tokens) {
+QJsonObject parse(const QJsonArray& tokens, const QJsonObject& options) {
     QVector<Token> tokenVec;
     tokenVec.reserve(tokens.size());
     for (const QJsonValue& v : tokens) {
         tokenVec.push_back(tokenFromJson(v.toObject()));
     }
-    Parser parser(std::move(tokenVec));
+    const bool strictSubchain = options.value(QStringLiteral("subchainArguments")).toString() == QStringLiteral("strict");
+    Parser parser(std::move(tokenVec), strictSubchain);
     return parser.parseProgram();
 }
 

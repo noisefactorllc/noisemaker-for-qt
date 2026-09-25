@@ -1079,6 +1079,158 @@ int main() {
         check(caught, "throws P001 for array coerced to number");
     }
 
+    // GAP-027 subchain argument validation test suite
+    {
+        // 1. Default parse accepts unknown subchain key without altering AST and attaches P008 report
+        {
+            const QString src = QStringLiteral("search synth\nnoise().subchain(nme: \"typo\", name: \"ok\") {\n.bloom()\n}.write(o0)\n");
+            const QJsonObject prog = parseSrc(src);
+            const QJsonArray plans = prog.value(QStringLiteral("plans")).toArray();
+            const QJsonArray chain = plans.at(0).toObject().value(QStringLiteral("chain")).toArray();
+            const QJsonObject subchain = chain.at(1).toObject();
+            check(subchain.value(QStringLiteral("type")).toString() == QStringLiteral("Subchain"), "chain[1] is Subchain");
+            check(subchain.value(QStringLiteral("name")).toString() == QStringLiteral("ok"), "subchain name is 'ok'");
+            check(subchain.value(QStringLiteral("id")).isNull(), "subchain id is null");
+            const QJsonArray diags = subchain.value(QStringLiteral("subchainArgumentDiagnostics")).toArray();
+            check(diags.size() == 1, "subchain has 1 arg diagnostic");
+            const QJsonObject d0 = diags.at(0).toObject();
+            check(d0.value(QStringLiteral("code")).toString() == QStringLiteral("P008"), "diag code is P008");
+            check(d0.value(QStringLiteral("severity")).toString() == QStringLiteral("warning"), "P008 severity is warning");
+            check(d0.value(QStringLiteral("message")).toString().contains(QStringLiteral("nme")), "P008 message mentions 'nme'");
+            const QJsonObject loc = d0.value(QStringLiteral("location")).toObject();
+            check(loc.value(QStringLiteral("line")).toInt() == 2, "P008 location line 2");
+            const QJsonObject span = d0.value(QStringLiteral("span")).toObject();
+            check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")), "P008 span attached");
+        }
+
+        // 2. Default parse reports duplicate key with last value winning (P009)
+        {
+            const QString src = QStringLiteral("search synth\nnoise().subchain(name: \"first\", name: \"second\") {\n.bloom()\n}.write(o0)\n");
+            const QJsonObject prog = parseSrc(src);
+            const QJsonArray plans = prog.value(QStringLiteral("plans")).toArray();
+            const QJsonObject subchain = plans.at(0).toObject().value(QStringLiteral("chain")).toArray().at(1).toObject();
+            check(subchain.value(QStringLiteral("name")).toString() == QStringLiteral("second"), "last value wins for name: 'second'");
+            const QJsonArray diags = subchain.value(QStringLiteral("subchainArgumentDiagnostics")).toArray();
+            check(diags.size() == 1, "subchain has 1 duplicate key diagnostic");
+            const QJsonObject d0 = diags.at(0).toObject();
+            check(d0.value(QStringLiteral("code")).toString() == QStringLiteral("P009"), "diag code is P009");
+            check(d0.value(QStringLiteral("severity")).toString() == QStringLiteral("warning"), "P009 severity is warning");
+            check(d0.value(QStringLiteral("message")).toString().contains(QStringLiteral("name")), "P009 message mentions 'name'");
+        }
+
+        // 3. Default parse reports missing comma separator (P010)
+        {
+            const QString src = QStringLiteral("search synth\nnoise().subchain(name: \"a\" id: \"b\") {\n.bloom()\n}.write(o0)\n");
+            const QJsonObject prog = parseSrc(src);
+            const QJsonArray plans = prog.value(QStringLiteral("plans")).toArray();
+            const QJsonObject subchain = plans.at(0).toObject().value(QStringLiteral("chain")).toArray().at(1).toObject();
+            check(subchain.value(QStringLiteral("name")).toString() == QStringLiteral("a"), "subchain name is 'a'");
+            check(subchain.value(QStringLiteral("id")).toString() == QStringLiteral("b"), "subchain id is 'b'");
+            const QJsonArray diags = subchain.value(QStringLiteral("subchainArgumentDiagnostics")).toArray();
+            check(diags.size() == 1, "subchain has 1 missing separator diagnostic");
+            const QJsonObject d0 = diags.at(0).toObject();
+            check(d0.value(QStringLiteral("code")).toString() == QStringLiteral("P010"), "diag code is P010");
+            check(d0.value(QStringLiteral("severity")).toString() == QStringLiteral("warning"), "P010 severity is warning");
+        }
+
+        // 4. Co-occurring violations are reported in source order: P008, P010, P009
+        {
+            const QString src = QStringLiteral("search synth\nnoise().subchain(nme: \"x\", name: \"a\" name: \"b\") {\n.bloom()\n}.write(o0)\n");
+            const QJsonObject prog = parseSrc(src);
+            const QJsonArray plans = prog.value(QStringLiteral("plans")).toArray();
+            const QJsonObject subchain = plans.at(0).toObject().value(QStringLiteral("chain")).toArray().at(1).toObject();
+            const QJsonArray diags = subchain.value(QStringLiteral("subchainArgumentDiagnostics")).toArray();
+            check(diags.size() == 3, "co-occurring violations report 3 diagnostics");
+            check(diags.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("P008"), "diag[0] is P008");
+            check(diags.at(1).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("P010"), "diag[1] is P010");
+            check(diags.at(2).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("P009"), "diag[2] is P009");
+        }
+
+        // 5. Repeated unknown keys report P008 once per occurrence and never P009
+        {
+            const QString src = QStringLiteral("search synth\nnoise().subchain(nme: \"x\", nme: \"y\", name: \"ok\") {\n.bloom()\n}.write(o0)\n");
+            const QJsonObject prog = parseSrc(src);
+            const QJsonArray plans = prog.value(QStringLiteral("plans")).toArray();
+            const QJsonObject subchain = plans.at(0).toObject().value(QStringLiteral("chain")).toArray().at(1).toObject();
+            const QJsonArray diags = subchain.value(QStringLiteral("subchainArgumentDiagnostics")).toArray();
+            check(diags.size() == 2, "repeated unknown key reports 2 diagnostics");
+            check(diags.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("P008"), "diag[0] is P008");
+            check(diags.at(1).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("P008"), "diag[1] is P008");
+        }
+
+        // 6. Strict mode rejects unknown subchain key with P008
+        {
+            QJsonObject opts;
+            opts.insert(QStringLiteral("subchainArguments"), QStringLiteral("strict"));
+            bool caught = false;
+            try {
+                nm::parse(nm::lex(QStringLiteral("search synth\nnoise().subchain(nme: \"typo\", name: \"ok\") {\n.bloom()\n}.write(o0)\n")), opts);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P008"), "strict unknown key emits P008");
+                check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"), "P008 stage parser");
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"), "P008 strict severity error");
+                check(d.value(QStringLiteral("message")).toString().contains(QStringLiteral("nme")), "P008 mentions 'nme'");
+                check(d.value(QStringLiteral("span")).toObject().contains(QStringLiteral("start")), "P008 strict has span");
+            }
+            check(caught, "strict mode throws for unknown subchain key");
+        }
+
+        // 7. Strict mode rejects duplicate subchain key with P009
+        {
+            QJsonObject opts;
+            opts.insert(QStringLiteral("subchainArguments"), QStringLiteral("strict"));
+            bool caught = false;
+            try {
+                nm::parse(nm::lex(QStringLiteral("search synth\nnoise().subchain(name: \"a\", name: \"b\") {\n.bloom()\n}.write(o0)\n")), opts);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P009"), "strict duplicate key emits P009");
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"), "P009 strict severity error");
+            }
+            check(caught, "strict mode throws for duplicate subchain key");
+        }
+
+        // 8. Strict mode rejects missing separator with P010
+        {
+            QJsonObject opts;
+            opts.insert(QStringLiteral("subchainArguments"), QStringLiteral("strict"));
+            bool caught = false;
+            try {
+                nm::parse(nm::lex(QStringLiteral("search synth\nnoise().subchain(name: \"a\" id: \"b\") {\n.bloom()\n}.write(o0)\n")), opts);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                const QJsonObject d = err.diagnostic();
+                check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P010"), "strict missing separator emits P010");
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"), "P010 strict severity error");
+            }
+            check(caught, "strict mode throws for missing separator");
+        }
+
+        // 9. Caller-supplied mock tokens without positions preserve location without span
+        {
+            QJsonArray tokens = nm::lex(QStringLiteral("search synth\nnoise().subchain(nme: \"typo\") {\n.bloom()\n}.write(o0)\n"));
+            // Strip position from the tokens
+            QJsonArray stripped;
+            for (const QJsonValue& v : tokens) {
+                QJsonObject obj = v.toObject();
+                obj.remove(QStringLiteral("position"));
+                stripped.append(obj);
+            }
+            const QJsonObject prog = nm::parse(stripped);
+            const QJsonArray plans = prog.value(QStringLiteral("plans")).toArray();
+            const QJsonObject subchain = plans.at(0).toObject().value(QStringLiteral("chain")).toArray().at(1).toObject();
+            const QJsonArray diags = subchain.value(QStringLiteral("subchainArgumentDiagnostics")).toArray();
+            check(diags.size() == 1, "mock tokens emit 1 arg diagnostic");
+            const QJsonObject d0 = diags.at(0).toObject();
+            check(d0.value(QStringLiteral("code")).toString() == QStringLiteral("P008"), "mock token diag code is P008");
+            check(d0.contains(QStringLiteral("location")), "mock token diag has location");
+            check(!d0.contains(QStringLiteral("span")), "mock token diag does NOT have span");
+        }
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_parser)\n");
         return 0;

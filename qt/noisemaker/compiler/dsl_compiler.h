@@ -81,17 +81,19 @@ QString hashSource(const QString& source);
 // / ERR_EXPANSION_FAILED (expand() returned errors); nm::DslSyntaxError /
 // nm::UnsupportedDsl propagate unchanged from the lex/parse/validate/
 // expand stages.
-QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry);
+QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry,
+                             const QJsonObject& options = QJsonObject());
 
 // compileGraphJson() then nm::Graph::fromJson() on the serialized bytes —
 // see file header for why this guarantees --dsl/--graph byte-identity.
-nm::Graph compileGraph(const QString& source, EffectRegistry& registry);
+nm::Graph compileGraph(const QString& source, EffectRegistry& registry,
+                       const QJsonObject& options = QJsonObject());
 
 // Task-brief-literal signature (loads a fresh EffectRegistry from
 // EffectRegistry::defaultDataRoot() internally — the SAME per-invocation-
 // process pattern every other dump_*.cpp tool in this repo already uses;
 // nm-render is always invoked from the repo root by the driving
 // parity/*.mjs scripts / this task's --dsl flag).
-nm::Graph compileGraph(const QString& source);
+nm::Graph compileGraph(const QString& source, const QJsonObject& options = QJsonObject());
 
 } // namespace nm

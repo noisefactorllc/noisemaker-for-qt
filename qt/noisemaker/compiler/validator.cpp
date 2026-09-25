@@ -1126,6 +1126,26 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
         // subchain() -- first-class grouping bracket. NOTE: no
         // "iterations" field anywhere (see file header).
         if (ot == NodeKind::Subchain) {
+            // Surface parser-attached subchain-argument reports
+            // (GAP-027) once per subchain node, in source order.
+            const QJsonValue argDiagsVal = original.value(QStringLiteral("subchainArgumentDiagnostics"));
+            if (argDiagsVal.isArray()) {
+                const QJsonArray argDiags = argDiagsVal.toArray();
+                for (const QJsonValue& dv : argDiags) {
+                    if (!dv.isObject()) continue;
+                    const QJsonObject rep = dv.toObject();
+                    QJsonObject diag;
+                    diag.insert(QStringLiteral("code"), rep.value(QStringLiteral("code")));
+                    diag.insert(QStringLiteral("message"), rep.value(QStringLiteral("message")));
+                    diag.insert(QStringLiteral("severity"), rep.value(QStringLiteral("severity")));
+                    diag.insert(QStringLiteral("nodeId"), original.value(QStringLiteral("id")));
+                    if (rep.contains(QStringLiteral("location"))) {
+                        diag.insert(QStringLiteral("location"), rep.value(QStringLiteral("location")));
+                    }
+                    diagnostics_.append(diag);
+                }
+            }
+
             if (current == -1) {
                 pushDiag(QStringLiteral("S005"), originalVal, QStringLiteral("subchain() requires an input - cannot be first in chain"));
                 continue;

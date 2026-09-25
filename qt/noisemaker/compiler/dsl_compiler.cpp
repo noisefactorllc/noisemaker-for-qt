@@ -317,9 +317,10 @@ QString hashSource(const QString& source) {
     return toBase36(static_cast<int32_t>(hash));
 }
 
-QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry) {
+QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry,
+                             const QJsonObject& options) {
     const QJsonArray tokens = nm::lex(source);
-    const QJsonObject ast = nm::parse(tokens);
+    const QJsonObject ast = nm::parse(tokens, options);
     const QJsonObject validated = nm::validate(ast, registry);
 
     const QJsonArray diagnostics = validated.value(QStringLiteral("diagnostics")).toArray();
@@ -357,16 +358,17 @@ QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry) {
                            expanded.programs, registry.defineMap());
 }
 
-nm::Graph compileGraph(const QString& source, EffectRegistry& registry) {
-    const QJsonObject graphJson = compileGraphJson(source, registry);
+nm::Graph compileGraph(const QString& source, EffectRegistry& registry,
+                       const QJsonObject& options) {
+    const QJsonObject graphJson = compileGraphJson(source, registry, options);
     const QJsonDocument doc(graphJson);
     return nm::Graph::fromJson(doc.toJson(QJsonDocument::Compact));
 }
 
-nm::Graph compileGraph(const QString& source) {
+nm::Graph compileGraph(const QString& source, const QJsonObject& options) {
     EffectRegistry registry;
     registry.loadAll(EffectRegistry::defaultDataRoot());
-    return compileGraph(source, registry);
+    return compileGraph(source, registry, options);
 }
 
 } // namespace nm

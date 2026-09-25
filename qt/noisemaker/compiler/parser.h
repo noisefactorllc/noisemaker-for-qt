@@ -16,6 +16,6 @@ namespace nm {
 // (QJsonObject, same node `type` strings as the reference parser.js).
 // Throws nm::DslSyntaxError on malformed input, exactly where the
 // reference throws.
-QJsonObject parse(const QJsonArray& tokens);
+QJsonObject parse(const QJsonArray& tokens, const QJsonObject& options = QJsonObject());
 
 } // namespace nm

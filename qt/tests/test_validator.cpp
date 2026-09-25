@@ -25,6 +25,7 @@
 
 #include "../noisemaker/compiler/ast.h"
 #include "../noisemaker/compiler/diagnostics.h"
+#include "../noisemaker/compiler/dsl_compiler.h"
 #include "../noisemaker/compiler/effect_registry.h"
 #include "../noisemaker/compiler/lexer.h"
 #include "../noisemaker/compiler/parser.h"
@@ -724,6 +725,43 @@ int main() {
             "search synth\nlet c = #ff8800\nnoise(octaves: c.value.size).write(o0)\nrender(o0)\n"));
         check(diags(missing).size() == 1 && diags(missing).first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S001"),
               "an array has no own `size`: S001, as before");
+    }
+
+    // GAP-027 subchain argument reports surfaced by validate()
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth\nnoise().subchain(nme: \"typo\", name: \"ok\") {\n.bloom()\n}.write(o0)\nrender(o0)\n"));
+        const QJsonArray ds = diags(out);
+        bool foundP008 = false;
+        for (const QJsonValue& dv : ds) {
+            const QJsonObject d = dv.toObject();
+            if (d.value(QStringLiteral("code")).toString() == QStringLiteral("P008")) {
+                foundP008 = true;
+                check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("warning"), "surfaced P008 severity is warning");
+                check(d.contains(QStringLiteral("nodeId")), "surfaced P008 contains nodeId");
+                check(d.value(QStringLiteral("nodeId")).isNull(), "surfaced P008 nodeId is null");
+                check(d.value(QStringLiteral("message")).toString().contains(QStringLiteral("nme")), "surfaced P008 message mentions 'nme'");
+                check(d.contains(QStringLiteral("location")), "surfaced P008 contains location");
+                const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                check(loc.value(QStringLiteral("line")).toInt() == 2, "surfaced P008 location line is 2");
+            }
+        }
+        check(foundP008, "validate() surfaces P008 diagnostic from Subchain node");
+
+        // Strict compile rejects unknown subchain key through compileGraphJson
+        {
+            QJsonObject opts;
+            opts.insert(QStringLiteral("subchainArguments"), QStringLiteral("strict"));
+            bool caught = false;
+            try {
+                nm::compileGraphJson(QStringLiteral("search synth\nnoise().subchain(nme: \"typo\") {\n.bloom()\n}.write(o0)\nrender(o0)\n"), registry(), opts);
+            } catch (const nm::DslSyntaxError& err) {
+                caught = true;
+                check(err.diagnostic().value(QStringLiteral("code")).toString() == QStringLiteral("P008"),
+                      "compileGraphJson strict unknown key emits P008");
+            }
+            check(caught, "compileGraphJson in strict mode throws for unknown subchain key");
+        }
     }
 
     if (g_failures == 0) {
