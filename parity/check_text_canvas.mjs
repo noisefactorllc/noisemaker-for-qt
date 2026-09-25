@@ -15,7 +15,7 @@
 //   ink bounding box (alpha > 0)       each edge within 5 px
 //   total ink coverage, qt / chrome    0.70 .. 1.05
 //   fill colour where both alpha 255   exact
-//   face, generic family cases         the declared PostScript name, both sides
+//   face, family cases                 the declared PostScript name, both sides
 // Runs: each image's alpha is projected onto the rotated text direction
 // through the text origin, in 1 px bins; a run is a stretch of bins with ink
 // in either image, so both images are cut at the same places. For one line
@@ -49,12 +49,16 @@
 // subpixel rendering but not positioning (ui/gfx/font_render_params_linux.cc,
 // ui/gfx/linux/fontconfig_util.cc).
 //
-// Generic families (GAP-027). Six cases draw with the CSS generic families.
-// Each side reports the face it drew with: Chromium through DevTools
-// CSS.getPlatformFontsForNode for an element with the same font and text,
-// the candidate through text_texture_dump's <case>.face. Both must be the
-// face GENERIC_FACES declares for the platform, by PostScript name, so a
-// missing font fails its case even where both sides fall back alike.
+// Font families (GAP-027, GAP-044, GAP-045). Twelve cases draw with other
+// families than Nunito: the six CSS generic families; ui-serif,
+// ui-sans-serif, ui-monospace and ui-rounded, which Chromium 153 looks up
+// as ordinary names; a family no platform has (Nmqt Absent Family); and a
+// family each platform has (NAMED_FAMILY). Each side reports the face it
+// drew with: Chromium through DevTools CSS.getPlatformFontsForNode for an
+// element with the same font and text, the candidate through
+// text_texture_dump's <case>.face. Both must be the face DECLARED_FACES
+// declares for the platform, by PostScript name, so a missing font fails
+// its case even where both sides fall back alike.
 // Playwright gives headless Chromium generic families of its own
 // (defaultFontFamilies.ts, applied when the user agent contains "Headless"):
 // monospace is Courier on macOS, where Chromium's preferences
@@ -71,14 +75,17 @@
 //     sans, DejaVu Sans. Comic Sans MS and Impact are not installed, so
 //     cursive and fantasy fall back to the standard family, Times New Roman,
 //     drawn as Liberation Serif.
+// The ui-* names and the absent family fall back to the standard family on
+// every platform: Times, Times New Roman, Liberation Serif. NAMED_FAMILY is
+// Helvetica, Arial and DejaVu Sans, each drawn as itself.
 //
-// Measured 2026-09-24, Chromium 153.0.8010.12, Qt 6.11.1 (largest run |d|,
+// Measured 2026-09-25, Chromium 153.0.8010.12, Qt 6.11.1 (largest run |d|,
 // largest |d| across the text, coverage):
-//   - macOS arm64, CoreText: 16/16; 0.615, 0.556, 0.757 .. 0.943
+//   - macOS arm64, CoreText: 22/22; 0.615, 0.556, 0.757 .. 0.943
 //   - macOS arm64, FreeType (QT_QPA_PLATFORM=cocoa:fontengine=freetype):
-//     15/16; 0.727, 0.558, 0.757 .. 0.942 over the 15. system-ui fails: Qt's
+//     21/22; 0.727, 0.558, 0.757 .. 0.942 over the 21. system-ui fails: Qt's
 //     FreeType engine on macOS draws the system font as .SF Georgian.
-//   - Linux arm64 (ubuntu 24.04, the CI image's fonts), FreeType: 16/16;
+//   - Linux arm64 (ubuntu 24.04, the CI image's fonts), FreeType: 22/22;
 //     0.346, 0.630, 0.953 .. 0.997
 // Chromium's glyph masks are heavier than an exact outline fill, most at
 // small sizes: the port draws 0.76 of Chromium's coverage at 26 px on
@@ -138,6 +145,9 @@ for (const statement of [
     }
 }
 
+// A family each platform has, drawn by name.
+const NAMED_FAMILY = { darwin: 'Helvetica', win32: 'Arial', linux: 'DejaVu Sans' }[process.platform]
+
 // css: the font string Noisedeck TextCanvasRenderer builds for the label.
 const cases = [
     { name: 'default-1024', width: 1024, height: 1024, css: 'normal 400', u: {} },
@@ -155,29 +165,40 @@ const cases = [
     { name: 'italic', width: 512, height: 512, css: 'italic 400', u: { text: 'Italic', size: 0.2, style: 'Italic' } },
     { name: 'wide-canvas', width: 640, height: 360, css: 'normal 400',
       u: { text: 'min(w, h)', size: 0.25, posX: 0.5, posY: 0.4 } },
-    ...['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui'].map(font => ({
-        name: font, width: 512, height: 512, css: 'normal 400', generic: true,
+    ...['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui',
+        'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded'].map(font => ({
+        name: font, width: 512, height: 512, css: 'normal 400', face: true,
         u: { text: 'Hamburg', size: 0.15, font } })),
+    { name: 'absent-family', width: 512, height: 512, css: 'normal 400', face: true,
+      u: { text: 'Hamburg', size: 0.15, font: 'Nmqt Absent Family' } },
+    { name: 'named-family', width: 512, height: 512, css: 'normal 400', face: true,
+      u: { text: 'Hamburg', size: 0.15, font: NAMED_FAMILY } },
 ]
 const DEFAULTS = { text: 'Hello World', font: 'Nunito', size: 0.1, posX: 0.5, posY: 0.5, rotation: 0,
     color: [1, 1, 1, 1], justify: 'center' }
 for (const c of cases) c.u = { ...DEFAULTS, ...c.u }
 
-// The face, by PostScript name, that each generic family draws with on the
-// platforms this gate runs on (see "Generic families" above).
-const GENERIC_FACES = {
+// The face, by PostScript name, that each face case draws with on the
+// platforms this gate runs on (see "Font families" above). The ui-* names
+// and the absent family draw with the standard family.
+const standardFaceCases = standard => Object.fromEntries(
+    ['ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'absent-family'].map(name => [name, standard]))
+const DECLARED_FACES = {
     darwin: { 'serif': 'Times-Roman', 'sans-serif': 'Helvetica', 'monospace': 'Menlo-Regular',
-        'cursive': 'Apple-Chancery', 'fantasy': 'Papyrus', 'system-ui': '.SFNS-Regular' },
+        'cursive': 'Apple-Chancery', 'fantasy': 'Papyrus', 'system-ui': '.SFNS-Regular',
+        ...standardFaceCases('Times-Roman'), 'named-family': 'Helvetica' },
     win32: { 'serif': 'TimesNewRomanPSMT', 'sans-serif': 'ArialMT', 'monospace': 'Consolas',
-        'cursive': 'ComicSansMS', 'fantasy': 'Impact', 'system-ui': 'SegoeUI' },
+        'cursive': 'ComicSansMS', 'fantasy': 'Impact', 'system-ui': 'SegoeUI',
+        ...standardFaceCases('TimesNewRomanPSMT'), 'named-family': 'ArialMT' },
     linux: { 'serif': 'LiberationSerif', 'sans-serif': 'LiberationSans', 'monospace': 'DejaVuSansMono',
-        'cursive': 'LiberationSerif', 'fantasy': 'LiberationSerif', 'system-ui': 'DejaVuSans' },
+        'cursive': 'LiberationSerif', 'fantasy': 'LiberationSerif', 'system-ui': 'DejaVuSans',
+        ...standardFaceCases('LiberationSerif'), 'named-family': 'DejaVuSans' },
 }
 
 // ---------------------------------------------------------------- oracle
 
 // A user agent without "Headless" keeps Playwright from replacing Chromium's
-// generic font families with its own (see "Generic families" above).
+// generic font families with its own (see "Font families" above).
 const browser = await chromium.launch({ headless: true, channel: 'chromium',
     args: ['--user-agent=Mozilla/5.0 (text canvas oracle)'] })
 const oracle = new Map()
@@ -220,9 +241,9 @@ try {
         return out
     }, { font: referenceFont.toString('base64'), cases })
     for (const r of results) oracle.set(r.name, { font: r.font, rgba: Buffer.from(r.rgba, 'base64') })
-    // The platform fonts Chromium draws each generic case's text with, from
-    // an element with the same font and text.
-    const generic = cases.filter(c => c.generic)
+    // The platform fonts Chromium draws each face case's text with, from an
+    // element with the same font and text.
+    const faceCases = cases.filter(c => c.face)
     await page.evaluate(items => {
         for (const { id, font, text } of items) {
             const span = document.createElement('span')
@@ -231,13 +252,13 @@ try {
             span.textContent = text
             document.body.append(span)
         }
-    }, generic.map((c, i) => ({ id: `generic${i}`, font: oracle.get(c.name).font, text: c.u.text })))
+    }, faceCases.map((c, i) => ({ id: `face${i}`, font: oracle.get(c.name).font, text: c.u.text })))
     const cdp = await page.context().newCDPSession(page)
     await cdp.send('DOM.enable')
     await cdp.send('CSS.enable')
     const { root } = await cdp.send('DOM.getDocument')
-    for (const [i, c] of generic.entries()) {
-        const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: `#generic${i}` })
+    for (const [i, c] of faceCases.entries()) {
+        const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: `#face${i}` })
         const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
         oracle.get(c.name).faces = fonts.map(f => ({ family: f.familyName, postScript: f.postScriptName }))
     }
@@ -348,13 +369,13 @@ for (const c of cases) {
     const got = candidate.get(c.name)?.rgba
     const problems = []
     let faces = ''
-    if (c.generic) {
-        const declared = GENERIC_FACES[process.platform]?.[c.u.font]
+    if (c.face) {
+        const declared = DECLARED_FACES[process.platform]?.[c.name]
         const chromeFaces = ref?.faces || []
         const qtFace = candidate.get(c.name)?.face
         faces = ` face chrome ${chromeFaces.map(f => `"${f.family}" (${f.postScript})`).join(' + ') || 'none'}` +
             ` qt "${qtFace?.family}" (${qtFace?.postScript}) declared ${declared || 'none'}`
-        if (!declared) problems.push(`no face declared for ${c.u.font} on ${process.platform}`)
+        if (!declared) problems.push(`no face declared for ${c.name} on ${process.platform}`)
         else {
             if (chromeFaces.length !== 1 || chromeFaces[0].postScript !== declared) problems.push('Chromium face')
             if (qtFace?.postScript !== declared) problems.push('Qt face')
