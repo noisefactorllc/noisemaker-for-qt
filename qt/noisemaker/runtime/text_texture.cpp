@@ -103,6 +103,22 @@ bool isItalicStyle(const QString& style) {
 // renderer applies the browser's skew itself.
 constexpr double kSyntheticItalicSkew = 0.25;
 
+// Qt's CoreText engine takes a face with a positive slant trait but without
+// the italic trait (Apple Chancery) for oblique and slants its outlines by
+// tan 14 degrees even for an upright request (QCoreTextFontEngine::init,
+// SynthesizedItalic); Chromium draws such a face as designed. Returns the
+// shear, x' = x + shear * y about the baseline, that undoes the engine's.
+double engineSlantCorrection(const QFont& font) {
+#if defined(Q_OS_MACOS)
+    if (!font.italic() && QFontInfo(font).style() == QFont::StyleOblique) {
+        return static_cast<double>(std::tan(14.f * std::acos(0.f) / 90.f)); // Qt's SYNTHETIC_ITALIC_SKEW
+    }
+#else
+    Q_UNUSED(font);
+#endif
+    return 0.0;
+}
+
 bool hasItalicFace(const QFont& font) {
     const QString family = QFontInfo(font).family();
     const QStringList styles = QFontDatabase::styles(family);
@@ -707,6 +723,7 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize) {
         QFont font = fontFor(params, fontSize);
         const bool syntheticItalic = font.italic() && !hasItalicFace(font);
         if (syntheticItalic) font.setItalic(false);
+        const double shear = (syntheticItalic ? -kSyntheticItalicSkew : 0.0) + engineSlantCorrection(font);
         const QFontMetricsF metrics(font);
         const double middle = middleBaselineOffset(font, fontSize);
         const QStringList lines = params.text.split(QLatin1Char('\n'));
@@ -726,8 +743,8 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize) {
                 x = -width;
             }
             const double baseline = startY + i * lineHeight + middle;
-            if (syntheticItalic) {
-                path.addPath(QTransform(1.0, 0.0, -kSyntheticItalicSkew, 1.0, 0.0, 0.0)
+            if (shear != 0.0) {
+                path.addPath(QTransform(1.0, 0.0, shear, 1.0, 0.0, 0.0)
                                  .map(outline.path(QPointF(0.0, 0.0)))
                                  .translated(x, baseline));
             } else {
