@@ -37,6 +37,11 @@
 //     ({name: "path"}) and the port's generated array form
 //     ([{name, path}] -- see effects/render/meshLoader.json), which the
 //     converter emits for this port's mesh loader.
+//   - Error ordering: the reference emits errors in JS object insertion
+//     order (Object.entries). QJsonObject iterates its keys in sorted
+//     order (a structural property of Qt's JSON container), so per-key
+//     diagnosis follows sorted key order instead. The error SET per input
+//     is unchanged; only multi-key ordering differs from the reference.
 //
 // Not wired into EffectRegistry::loadAll(): the reference ships the
 // validator as an authoring/test-time surface (only its own test suite and

@@ -11,6 +11,7 @@ set(NM_COMPILER_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/parser.cpp
     ${CMAKE_CURRENT_LIST_DIR}/enums.cpp
     ${CMAKE_CURRENT_LIST_DIR}/effect_registry.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/effect_validator.cpp
     ${CMAKE_CURRENT_LIST_DIR}/js_number.cpp
     ${CMAKE_CURRENT_LIST_DIR}/js_unicode.cpp
     ${CMAKE_CURRENT_LIST_DIR}/js_regexp.cpp

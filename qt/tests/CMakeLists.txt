@@ -110,6 +110,11 @@ target_link_libraries(test_validator PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_validator COMMAND test_validator)
 set_tests_properties(test_validator PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
 
+add_executable(test_effect_validator test_effect_validator.cpp)
+target_link_libraries(test_effect_validator PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_effect_validator COMMAND test_effect_validator)
+set_tests_properties(test_effect_validator PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/..)
+
 add_executable(test_js_syntax test_js_syntax.cpp)
 target_link_libraries(test_js_syntax PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_js_syntax COMMAND test_js_syntax)
