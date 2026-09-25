@@ -1500,6 +1500,26 @@
     }
   },
   {
+    "program": "funcHiddenFloat",
+    "effect": "filter/renderLandscape3d",
+    "mode": "panY: -0.18, threshold: () => 0.5",
+    "golden": "parity/out/funcHiddenFloat.golden.png",
+    "candidate": "parity/out/funcHiddenFloat.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
     "program": "funcHiddenParam",
     "effect": null,
     "mode": "default",

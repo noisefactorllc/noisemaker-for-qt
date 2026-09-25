@@ -80,7 +80,7 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/, qt/tests/, examples/viewer/, parity/, STATUS.md
 - Expected behavior: Reproducible evidence binds each supported claim to the port and authority revisions.
-- Observed behavior: At reference 30c47030 the macOS ledger grades 361 of 361: 316 PASS, 45 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (GAP-039 added 7 function-value fixtures and GAP-042 agentsPointsState256; the earlier rows are unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there; CI run 36077644490 graded all 361 of 361. All 45 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
+- Observed behavior: At reference 30c47030 the macOS ledger grades 362 of 362: 317 PASS, 45 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (GAP-039 added 7 function-value fixtures, GAP-042 agentsPointsState256, and GAP-043 funcHiddenFloat; the earlier rows are unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there; CI run 36077644490 graded all 361 of 361. All 45 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
 - Evidence: [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) and section 3.
 - Next action: Keep the 45 macOS tol_for() entries with their mechanism: the port cannot change its byte-identical shaders to match ANGLE's compiler. The llvmpipe job is the exact-parity check on every push that touches qt/, parity/, tools/, or STATUS.md.
 - Dependencies: None.
@@ -691,22 +691,22 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-043: hidden float function values bind 0, not NaN
 
-- Status: open. Priority: P3. Category: contract.
-- Affected scope: render/renderLandscape3d threshold and viewScale (hidden float parameters); qt/noisemaker/runtime/parameters.cpp.
+- Status: closed. Priority: P3. Category: contract.
+- Affected scope: parameters without a host control that take a function value in a float or float-vector uniform (render/renderLandscape3d threshold and viewScale); qt/noisemaker/runtime/backend.cpp setUniformValue.
 - Expected behavior: A function value in a float parameter without a host control binds as the reference binds it.
-- Observed behavior: The reference keeps the object and gl.uniform1f turns it into NaN. The port binds 0.
-- Evidence: A Chromium probe: uniform1f with a function-value object reads back NaN (2026-09-24). No fixture uses a function value in a hidden float parameter.
-- Next action: Decide whether to bind NaN, as the reference does, and add a fixture if a real program can reach it.
+- Observed behavior: The reference keeps the object, and gl.uniform1f turns it into NaN (a float vector's uniform*fv also gives NaN; an int or bool gives 0). Before this change the port bound 0, so renderLandscape3d(threshold: () => 0.5) drew the landscape where the reference draws none. setUniformValue now binds NaN for an object in a float or float-vector uniform.
+- Evidence: A Chromium probe: uniform1f with a function-value object reads back NaN, uniform1i reads 0. Fixture funcHiddenFloat: before, FAIL max 243, SSIM 0.009; after, PASS max 0, SSIM 1.0. funcHiddenParam (an int) is unchanged. Full macOS sweep 362/362 (317 PASS, 45 NEAR), with no other row changed.
+- Next action: None.
 - Dependencies: None.
-- Acceptance criteria: A fixture with a function value in renderLandscape3d threshold passes at strict tolerance, or the divergence stays recorded.
-- Required checks: parity/run.sh on that fixture.
-- Last verification: 2026-09-24.
+- Acceptance criteria: A fixture with a function value in renderLandscape3d threshold passes at strict tolerance.
+- Required checks: parity/run.sh funcHiddenFloat; the full sweep.
+- Last verification: 2026-09-24, reference 30c47030, macOS arm64.
 
 ## 5. Ordered next actions
 
-1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect).
+1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding.
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. GAP-043: hidden float function values. GAP-027: generic font families.
+3. GAP-027: generic font families.
 4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
