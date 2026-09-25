@@ -728,38 +728,37 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-044: ui-* font families keep Qt's defaults
 
-- Status: open. Priority: P3. Category: ecosystem.
+- Status: closed. Priority: P3. Category: ecosystem.
 - Affected scope: qt/noisemaker/runtime/text_texture.cpp (genericStyleHint); filter/text with font ui-serif, ui-sans-serif, ui-monospace, or ui-rounded.
 - Expected behavior: The port draws what Chromium draws for these names.
-- Observed behavior: Chromium 153 treats ui-serif, ui-sans-serif, ui-monospace, and ui-rounded as unknown names and draws the standard family (Times on macOS, Liberation Serif on the Linux CI fonts). The port maps them to Qt style hints.
-- Evidence: A measurement with CDP CSS.getPlatformFontsForNode, 2026-09-24.
-- Next action: Resolve them as Chromium does, and add check_text_canvas cases on three OSes.
+- Observed behavior: Before 368538a the port mapped ui-serif, ui-sans-serif, ui-monospace, and ui-rounded to Qt style hints (on macOS Times New Roman, Helvetica, Menlo, Helvetica). Chromium 153 has no such families and looks them up as ordinary names, so they fall back to its standard family. The port now resolves them through the same order.
+- Evidence: check_text_canvas face comparison by PostScript name, CI run 36147939740 (df9f9bf): Linux 22/22 (the four names draw LiberationSerif on both sides), Windows 22/22 (TimesNewRomanPSMT on both sides). macOS CoreText 22/22 locally (Times-Roman). The previous renderer fails these cases on the face (17/22 on macOS).
+- Next action: None. The macOS CoreText result is local; the qualification workflow adds it to CI.
 - Dependencies: None.
 - Acceptance criteria: check_text_canvas cases for the four names pass on macOS, Linux, and Windows with the face comparison.
 - Required checks: check_text_canvas.mjs; test_text_texture.
-- Last verification: 2026-09-24.
+- Last verification: 2026-09-25, reference 240740dd, CI run 36147939740 (Linux, Windows) and macOS CoreText locally.
 
 ### GAP-045: an unknown font family falls back to Qt's default
 
-- Status: open. Priority: P3. Category: ecosystem.
+- Status: closed. Priority: P3. Category: ecosystem.
 - Affected scope: qt/noisemaker/runtime/text_texture.cpp; filter/text with a family the platform does not have.
 - Expected behavior: A missing family falls back to the face Chromium falls back to.
-- Observed behavior: Chromium falls back to its standard family (Times on macOS, Times New Roman on Windows, the fontconfig standard family on Linux). The port uses Qt's fallback, for example .AppleSystemUIFont for "Consolas" on macOS.
-- Evidence: A measurement on macOS, 2026-09-24.
-- Next action: Fall back to the platform's standard family when the requested family does not resolve; add a case with an absent family on each OS.
+- Observed behavior: Before 368538a a family the platform lacks fell back to Qt's default (.AppleSystemUIFont on macOS). Chromium resolves the name, its alternate name, the standard family (Times on macOS, Times New Roman elsewhere) and its alternate, then its last-resort families. The port now follows that order; an explicitly named installed family still resolves to itself.
+- Evidence: check_text_canvas "absent-family" and "named-family" cases, CI run 36147939740 (df9f9bf): Linux LiberationSerif and DejaVuSans, Windows TimesNewRomanPSMT and ArialMT, each identical on both sides; macOS CoreText locally Times-Roman and Helvetica. The 16 earlier cases are unchanged (byte-identical images on macOS).
+- Next action: None. The macOS CoreText result is local; the qualification workflow adds it to CI.
 - Dependencies: None.
 - Acceptance criteria: An absent-family case passes on macOS, Linux, and Windows with the face comparison.
 - Required checks: check_text_canvas.mjs; test_text_texture.
-- Last verification: 2026-09-24.
+- Last verification: 2026-09-25, reference 240740dd, CI run 36147939740 (Linux, Windows) and macOS CoreText locally.
 
 ## 5. Ordered next actions
 
 Current first action: First retain raw acceptance evidence for the reopened closure-verification entries. Run the existing overlay comparisons with port-generated overlays on each claimed platform. Keep GAP-040 visible. Run the full existing sweep against immutable current authority inputs. Report exact and tolerance results separately. Test installed GUI resize, context recreation, input errors, and recovery on the missing hosts.
 Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
 
-1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families.
+1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families; GAP-044 and GAP-045 (ui-* and absent families).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. GAP-044 and GAP-045: ui-* families and unknown family names.
 4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
