@@ -27,6 +27,7 @@
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <limits>
 #include <cstring>
 #include <stdexcept>
 
@@ -1775,9 +1776,15 @@ QJsonObject Backend::engineUniforms() const {
 }
 
 void Backend::setUniformValue(int location, unsigned int glType, const QJsonValue& value) {
+    // WebGL2 converts an object argument with ToNumber: gl.uniform1f and the
+    // float-vector uniform*fv calls bind NaN, gl.uniform1i binds 0. The only
+    // objects left here are function values without a host control (GAP-043).
+    const float objectFloat = std::numeric_limits<float>::quiet_NaN();
     switch (glType) {
     case GL_FLOAT: {
-        if (value.isArray()) {
+        if (value.isObject()) {
+            m_gl->glUniform1f(location, objectFloat);
+        } else if (value.isArray()) {
             const QJsonArray arr = value.toArray();
             QVector<GLfloat> buf;
             buf.reserve(arr.size());
@@ -1797,12 +1804,22 @@ void Backend::setUniformValue(int location, unsigned int glType, const QJsonValu
         break;
     }
     case GL_FLOAT_VEC2: {
+        if (value.isObject()) {
+            const GLfloat v[2] = {objectFloat, objectFloat};
+            m_gl->glUniform2fv(location, 1, v);
+            break;
+        }
         const QJsonArray arr = value.isArray() ? value.toArray() : QJsonArray{value, value};
         const GLfloat v[2] = {jsonArrayComponent(arr, 0, 0.0f), jsonArrayComponent(arr, 1, 0.0f)};
         m_gl->glUniform2fv(location, 1, v);
         break;
     }
     case GL_FLOAT_VEC3: {
+        if (value.isObject()) {
+            const GLfloat v[3] = {objectFloat, objectFloat, objectFloat};
+            m_gl->glUniform3fv(location, 1, v);
+            break;
+        }
         const QJsonArray arr = value.isArray() ? value.toArray() : QJsonArray{value, value, value};
         const GLfloat v[3] = {
             jsonArrayComponent(arr, 0, 0.0f), jsonArrayComponent(arr, 1, 0.0f), jsonArrayComponent(arr, 2, 0.0f)};
@@ -1810,6 +1827,11 @@ void Backend::setUniformValue(int location, unsigned int glType, const QJsonValu
         break;
     }
     case GL_FLOAT_VEC4: {
+        if (value.isObject()) {
+            const GLfloat v[4] = {objectFloat, objectFloat, objectFloat, objectFloat};
+            m_gl->glUniform4fv(location, 1, v);
+            break;
+        }
         const QJsonArray arr = value.isArray() ? value.toArray() : QJsonArray{value, value, value, value};
         const GLfloat v[4] = {jsonArrayComponent(arr, 0, 0.0f), jsonArrayComponent(arr, 1, 0.0f),
                                jsonArrayComponent(arr, 2, 0.0f), jsonArrayComponent(arr, 3, 1.0f)};
@@ -1906,7 +1928,8 @@ QJsonObject Backend::loadEffectUniformLayout(const QString& ns, const QString& f
 // value into the step's passes, the param's _node_N / _chain_N variant and
 // every pass that carries that variant. The function-valued params
 // (isFunctionValue) are the only ones this changes. A param without a host
-// control keeps the object, which binds as 0 (see backend.h).
+// control keeps the object, which binds as WebGL2 binds it: NaN for a float
+// or float vector, 0 for an int or bool (setUniformValue; see backend.h).
 void Backend::resolveFunctionValues(Graph& graph) {
     for (int passIndex = 0; passIndex < graph.passes.size(); ++passIndex) {
         const Pass& pass = graph.passes.at(passIndex);

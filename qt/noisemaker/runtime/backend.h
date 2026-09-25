@@ -276,8 +276,8 @@ public:
     // _chain_N variant and every pass that carries it; a pass that inherits
     // volumeSize takes the emitter's value. A param without a host control
     // (ui.control false or ui.hidden true) keeps the object, which binds as
-    // 0 (the reference binds NaN: WebGL2 makes it 0 for an int uniform and
-    // NaN for a float). render() changes only its per-frame copy of the
+    // WebGL2 binds it: 0 for an int or bool uniform, NaN for a float or
+    // float vector (GAP-043). render() changes only its per-frame copy of the
     // graph and reads each effect definition once per Backend.
     // applyStepParameterValues and setUniform replace a function value.
 
