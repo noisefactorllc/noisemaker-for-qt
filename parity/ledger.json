@@ -1440,6 +1440,146 @@
     }
   },
   {
+    "program": "funcBoolean",
+    "effect": null,
+    "mode": "default",
+    "golden": "parity/out/funcBoolean.golden.png",
+    "candidate": "parity/out/funcBoolean.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "funcChainScoped",
+    "effect": null,
+    "mode": "default",
+    "golden": "parity/out/funcChainScoped.golden.png",
+    "candidate": "parity/out/funcChainScoped.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "funcHiddenParam",
+    "effect": null,
+    "mode": "default",
+    "golden": "parity/out/funcHiddenParam.golden.png",
+    "candidate": "parity/out/funcHiddenParam.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "funcNodeScoped",
+    "effect": "filter/pointsRender",
+    "mode": "default",
+    "golden": "parity/out/funcNodeScoped.golden.png",
+    "candidate": "parity/out/funcNodeScoped.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "funcNumeric",
+    "effect": "filter/blur",
+    "mode": "radiusX: () => time % 10, radiusY: () => 3",
+    "golden": "parity/out/funcNumeric.golden.png",
+    "candidate": "parity/out/funcNumeric.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.9999999403953552,
+    "mean_abs_diff": 7.629394076502649e-06,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "funcStateValues",
+    "effect": null,
+    "mode": "default",
+    "golden": "parity/out/funcStateValues.golden.png",
+    "candidate": "parity/out/funcStateValues.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "ssim": 1.0,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
+    "program": "funcVolumeSize",
+    "effect": "filter/render3d",
+    "mode": "default",
+    "golden": "parity/out/funcVolumeSize.golden.png",
+    "candidate": "parity/out/funcVolumeSize.candidate.png",
+    "verdict": "PASS",
+    "max_abs_diff": 0.9999999403953552,
+    "mean_abs_diff": 1.1444090887380298e-05,
+    "ssim": 1.0000001192092896,
+    "passed": true,
+    "skipped": false,
+    "policy": {
+      "tolerance": 2.001,
+      "ssim_min": 0.98,
+      "strict_tolerance": 2.001,
+      "strict_ssim_min": 0.98,
+      "reason": "strict RGBA8 float round-trip allowance"
+    }
+  },
+  {
     "program": "fxaa",
     "effect": "filter/fxaa",
     "mode": "default",

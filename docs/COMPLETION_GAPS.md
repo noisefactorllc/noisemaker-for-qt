@@ -80,7 +80,7 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/, qt/tests/, examples/viewer/, parity/, STATUS.md
 - Expected behavior: Reproducible evidence binds each supported claim to the port and authority revisions.
-- Observed behavior: At reference 30c47030 the macOS ledger grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped; the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there. All 44 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
+- Observed behavior: At reference 30c47030 the macOS ledger grades 360 of 360: 316 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (7 function-value fixtures added by GAP-039; the other 353 rows unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there. All 44 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
 - Evidence: [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) and section 3.
 - Next action: Keep the 44 macOS tol_for() entries with their mechanism: the port cannot change its byte-identical shaders to match ANGLE's compiler. The llvmpipe job is the exact-parity check on every push that touches qt/, parity/, tools/, or STATUS.md.
 - Dependencies: None.
@@ -345,7 +345,7 @@ These entries record missing qualification. They do not infer implementation def
 - Expected behavior: `noise(octaves: frame, ridges: time)` compiles to the graph the reference produces.
 - Observed behavior: Before this change, Qt threw UnsupportedDsl. The reference compiled to `{}` (boolean, member) and `{min, max, _ast}` (numeric), because its `{fn}` closures are never called or serialized.
 - Evidence: New corpus fixture parity/corpus/state_values.dsl covers all three positions. VALIDATE, EXPAND and GRAPH gates are 1/1 on it and 358/358 on the full pool.
-- Next action: None. The runtime binds these objects as 0, as WebGL2 does for a non-numeric uniform.
+- Next action: None. Since 94ed144 the runtime binds these values as the reference demo host does (GAP-039).
 - Dependencies: None.
 - Acceptance criteria: Byte-identical validate, expand and graph output against the reference for every state-value position.
 - Required checks: check_validate, check_expand, check_graph; test_validator; ctest.
@@ -639,16 +639,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-039: arrow-function values render without a golden check
 
-- Status: open. Priority: P3. Category: verification.
-- Affected scope: validator Func values (GAP-017); the runtime binding of a Func uniform; parity fixtures.
-- Expected behavior: A program with arrow-function parameter values renders as the reference renders it.
-- Observed behavior: Func values compile to the reference's graph (check_graph 379/379), and the runtime binds a non-numeric uniform as 0, as WebGL2 does. No rendered fixture compares that output with a reference golden.
-- Evidence: parity/corpus/func_*.dsl are compiler-only fixtures; parity/programs has no Func fixture.
-- Next action: Add rendered fixtures with Func values for numeric and boolean parameters, mint goldens, and grade them at the strict tolerance.
+- Status: closed. Priority: P3. Category: verification.
+- Affected scope: qt/noisemaker/runtime/parameters.{h,cpp} (isFunctionValue, hasHostControl, resolveFunctionValue); backend.{h,cpp} (render() resolves function values; shared effect-definition cache); tools/convert-definitions.mjs and 28 effect JSONs (ui.control false and ui.hidden true); parity/programs/func*.dsl (7); qt/tests/test_host_inputs.cpp; README.
+- Expected behavior: A program with arrow-function or bare state-value parameters renders as the reference demo host renders it after it loads the program.
+- Observed behavior: Before 94ed144, every function value bound as 0. The reference engine never calls the function; the demo host coerces a parameter that has a control through ProgramState._validateValue: the default clamped to min/max for numbers, true for booleans, the default for vectors and colours, also in the _chain_N and _node_N variants. A parameter without a control keeps the object, which WebGL2 binds as 0 for an int. render() now does the same on its per-frame graph copy.
+- Evidence: A Chromium probe of uniform1i/uniform1f with these objects gives bool false, int 0, float NaN; the funcBoolean golden equals noise(ridges: true) and the funcNumeric golden equals noise().blur() at max 0. 7 fixtures at 2.001/0.98 against reference 30c47030 goldens on macOS pass (max 0 to 1) through --graph and --dsl; with 16d98e7 binaries, 6 fail (max 190 to 255). Binding the default for the no-control seed fails (max 255, SSIM 0.158). Full sweep 360/360 (316 PASS, 44 NEAR); the other 361 candidates are pixel-identical to 16d98e7. LEX, PARSE, VALIDATE, EXPAND, and GRAPH each 386/386; DEFINITIONS 210/210; ctest 25/25. Integration check: funcNumeric max 1, funcBoolean and funcHiddenParam max 0 from fresh mints. Commits db32014, 94ed144, b1affe9.
+- Next action: None.
 - Dependencies: None.
 - Acceptance criteria: The Func fixtures pass at 2.001/0.98 against reference goldens.
-- Required checks: parity/run.sh on the new fixtures; the full sweep.
-- Last verification: 2026-09-24.
+- Required checks: parity/run.sh on parity/programs/func*.dsl; the full sweep; test_host_inputs; check_definitions.
+- Last verification: 2026-09-24, reference 30c47030, macOS arm64.
 
 ### GAP-040: the reference's overlay canvas differs by platform
 
@@ -663,12 +663,52 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: check_async_overlay.mjs on macOS; the llvmpipe job with the reference overlays.
 - Last verification: 2026-09-24.
 
+### GAP-041: a batch mint can reuse the previous fixture's host controls
+
+- Status: open. Priority: P3. Category: verification.
+- Affected scope: parity/batch-golden.mjs and parity/export-and-render.mjs; function-valued fixtures.
+- Expected behavior: A batch mint gives the same golden as a single mint of each fixture, in any order.
+- Observed behavior: batch-golden.mjs reuses one demo page. When a function-valued fixture follows a fixture with the same effect structure, the demo takes checkStructureAndApplyState, never rebuilds its controls, and binds NaN where a fresh load binds the default.
+- Evidence: funcStateValues minted right after funcBoolean in one batch differs from its single mint; a probe of that sequence shows octaves and seed as NaN. In the sweep's order the 7 function-valued batch goldens equal their single mints, so the current ledger is correct.
+- Next action: Clear window.__noisemakerProgramState._structure before each fixture load in both minters; mint the function fixtures in adversarial order and compare with single mints.
+- Dependencies: None.
+- Acceptance criteria: Batch goldens equal single mints for every fixture in the adversarial order.
+- Required checks: The harness contract tests; cmp of batch against single mints.
+- Last verification: 2026-09-24.
+
+### GAP-042: pointsEmit with an explicit stateSize fails strict parity
+
+- Status: open. Priority: P2. Category: implementation.
+- Affected scope: render/pointsEmit and its consumers (agentsPoints); nm::Backend points state sizing.
+- Expected behavior: `pointsEmit(stateSize: x256)` renders as the reference renders it.
+- Observed behavior: agentsPoints.dsl with `pointsEmit(stateSize: x256)` fails the strict tolerance: 5 pixels, max 132, SSIM 0.9999. The golden is the same from a batch and a single mint. The committed fixture, with the default stateSize, passes.
+- Evidence: Found while building GAP-039's node-scoped fixture, macOS arm64, reference 30c47030, 2026-09-24. It fails the same way with a plain value, so it is not a function-value effect.
+- Next action: Add the variant as a fixture and find the mechanism: trace the 5 pixels to their agents, and compare the state textures of both engines at each frame.
+- Dependencies: None.
+- Acceptance criteria: The variant passes at 2.001/0.98 against reference goldens, or its mechanism is recorded with evidence.
+- Required checks: parity/run.sh on the new fixture; the full sweep.
+- Last verification: 2026-09-24.
+
+### GAP-043: hidden float function values bind 0, not NaN
+
+- Status: open. Priority: P3. Category: contract.
+- Affected scope: render/renderLandscape3d threshold and viewScale (hidden float parameters); qt/noisemaker/runtime/parameters.cpp.
+- Expected behavior: A function value in a float parameter without a host control binds as the reference binds it.
+- Observed behavior: The reference keeps the object and gl.uniform1f turns it into NaN. The port binds 0.
+- Evidence: A Chromium probe: uniform1f with a function-value object reads back NaN (2026-09-24). No fixture uses a function value in a hidden float parameter.
+- Next action: Decide whether to bind NaN, as the reference does, and add a fixture if a real program can reach it.
+- Dependencies: None.
+- Acceptance criteria: A fixture with a function value in renderLandscape3d threshold passes at strict tolerance, or the divergence stays recorded.
+- Required checks: parity/run.sh on that fixture.
+- Last verification: 2026-09-24.
+
 ## 5. Ordered next actions
 
-1. Done: GAP-001's NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job (353/353 in CI); GAP-038's background overlay trace.
+1. Done: GAP-001's NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values.
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. GAP-039, GAP-027: rendered Func fixtures; generic font families.
-4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
+3. GAP-042: pointsEmit with an explicit stateSize (5 px, max 132).
+4. GAP-027: generic font families. GAP-041: batch-mint program state. GAP-043: hidden float function values.
+5. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 
