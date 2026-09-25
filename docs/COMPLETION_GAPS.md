@@ -4,6 +4,14 @@ Current compatibility matrix: [compatibility report](COMPATIBILITY.md).
 
 ## 1. Scope and source revisions
 
+Daily review: 2026-09-25. Current inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5).
+Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
+Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+The observations below retain their original source and authority identities; they do not qualify later updates.
+Current served kit: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
+
+### Earlier source observations
+
 Date: 2026-09-24. Reviewed SHA: [`8460cfd77798d4e79d37828c16b0b29a09fbdbda`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/8460cfd77798d4e79d37828c16b0b29a09fbdbda).
 Local HEAD matched remote main before checks. The operator requested registers for all remaining eligible ports in this run.
 This initial register contains bounded evidence. It is not a completed port audit or release approval.
@@ -34,6 +42,11 @@ The containing commit identifies this register's publication revision. The share
 | CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-qt/actions?query=head_sha%3A8460cfd77798d4e79d37828c16b0b29a09fbdbda) | Workflow status only | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-qt/actions/runs/35953721777): `success`. |
 
 ## 3. Methods and evidence
+
+### Daily review, 2026-09-25
+
+Exact-source CI passes 25 C++ tests on Linux and Windows; macOS runs 24 plus the separate device-limits test. The five compiler stages each pass 388 cases. The llvmpipe suite accepts 362 fixture programs at its existing numerical contracts. Of 360 static records, 359 have maximum difference 0 and bloom has maximum difference 1. Two further programs exercise timed samples. NM_REFERENCE_OVERLAYS=1 supplies the reference overlays for fibers, scratches, and strayHair; those rows do not qualify the port-generated canvas. Local harness tests pass 54 of 54. Full parameter and platform parity remains unverified. [Raw evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
+The review checked source changes, worker evidence, source-bound CI where present, and current served inventories. Full installed-host and platform qualification remains incomplete.
 
 Environment: macOS 26.5, Darwin arm64.
 [Source SHA-256 records](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-qt-source-hashes.json) bind these checks to the reviewed revision.
@@ -116,12 +129,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-004: embedded CMake build pollutes the host project
 
-- Status: closed. Priority: P2. Category: ecosystem.
+- Status: open. Priority: P2. Category: ecosystem.
+- Review correction, 2026-09-25: Current CMake options use PROJECT_IS_TOP_LEVEL and installed-consumer CI passes. The required default-options embedded consumer run is not present in the retained raw evidence. Repeat that existing embedding workflow before accepting closure. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/CMakeLists.txt, qt/tests/CMakeLists.txt, qt/cmake/noisemaker-qt-config.cmake.in, EffectRegistry::defaultDataRoot().
 - Expected behavior: add_subdirectory or FetchContent builds only the library. The host can locate the data tree without a working-directory assumption.
 - Observed behavior: Before the fix, the embedded build always built nm-render and the tests, and called enable_testing(). Data lookup was working-directory-relative.
 - Evidence: NM_QT_BUILD_TOOLS, NM_QT_BUILD_TESTS and NM_QT_INSTALL default to PROJECT_IS_TOP_LEVEL. NOISEMAKER_QT_DATA_ROOT names the data tree. Checks are listed below.
-- Next action: None. Keep the throwaway consumer check in future CI.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: Top-level build builds nm-render and passes ctest. An embedded consumer with default options has no tool or test targets, links, and renders.
 - Required checks: Top-level configure, build, and ctest. Embedded consumer configure, build, ctest, and run from an unrelated working directory. Installed consumer build and run.
@@ -353,12 +367,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-017: arrow-function params raise UnsupportedDsl
 
-- Status: closed. Priority: P2. Category: contract.
+- Status: open. Priority: P2. Category: contract.
+- Review correction, 2026-09-25: Current compiler fixtures and test_js_syntax pass. The claimed large V8 differential corpus on both Node majors has no retained raw result in the reviewed records. Preserve the implementation result, but retain that explicit acceptance check as open. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/noisemaker/compiler/js_syntax.{h,cpp}, js_regexp.{h,cpp}, js_unicode.{h,cpp}; validator.cpp Func branches (numeric and boolean params, if/elif conditions); lexer.cpp FUNC trim; parity/corpus/func_*.dsl; test_js_syntax, test_validator, test_lexer.
 - Expected behavior: A Func value compiles as the reference compiles it: `{min, max}` for a numeric param, or `{}` for a boolean param or condition, when V8's `new Function('state', 'with(state){ return SRC; }')` accepts the body. Otherwise S001 and the default (false for a condition).
 - Observed behavior: Before 25df3e1, every Func param and condition threw UnsupportedDsl, and the FUNC lexeme was trimmed with QString rules. The port now decides the body with a V8-equivalent parser (a C++ port of acorn 8.16 plus V8's differences) and matches the reference output. A body nested deeper than about 100 parentheses (or 400 regex groups) still throws UnsupportedDsl, for stack safety on 512 KB threads.
 - Evidence: 0 disagreements with V8 (node 24.21.0 and 26.10.0) on 3,626,668 generated and real-code bodies. With 217ac1e binaries the 6 new fixtures gave VALIDATE 0/6. After the change, LEX, PARSE, VALIDATE, EXPAND, and GRAPH are each 376/376 on the full pool. test_js_syntax pins 187 V8 verdicts. Integration build: 0 warnings, ctest 23/23. Acorn's MIT notice ships in the sources, the install, and the kit (acorn-LICENSE.txt, dfc811f). Commits 25df3e1, 6b9d2df, b7e6b22. Follow-up (c848e29): the const and using initializer outside for heads, and using as a for-in head, now match V8; 5,026,668 bodies agree three ways (node 24.21.0, node 26.10.0, the C++ checker). CI run for 82d916c: the GCC and MSVC warnings jobs build the checker with 0 warnings.
-- Next action: None. Raise the depth threshold only if a host needs bodies nested deeper than about 100 levels.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: check_validate and check_graph byte-identical on valid and invalid arrow bodies; the differential corpus shows no disagreement with V8 under both the CI and the local node majors.
 - Required checks: check_lex, check_parse, check_validate, check_expand, check_graph on parity/corpus/func_*.dsl; test_js_syntax; test_validator; test_lexer; ctest.
@@ -418,12 +433,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-022: AnalyserNode 5.1 down-mix rounding differs by CPU architecture
 
-- Status: closed. Priority: P2. Category: verification.
+- Status: open. Priority: P2. Category: verification.
+- Review correction, 2026-09-25: The exact-source Linux Chromium gate passes 570/570. This review did not find retained raw output for the required arm64 Chromium comparison at the same source. Run that existing gate on arm64 before accepting the cross-architecture closure. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/noisemaker/runtime/audio_analyzer.cpp, parity/check_audio_analyzer.mjs.
 - Expected behavior: Time-domain data matches the Chromium on the same architecture exactly, for 5.1 input too.
 - Observed behavior: CI run 35970287679 (ubuntu x86_64, Chromium 153.0.8010.12) failed the surround-5.1 case: 8983 time-domain mismatches, AUDIO_ANALYZER 476/570. At index 914, x86 Chromium gave 0.8555886149406433, the unfused value. arm64 Chromium gives the fused value 0.8555885553359985.
 - Evidence: The down-mix now uses std::fma on arm64 and a separate multiply and add elsewhere. The file builds with -ffp-contract=off. The oracle stays the Chromium running on that machine, with the same tolerance and all 570 reads.
-- Next action: None.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: 570/570 on arm64 (local) and on x86_64 (CI), with the tolerances unchanged.
 - Required checks: check_audio_analyzer.mjs on both architectures.
@@ -457,12 +473,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-025: async-init overlay effects render without their overlay
 
-- Status: closed. Priority: P1. Category: implementation.
+- Status: open. Priority: P1. Category: implementation.
+- Review correction, 2026-09-25: The current full CI sweep supplies reference-generated overlays with NM_REFERENCE_OVERLAYS=1. It does not test the delivered port canvas. GAP-040 records larger native canvas differences. The platform and kit acceptance criteria therefore remain open; stroke and runtime unit tests are separate evidence. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: filter/fibers, filter/scratches, and filter/strayHair (the three asyncInit definitions at reference c9ee8a04); qt/noisemaker/runtime async_overlay, worm_tracer, stroke_canvas, and nm::Backend::render(); parity/sweep.sh; parity/check_async_overlay.mjs; the export kit.
 - Expected behavior: As in the reference, each effect traces worms on the CPU into a 2D canvas and uploads it as overlayTex. A change of seed, density, or render size traces it again. Goldens capture the completed trace (GAP-026).
 - Observed behavior: Before 504243b, the overlay was never generated, and NEAR entries in tol_for() hid the flat candidates. Now Backend::render() traces each overlay to completion before the passes that sample it, and traces again after a seed, density, or size change. The three fixtures pass at the default tolerance, their tol_for() entries are removed, and the export kit lists all 210 effects.
 - Evidence: The stroke lists are bit-identical to Chromium's (fibers 40960, scratches 10752, strayHair 160). check_async_overlay.mjs: 13/13 PASS. The scratches and strayHair canvases are byte-identical; the fibers canvas differs by 1 in 14 of 262144 values, at blended values a few float ulps from a rounding midpoint. Mutation checks (half-even snapping, no dirty-rect cull, exact-division unpremultiply) each fail the oracle. Integration check: goldens minted again from the reference grade fibers max 1, scratches max 0, strayHair max 0 at 2.001/0.98, and the candidates carry the overlay (17198, 148, and 18784 distinct colours). Integration build: 0 warnings, ctest 24/24. Commits 504243b, 5ef419f, ebdf46f, c0a32d0. CI run for 3a7e33e: test_async_overlay passes on Linux, Windows, and macOS, so its IEEE-exact hash expectations hold on GCC and MSVC. Kit 0.1.32 lists all 210 effects.
-- Next action: None. The oracle runs only on macOS with ANGLE Metal; CI runs test_async_overlay on three OSes.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None. GAP-026 (closed) supplies settled goldens.
 - Acceptance criteria: The overlay is generated and uploaded as the reference does. The stroke list is bit-exact. Canvas values differ by at most 1, in at most 1 of 5000. The fixtures pass at 2.001/0.98. The kit renders them.
 - Required checks: node parity/check_async_overlay.mjs; test_async_overlay; parity/run.sh for fibers, scratches, and strayHair; ctest.
@@ -470,12 +487,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-026: goldens of async and host inputs depend on capture timing
 
-- Status: closed. Priority: P2. Category: verification.
+- Status: open. Priority: P2. Category: verification.
+- Review correction, 2026-09-25: The 54 current harness tests pass. They do not reproduce three native golden mints per affected fixture, including one under load. The claimed repetition outputs are not retained in the reviewed records. Repeat the existing minter and compare the actual PNG bytes. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: parity/export-and-render.mjs, parity/batch-golden.mjs, parity/run.sh, parity/make-batch-manifest.py, qt/tools/nm-render/main.cpp; fixtures with asyncInit overlays (fibers, scratches, strayHair) and with host text (text).
 - Expected behavior: A golden captures a defined state: async overlays complete and quiescent, and host inputs identical to what the candidate receives.
 - Observed behavior: The minters size the demo before the load. They then wait until no asyncInit promise is pending, no regeneration is debounced, and every sampled external texture is uploaded. They save each external texture, and nm-render uploads it through --external-texture. The text fixture now composites the reference's own "Hello World" on both sides and passes at max 1.
 - Evidence: 3 quiet mints and 1 mint under 16 busy processes on 10 cores were byte-identical per fixture for fibers, scratches, strayHair, text, and text.textTex_step_1.png. The batch mint equals the single mints. The other 345 goldens did not change between the old-protocol and new-protocol sweeps. The 4 new harness contract tests fail on the old minters and pass now. Python harness 43 OK; ctest 22/22. Integration check: two text mints are byte-identical (golden, graph, and textTex), and run.sh text passes at max 1.000, ssim 1.0. Commits 1e0f8ca and 2d7e54f.
-- Next action: None. The asyncInit overlays themselves are GAP-025.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: Repeated mints of each affected fixture are byte-identical across quiet and loaded runs, and the text fixture exercises real text. Met.
 - Required checks: Three mints per affected fixture compared with cmp, one under load; parity/run.sh text; the harness contract tests.
@@ -483,12 +501,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-027: filter/text rasterization differs from a browser canvas
 
-- Status: closed. Priority: P3. Category: ecosystem.
+- Status: open. Priority: P3. Category: ecosystem.
+- Review correction, 2026-09-25: Current Windows CI exercises the text gate and the source tests pass. The acceptance criterion covers every supported platform with measured platform bounds. Those complete platform results are not retained for this source; GAP-044 and GAP-045 also remain open. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
 - Observed behavior: Since 4c2c957 the layout matches Chromium per glyph within 1 px on CoreText, FreeType, and DirectWrite. Since f5eccde the CSS generic families resolve to the faces Chromium's own preferences pick on each platform (macOS: Times, Helvetica, Menlo, Apple Chancery, Papyrus, the system UI font; Windows: Times New Roman, Arial, Consolas, Comic Sans MS, Impact, Segoe UI; Linux: fontconfig's serif, sans-serif, and monospace, with Blink's fallback through the standard family). macOS 26 hides Times and Courier from Qt's font list, so the port registers the files CoreText resolves for exactly those names; 6543351 undoes a slant Qt's CoreText engine adds to upright slanted faces (Apple Chancery). Chromium's glyph masks stay heavier on macOS (coverage 0.76 to 0.94). Before 4c2c957, "Heavy" at wght 800 was 4.4 px narrower; before f5eccde, on macOS serif drew Times New Roman where Chromium draws Times, and fantasy drew Zapfino where Chromium draws Papyrus.
 - Evidence: check_text_canvas gates 16 cases (10 Nunito, 6 generic families) and compares each generic face by PostScript name on both sides; its oracle passes a user agent without "Headless", because Playwright's headless mode overrides Chromium's generic families. CI run 36087201186 (241bcce): 16/16 on Linux FreeType (Liberation Serif, Liberation Sans, DejaVu Sans Mono, Liberation Serif for cursive and fantasy, DejaVu Sans) and 16/16 on Windows DirectWrite (TimesNewRomanPSMT, ArialMT, Consolas, ComicSansMS, Impact, SegoeUI; largest glyph run 0.303 px). macOS CoreText 16/16 locally (largest run 0.615 px). Earlier: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996. First Windows result (CI run 36034701739, a8aa2a2, Qt 6.10.3, DirectWrite): 9/10. extrabold-rot fails with centroid d=(0.205, -1.395) against the 1.0 bound. The case is rotated -90 degrees, so dy lies along the text direction. The same case gives (0.158, -0.277) on macOS and (0.165, -0.371) on Linux. The other 9 pass with coverage 0.80 to 1.005. Per-glyph ink runs on Windows (CI run 36038944290), qt minus chrome along the text axis: H +2.39, e +2.13, a +2.32, v +2.32, y -2.22 px, ink ratios 0.958 to 0.971. That is the signature of a line about 4.4 px shorter, centred: the wght-800 "vy" kerning delta that Qt does not apply.
-- Next action: None. The ui-* families and unknown family names are GAP-044 and GAP-045.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
@@ -574,12 +593,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-034: timed navierStokes goldens vary between mints
 
-- Status: closed. Priority: P3. Category: verification.
+- Status: open. Priority: P3. Category: verification.
+- Review correction, 2026-09-25: The current timed fixture gate passes its numerical contract. A single sweep does not prove equality across two independent golden mints. Retain both runs and compare their raw files before accepting the reproducibility closure. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: the timed fixture path of parity/export-and-render.mjs; navierStokes, temporalAberration.
 - Expected behavior: Two mints of a timed fixture are byte-identical.
 - Observed behavior: After the DSL load, the paused demo rendered the new graph 22 times at the time it paused (0.094 to 0.127 in three probes), so each timed series started from a different state. Since c37b96b the minter clears every graph-declared texture and o0 to o7 before the timed protocol, the zeroed state nm-render --samples starts from.
 - Evidence: navierStokes minted four times (two quiet, one at load average about 28, one in a full sweep): all 6 samples byte-identical. temporalAberration minted three times: all 3 samples byte-identical. run_samples.sh: navierStokes 6/6 (max 2), temporalAberration 3/3 (max 1). The new contract test fails on the old minter.
-- Next action: None.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: Two timed mints are byte-identical. Met.
 - Required checks: Two mints compared with cmp; parity/run_samples.sh on the timed fixtures.
@@ -587,12 +607,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-035: the live-DSL sweep does not pass external textures
 
-- Status: closed. Priority: P3. Category: verification.
+- Status: open. Priority: P3. Category: verification.
+- Review correction, 2026-09-25: The current CLI and harness tests support the external-texture plumbing. The reviewed full-sweep evidence does not establish the separate NM_LIVE_DSL=1 text acceptance check at this source. Execute that existing path with the same external image and retain the result. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: parity/sweep.sh with NM_LIVE_DSL=1; nm-render --dsl; qt/tools/nm-render/host_textures.h; the text fixture.
 - Expected behavior: The live-DSL sweep gives each fixture the same host inputs as the graph sweep.
 - Observed behavior: Since 7d6db38, --dsl accepts --external-texture, and the live-DSL loop passes each saved out/<name>.<texId>.png. The live-DSL and graph ledgers agree on every row.
 - Evidence: NM_LIVE_DSL=1 SKIP_GOLDEN=1 parity/sweep.sh: 353/353, text PASS (max 1). test_nm_render_cli checks the --dsl exit 2. The new contract test fails on the old sweep.sh.
-- Next action: None.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: NM_LIVE_DSL=1 parity/sweep.sh grades text as PASS. Met.
 - Required checks: The live-DSL sweep on text; test_nm_render_cli.
@@ -613,12 +634,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-037: the compiler does not build for macOS before 13.3
 
-- Status: closed. Priority: P2. Category: ecosystem.
+- Status: open. Priority: P2. Category: ecosystem.
+- Review correction, 2026-09-25: The macOS warnings job builds for the 13.0 deployment target and test_js_number passes. The larger random comparison stated in the acceptance criterion has no raw retained corpus/output in this review. Retain that result before accepting the complete closure; a deployment target is not a runtime test on macOS 13.0. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/noisemaker/compiler/validator.cpp, expander.cpp, dsl_compiler.cpp; qt/noisemaker/compiler/js_number.{h,cpp}; hosts that target macOS 13.0 to 13.2 (Sync's render helper).
 - Expected behavior: The library builds for every macOS its hosts support, and formats numbers as JavaScript's String(number).
 - Observed behavior: Before f0c123b, three copies of a formatter used the C++17 floating-point std::to_chars, which Apple's libc++ provides only from macOS 13.3. Sync's first release with the render helper (target 13.0) failed to compile (scaffold run 36046367268). The copies also printed "1e-07" for 1e-7, switched to exponent form below 1e21, and the validator's copy printed "nan" and "inf". nm::js::numberToString replaces them.
 - Evidence: A build for -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 under -Werror reproduced the three "'to_chars' is unavailable: introduced in macOS 13.3" errors before the change and has 0 compiler warnings after it. numberToString equals node 26.10.0's String(x) on 400,000 doubles (random bit patterns and random decimals). test_js_number pins 38 cases; ctest 25/25; check_validate, check_expand, and check_graph 376/376. CI now builds the macOS warnings job for 13.0.
-- Next action: None.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: The library builds for macOS 13.0 with -Werror, and numberToString matches V8 on a large random sample.
 - Required checks: The macOS warnings-as-errors CI job; test_js_number; the compiler gates.
@@ -626,12 +648,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-038: an overlay trace stalls live hosts
 
-- Status: closed. Priority: P2. Category: implementation.
+- Status: open. Priority: P2. Category: implementation.
+- Review correction, 2026-09-25: The reported macOS re-trace measurements are 1 to 3 ms. The reported Linux measurements are 25 to 33 ms, which exceed a 16.67 ms frame at 60 fps. The acceptance criterion does not limit the frame budget to macOS. Keep platform timing qualification open and retain native timing samples; current unit tests do not prove that budget. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/noisemaker/runtime/async_overlay.{h,cpp}; nm::Backend::render(); live hosts (Sync's render helper, the viewer, the Qt Quick item) running fibers, scratches, or strayHair.
 - Expected behavior: A live host keeps presenting frames while an overlay is traced, as the reference keeps rendering during its progressive asyncInit trace.
 - Observed behavior: Before 7dcd58d, Backend::render() traced an overlay to completion before the passes, and traced again after a seed, density, or render size change: about 3 s at 1920x1080 on an Apple M4 (fibers), so a Seance edit to one of those parameters, or a resize, stopped a live host for that long. Since 7dcd58d, nm::OverlayTraceMode::Background traces on a worker thread (tracer and canvas only), keeps the previous overlay until the new one completes, uploads it on the render thread, and cancels a superseded trace; a node's first trace at a size shows a transparent overlay. Synchronous stays the default for nm-render, the kit, and goldens. The viewer and NoisemakerItem opt in (eb80948).
 - Evidence: macOS: render() during a 1080p re-trace 0.001 to 0.003 s against 3.0 to 3.5 s synchronous; the completed re-trace is byte-identical to the synchronous frame; supersession, precedence, and teardown mid-trace are tested; TSan (Apple clang) reports 0 warnings for test_async_overlay and test_quick_item. Linux arm64 Docker (GCC 13.3, llvmpipe): ctest 25/25, render during a re-trace 0.025 to 0.033 s against about 5.2 s. The macOS sweep's fibers, scratches, and strayHair candidates are byte-identical to the previous build's; check_async_overlay 13/13.
-- Next action: None. Sync's render helper opted in (sync 6813dc9, pinned to 7675d79): across five live switches from noise to fibers, scratches, and strayHair at 1080p60 on an Apple M2, through syncd, the longest publishing stall was 0 ms (every 50 ms status sample advanced) at 59.8 to 60.0 frames/s, against 1.5 s frozen per switch before; its helper tests are 41/41 at a macOS 13.0 target.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: In the live mode, render() returns within one frame budget during a 1080p re-trace, and the overlay changes to the completed trace. The synchronous mode's output is unchanged.
 - Required checks: test_async_overlay; a timing test of render() during a re-trace; parity/run.sh for fibers, scratches, and strayHair.
@@ -665,12 +688,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-041: a batch mint can reuse the previous fixture's host controls
 
-- Status: closed. Priority: P3. Category: verification.
+- Status: open. Priority: P3. Category: verification.
+- Review correction, 2026-09-25: The current harness tests pass. They do not provide the claimed adversarial batch-versus-single native mint files. Repeat those existing mint paths and retain byte comparisons before accepting the stated reproducibility closure. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log); [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: parity/batch-golden.mjs and parity/export-and-render.mjs; parity/test_harness_contract.py; function-valued fixtures.
 - Expected behavior: A batch mint gives the same golden as a single mint of each fixture, in any order.
 - Observed behavior: Before b9d913c, a fixture minted after one with the same effect structure made the demo's checkStructureAndApplyState keep the previous controls, so numeric function values bound NaN. Both minters now set window.__noisemakerProgramState._structure to [] before each load, so loadDslAndCreateControls rebuilds the controls for every program. They fail, naming the hook, if the reference no longer exposes it.
 - Evidence: Adversarial batches against reference 30c47030 (27 and 8 fixtures, 20 adjacent same-structure pairs): the old minters gave 6 goldens that differ from their single mints; the new minters 35/35 identical; single mints are identical before and after (28/28). Full sweeps with the old and the new minters: 372/372 reference PNGs and 361/361 graphs byte-identical, 361/361 pass, ledger unchanged. The new contract test fails with the old minters ((0, 0, 0, 255) != (0, 255, 0, 255)) and passes with the fix; test_harness_contract 44/44 (integration check: 44 OK). The other batch contract tests mint one fixture per session and do not test cross-fixture state; in a scratch copy with shared sessions they still pass.
-- Next action: None.
+- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
 - Dependencies: None.
 - Acceptance criteria: Batch goldens equal single mints for every fixture in the adversarial order.
 - Required checks: The harness contract tests; cmp of batch against single mints.
@@ -730,6 +754,9 @@ These entries record missing qualification. They do not infer implementation def
 
 ## 5. Ordered next actions
 
+Current first action: First retain raw acceptance evidence for the reopened closure-verification entries. Run the existing overlay comparisons with port-generated overlays on each claimed platform; keep GAP-040 visible. Then run the full existing sweep against immutable current authority inputs, report exact and tolerance results separately, and test installed GUI resize, context recreation, input errors, and recovery on the missing hosts.
+Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
+
 1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families.
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
 3. GAP-044 and GAP-045: ui-* families and unknown family names.
@@ -740,6 +767,8 @@ Record measured results. Close entries only when their acceptance criteria pass.
 Implementation belongs to the separate job. Do not port additional effects or advance the current parity checkpoint through this register.
 
 ## 6. Pass history
+
+2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed; open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|

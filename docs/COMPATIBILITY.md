@@ -2,6 +2,14 @@
 
 ## 1. Source and authority revisions
 
+Daily review: 2026-09-25. Current inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5).
+Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
+Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+The observations below retain their original source and authority identities; they do not qualify later updates.
+Current served kit: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
+
+### Earlier source observations
+
 Report date: 2026-09-24. Source inspected: [`8460cfd77798d4e79d37828c16b0b29a09fbdbda`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/8460cfd77798d4e79d37828c16b0b29a09fbdbda).
 Full rendered parity at this SHA: **unverified**. This is not a release approval.
 A later documentation-only commit does not change this tested source identity.
@@ -21,6 +29,9 @@ Historical measurements remain bound to their original revisions in [completion 
 
 ## 2. Host and distribution matrix
 
+Current tests and qualification limits are in [section 3](#3-parity-coverage).
+The matrix below retains the earlier measured scope. A historical verified row is not a current-source or full-platform certification.
+
 | Dimension | Status | Measured scope or limit |
 |---|---|---|
 | Source-level checks | verified | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. |
@@ -36,6 +47,14 @@ Historical measurements remain bound to their original revisions in [completion 
 
 ## 3. Parity coverage
 
+### Daily review, 2026-09-25
+
+Exact-source CI passes 25 C++ tests on Linux and Windows; macOS runs 24 plus the separate device-limits test. The five compiler stages each pass 388 cases. The llvmpipe suite accepts 362 fixture programs at its existing numerical contracts. Of 360 static records, 359 have maximum difference 0 and bloom has maximum difference 1. Two further programs exercise timed samples. NM_REFERENCE_OVERLAYS=1 supplies the reference overlays for fibers, scratches, and strayHair; those rows do not qualify the port-generated canvas. Local harness tests pass 54 of 54. Full parameter and platform parity remains unverified. [Raw evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
+
+The current full case denominator remains incomplete. Missing parameters, hosts, external inputs, and stateful sequences remain qualification gaps. No skip or tolerated difference counts as exact parity.
+
+### Earlier measurements
+
 Full parity requires complete applicable coverage with no skips or missing cases.
 Historical NEAR, CHAOS, and tolerated differences do not count as strict equality.
 The existing numerical contracts remain separate from exact comparison. This report does not change tolerances or goldens.
@@ -45,7 +64,7 @@ Unknown values mean `not measured`, never zero.
 |---|---|---|---|---|---|---|
 | Current full render suite | not measured | not measured | not measured | not measured | not measured | unverified |
 
-Served compatibility inventory declares 203 effect IDs. Declaration does not establish execution or parity.
+Earlier served compatibility inventory declares 203 effect IDs. Declaration does not establish execution or parity.
 IDs absent from the served declaration: `filter/text`, `render/meshLoader`, `render/meshRender`, `synth/media`, `synth/roll`, `synth/scope`, `synth/spectrum`.
 Missing effects remain visible toward the full-parity goal. Contract exclusions do not become successful tests.
 
@@ -55,6 +74,8 @@ They do not qualify the current upstream revision or full catalog. Exact compari
 | Probe | Evidence | Exact comparison |
 |---|---|---|
 | `noise` | [Retained-golden measurement](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/qt-noise-comparison.json) | failed |
+
+Current served declaration: 210 effect IDs. This inventory is not evidence of execution. The declaration column below reflects kit `0.1.42`.
 
 ### Effect inventory
 
@@ -176,7 +197,7 @@ They do not qualify the current upstream revision or full catalog. Exact compari
 | `filter/temporalAberration` | yes | unverified |
 | `filter/tetraColorArray` | yes | unverified |
 | `filter/tetraCosine` | yes | unverified |
-| `filter/text` | no | unverified |
+| `filter/text` | yes | unverified |
 | `filter/texture` | yes | unverified |
 | `filter/threshold` | yes | unverified |
 | `filter/tile` | yes | unverified |
@@ -223,8 +244,8 @@ They do not qualify the current upstream revision or full catalog. Exact compari
 | `points/physical` | yes | unverified |
 | `render/loopBegin` | yes | unverified |
 | `render/loopEnd` | yes | unverified |
-| `render/meshLoader` | no | unverified |
-| `render/meshRender` | no | unverified |
+| `render/meshLoader` | yes | unverified |
+| `render/meshRender` | yes | unverified |
 | `render/pointsBillboardRender` | yes | unverified |
 | `render/pointsEmit` | yes | unverified |
 | `render/pointsRender` | yes | unverified |
@@ -242,7 +263,7 @@ They do not qualify the current upstream revision or full catalog. Exact compari
 | `synth/julia` | yes | unverified |
 | `synth/mandala` | yes | unverified |
 | `synth/mandelbrot` | yes | unverified |
-| `synth/media` | no | unverified |
+| `synth/media` | yes | unverified |
 | `synth/mnca` | yes | unverified |
 | `synth/modPattern` | yes | unverified |
 | `synth/navierStokes` | yes | unverified |
@@ -254,12 +275,12 @@ They do not qualify the current upstream revision or full catalog. Exact compari
 | `synth/polygon` | yes | unverified |
 | `synth/reactionDiffusion` | yes | unverified |
 | `synth/remap` | yes | unverified |
-| `synth/roll` | no | unverified |
+| `synth/roll` | yes | unverified |
 | `synth/sacredGeometry` | yes | unverified |
-| `synth/scope` | no | unverified |
+| `synth/scope` | yes | unverified |
 | `synth/shape` | yes | unverified |
 | `synth/solid` | yes | unverified |
-| `synth/spectrum` | no | unverified |
+| `synth/spectrum` | yes | unverified |
 | `synth/subdivide` | yes | unverified |
 | `synth/testPattern` | yes | unverified |
 | `synth3d/cell3d` | yes | unverified |
@@ -299,6 +320,9 @@ A successful dispatch or unit-test summary does not establish a full rendered ga
 
 ## 5. Open compatibility limits
 
+Next bounded check: First retain raw acceptance evidence for the reopened closure-verification entries. Run the existing overlay comparisons with port-generated overlays on each claimed platform; keep GAP-040 visible. Then run the full existing sweep against immutable current authority inputs, report exact and tolerance results separately, and test installed GUI resize, context recreation, input errors, and recovery on the missing hosts.
+See the stable entries in [completion gaps](COMPLETION_GAPS.md).
+
 See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
 
 1. Reconcile the current authority and complete case inventory, including parameters, inputs, stateful frames, and host versions.
@@ -310,6 +334,8 @@ All eligible ports have equal priority. Full parity and zero skipped cases remai
 Implementation corrections remain with the separate job. This report does not advance the parity checkpoint.
 
 ## 6. History
+
+2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed; open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
 
 | Date | Source | Result | Change |
 |---|---|---|---|
