@@ -559,6 +559,70 @@ int main() {
                       QJsonObject{{"type", "float"}, {"default", 0}, {"uniform", "amount"}});
         checkMessage(def, "amount", "duplicate uniform binding diagnosed");
     }
+
+    // --- template interpolation of non-string values follows JS String(value) ---
+    {
+        QJsonObject def = validDefinition();
+        mutateFirstPass(def, "type", 5);
+        const std::string want = "Pass 0: unknown pass type '5'";
+        const std::vector<std::string> errors = validate(def);
+        bool ok = false;
+        for (const std::string& e : errors) {
+            if (e == want) ok = true;
+        }
+        std::printf("%s: non-string pass type interpolates as String(5)\n", ok ? "PASS" : "FAIL");
+        if (!ok) {
+            for (const std::string& e : errors) std::printf("  [%s]\n", e.c_str());
+            ++g_failures;
+        }
+    }
+    {
+        QJsonObject def = validDefinition();
+        mutateFirstPass(def, "drawMode", true);
+        const std::string want = "Pass 0: unknown drawMode 'true'";
+        const std::vector<std::string> errors = validate(def);
+        bool ok = false;
+        for (const std::string& e : errors) {
+            if (e == want) ok = true;
+        }
+        std::printf("%s: non-string drawMode interpolates as String(true)\n", ok ? "PASS" : "FAIL");
+        if (!ok) {
+            for (const std::string& e : errors) std::printf("  [%s]\n", e.c_str());
+            ++g_failures;
+        }
+    }
+    {
+        QJsonObject def = validDefinition();
+        QJsonObject t; QJsonObject s; s.insert("format", 1);
+        t.insert("t", s); def.insert("textures", t);
+        const std::string want = "Texture 't': unknown format '1'";
+        const std::vector<std::string> errors = validate(def);
+        bool ok = false;
+        for (const std::string& e : errors) {
+            if (e == want) ok = true;
+        }
+        std::printf("%s: non-string texture format interpolates as String(1)\n", ok ? "PASS" : "FAIL");
+        if (!ok) {
+            for (const std::string& e : errors) std::printf("  [%s]\n", e.c_str());
+            ++g_failures;
+        }
+    }
+    {
+        // The reference emits paramAliases['<alias>'] with BOTH quotes.
+        QJsonObject def = validDefinition();
+        QJsonObject a; a.insert("amt", "nosuchglobal"); def.insert("paramAliases", a);
+        const std::string want = "paramAliases['amt'] references unknown global 'nosuchglobal'";
+        const std::vector<std::string> errors = validate(def);
+        bool ok = false;
+        for (const std::string& e : errors) {
+            if (e == want) ok = true;
+        }
+        std::printf("%s: paramAliases unknown-global message is exact\n", ok ? "PASS" : "FAIL");
+        if (!ok) {
+            for (const std::string& e : errors) std::printf("  [%s]\n", e.c_str());
+            ++g_failures;
+        }
+    }
     {
         QJsonObject def = validDefinition();
         QJsonObject l;

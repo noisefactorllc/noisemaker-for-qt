@@ -286,6 +286,27 @@ std::string toStd(const QString& s) { return s.toStdString(); }
 // Number interpolation: the reference's `${number}` uses String(number).
 std::string numToStd(double value) { return toStd(js::numberToString(value)); }
 
+// JS String(value) over a JSON value (the reference's `${expr}` interpolation
+// where the operand is not statically known to be a string).
+std::string jsStringOf(const QJsonValue& value) {
+    if (value.isString()) return toStd(value.toString());
+    if (value.isDouble()) return numToStd(value.toDouble());
+    if (value.isBool()) return value.toBool() ? "true" : "false";
+    if (value.isNull()) return "null";
+    if (value.isUndefined()) return "undefined";
+    if (value.isArray()) {
+        // String([a, b]) joins the elements with ",".
+        const QJsonArray array = value.toArray();
+        std::string joined;
+        for (const QJsonValue& element : array) {
+            if (!joined.empty()) joined += ",";
+            joined += jsStringOf(element);
+        }
+        return joined;
+    }
+    return "[object Object]";
+}
+
 // --- std enum resolution (reference resolveStdEnum over std_enums.js) ---
 
 // Injectable std-enum tree. Defaults to the live nm::Enums::std() table on
@@ -1132,7 +1153,7 @@ void validateTextureMap(const QJsonValue& textures, Errors& errors, const std::s
         const QJsonValue format = spec.value(QStringLiteral("format"));
         if (!format.isUndefined() &&
             (!format.isString() || !formats().contains(format.toString()))) {
-            errors.push_back(label + ": unknown format '" + toStd(format.toString()) + "'");
+            errors.push_back(label + ": unknown format '" + jsStringOf(format) + "'");
         }
         const QJsonValue is3D = spec.value(QStringLiteral("is3D"));
         if (!is3D.isUndefined() && !is3D.isBool()) {
@@ -1166,11 +1187,11 @@ void validatePass(const QJsonObject& source, const QJsonObject& pass, int index,
     }
     const QJsonValue type = pass.value(QStringLiteral("type"));
     if (!type.isUndefined() && !passTypes().contains(type.toString())) {
-        errors.push_back(label + ": unknown pass type '" + toStd(type.toString()) + "'");
+        errors.push_back(label + ": unknown pass type '" + jsStringOf(type) + "'");
     }
     const QJsonValue drawMode = pass.value(QStringLiteral("drawMode"));
     if (!drawMode.isUndefined() && !drawModes().contains(drawMode.toString())) {
-        errors.push_back(label + ": unknown drawMode '" + toStd(drawMode.toString()) + "'");
+        errors.push_back(label + ": unknown drawMode '" + jsStringOf(drawMode) + "'");
     }
     const QJsonValue drawBuffers = pass.value(QStringLiteral("drawBuffers"));
     if (!drawBuffers.isUndefined() && (!isJsInteger(drawBuffers) || drawBuffers.toDouble() < 1)) {
@@ -1636,7 +1657,7 @@ std::vector<std::string> validateEffectDefinition(const QJsonValue& def) {
                 if (!isNonEmptyString(target)) {
                     errors.push_back("paramAliases['" + toStd(it.key()) + "'] must be a non-empty string");
                 } else if (!context.globalKeys.contains(target.toString())) {
-                    errors.push_back("paramAliases['" + toStd(it.key()) + "] references unknown global '"
+                    errors.push_back("paramAliases['" + toStd(it.key()) + "'] references unknown global '"
                                      + toStd(target.toString()) + "'");
                 }
             }
