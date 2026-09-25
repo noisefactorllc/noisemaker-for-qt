@@ -80,9 +80,9 @@ These entries record missing qualification. They do not infer implementation def
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: qt/noisemaker/, qt/tests/, examples/viewer/, parity/, STATUS.md
 - Expected behavior: Reproducible evidence binds each supported claim to the port and authority revisions.
-- Observed behavior: At reference 30c47030 the macOS ledger grades 361 of 361: 316 PASS, 45 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (GAP-039 added 7 function-value fixtures and GAP-042 agentsPointsState256; the earlier rows are unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there. All 45 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
+- Observed behavior: At reference 30c47030 the macOS ledger grades 361 of 361: 316 PASS, 45 NEAR, 0 FAIL, 0 CHAOS, 0 skipped (GAP-039 added 7 function-value fixtures and GAP-042 agentsPointsState256; the earlier rows are unchanged); the compiler gates are 379 of 379. On Linux llvmpipe, where Chromium's ANGLE GL and nm-render share Mesa's compiler and rasterizer, CI run 36055292025 graded 350 of 353 at the strict default tolerance (349 at max 0, bloom at max 1); with the reference's overlays (511faaf), CI run 36062689333 graded all 353 of 353 at the strict default tolerance, with no tol_for() entry needed there; CI run 36077644490 graded all 361 of 361. All 45 macOS NEAR fixtures are bit-exact there, so each NEAR entry is a macOS compiler effect (ANGLE's GLSL-to-Metal against Apple's GL compiler), not a port defect. The llvmpipe job grades fibers, scratches, and strayHair with the reference's overlays (GAP-040).
 - Evidence: [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) and section 3.
-- Next action: Keep the 44 macOS tol_for() entries with their mechanism: the port cannot change its byte-identical shaders to match ANGLE's compiler. The llvmpipe job is the exact-parity check on every push that touches qt/, parity/, tools/, or STATUS.md.
+- Next action: Keep the 45 macOS tol_for() entries with their mechanism: the port cannot change its byte-identical shaders to match ANGLE's compiler. The llvmpipe job is the exact-parity check on every push that touches qt/, parity/, tools/, or STATUS.md.
 - Dependencies: None.
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
@@ -704,7 +704,7 @@ These entries record missing qualification. They do not infer implementation def
 
 ## 5. Ordered next actions
 
-1. Done: GAP-001's NEAR triage (all 44 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-042 (a macOS compiler effect).
+1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-042 (a macOS compiler effect).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
 3. GAP-027: generic font families. GAP-041: batch-mint program state. GAP-043: hidden float function values.
 4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
