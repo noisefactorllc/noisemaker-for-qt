@@ -759,7 +759,8 @@ Subsequent historical actions remain dependent on that evidence. No implementati
 
 1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families; GAP-044 and GAP-045 (ui-* and absent families).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
+3. Retained CI evidence for the reopened entries (GAP-004, 017, 022, 025, 026, 027, 034, 035, 037, 038, 041): the qualification workflow in progress.
+4. Blocked or waiting: GAP-030 needs a reference fix (blocked, see the entry); GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 
