@@ -57,6 +57,14 @@ target_include_directories(noisemaker-qt PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/noisemaker
 )
 target_link_libraries(noisemaker-qt PUBLIC Qt6::Core Qt6::Gui Qt6::OpenGL)
+# filter/text resolves the font families macOS hides from Qt's font
+# database through CoreText (runtime/text_texture.cpp). The installed
+# package config links the same frameworks.
+set(NM_QT_PLATFORM_LINK_LIBRARIES "")
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(NM_QT_PLATFORM_LINK_LIBRARIES "-framework CoreText" "-framework CoreFoundation")
+    target_link_libraries(noisemaker-qt PRIVATE ${NM_QT_PLATFORM_LINK_LIBRARIES})
+endif()
 target_compile_features(noisemaker-qt PUBLIC cxx_std_17)
 add_library(noisemaker-qt::noisemaker-qt ALIAS noisemaker-qt)
 # CPU-side arithmetic mirrors the JavaScript reference, which never fuses a
@@ -161,6 +169,7 @@ if(NM_QT_INSTALL)
     # the data root) that hosts load for render/meshLoader.
     install(DIRECTORY noisemaker/share DESTINATION ${CMAKE_INSTALL_DATADIR}/noisemaker-qt/noisemaker)
 
+    set(NM_QT_CONFIG_LINK_LIBRARIES Qt6::Core Qt6::Gui Qt6::OpenGL ${NM_QT_PLATFORM_LINK_LIBRARIES})
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/noisemaker-qt-config.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/noisemaker-qt-config.cmake

@@ -29,8 +29,18 @@
 #include <QFontVariableAxis>
 #endif
 
+#if defined(Q_OS_MACOS)
+#include <CoreText/CoreText.h>
+#elif defined(Q_OS_WIN)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <map>
 #include <set>
 #include <utility>
@@ -126,38 +136,238 @@ bool hasItalicFace(const QFont& font) {
                        [&family](const QString& style) { return QFontDatabase::italic(family, style); });
 }
 
-// CSS generic families, which a canvas font string leaves unquoted.
-bool genericStyleHint(const QString& family, QFont::StyleHint* hint) {
+// ------------------------------------------------------ generic families
+// A CSS generic family draws with the family Chromium's default font
+// preferences name for it (chrome/app/resources/locale_settings_mac.grd,
+// _win.grd and _linux.grd at Chromium 153; on Windows the fixed family is
+// Consolas while ClearType is on, prefs_tab_helper.cc). Blink looks the
+// preferred family up, then the generic keyword itself, then the standard
+// family (FontFallbackList::GetFontData), each with its alias
+// (AlternateFamilyName: Times and Times New Roman, Helvetica and Arial,
+// Courier and Courier New), and finally its last resort
+// (FontCache::GetLastResortFallbackFont): Times, then Lucida Grande on
+// macOS; elsewhere the keyword, Sans, Arial and, on Windows, MS UI Gothic,
+// Microsoft Sans Serif, Segoe UI, Calibri, Times New Roman and Courier New.
+// system-ui is the platform's UI font: the system font on macOS, the menu
+// font on Windows (Blink's MenuFontFamily), Qt's general font elsewhere
+// (Chromium without a desktop UI toolkit uses fontconfig's sans).
+enum class CssGeneric { Serif, SansSerif, Monospace, Cursive, Fantasy, SystemUi };
+
+const char* const kCssGenericKeywords[] = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"};
+
+bool cssGenericFamily(const QString& family, CssGeneric* generic) {
+    const QString name = family.trimmed();
+    for (std::size_t i = 0; i < std::size(kCssGenericKeywords); ++i) {
+        if (name.compare(QLatin1String(kCssGenericKeywords[i]), Qt::CaseInsensitive) == 0) {
+            *generic = static_cast<CssGeneric>(i);
+            return true;
+        }
+    }
+    return false;
+}
+
+// The ui-* families: the platform default for the matching style hint.
+bool uiStyleHint(const QString& family, QFont::StyleHint* hint) {
     const QString name = family.trimmed().toLower();
-    if (name == QStringLiteral("serif") || name == QStringLiteral("ui-serif")) {
+    if (name == QStringLiteral("ui-serif")) {
         *hint = QFont::Serif;
-    } else if (name == QStringLiteral("sans-serif") || name == QStringLiteral("ui-sans-serif")
-               || name == QStringLiteral("ui-rounded")) {
+    } else if (name == QStringLiteral("ui-sans-serif") || name == QStringLiteral("ui-rounded")) {
         *hint = QFont::SansSerif;
-    } else if (name == QStringLiteral("monospace") || name == QStringLiteral("ui-monospace")) {
+    } else if (name == QStringLiteral("ui-monospace")) {
         *hint = QFont::Monospace;
-    } else if (name == QStringLiteral("cursive")) {
-        *hint = QFont::Cursive;
-    } else if (name == QStringLiteral("fantasy")) {
-        *hint = QFont::Fantasy;
-    } else if (name == QStringLiteral("system-ui")) {
-        *hint = QFont::System;
     } else {
         return false;
     }
     return true;
 }
 
+#if defined(Q_OS_WIN)
+QString menuFontFamily() {
+    NONCLIENTMETRICSW metrics = {};
+    metrics.cbSize = static_cast<UINT>(sizeof(metrics));
+    if (!SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0)) return QString();
+    return QString::fromWCharArray(metrics.lfMenuFont.lfFaceName);
+}
+
+bool clearTypeEnabled() {
+    UINT smoothing = 0;
+    return SystemParametersInfoW(SPI_GETFONTSMOOTHINGTYPE, 0, &smoothing, 0)
+        && smoothing == static_cast<UINT>(FE_FONTSMOOTHINGCLEARTYPE);
+}
+#endif
+
+// Chromium's default preference for `generic` (not system-ui), and for the
+// standard family.
+QString chromiumPreferredFamily(CssGeneric generic) {
+    Q_ASSERT(generic != CssGeneric::SystemUi);
+#if defined(Q_OS_MACOS)
+    static const char* const kFamilies[] = {"Times", "Helvetica", "Menlo", "Apple Chancery", "Papyrus"};
+#elif defined(Q_OS_WIN)
+    static const char* const kFamilies[] = {"Times New Roman", "Arial", "Courier New", "Comic Sans MS", "Impact"};
+    if (generic == CssGeneric::Monospace && clearTypeEnabled()) return QStringLiteral("Consolas");
+#else
+    static const char* const kFamilies[] = {"Times New Roman", "Arial", "Monospace", "Comic Sans MS", "Impact"};
+#endif
+    return QString::fromLatin1(kFamilies[static_cast<int>(generic)]);
+}
+
+QString chromiumStandardFamily() {
+#if defined(Q_OS_MACOS)
+    return QStringLiteral("Times");
+#else
+    return QStringLiteral("Times New Roman");
+#endif
+}
+
+QString blinkAlternateFamily(const QString& family) {
+    static const std::pair<const char*, const char*> kAlternates[] = {
+        {"Courier", "Courier New"}, {"Times", "Times New Roman"}, {"Times New Roman", "Times"},
+        {"Arial", "Helvetica"},     {"Helvetica", "Arial"},
+#if !defined(Q_OS_WIN)
+        {"Courier New", "Courier"},
+#endif
+    };
+    for (const auto& [name, alternate] : kAlternates) {
+        if (family.compare(QLatin1String(name), Qt::CaseInsensitive) == 0) return QString::fromLatin1(alternate);
+    }
+    return QString();
+}
+
+// The families Blink tries for `generic` (not system-ui), in order.
+QStringList blinkFamilyCandidates(CssGeneric generic) {
+    const QString keyword = QString::fromLatin1(kCssGenericKeywords[static_cast<int>(generic)]);
+    QStringList families;
+    for (const QString& family : {chromiumPreferredFamily(generic), keyword, chromiumStandardFamily()}) {
+        families.append(family);
+        const QString alternate = blinkAlternateFamily(family);
+        if (!alternate.isEmpty()) families.append(alternate);
+    }
+#if defined(Q_OS_MACOS)
+    families << QStringLiteral("Times") << QStringLiteral("Lucida Grande");
+#else
+    families << keyword << QStringLiteral("Sans") << QStringLiteral("Arial");
+#if defined(Q_OS_WIN)
+    families << QStringLiteral("MS UI Gothic") << QStringLiteral("Microsoft Sans Serif") << QStringLiteral("Segoe UI")
+             << QStringLiteral("Calibri") << QStringLiteral("Times New Roman") << QStringLiteral("Courier New");
+#endif
+#endif
+    families.removeDuplicates();
+    return families;
+}
+
+#if defined(Q_OS_MACOS)
+// macOS leaves some system families out of the available-family list that
+// Qt builds its font database from (Times and Courier on macOS 26), yet
+// CoreText, and so Chromium, resolves them by name. Registers the files
+// CoreText resolves for exactly `family` with QFontDatabase.
+bool registerCoreTextFamily(const QString& family) {
+    static QMutex mutex;
+    static QSet<QString> tried;
+    QMutexLocker lock(&mutex);
+    if (tried.contains(family)) return false;
+    tried.insert(family);
+    CFStringRef name = family.toCFString();
+    const void* keys[] = {kCTFontFamilyNameAttribute};
+    const void* values[] = {name};
+    CFDictionaryRef attributes = CFDictionaryCreate(nullptr, keys, values, 1, &kCFTypeDictionaryKeyCallBacks,
+                                                    &kCFTypeDictionaryValueCallBacks);
+    CTFontDescriptorRef descriptor = CTFontDescriptorCreateWithAttributes(attributes);
+    CFSetRef mandatory = CFSetCreate(nullptr, keys, 1, &kCFTypeSetCallBacks);
+    CFArrayRef matches = CTFontDescriptorCreateMatchingFontDescriptors(descriptor, mandatory);
+    QStringList files;
+    for (CFIndex i = 0; matches && i < CFArrayGetCount(matches); ++i) {
+        const auto match = static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(matches, i));
+        const auto url = static_cast<CFURLRef>(CTFontDescriptorCopyAttribute(match, kCTFontURLAttribute));
+        if (!url) continue;
+        const CFStringRef path = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
+        const QString file = QString::fromCFString(path);
+        if (!files.contains(file)) files.append(file);
+        CFRelease(path);
+        CFRelease(url);
+    }
+    if (matches) CFRelease(matches);
+    CFRelease(mandatory);
+    CFRelease(descriptor);
+    CFRelease(attributes);
+    CFRelease(name);
+    bool registered = false;
+    for (const QString& file : files) registered = QFontDatabase::addApplicationFont(file) >= 0 || registered;
+    return registered;
+}
+#elif !defined(Q_OS_WIN)
+// Skia's classes of metric-compatible families, Latin part
+// (SkFontConfigInterface_direct.cpp GetFontEquivClass).
+int metricClass(const QString& family) {
+    static const std::pair<const char*, int> kClasses[] = {
+        {"Arial", 1},           {"Arimo", 1}, {"Liberation Sans", 1},
+        {"Times New Roman", 2}, {"Tinos", 2}, {"Liberation Serif", 2},
+        {"Courier New", 3},     {"Cousine", 3}, {"Liberation Mono", 3},
+    };
+    for (const auto& [name, metric] : kClasses) {
+        if (family.compare(QLatin1String(name), Qt::CaseInsensitive) == 0) return metric;
+    }
+    return 0;
+}
+#endif
+
+// The family Chromium draws with when it looks `family` up, or an empty
+// string when Chromium finds nothing and moves on.
+QString availableFamily(const QString& family) {
+#if defined(Q_OS_MACOS)
+    if (QFontDatabase::hasFamily(family) || (registerCoreTextFamily(family) && QFontDatabase::hasFamily(family))) {
+        return family;
+    }
+    return QString();
+#elif defined(Q_OS_WIN)
+    return QFontDatabase::hasFamily(family) ? family : QString();
+#else
+    // Chromium asks fontconfig and keeps the answer for sans, serif and
+    // monospace, and otherwise only when it is the requested family, a
+    // metric-compatible one, or the family fontconfig's configuration puts
+    // first for the request (SkFontConfigInterfaceDirect::isAcceptableMatch).
+    // Qt resolves the request through the same fontconfig configuration but
+    // does not show that first family, so it is not counted here. In
+    // fontconfig 2.15's stock configuration it is DejaVu LGC Sans for
+    // sans-serif, ITC Zapf Chancery Std for cursive and Impact for fantasy:
+    // the renderer differs from Chromium only where such a family is
+    // installed and the preferred one is not.
+    const QString resolved = QFontInfo(QFont(family)).family();
+    const QString name = family.toLower();
+    const bool anyAnswer = name == QStringLiteral("sans") || name == QStringLiteral("serif")
+        || name == QStringLiteral("monospace");
+    const int metric = metricClass(family);
+    if (anyAnswer || resolved.compare(family, Qt::CaseInsensitive) == 0
+        || (metric != 0 && metricClass(resolved) == metric)) {
+        return resolved;
+    }
+    return QString();
+#endif
+}
+
+QFont chromiumGenericFont(CssGeneric generic) {
+    if (generic == CssGeneric::SystemUi) {
+#if defined(Q_OS_WIN)
+        const QString menu = menuFontFamily();
+        if (!menu.isEmpty()) return QFont(menu);
+#endif
+        return QFontDatabase::systemFont(QFontDatabase::GeneralFont);
+    }
+    for (const QString& candidate : blinkFamilyCandidates(generic)) {
+        const QString family = availableFamily(candidate);
+        if (!family.isEmpty()) return QFont(family);
+    }
+    return QFont();
+}
+
 QFont fontFor(const TextTextureParams& params, int pixelSize) {
     QFont font;
+    CssGeneric generic = CssGeneric::Serif;
     QFont::StyleHint hint = QFont::AnyStyle;
-    if (genericStyleHint(params.font, &hint)) {
-        if (hint == QFont::System) {
-            font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
-        } else {
-            font.setStyleHint(hint);
-            font.setFamily(font.defaultFamily());
-        }
+    if (cssGenericFamily(params.font, &generic)) {
+        font = chromiumGenericFont(generic);
+    } else if (uiStyleHint(params.font, &hint)) {
+        font.setStyleHint(hint);
+        font.setFamily(font.defaultFamily());
     } else {
         font.setFamily(params.font.trimmed());
     }
@@ -179,6 +389,11 @@ QFont fontFor(const TextTextureParams& params, int pixelSize) {
     }
 #endif
     return font;
+}
+
+// reference: fontSize = Math.round(size * Math.min(canvas.width, canvas.height))
+int fontPixelSize(const TextTextureParams& params, QSize canvasSize) {
+    return static_cast<int>(std::round(params.size * std::min(canvasSize.width(), canvasSize.height())));
 }
 
 // Chromium TextMetrics::GetFontBaseline(kMiddleTextBaseline): half the
@@ -584,6 +799,10 @@ LineOutline layoutLine(const QFont& font, const QString& text) {
 
 namespace detail {
 
+QFont textFont(const TextTextureParams& params, QSize canvasSize) {
+    return fontFor(params, fontPixelSize(params, canvasSize));
+}
+
 std::vector<double> kerningVariationDeltas(const QRawFont& font, const QList<quint32>& glyphs, double wght) {
     std::vector<double> deltas(static_cast<std::size_t>(glyphs.size()), 0.0);
     if (glyphs.size() < 2 || !font.isValid()) return deltas;
@@ -717,8 +936,7 @@ QImage renderTextTexture(const TextTextureParams& params, QSize canvasSize) {
     QImage canvas(canvasSize, QImage::Format_ARGB32_Premultiplied);
     canvas.fill(Qt::transparent);
 
-    const int fontSize = static_cast<int>(
-        std::round(params.size * std::min(canvasSize.width(), canvasSize.height())));
+    const int fontSize = fontPixelSize(params, canvasSize);
     if (fontSize > 0 && !params.text.isEmpty()) {
         QFont font = fontFor(params, fontSize);
         const bool syntheticItalic = font.italic() && !hasItalicFace(font);

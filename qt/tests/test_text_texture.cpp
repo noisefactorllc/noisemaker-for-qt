@@ -249,6 +249,31 @@ void testGenericFamilies() {
         const QString label = QStringLiteral("family '%1' falls back to an installed font and draws").arg(p.font);
         check(measure(nm::renderTextTexture(p, QSize(128, 128))).coverage > 50.0, qPrintable(label));
     }
+
+    // Chromium's default font preferences, whose families ship with macOS
+    // and Windows. On Linux fontconfig resolves them; the families print
+    // here and parity/check_text_canvas.mjs compares them with Chromium's.
+    QStringList resolved;
+    for (const char* family : {"serif", "sans-serif", "monospace", "cursive", "fantasy"}) {
+        nm::TextTextureParams p = params(QStringLiteral("Aa"), 0.3);
+        p.font = QString::fromLatin1(family);
+        resolved.append(QFontInfo(nm::detail::textFont(p, QSize(128, 128))).family());
+    }
+    std::printf("  serif, sans-serif, monospace, cursive, fantasy: %s\n",
+                qPrintable(resolved.join(QStringLiteral(", "))));
+#if defined(Q_OS_MACOS)
+    check(resolved == QStringList({QStringLiteral("Times"), QStringLiteral("Helvetica"), QStringLiteral("Menlo"),
+                                   QStringLiteral("Apple Chancery"), QStringLiteral("Papyrus")}),
+          "generic families resolve to Chromium's macOS defaults (Times, Helvetica, Menlo, Apple Chancery, Papyrus)");
+#elif defined(Q_OS_WIN)
+    // The fixed family is Consolas while ClearType is on, else Courier New.
+    check(resolved.size() == 5 && resolved.at(0) == QStringLiteral("Times New Roman")
+              && resolved.at(1) == QStringLiteral("Arial")
+              && (resolved.at(2) == QStringLiteral("Consolas") || resolved.at(2) == QStringLiteral("Courier New"))
+              && resolved.at(3) == QStringLiteral("Comic Sans MS") && resolved.at(4) == QStringLiteral("Impact"),
+          "generic families resolve to Chromium's Windows defaults (Times New Roman, Arial, Consolas or Courier New, "
+          "Comic Sans MS, Impact)");
+#endif
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)

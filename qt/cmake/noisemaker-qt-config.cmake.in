@@ -2,8 +2,8 @@
 #
 # Consumed via `find_package(noisemaker-qt CONFIG)`. Defines an IMPORTED
 # static-library target (noisemaker-qt::noisemaker-qt) whose public include
-# roots and Qt6 link deps mirror the in-tree `noisemaker-qt` target exactly
-# (qt/CMakeLists.txt), plus NOISEMAKER_QT_DATA_ROOT — the installed
+# roots and link deps (Qt6, and CoreText on macOS) mirror the in-tree
+# `noisemaker-qt` target exactly (qt/CMakeLists.txt), plus NOISEMAKER_QT_DATA_ROOT — the installed
 # shaders/effects tree nm::Backend::setup() / nm::EffectRegistry need as
 # `dataRoot` at runtime (never compiled in; see docs/GRAPH-JSON-SCHEMA.md
 # "Qt consumer").
@@ -29,7 +29,7 @@ if(NOT TARGET noisemaker-qt::noisemaker-qt)
     set_target_properties(noisemaker-qt::noisemaker-qt PROPERTIES
         IMPORTED_LOCATION "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_LIBDIR@/@CMAKE_STATIC_LIBRARY_PREFIX@noisemaker-qt@CMAKE_STATIC_LIBRARY_SUFFIX@"
         INTERFACE_INCLUDE_DIRECTORIES "${_noisemaker_qt_prefix}/@CMAKE_INSTALL_INCLUDEDIR@/noisemaker-qt;${_noisemaker_qt_prefix}/@CMAKE_INSTALL_INCLUDEDIR@/noisemaker-qt/noisemaker"
-        INTERFACE_LINK_LIBRARIES "Qt6::Core;Qt6::Gui;Qt6::OpenGL"
+        INTERFACE_LINK_LIBRARIES "@NM_QT_CONFIG_LINK_LIBRARIES@"
         INTERFACE_COMPILE_FEATURES cxx_std_17
     )
 endif()

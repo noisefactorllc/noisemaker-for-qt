@@ -28,11 +28,18 @@
 // against Chromium.
 //
 // The engine ships Nunito, the effect's default family, under
-// <dataRoot>/fonts. Generic CSS families (serif, sans-serif, monospace,
-// cursive, fantasy, system-ui) resolve to the platform's default family for
-// the matching QFont::StyleHint, which need not be the family a browser
-// picks. Other names resolve through QFontDatabase, which falls back to a
-// system family when the name is not installed.
+// <dataRoot>/fonts. The CSS generic families serif, sans-serif, monospace,
+// cursive and fantasy resolve as Chromium resolves them: to the families
+// its default font preferences name on the platform (macOS: Times,
+// Helvetica, Menlo, Apple Chancery, Papyrus; Windows: Times New Roman,
+// Arial, Consolas with ClearType on or else Courier New, Comic Sans MS,
+// Impact; Linux: Times New Roman, Arial, Monospace, Comic Sans MS, Impact
+// through fontconfig) and, where a family is missing, to Blink's fallbacks
+// (the keyword, the standard family, aliases, last-resort families).
+// system-ui resolves to the platform's UI font. ui-serif, ui-sans-serif,
+// ui-monospace and ui-rounded resolve to the platform's default family for
+// the matching QFont::StyleHint. Other names resolve through QFontDatabase,
+// which falls back to a system family when the name is not installed.
 
 #include <QColor>
 #include <QFont>
@@ -90,6 +97,10 @@ QStringList updateTextTextures(Backend& backend, const Graph& graph, const QStri
                                QSize canvasSize);
 
 namespace detail {
+// The font renderTextTexture selects for `params` on a canvas of
+// `canvasSize`: family, pixel size, weight, italic and wght axis.
+QFont textFont(const TextTextureParams& params, QSize canvasSize);
+
 // Kerning variation deltas, in font design units, for `glyphs` in logical
 // order at the user-space wght axis value `wght`: for each glyph, the change
 // of its GPOS 'kern' pair adjustment (the XAdvance VariationIndex device of
