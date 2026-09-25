@@ -36,10 +36,11 @@
 // Impact; Linux: Times New Roman, Arial, Monospace, Comic Sans MS, Impact
 // through fontconfig) and, where a family is missing, to Blink's fallbacks
 // (the keyword, the standard family, aliases, last-resort families).
-// system-ui resolves to the platform's UI font. ui-serif, ui-sans-serif,
-// ui-monospace and ui-rounded resolve to the platform's default family for
-// the matching QFont::StyleHint. Other names resolve through QFontDatabase,
-// which falls back to a system family when the name is not installed.
+// system-ui resolves to the platform's UI font. Other names, ui-serif,
+// ui-sans-serif, ui-monospace and ui-rounded among them (Chromium 153 has
+// no such families), resolve to the named family where the platform has
+// it, as Chromium finds it, and otherwise to the same fallbacks: the
+// standard family first (Times on macOS, Times New Roman elsewhere).
 
 #include <QColor>
 #include <QFont>

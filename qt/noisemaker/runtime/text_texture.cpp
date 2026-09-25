@@ -136,21 +136,25 @@ bool hasItalicFace(const QFont& font) {
                        [&family](const QString& style) { return QFontDatabase::italic(family, style); });
 }
 
-// ------------------------------------------------------ generic families
-// A CSS generic family draws with the family Chromium's default font
-// preferences name for it (chrome/app/resources/locale_settings_mac.grd,
-// _win.grd and _linux.grd at Chromium 153; on Windows the fixed family is
-// Consolas while ClearType is on, prefs_tab_helper.cc). Blink looks the
-// preferred family up, then the generic keyword itself, then the standard
-// family (FontFallbackList::GetFontData), each with its alias
+// ------------------------------------------------------ font families
+// A family draws with the face Chromium draws it with. For a CSS generic
+// family Blink looks up the family Chromium's default font preferences
+// name for it (chrome/app/resources/locale_settings_mac.grd, _win.grd and
+// _linux.grd at Chromium 153; on Windows the fixed family is Consolas
+// while ClearType is on, prefs_tab_helper.cc), then the keyword itself;
+// for any other name, that name. Chromium 153 has no ui-serif,
+// ui-sans-serif, ui-monospace or ui-rounded and looks them up as names.
+// When the lookups fail, Blink takes the standard family
+// (FontFallbackList::GetFontData), every lookup with its alias
 // (AlternateFamilyName: Times and Times New Roman, Helvetica and Arial,
 // Courier and Courier New), and finally its last resort
 // (FontCache::GetLastResortFallbackFont): Times, then Lucida Grande on
-// macOS; elsewhere the keyword, Sans, Arial and, on Windows, MS UI Gothic,
-// Microsoft Sans Serif, Segoe UI, Calibri, Times New Roman and Courier New.
-// system-ui is the platform's UI font: the system font on macOS, the menu
-// font on Windows (Blink's MenuFontFamily), Qt's general font elsewhere
-// (Chromium without a desktop UI toolkit uses fontconfig's sans).
+// macOS; elsewhere a generic's keyword, Sans, Arial and, on Windows, MS UI
+// Gothic, Microsoft Sans Serif, Segoe UI, Calibri, Times New Roman and
+// Courier New. system-ui is the platform's UI font: the system font on
+// macOS, the menu font on Windows (Blink's MenuFontFamily), Qt's general
+// font elsewhere (Chromium without a desktop UI toolkit uses fontconfig's
+// sans).
 enum class CssGeneric { Serif, SansSerif, Monospace, Cursive, Fantasy, SystemUi };
 
 const char* const kCssGenericKeywords[] = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"};
@@ -164,21 +168,6 @@ bool cssGenericFamily(const QString& family, CssGeneric* generic) {
         }
     }
     return false;
-}
-
-// The ui-* families: the platform default for the matching style hint.
-bool uiStyleHint(const QString& family, QFont::StyleHint* hint) {
-    const QString name = family.trimmed().toLower();
-    if (name == QStringLiteral("ui-serif")) {
-        *hint = QFont::Serif;
-    } else if (name == QStringLiteral("ui-sans-serif") || name == QStringLiteral("ui-rounded")) {
-        *hint = QFont::SansSerif;
-    } else if (name == QStringLiteral("ui-monospace")) {
-        *hint = QFont::Monospace;
-    } else {
-        return false;
-    }
-    return true;
 }
 
 #if defined(Q_OS_WIN)
@@ -233,19 +222,22 @@ QString blinkAlternateFamily(const QString& family) {
     return QString();
 }
 
-// The families Blink tries for `generic` (not system-ui), in order.
-QStringList blinkFamilyCandidates(CssGeneric generic) {
-    const QString keyword = QString::fromLatin1(kCssGenericKeywords[static_cast<int>(generic)]);
+// The families Blink tries, in order, after looking up `requested`; a
+// generic family's `keyword` joins its last resort.
+QStringList blinkFamilyCandidates(const QStringList& requested, const QString& keyword) {
     QStringList families;
-    for (const QString& family : {chromiumPreferredFamily(generic), keyword, chromiumStandardFamily()}) {
+    for (const QString& family : requested + QStringList{chromiumStandardFamily()}) {
+        if (family.isEmpty()) continue;
         families.append(family);
         const QString alternate = blinkAlternateFamily(family);
         if (!alternate.isEmpty()) families.append(alternate);
     }
 #if defined(Q_OS_MACOS)
+    Q_UNUSED(keyword);
     families << QStringLiteral("Times") << QStringLiteral("Lucida Grande");
 #else
-    families << keyword << QStringLiteral("Sans") << QStringLiteral("Arial");
+    if (!keyword.isEmpty()) families.append(keyword);
+    families << QStringLiteral("Sans") << QStringLiteral("Arial");
 #if defined(Q_OS_WIN)
     families << QStringLiteral("MS UI Gothic") << QStringLiteral("Microsoft Sans Serif") << QStringLiteral("Segoe UI")
              << QStringLiteral("Calibri") << QStringLiteral("Times New Roman") << QStringLiteral("Courier New");
@@ -344,7 +336,18 @@ QString availableFamily(const QString& family) {
 #endif
 }
 
-QFont chromiumGenericFont(CssGeneric generic) {
+QFont firstAvailableFont(const QStringList& candidates) {
+    for (const QString& candidate : candidates) {
+        const QString family = availableFamily(candidate);
+        if (!family.isEmpty()) return QFont(family);
+    }
+    return QFont();
+}
+
+// The font Chromium draws a canvas font-family of `family` with.
+QFont chromiumFont(const QString& family) {
+    CssGeneric generic = CssGeneric::Serif;
+    if (!cssGenericFamily(family, &generic)) return firstAvailableFont(blinkFamilyCandidates({family}, QString()));
     if (generic == CssGeneric::SystemUi) {
 #if defined(Q_OS_WIN)
         const QString menu = menuFontFamily();
@@ -352,25 +355,12 @@ QFont chromiumGenericFont(CssGeneric generic) {
 #endif
         return QFontDatabase::systemFont(QFontDatabase::GeneralFont);
     }
-    for (const QString& candidate : blinkFamilyCandidates(generic)) {
-        const QString family = availableFamily(candidate);
-        if (!family.isEmpty()) return QFont(family);
-    }
-    return QFont();
+    const QString keyword = QString::fromLatin1(kCssGenericKeywords[static_cast<int>(generic)]);
+    return firstAvailableFont(blinkFamilyCandidates({chromiumPreferredFamily(generic), keyword}, keyword));
 }
 
 QFont fontFor(const TextTextureParams& params, int pixelSize) {
-    QFont font;
-    CssGeneric generic = CssGeneric::Serif;
-    QFont::StyleHint hint = QFont::AnyStyle;
-    if (cssGenericFamily(params.font, &generic)) {
-        font = chromiumGenericFont(generic);
-    } else if (uiStyleHint(params.font, &hint)) {
-        font.setStyleHint(hint);
-        font.setFamily(font.defaultFamily());
-    } else {
-        font.setFamily(params.font.trimmed());
-    }
+    QFont font = chromiumFont(params.font.trimmed());
     const int weight = weightFromStyle(params.style);
     font.setPixelSize(pixelSize);
     font.setWeight(static_cast<QFont::Weight>(std::min(weight, 900)));

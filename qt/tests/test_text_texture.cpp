@@ -274,6 +274,32 @@ void testGenericFamilies() {
           "generic families resolve to Chromium's Windows defaults (Times New Roman, Arial, Consolas or Courier New, "
           "Comic Sans MS, Impact)");
 #endif
+
+    // ui-* names and an absent family fall back to Chromium's standard
+    // family, which its preferences name as they name serif on macOS,
+    // Windows and Linux; a family the platform has resolves to itself.
+    const auto family = [](const char* name) {
+        nm::TextTextureParams p = params(QStringLiteral("Aa"), 0.3);
+        p.font = QString::fromLatin1(name);
+        return QFontInfo(nm::detail::textFont(p, QSize(128, 128))).family();
+    };
+    QStringList fallbacks;
+    for (const char* name : {"ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "Nmqt Absent Family"}) {
+        fallbacks.append(family(name));
+    }
+    std::printf("  ui-serif, ui-sans-serif, ui-monospace, ui-rounded, Nmqt Absent Family: %s\n",
+                qPrintable(fallbacks.join(QStringLiteral(", "))));
+    check(fallbacks == QStringList(5, resolved.value(0)),
+          "ui-* names and an absent family fall back to the standard family, as serif resolves");
+#if defined(Q_OS_MACOS)
+    const char* const installed = "Helvetica";
+#elif defined(Q_OS_WIN)
+    const char* const installed = "Arial";
+#else
+    const char* const installed = "DejaVu Sans";
+#endif
+    std::printf("  %s: %s\n", installed, qPrintable(family(installed)));
+    check(family(installed) == QString::fromLatin1(installed), "a family the platform has resolves to itself");
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
