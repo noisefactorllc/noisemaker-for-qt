@@ -665,16 +665,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-041: a batch mint can reuse the previous fixture's host controls
 
-- Status: open. Priority: P3. Category: verification.
-- Affected scope: parity/batch-golden.mjs and parity/export-and-render.mjs; function-valued fixtures.
+- Status: closed. Priority: P3. Category: verification.
+- Affected scope: parity/batch-golden.mjs and parity/export-and-render.mjs; parity/test_harness_contract.py; function-valued fixtures.
 - Expected behavior: A batch mint gives the same golden as a single mint of each fixture, in any order.
-- Observed behavior: batch-golden.mjs reuses one demo page. When a function-valued fixture follows a fixture with the same effect structure, the demo takes checkStructureAndApplyState, never rebuilds its controls, and binds NaN where a fresh load binds the default.
-- Evidence: funcStateValues minted right after funcBoolean in one batch differs from its single mint; a probe of that sequence shows octaves and seed as NaN. In the sweep's order the 7 function-valued batch goldens equal their single mints, so the current ledger is correct.
-- Next action: Clear window.__noisemakerProgramState._structure before each fixture load in both minters; mint the function fixtures in adversarial order and compare with single mints.
+- Observed behavior: Before b9d913c, a fixture minted after one with the same effect structure made the demo's checkStructureAndApplyState keep the previous controls, so numeric function values bound NaN. Both minters now set window.__noisemakerProgramState._structure to [] before each load, so loadDslAndCreateControls rebuilds the controls for every program. They fail, naming the hook, if the reference no longer exposes it.
+- Evidence: Adversarial batches against reference 30c47030 (27 and 8 fixtures, 20 adjacent same-structure pairs): the old minters gave 6 goldens that differ from their single mints; the new minters 35/35 identical; single mints are identical before and after (28/28). Full sweeps with the old and the new minters: 372/372 reference PNGs and 361/361 graphs byte-identical, 361/361 pass, ledger unchanged. The new contract test fails with the old minters ((0, 0, 0, 255) != (0, 255, 0, 255)) and passes with the fix; test_harness_contract 44/44 (integration check: 44 OK). The other batch contract tests mint one fixture per session and do not test cross-fixture state; in a scratch copy with shared sessions they still pass.
+- Next action: None.
 - Dependencies: None.
 - Acceptance criteria: Batch goldens equal single mints for every fixture in the adversarial order.
 - Required checks: The harness contract tests; cmp of batch against single mints.
-- Last verification: 2026-09-24.
+- Last verification: 2026-09-24, reference 30c47030, macOS arm64.
 
 ### GAP-042: pointsEmit with an explicit stateSize fails strict parity
 
@@ -704,9 +704,9 @@ These entries record missing qualification. They do not infer implementation def
 
 ## 5. Ordered next actions
 
-1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-042 (a macOS compiler effect).
+1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. GAP-027: generic font families. GAP-041: batch-mint program state. GAP-043: hidden float function values.
+3. GAP-043: hidden float function values. GAP-027: generic font families.
 4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
