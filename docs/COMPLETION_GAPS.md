@@ -116,12 +116,12 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-003: distribution and release qualification
 
-- Status: open. Priority: P2. Category: release.
+- Status: closed. Priority: P2. Category: release.
 - Affected scope: Actual artifact, dependencies, notices, version promises, and release evidence.
 - Expected behavior: The delivered artifact supports its documented installation and first useful result.
 - Observed behavior: The served kit 0.1.29 reproduces byte for byte from its source commit. Every served file matches kit.json. Its contents carry the port, reference, and font licenses, with no development files or secrets. The README now states the release model (e521037). The repo and the installed package do not carry the reference's 2017-2025 copyright line. There are no release notes. The scaffold release gate checks the Qt kit's structure but does not build or render it.
 - Evidence: Earlier pass: [Distribution instructions](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md), section 1, and exact-source CI in section 2. This pass: a local build at 217ac1e with scaffold's builder equals the served kit.json; a sequential fetch matched 601/601 files; two builds of one commit are byte-identical. FetchContent of kit-qt-v0.1.29 renders output identical to nm-render. An upgrade install over kit-qt-v0.1.22 leaves no stale files. A secret scan (self-tested on planted strings) found nothing.
-- Next action: Decide the LICENSE copyright line and per-release notes. The scaffold release gate builds and renders the Qt kit since scaffold e9d311b (kits-qt.node-test.js: Qt 6.11.1, Xvfb, Mesa llvmpipe); its first real run (scaffold run 36046818033, dbdf960) passed and published kit 0.1.34.
+- Next action: None. Decisions, 2026-09-25: the LICENSE copyright line is "2017-2026 Noise Factor LLC", the same holder as the reference's "2017-2025" notice, so the repo, the install (share/doc), and the kit (LICENSES/) carry a notice that covers the reference-derived shaders, meshes, and definitions. Release notes are the documented change list the README gives (`git log --oneline kit-qt-v0.1.<m>..kit-qt-v0.1.<n>`); kit tags carry no separate GitHub Release. The scaffold release gate builds and renders the Qt kit before it publishes (e9d311b; every kit since 0.1.34 passed it).
 - Dependencies: Owner decision on the notices; a scaffold change for the release gate.
 - Acceptance criteria: The installed package and the repo carry every required notice. Each kit release has notes or a documented change list. The release gate builds and renders the kit before it publishes.
 - Required checks: The kit build-and-render suite in the release job; kit.json reproduction from the tagged commit.
