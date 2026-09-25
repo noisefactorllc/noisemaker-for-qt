@@ -1,10 +1,11 @@
 // check_text_canvas.mjs -- filter/text canvas parity gate.
 //
 // Oracle: a Chromium 2D canvas (Chromium in its new headless mode, via the
-// reference checkout's Playwright) drawn with the statements of the
-// reference demo host (demo/shaders/lib/demo-ui.js _renderTextToCanvas) and
-// the font string Noisedeck builds (style label -> weight and italic), with
-// the reference's Nunito (demo/font/Nunito) loaded as a FontFace.
+// reference checkout's Playwright, with Chromium's own default font
+// preferences) drawn with the statements of the reference demo host
+// (demo/shaders/lib/demo-ui.js _renderTextToCanvas) and the font string
+// Noisedeck builds (style label -> weight and italic), with the reference's
+// Nunito (demo/font/Nunito) loaded as a FontFace.
 // Candidate: nm::renderTextTexture (qt/build/tests/text_texture_dump) with
 // the port's bundled copy of the same font file.
 //
@@ -14,6 +15,7 @@
 //   ink bounding box (alpha > 0)       each edge within 5 px
 //   total ink coverage, qt / chrome    0.70 .. 1.05
 //   fill colour where both alpha 255   exact
+//   face, generic family cases         the declared PostScript name, both sides
 // Runs: each image's alpha is projected onto the rotated text direction
 // through the text origin, in 1 px bins; a run is a stretch of bins with ink
 // in either image, so both images are cut at the same places. For one line
@@ -47,12 +49,37 @@
 // subpixel rendering but not positioning (ui/gfx/font_render_params_linux.cc,
 // ui/gfx/linux/fontconfig_util.cc).
 //
-// Measured 2026-09-24, Chromium 153.0.8010.12, Qt 6.11.1, 10/10 each
-// (largest run |d|, largest |d| across the text, coverage):
-//   - macOS arm64, CoreText: 0.536, 0.451, 0.757 .. 0.943
+// Generic families (GAP-027). Six cases draw with the CSS generic families.
+// Each side reports the face it drew with: Chromium through DevTools
+// CSS.getPlatformFontsForNode for an element with the same font and text,
+// the candidate through text_texture_dump's <case>.face. Both must be the
+// face GENERIC_FACES declares for the platform, by PostScript name, so a
+// missing font fails its case even where both sides fall back alike.
+// Playwright gives headless Chromium generic families of its own
+// (defaultFontFamilies.ts, applied when the user agent contains "Headless"):
+// monospace is Courier on macOS, where Chromium's preferences
+// (chrome/app/resources/locale_settings_mac.grd) and a headed Chromium use
+// Menlo. The oracle's user agent therefore leaves "Headless" out; the
+// Nunito cases draw byte-identical canvases either way (measured on macOS
+// and Linux). Declared:
+//   - darwin: Chromium's macOS preferences, all installed with macOS.
+//   - win32: Chromium's Windows preferences with ClearType on (Consolas for
+//     monospace) and the menu font, Segoe UI, for system-ui.
+//   - linux: the CI image (ubuntu-24.04 with Playwright's font packages):
+//     Times New Roman and Arial draw as Liberation Serif and Liberation Sans,
+//     Monospace as fontconfig's DejaVu Sans Mono, system-ui as fontconfig's
+//     sans, DejaVu Sans. Comic Sans MS and Impact are not installed, so
+//     cursive and fantasy fall back to the standard family, Times New Roman,
+//     drawn as Liberation Serif.
+//
+// Measured 2026-09-24, Chromium 153.0.8010.12, Qt 6.11.1 (largest run |d|,
+// largest |d| across the text, coverage):
+//   - macOS arm64, CoreText: 16/16; 0.615, 0.556, 0.757 .. 0.943
 //   - macOS arm64, FreeType (QT_QPA_PLATFORM=cocoa:fontengine=freetype):
-//     0.727, 0.443, 0.757 .. 0.942
-//   - Linux arm64 (ubuntu 24.04), FreeType: 0.346, 0.630, 0.953 .. 0.997
+//     15/16; 0.727, 0.558, 0.757 .. 0.942 over the 15. system-ui fails: Qt's
+//     FreeType engine on macOS draws the system font as .SF Georgian.
+//   - Linux arm64 (ubuntu 24.04, the CI image's fonts), FreeType: 16/16;
+//     0.346, 0.630, 0.953 .. 0.997
 // Chromium's glyph masks are heavier than an exact outline fill, most at
 // small sizes: the port draws 0.76 of Chromium's coverage at 26 px on
 // macOS. CI runs this gate on Linux (render-smoke) and Windows
@@ -128,14 +155,31 @@ const cases = [
     { name: 'italic', width: 512, height: 512, css: 'italic 400', u: { text: 'Italic', size: 0.2, style: 'Italic' } },
     { name: 'wide-canvas', width: 640, height: 360, css: 'normal 400',
       u: { text: 'min(w, h)', size: 0.25, posX: 0.5, posY: 0.4 } },
+    ...['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui'].map(font => ({
+        name: font, width: 512, height: 512, css: 'normal 400', generic: true,
+        u: { text: 'Hamburg', size: 0.15, font } })),
 ]
 const DEFAULTS = { text: 'Hello World', font: 'Nunito', size: 0.1, posX: 0.5, posY: 0.5, rotation: 0,
     color: [1, 1, 1, 1], justify: 'center' }
 for (const c of cases) c.u = { ...DEFAULTS, ...c.u }
 
+// The face, by PostScript name, that each generic family draws with on the
+// platforms this gate runs on (see "Generic families" above).
+const GENERIC_FACES = {
+    darwin: { 'serif': 'Times-Roman', 'sans-serif': 'Helvetica', 'monospace': 'Menlo-Regular',
+        'cursive': 'Apple-Chancery', 'fantasy': 'Papyrus', 'system-ui': '.SFNS-Regular' },
+    win32: { 'serif': 'TimesNewRomanPSMT', 'sans-serif': 'ArialMT', 'monospace': 'Consolas',
+        'cursive': 'ComicSansMS', 'fantasy': 'Impact', 'system-ui': 'SegoeUI' },
+    linux: { 'serif': 'LiberationSerif', 'sans-serif': 'LiberationSans', 'monospace': 'DejaVuSansMono',
+        'cursive': 'LiberationSerif', 'fantasy': 'LiberationSerif', 'system-ui': 'DejaVuSans' },
+}
+
 // ---------------------------------------------------------------- oracle
 
-const browser = await chromium.launch({ headless: true, channel: 'chromium' })
+// A user agent without "Headless" keeps Playwright from replacing Chromium's
+// generic font families with its own (see "Generic families" above).
+const browser = await chromium.launch({ headless: true, channel: 'chromium',
+    args: ['--user-agent=Mozilla/5.0 (text canvas oracle)'] })
 const oracle = new Map()
 try {
     const page = await browser.newPage()
@@ -176,6 +220,27 @@ try {
         return out
     }, { font: referenceFont.toString('base64'), cases })
     for (const r of results) oracle.set(r.name, { font: r.font, rgba: Buffer.from(r.rgba, 'base64') })
+    // The platform fonts Chromium draws each generic case's text with, from
+    // an element with the same font and text.
+    const generic = cases.filter(c => c.generic)
+    await page.evaluate(items => {
+        for (const { id, font, text } of items) {
+            const span = document.createElement('span')
+            span.id = id
+            span.style.font = font
+            span.textContent = text
+            document.body.append(span)
+        }
+    }, generic.map((c, i) => ({ id: `generic${i}`, font: oracle.get(c.name).font, text: c.u.text })))
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('DOM.enable')
+    await cdp.send('CSS.enable')
+    const { root } = await cdp.send('DOM.getDocument')
+    for (const [i, c] of generic.entries()) {
+        const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: `#generic${i}` })
+        const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+        oracle.get(c.name).faces = fonts.map(f => ({ family: f.familyName, postScript: f.postScriptName }))
+    }
     console.log(`[INFO] oracle: Chromium ${await browser.version()} on ${process.platform}-${process.arch}`)
 } finally {
     await browser.close()
@@ -189,7 +254,10 @@ try {
     const file = join(dir, 'cases.json')
     writeFileSync(file, JSON.stringify(cases.map(c => ({ name: c.name, width: c.width, height: c.height, uniforms: c.u }))))
     execFileSync(DUMP, [DATA_ROOT, file, dir], { stdio: ['ignore', 'inherit', 'inherit'] })
-    for (const c of cases) candidate.set(c.name, readFileSync(join(dir, `${c.name}.rgba`)))
+    for (const c of cases) {
+        const [family, postScript] = readFileSync(join(dir, `${c.name}.face`), 'utf8').split('\n')
+        candidate.set(c.name, { rgba: readFileSync(join(dir, `${c.name}.rgba`)), face: { family, postScript } })
+    }
 } finally {
     rmSync(dir, { recursive: true, force: true })
 }
@@ -277,8 +345,21 @@ function printLayoutRuns(layout) {
 let failures = 0
 for (const c of cases) {
     const ref = oracle.get(c.name)
-    const got = candidate.get(c.name)
+    const got = candidate.get(c.name)?.rgba
     const problems = []
+    let faces = ''
+    if (c.generic) {
+        const declared = GENERIC_FACES[process.platform]?.[c.u.font]
+        const chromeFaces = ref?.faces || []
+        const qtFace = candidate.get(c.name)?.face
+        faces = ` face chrome ${chromeFaces.map(f => `"${f.family}" (${f.postScript})`).join(' + ') || 'none'}` +
+            ` qt "${qtFace?.family}" (${qtFace?.postScript}) declared ${declared || 'none'}`
+        if (!declared) problems.push(`no face declared for ${c.u.font} on ${process.platform}`)
+        else {
+            if (chromeFaces.length !== 1 || chromeFaces[0].postScript !== declared) problems.push('Chromium face')
+            if (qtFace?.postScript !== declared) problems.push('Qt face')
+        }
+    }
     if (!ref || !got || ref.rgba.length !== c.width * c.height * 4 || got.length !== ref.rgba.length) {
         problems.push('missing or mis-sized output')
     } else {
@@ -302,7 +383,7 @@ for (const c of cases) {
         if (colourMismatch) problems.push(`${colourMismatch} opaque pixels differ in colour`)
         console.log(`${problems.length ? 'FAIL' : 'PASS'} ${c.name.padEnd(14)} ${c.width}x${c.height} ` +
             `font "${ref.font}" runs ${layout.runs.length} max |d| ${worstRun.toFixed(3)} across d=${layout.across.toFixed(3)} ` +
-            `bbox d=[${edges.join(', ')}] coverage qt/chrome=${ratio.toFixed(3)}` +
+            `bbox d=[${edges.join(', ')}] coverage qt/chrome=${ratio.toFixed(3)}${faces}` +
             (problems.length ? `  <- ${problems.join(', ')}` : ''))
         if (problems.length) printLayoutRuns(layout)
     }
