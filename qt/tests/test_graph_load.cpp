@@ -132,6 +132,9 @@ int main() {
         check(spec.format == QStringLiteral("rgba16f"), "textures['node_0_out'].format parsed");
         check(spec.usage.size() == 4, "textures['node_0_out'].usage parsed");
         check(!spec.is3D, "textures['node_0_out'].is3D defaults false");
+        check(!spec.mipmaps, "textures['node_0_out'].mipmaps defaults false");
+        check(!spec.persistent, "textures['node_0_out'].persistent defaults false");
+        check(spec.filter.isEmpty(), "textures['node_0_out'].filter defaults empty");
 
         // renderSurface's own texId never appears as a key in `textures{}`
         // -- it's a global, double-buffered-in-the-full-system surface the
@@ -139,6 +142,40 @@ int main() {
         // conventions).
         check(!graph.textures.contains(QStringLiteral("global_o0")),
               "global_o0 is correctly absent from graph.textures (created on demand)");
+    }
+
+    // Texture policies (GAP-004: mipmaps, persistent, 3D filter)
+    {
+        const char* const kPolicyGraph = R"JSON(
+{
+  "id": "policy_test",
+  "source": "",
+  "passes": [],
+  "textures": {
+    "tex_2d": {
+      "width": 256,
+      "height": 256,
+      "format": "rgba16f",
+      "mipmaps": true,
+      "persistent": true
+    },
+    "tex_3d": {
+      "width": 64,
+      "height": 64,
+      "depth": 64,
+      "is3D": true,
+      "filter": "linear"
+    }
+  }
+}
+)JSON";
+        const nm::Graph graph = nm::Graph::fromJson(QByteArray(kPolicyGraph));
+        const nm::TextureSpec& tex2d = graph.textures.value(QStringLiteral("tex_2d"));
+        check(tex2d.mipmaps == true, "textures['tex_2d'].mipmaps is true");
+        check(tex2d.persistent == true, "textures['tex_2d'].persistent is true");
+        const nm::TextureSpec& tex3d = graph.textures.value(QStringLiteral("tex_3d"));
+        check(tex3d.is3D == true, "textures['tex_3d'].is3D is true");
+        check(tex3d.filter == QStringLiteral("linear"), "textures['tex_3d'].filter is 'linear'");
     }
 
     // Malformed JSON must throw std::runtime_error, not crash or return a

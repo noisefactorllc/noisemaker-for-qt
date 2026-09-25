@@ -94,6 +94,19 @@ QJsonObject extractTextureSpecs(const QVector<ExpandedPass>& passes, const QJson
             spec.insert(QStringLiteral("is3D"), true);
             QJsonArray usage3d{QStringLiteral("storage"), QStringLiteral("sample"), QStringLiteral("copySrc"), QStringLiteral("copyDst")};
             spec.insert(QStringLiteral("usage"), usage3d);
+            const QJsonValue filterVal = effectSpec.value(QStringLiteral("filter"));
+            if (jsTruthy(filterVal)) {
+                spec.insert(QStringLiteral("filter"), filterVal);
+            }
+        } else {
+            const QJsonValue mipmapsVal = effectSpec.value(QStringLiteral("mipmaps"));
+            if (!mipmapsVal.isUndefined()) {
+                spec.insert(QStringLiteral("mipmaps"), mipmapsVal);
+            }
+            const QJsonValue persistentVal = effectSpec.value(QStringLiteral("persistent"));
+            if (!persistentVal.isUndefined()) {
+                spec.insert(QStringLiteral("persistent"), persistentVal);
+            }
         }
         textures.insert(it.key(), spec);
     }

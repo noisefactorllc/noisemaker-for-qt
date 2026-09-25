@@ -3,19 +3,16 @@
 //
 // Walks shaders/effects/<ns>/<name>/definition.js, imports each reference Effect
 // instance, and emits a runtime-shape JSON to
-//   unity/com.noisemaker.hlsl/Effects/<ns>/<func>.json
+//   qt/noisemaker/effects/<ns>/<func>.json
 //
-// The emitted shape matches the hand-written Tier-1 files (Effects/synth/*.json):
+// The emitted shape matches the runtime contract (Effects/<ns>/<func>.json):
 //   { name, namespace, func, tags, description, paramAliases,
 //     globals{ <key>: { type, default, uniform, define, min, max, choices } },
 //     passes[ { name, program, inputs, outputs, uniforms } ],
-//     textures{ <id>: { width, height, [depth], [is3D], format } } }
+//     textures{ <id>: { width, height, [depth], [is3D], [mipmaps], [persistent], [filter], format } } }
 //
-// This tool SUPERSEDES the hand-written Tier-1 JSON for all ~175 effects: running
-// it regenerates them deterministically from the single source of truth (the JS
-// definitions). The C# runtime's definition loader consumes these files; shader
-// SOURCE still lives in Shaders/Effects/<ns>/<Func>.{hlsl,shader} (authored/ported
-// separately — see PORTING-GUIDE.md). This tool only ports the DATA.
+// This tool regenerates definitions deterministically from the single source of truth (the JS
+// definitions). The C++ runtime's definition loader consumes these files. This tool only ports DATA.
 //
 // Usage:
 //   node convert-definitions.mjs                # convert all effects
@@ -54,7 +51,7 @@ const NAMESPACES = [
 // generator (shaders/scripts/generate-shader-manifest.mjs isStarterEffect) and is
 // the SINGLE SOURCE OF TRUTH (reference/02 §1.3 STARTER_OPS <- registerStarterOps).
 // We DO NOT re-derive it; we project it straight from shaders/effects/manifest.json,
-// keyed "<namespace>/<dirname>". The C# loader keys on the explicit `starter` field.
+// keyed "<namespace>/<dirname>". The C++ loader keys on the explicit `starter` field.
 const MANIFEST_PATH = join(EFFECTS_DIR, 'manifest.json')
 let MANIFEST
 try {
@@ -65,7 +62,7 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// Field projection. We copy only the fields the C# definition loader reads, in a
+// Field projection. We copy only the fields the C++ definition loader reads, in a
 // stable order, so the output is byte-stable across runs and minimally diffs.
 // ---------------------------------------------------------------------------
 
@@ -151,6 +148,9 @@ function projectTextures (textures, is3D) {
     if (spec.height !== undefined) t.height = spec.height
     if (spec.depth !== undefined) t.depth = spec.depth
     if (is3D || spec.is3D) t.is3D = true
+    if (spec.mipmaps !== undefined) t.mipmaps = spec.mipmaps
+    if (spec.persistent !== undefined) t.persistent = spec.persistent
+    if (spec.filter !== undefined) t.filter = spec.filter
     t.format = spec.format || 'rgba16f'
     out[id] = t
   }
@@ -269,6 +269,21 @@ async function main () {
   const errors = []
   const preservedLayouts = []
 
+  let validateEffectDefinition = null
+  const validatorPath = join(REFERENCE_ROOT, 'shaders', 'src', 'runtime', 'effect-validator.js')
+  if (existsSync(validatorPath)) {
+    try {
+      const validatorMod = await import(pathToFileURL(validatorPath).href)
+      validateEffectDefinition = validatorMod.validateEffectDefinition || null
+      if (typeof validateEffectDefinition !== 'function') {
+        throw new Error('effect-validator.js does not export validateEffectDefinition')
+      }
+    } catch (err) {
+      process.stderr.write(`[convert] ERROR: failed to load effect-validator.js: ${err?.message || err}\n`)
+      process.exit(1)
+    }
+  }
+
   for (const { namespace, name, defPath } of enumerateEffects(filter)) {
     let instance
     try {
@@ -282,6 +297,14 @@ async function main () {
       failed++
       errors.push(`${namespace}/${name}: no default export`)
       continue
+    }
+    if (validateEffectDefinition) {
+      const valErrors = validateEffectDefinition(instance)
+      if (valErrors.length > 0) {
+        failed++
+        errors.push(`${namespace}/${name}: validation failed:\n    ` + valErrors.join('\n    '))
+        continue
+      }
     }
     const func = instance.func || name
     const outNsDir = join(OUT_DIR, namespace)
@@ -307,7 +330,7 @@ async function main () {
     process.stderr.write(`[convert] carried forward port-authored uniformLayouts for ${preservedLayouts.length}: ${preservedLayouts.join(', ')}\n`)
   }
   for (const e of errors) process.stderr.write(`  ! ${e}\n`)
-  if (failed > 0 && written === 0) process.exit(1)
+  if (failed > 0) process.exit(1)
 }
 
 if (basename(process.argv[1] || '') === 'convert-definitions.mjs') {

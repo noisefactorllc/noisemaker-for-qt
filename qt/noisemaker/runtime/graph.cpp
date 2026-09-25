@@ -46,6 +46,9 @@ TextureSpec parseTextureSpec(const QJsonValue& value, const QString& texId) {
         spec.depth = obj.value(QStringLiteral("depth"));
     }
     spec.is3D = obj.value(QStringLiteral("is3D")).toBool(false);
+    spec.mipmaps = obj.value(QStringLiteral("mipmaps")).toBool(false);
+    spec.persistent = obj.value(QStringLiteral("persistent")).toBool(false);
+    spec.filter = obj.value(QStringLiteral("filter")).toString();
     spec.format = obj.value(QStringLiteral("format")).toString(QStringLiteral("rgba16f"));
     for (const QJsonValue& usageEntry : obj.value(QStringLiteral("usage")).toArray()) {
         spec.usage.append(usageEntry.toString());

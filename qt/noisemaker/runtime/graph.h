@@ -21,6 +21,9 @@ struct TextureSpec {
     QJsonValue height;
     QJsonValue depth;   // present only for is3D specs
     bool is3D = false;
+    bool mipmaps = false;
+    bool persistent = false;
+    QString filter;     // present for 3D textures ("nearest" or "linear")
     QString format = QStringLiteral("rgba16f");
     QStringList usage;
 };
