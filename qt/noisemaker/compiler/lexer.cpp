@@ -96,13 +96,43 @@ QJsonArray lex(const QString& src) {
     int i = 0;
     int line = 1;
     int col = 1;
+    int srcLine = 1;
+    int srcCol = 1;
+    int anchor = 0;
 
-    auto add = [&](const QString& type, const QString& lexeme, int tokLine, int tokCol) {
+    auto add = [&](const QString& type, const QString& lexeme, int tokLine, int tokCol, int end) {
+        for (int offset = anchor; offset < i; ++offset) {
+            if (src.at(offset) == QLatin1Char('\n')) {
+                srcLine++;
+                srcCol = 1;
+            } else {
+                srcCol++;
+            }
+        }
+        const int startLine = srcLine;
+        const int startColumn = srcCol;
+        for (int offset = i; offset < end; ++offset) {
+            if (src.at(offset) == QLatin1Char('\n')) {
+                srcLine++;
+                srcCol = 1;
+            } else {
+                srcCol++;
+            }
+        }
+        anchor = end;
+
         Token token;
         token.type = type;
         token.lexeme = lexeme;
         token.line = tokLine;
         token.col = tokCol;
+        token.hasLine = (tokLine > 0);
+        token.hasCol = (tokCol > 0);
+        token.hasPosition = true;
+        token.posLine = startLine;
+        token.posColumn = startColumn;
+        token.posStart = i;
+        token.posEnd = end;
         tokens.push_back(token);
     };
 
@@ -157,7 +187,7 @@ QJsonArray lex(const QString& src) {
         if (ch == QLatin1Char('/') && at(src, i + 1) == QLatin1Char('/')) {
             int j = i + 2;
             while (j < n && src.at(j) != QLatin1Char('\n')) j++;
-            add(TokenType::COMMENT, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::COMMENT, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -183,7 +213,7 @@ QJsonArray lex(const QString& src) {
                      i, n);
             }
             j += 2;
-            add(TokenType::COMMENT, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::COMMENT, src.mid(i, j - i), startLine, startCol, j);
             line = endLine;
             col = endCol + 2;
             i = j;
@@ -204,7 +234,7 @@ QJsonArray lex(const QString& src) {
                          .arg(lexeme).arg(startLine).arg(startCol),
                      i, j);
             }
-            add(tokenType, lexeme, startLine, startCol);
+            add(tokenType, lexeme, startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -215,7 +245,7 @@ QJsonArray lex(const QString& src) {
             && isDigit(at(src, i + 3))) {
             int j = i + 3;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::VOL_REF, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::VOL_REF, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -226,7 +256,7 @@ QJsonArray lex(const QString& src) {
             && isDigit(at(src, i + 3))) {
             int j = i + 3;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::GEO_REF, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::GEO_REF, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -237,7 +267,7 @@ QJsonArray lex(const QString& src) {
             && isDigit(at(src, i + 3))) {
             int j = i + 3;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::XYZ_REF, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::XYZ_REF, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -250,7 +280,7 @@ QJsonArray lex(const QString& src) {
             && isDigit(at(src, i + 3))) {
             int j = i + 3;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::VEL_REF, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::VEL_REF, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -261,7 +291,7 @@ QJsonArray lex(const QString& src) {
             && at(src, i + 3) == QLatin1Char('a') && isDigit(at(src, i + 4))) {
             int j = i + 4;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::RGBA_REF, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::RGBA_REF, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -272,7 +302,7 @@ QJsonArray lex(const QString& src) {
             && at(src, i + 3) == QLatin1Char('h') && isDigit(at(src, i + 4))) {
             int j = i + 4;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::MESH_REF, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::MESH_REF, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -286,7 +316,7 @@ QJsonArray lex(const QString& src) {
             while (j < n && isHexDigit(src.at(j))) j++;
             const int len = j - i;
             if (len == 4 || len == 7 || len == 9) {
-                add(TokenType::HEX, src.mid(i, len), startLine, startCol);
+                add(TokenType::HEX, src.mid(i, len), startLine, startCol, j);
                 col += len;
                 i = j;
                 continue;
@@ -318,7 +348,7 @@ QJsonArray lex(const QString& src) {
                     j++;
                 }
                 const QString expr = jsTrim(src.mid(exprStart, j - exprStart));
-                add(TokenType::FUNC, expr, startLine, startCol);
+                add(TokenType::FUNC, expr, startLine, startCol, j);
                 col += j - i;
                 i = j;
                 continue;
@@ -329,26 +359,26 @@ QJsonArray lex(const QString& src) {
         if (ch == QLatin1Char('.') && isDigit(at(src, i + 1))) {
             int j = i + 1;
             while (j < n && isDigit(src.at(j))) j++;
-            add(TokenType::NUMBER, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::NUMBER, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
         }
-        if (ch == QLatin1Char('.')) { add(TokenType::DOT, QStringLiteral("."), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('(')) { add(TokenType::LPAREN, QStringLiteral("("), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char(')')) { add(TokenType::RPAREN, QStringLiteral(")"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('{')) { add(TokenType::LBRACE, QStringLiteral("{"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('}')) { add(TokenType::RBRACE, QStringLiteral("}"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('[')) { add(TokenType::LBRACKET, QStringLiteral("["), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char(']')) { add(TokenType::RBRACKET, QStringLiteral("]"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char(',')) { add(TokenType::COMMA, QStringLiteral(","), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char(':')) { add(TokenType::COLON, QStringLiteral(":"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('=')) { add(TokenType::EQUAL, QStringLiteral("="), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char(';')) { add(TokenType::SEMICOLON, QStringLiteral(";"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('+')) { add(TokenType::PLUS, QStringLiteral("+"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('-')) { add(TokenType::MINUS, QStringLiteral("-"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('*')) { add(TokenType::STAR, QStringLiteral("*"), startLine, startCol); i++; col++; continue; }
-        if (ch == QLatin1Char('/')) { add(TokenType::SLASH, QStringLiteral("/"), startLine, startCol); i++; col++; continue; }
+        if (ch == QLatin1Char('.')) { add(TokenType::DOT, QStringLiteral("."), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('(')) { add(TokenType::LPAREN, QStringLiteral("("), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char(')')) { add(TokenType::RPAREN, QStringLiteral(")"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('{')) { add(TokenType::LBRACE, QStringLiteral("{"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('}')) { add(TokenType::RBRACE, QStringLiteral("}"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('[')) { add(TokenType::LBRACKET, QStringLiteral("["), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char(']')) { add(TokenType::RBRACKET, QStringLiteral("]"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char(',')) { add(TokenType::COMMA, QStringLiteral(","), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char(':')) { add(TokenType::COLON, QStringLiteral(":"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('=')) { add(TokenType::EQUAL, QStringLiteral("="), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char(';')) { add(TokenType::SEMICOLON, QStringLiteral(";"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('+')) { add(TokenType::PLUS, QStringLiteral("+"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('-')) { add(TokenType::MINUS, QStringLiteral("-"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('*')) { add(TokenType::STAR, QStringLiteral("*"), startLine, startCol, i + 1); i++; col++; continue; }
+        if (ch == QLatin1Char('/')) { add(TokenType::SLASH, QStringLiteral("/"), startLine, startCol, i + 1); i++; col++; continue; }
 
         // Triple-quoted strings (multi-line) -- must check before single quotes
         if (ch == QLatin1Char('"') && at(src, i + 1) == QLatin1Char('"') && at(src, i + 2) == QLatin1Char('"')) {
@@ -372,7 +402,7 @@ QJsonArray lex(const QString& src) {
             }
             // Extract string content without the triple quotes
             const QString content = src.mid(i + 3, j - (i + 3));
-            add(TokenType::STRING, content, startLine, startCol);
+            add(TokenType::STRING, content, startLine, startCol, j + 3);
             // Update position past closing """
             const QStringList lines = content.split(QLatin1Char('\n'));
             if (lines.size() > 1) {
@@ -403,7 +433,7 @@ QJsonArray lex(const QString& src) {
             }
             // Extract string content without quotes
             const QString content = src.mid(i + 1, j - (i + 1));
-            add(TokenType::STRING, content, startLine, startCol);
+            add(TokenType::STRING, content, startLine, startCol, j + 1);
             col += j - i + 1;
             i = j + 1;
             continue;
@@ -416,7 +446,7 @@ QJsonArray lex(const QString& src) {
                 j++;
                 while (j < n && isDigit(src.at(j))) j++;
             }
-            add(TokenType::NUMBER, src.mid(i, j - i), startLine, startCol);
+            add(TokenType::NUMBER, src.mid(i, j - i), startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -427,7 +457,7 @@ QJsonArray lex(const QString& src) {
             while (j < n && (isLetter(src.at(j)) || isDigit(src.at(j)) || src.at(j) == QLatin1Char('_'))) j++;
             const QString lexeme = src.mid(i, j - i);
             const auto it = keywords().constFind(lexeme);
-            add(it != keywords().constEnd() ? it.value() : TokenType::IDENT, lexeme, startLine, startCol);
+            add(it != keywords().constEnd() ? it.value() : TokenType::IDENT, lexeme, startLine, startCol, j);
             col += j - i;
             i = j;
             continue;
@@ -438,11 +468,7 @@ QJsonArray lex(const QString& src) {
              i, i + 1);
     }
 
-    Token eof;
-    eof.type = TokenType::EOF_;
-    eof.line = line;
-    eof.col = col;
-    tokens.push_back(eof);
+    add(TokenType::EOF_, QString(), line, col, n);
 
     QJsonArray out;
     for (const Token& t : tokens) {

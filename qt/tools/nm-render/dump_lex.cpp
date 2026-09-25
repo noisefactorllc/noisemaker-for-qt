@@ -48,7 +48,13 @@ int handleDumpTokens(const QStringList& args) {
 
     try {
         const QJsonArray tokens = nm::lex(src);
-        const QByteArray json = QJsonDocument(tokens).toJson(QJsonDocument::Compact);
+        QJsonArray cleanTokens;
+        for (const QJsonValue& v : tokens) {
+            QJsonObject o = v.toObject();
+            o.remove(QStringLiteral("position"));
+            cleanTokens.append(o);
+        }
+        const QByteArray json = QJsonDocument(cleanTokens).toJson(QJsonDocument::Compact);
         std::fwrite(json.constData(), 1, static_cast<size_t>(json.size()), stdout);
         std::fputc('\n', stdout);
     } catch (const std::exception& e) {

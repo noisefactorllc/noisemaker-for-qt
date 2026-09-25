@@ -112,6 +112,28 @@ const QSet<QString>& namespaceTokenTypes() {
     return s;
 }
 
+QJsonValue stripPrivatePos(const QJsonValue& val) {
+    if (val.isObject()) {
+        QJsonObject obj = val.toObject();
+        obj.remove(QStringLiteral("_pos"));
+        for (auto it = obj.begin(); it != obj.end(); ++it) {
+            if (it.value().isObject() || it.value().isArray()) {
+                *it = stripPrivatePos(it.value());
+            }
+        }
+        return obj;
+    } else if (val.isArray()) {
+        QJsonArray arr = val.toArray();
+        for (int i = 0; i < arr.size(); ++i) {
+            if (arr.at(i).isObject() || arr.at(i).isArray()) {
+                arr.replace(i, stripPrivatePos(arr.at(i)));
+            }
+        }
+        return arr;
+    }
+    return val;
+}
+
 QJsonObject refNode(const QString& type, const QString& name) {
     QJsonObject o;
     o.insert(QStringLiteral("type"), type);
@@ -159,23 +181,72 @@ private:
     QString typeAt(int idx) const { return inBounds(idx) ? tokens_.at(idx).type : QString(); }
     const Token* tokenAt(int idx) const { return inBounds(idx) ? &tokens_.at(idx) : nullptr; }
 
-    DslSyntaxError parserError(const QString& code, const QString& message, const Token& t) const {
-        const bool hasLocation = (t.line > 0 && t.col > 0 && (t.rawLine.isEmpty() || t.hasLine) && (t.rawCol.isEmpty() || t.hasCol));
+    static DslSyntaxError makeParserError(const QString& code, const QString& message,
+                                         int line = -1, int col = -1,
+                                         bool hasLine = false, bool hasCol = false,
+                                         const QJsonObject& pos = QJsonObject()) {
+        bool hasPosition = false;
+        int pLine = 0, pCol = 0, pStart = -1, pEnd = -1;
+        if (!pos.isEmpty()) {
+            const QJsonValue lv = pos.value(QStringLiteral("line"));
+            const QJsonValue cv = pos.value(QStringLiteral("column"));
+            const QJsonValue sv = pos.value(QStringLiteral("start"));
+            const QJsonValue ev = pos.value(QStringLiteral("end"));
+            if (lv.isDouble() && cv.isDouble() && sv.isDouble() && ev.isDouble()) {
+                pLine = lv.toInt();
+                pCol = cv.toInt();
+                pStart = sv.toInt();
+                pEnd = ev.toInt();
+                if (pLine > 0 && pCol > 0 && pStart >= 0 && pEnd >= pStart) {
+                    hasPosition = true;
+                }
+            }
+        }
+        const bool hasLocation = (line > 0 && col > 0 && hasLine && hasCol);
+
         QJsonObject diagnostic;
         diagnostic.insert(QStringLiteral("code"), code);
         diagnostic.insert(QStringLiteral("stage"), diagStage(code));
         diagnostic.insert(QStringLiteral("severity"), diagSeverity(code));
         diagnostic.insert(QStringLiteral("message"), message);
-        if (hasLocation) {
+        if (hasPosition) {
             QJsonObject loc;
-            loc.insert(QStringLiteral("line"), t.line);
-            loc.insert(QStringLiteral("column"), t.col);
+            loc.insert(QStringLiteral("line"), pLine);
+            loc.insert(QStringLiteral("column"), pCol);
             diagnostic.insert(QStringLiteral("location"), loc);
+
+            QJsonObject span;
+            span.insert(QStringLiteral("start"), pStart);
+            span.insert(QStringLiteral("end"), pEnd);
+            diagnostic.insert(QStringLiteral("span"), span);
         } else {
-            diagnostic.insert(QStringLiteral("location"), QJsonValue(QJsonValue::Null));
+            if (hasLocation) {
+                QJsonObject loc;
+                loc.insert(QStringLiteral("line"), line);
+                loc.insert(QStringLiteral("column"), col);
+                diagnostic.insert(QStringLiteral("location"), loc);
+            } else {
+                diagnostic.insert(QStringLiteral("location"), QJsonValue(QJsonValue::Null));
+            }
+            diagnostic.insert(QStringLiteral("span"), QJsonValue(QJsonValue::Null));
         }
-        diagnostic.insert(QStringLiteral("span"), QJsonValue(QJsonValue::Null));
-        return DslSyntaxError(message, hasLocation ? t.line : -1, hasLocation ? t.col : -1, diagnostic);
+
+        const int errLine = hasPosition ? pLine : (hasLocation ? line : -1);
+        const int errCol = hasPosition ? pCol : (hasLocation ? col : -1);
+        return DslSyntaxError(message, errLine, errCol, diagnostic);
+    }
+
+    DslSyntaxError parserError(const QString& code, const QString& message, const Token& t) const {
+        QJsonObject pos;
+        if (t.hasPosition) {
+            pos.insert(QStringLiteral("line"), t.posLine);
+            pos.insert(QStringLiteral("column"), t.posColumn);
+            pos.insert(QStringLiteral("start"), t.posStart);
+            pos.insert(QStringLiteral("end"), t.posEnd);
+        }
+        const bool hasLine = (t.line > 0 && (t.rawLine.isEmpty() || t.hasLine));
+        const bool hasCol = (t.col > 0 && (t.rawCol.isEmpty() || t.hasCol));
+        return makeParserError(code, message, t.line, t.col, hasLine, hasCol, pos);
     }
 
     DslSyntaxError parserErrorAt(const QString& code, const QString& core, const Token& t, const QString& suffix = QString()) const {
@@ -292,7 +363,7 @@ QJsonObject Parser::parseProgram() {
             // fidelity anyway.
             if (hasRender) {
                 const Token t = peek();
-                throw DslSyntaxError::at(QStringLiteral("Duplicate render() directive"), t.line, t.col);
+                throw parserErrorAt(QStringLiteral("P005"), QStringLiteral("Duplicate render() directive"), t);
             }
             render = parseRenderDirective();
             hasRender = true;
@@ -337,7 +408,7 @@ QJsonObject Parser::parseProgram() {
                           hasNamespaceDefault_ ? QJsonValue(namespaceDefault_) : QJsonValue(QJsonValue::Null));
     namespaceMeta.insert(QStringLiteral("searchOrder"), searchOrderJson);
     program.insert(QStringLiteral("namespace"), namespaceMeta);
-    return program;
+    return stripPrivatePos(program).toObject();
 }
 
 void Parser::parseSearchDirective() {
@@ -422,7 +493,7 @@ QJsonObject Parser::parseStatement() {
         expect(TokenType::EQUAL, QStringLiteral("Expect '='"));
         if (!exprStartTokens().contains(peek().type)) {
             const Token t = peek();
-            throw DslSyntaxError::at(QStringLiteral("Expected expression after '='"), t.line, t.col);
+            throw parserErrorAt(QStringLiteral("P001"), QStringLiteral("Expected expression after '='"), t);
         }
         const QJsonObject expr = parseAdditive();
         QJsonObject node;
@@ -636,7 +707,14 @@ QJsonObject Parser::parseWriteCall() {
         node.insert(QStringLiteral("loc"), ast::loc(tokenLine, tokenCol));
         return node;
     }
-    throw DslSyntaxError::at(QStringLiteral("Expected write or write3d"), tokenLine, tokenCol);
+    Token dummy;
+    dummy.line = tokenLine;
+    dummy.col = tokenCol;
+    dummy.hasLine = (tokenLine > 0);
+    dummy.hasCol = (tokenCol > 0);
+    throw parserError(QStringLiteral("P005"),
+                      QStringLiteral("Expected write or write3d at line %1 col %2").arg(tokenLine).arg(tokenCol),
+                      dummy);
 }
 
 QJsonObject Parser::parseSubchainCall() {
@@ -733,11 +811,11 @@ QJsonObject Parser::parseCall() {
         if (next && next->type == TokenType::IDENT) {
             const Token* after = tokenAt(current_ + 2);
             if (after && after->type == TokenType::LPAREN) {
-                throw DslSyntaxError::at(
+                throw parserErrorAt(
+                    QStringLiteral("P007"),
                     QStringLiteral("Inline namespace syntax '%1.%2()' is not allowed. Use 'search %1' at the start "
-                                   "of the program instead,")
-                        .arg(nameToken.lexeme, next->lexeme),
-                    nameToken.line, nameToken.col);
+                                   "of the program instead,").arg(nameToken.lexeme, next->lexeme),
+                    nameToken);
             }
         }
     }
@@ -754,8 +832,7 @@ QJsonObject Parser::parseCall() {
             if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
                 if (positional && !allowMixed) {
                     const Token t = peek();
-                    throw DslSyntaxError::at(QStringLiteral("Cannot mix positional and keyword arguments"), t.line,
-                                              t.col);
+                    throw parserErrorAt(QStringLiteral("P007"), QStringLiteral("Cannot mix positional and keyword arguments"), t);
                 }
                 keyword = true;
                 const QString kwargName = peek().lexeme;
@@ -764,8 +841,7 @@ QJsonObject Parser::parseCall() {
             } else {
                 if (keyword && !allowMixed) {
                     const Token t = peek();
-                    throw DslSyntaxError::at(QStringLiteral("Cannot mix positional and keyword arguments"), t.line,
-                                              t.col);
+                    throw parserErrorAt(QStringLiteral("P007"), QStringLiteral("Cannot mix positional and keyword arguments"), t);
                 }
                 positional = true;
                 args.append(parseArg());
@@ -1107,7 +1183,15 @@ QJsonObject Parser::transformAudioInvocation(const QJsonObject& call, const Toke
 }
 
 QJsonObject Parser::transformFromInvocation(const QJsonObject& call, const Token& nameToken) {
-    auto fail = [&](const QString& message) { throw DslSyntaxError::at(message, nameToken.line, nameToken.col); };
+    auto fail = [&](const QString& message) {
+        const bool hasCoordinates = (nameToken.line > 0 && nameToken.col > 0
+            && (nameToken.rawLine.isEmpty() || nameToken.hasLine)
+            && (nameToken.rawCol.isEmpty() || nameToken.hasCol));
+        if (hasCoordinates) {
+            throw parserErrorAt(QStringLiteral("P007"), message, nameToken);
+        }
+        throw parserError(QStringLiteral("P007"), message, nameToken);
+    };
 
     const QJsonObject kwargs = call.value(QStringLiteral("kwargs")).toObject();
     if (!kwargs.isEmpty()) {
@@ -1190,7 +1274,7 @@ void Parser::parseKwarg(QJsonObject& obj) {
         // uses ':' -- a copy-paste artifact in the source of truth, kept
         // verbatim (never "clean up" a reference wording quirk).
         const Token t = peek();
-        throw DslSyntaxError::at(QStringLiteral("Expected expression after '='"), t.line, t.col);
+        throw parserErrorAt(QStringLiteral("P001"), QStringLiteral("Expected expression after '='"), t);
     }
     obj.insert(key, parseArg());
 }
@@ -1234,7 +1318,27 @@ QJsonObject Parser::parseUnary() {
 
 double Parser::toNumber(const QJsonObject& node) {
     if (node.value(QStringLiteral("type")).toString() != NodeKind::Number) {
-        throw DslSyntaxError(QStringLiteral("Expected number"));
+        // Number coercion failures locate the offending AST node's private
+        // source position when present, its parser-authored loc otherwise,
+        // and are explicitly null when neither carries valid coordinates.
+        QJsonObject pos = node.value(QStringLiteral("_pos")).toObject();
+        int line = -1;
+        int col = -1;
+        bool hasLine = false;
+        bool hasCol = false;
+        if (node.contains(QStringLiteral("loc"))) {
+            const QJsonObject loc = node.value(QStringLiteral("loc")).toObject();
+            if (loc.contains(QStringLiteral("line")) && loc.value(QStringLiteral("line")).isDouble()) {
+                line = loc.value(QStringLiteral("line")).toInt();
+                hasLine = (line > 0);
+            }
+            if (loc.contains(QStringLiteral("col")) && loc.value(QStringLiteral("col")).isDouble()) {
+                col = loc.value(QStringLiteral("col")).toInt();
+                hasCol = (col > 0);
+            }
+        }
+        throw makeParserError(QStringLiteral("P001"), QStringLiteral("Expected number"),
+                              line, col, hasLine, hasCol, pos);
     }
     return node.value(QStringLiteral("value")).toDouble();
 }
@@ -1298,13 +1402,21 @@ QJsonObject Parser::parsePrimary() {
         }
         if (peek().type != TokenType::RBRACKET) {
             const Token t = peek();
-            throw DslSyntaxError::at(QStringLiteral("Expected ']'"), t.line, t.col);
+            throw parserErrorAt(QStringLiteral("P001"), QStringLiteral("Expected ']'"), t);
         }
         advance();
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::ArrayLiteral);
         node.insert(QStringLiteral("elements"), elements);
         node.insert(QStringLiteral("loc"), ast::loc(startLine, startCol));
+        if (token.hasPosition) {
+            QJsonObject pos;
+            pos.insert(QStringLiteral("line"), token.posLine);
+            pos.insert(QStringLiteral("column"), token.posColumn);
+            pos.insert(QStringLiteral("start"), token.posStart);
+            pos.insert(QStringLiteral("end"), token.posEnd);
+            node.insert(QStringLiteral("_pos"), pos);
+        }
         return node;
     }
     if (tt == TokenType::FUNC) {
@@ -1359,7 +1471,7 @@ QJsonObject Parser::parsePrimary() {
             const Token* after = tokenAt(current_ + 2);
             if (after && after->type == TokenType::LPAREN) break; // dot begins a call
             if (!memberTokenTypes().contains(n->type)) {
-                throw DslSyntaxError::at(QStringLiteral("Expected identifier after '.'"), n->line, n->col);
+                throw parserErrorAt(QStringLiteral("P001"), QStringLiteral("Expected identifier after '.'"), *n);
             }
             advance(); // consume '.'
             advance(); // consume segment token
@@ -1416,7 +1528,7 @@ QJsonObject Parser::parsePrimary() {
         expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
         return expr;
     }
-    throw DslSyntaxError::at(QStringLiteral("Unexpected token %1").arg(token.type), token.line, token.col);
+    throw parserErrorAt(QStringLiteral("P001"), QStringLiteral("Unexpected token %1").arg(token.type), token);
 }
 
 } // namespace

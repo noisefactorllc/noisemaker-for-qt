@@ -558,8 +558,9 @@ int main() {
                       QStringLiteral("parser diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 check(d.value(QStringLiteral("message")).toString() == c.message,
                       QStringLiteral("parser diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
-                check(d.value(QStringLiteral("span")).isNull(),
-                      QStringLiteral("parser diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+                check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")),
+                      QStringLiteral("parser diagnostic span is present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
 
                 const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
                 check(loc.value(QStringLiteral("line")).toInt() == c.line,
@@ -602,10 +603,12 @@ int main() {
                 caught = true;
                 const QJsonObject d = err.diagnostic();
                 const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+                const QJsonObject span = d.value(QStringLiteral("span")).toObject();
                 check(err.message() == c.message && d.value(QStringLiteral("code")).toString() == QStringLiteral("P006")
                           && d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser")
                           && d.value(QStringLiteral("severity")).toString() == QStringLiteral("error")
-                          && d.value(QStringLiteral("message")).toString() == c.message && d.value(QStringLiteral("span")).isNull()
+                          && d.value(QStringLiteral("message")).toString() == c.message
+                          && span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end"))
                           && loc.value(QStringLiteral("line")).toInt() == c.line
                           && loc.value(QStringLiteral("column")).toInt() == c.column,
                       QStringLiteral("subchain P006 diagnostic matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
@@ -618,6 +621,7 @@ int main() {
                 QJsonObject tok = val.toObject();
                 tok.remove(QStringLiteral("line"));
                 tok.remove(QStringLiteral("col"));
+                tok.remove(QStringLiteral("position"));
                 bare.append(tok);
             }
             bool caughtBare = false;
@@ -677,6 +681,7 @@ int main() {
                 if (tokObj.value(QStringLiteral("type")).toString() == QStringLiteral("OUTPUT_REF")) {
                     tokObj.remove(QStringLiteral("line"));
                     tokObj.remove(QStringLiteral("col"));
+                    tokObj.remove(QStringLiteral("position"));
                     if (cc.hasLine) tokObj.insert(QStringLiteral("line"), cc.lineVal);
                     if (cc.hasCol) tokObj.insert(QStringLiteral("col"), cc.colVal);
                 }
@@ -779,8 +784,9 @@ int main() {
                       QStringLiteral("automation diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 check(d.value(QStringLiteral("message")).toString() == c.message,
                       QStringLiteral("automation diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
-                check(d.value(QStringLiteral("span")).isNull(),
-                      QStringLiteral("automation diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+                check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")),
+                      QStringLiteral("automation diagnostic span is present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
                 check(loc.value(QStringLiteral("line")).toInt() == c.line,
                       QStringLiteral("automation diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
@@ -844,8 +850,9 @@ int main() {
                       QStringLiteral("search diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 check(d.value(QStringLiteral("message")).toString() == c.message,
                       QStringLiteral("search diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
-                check(d.value(QStringLiteral("span")).isNull(),
-                      QStringLiteral("search diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+                check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")),
+                      QStringLiteral("search diagnostic span is present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
                 check(loc.value(QStringLiteral("line")).toInt() == c.line,
                       QStringLiteral("search diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
@@ -916,8 +923,9 @@ int main() {
                       QStringLiteral("output diagnostic severity matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 check(d.value(QStringLiteral("message")).toString() == c.message,
                       QStringLiteral("output diagnostic message field matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
-                check(d.value(QStringLiteral("span")).isNull(),
-                      QStringLiteral("output diagnostic span is null for %1").arg(QLatin1String(c.name)).toUtf8().constData());
+                const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+                check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")),
+                      QStringLiteral("output diagnostic span is present for %1").arg(QLatin1String(c.name)).toUtf8().constData());
                 const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
                 check(loc.value(QStringLiteral("line")).toInt() == c.line,
                       QStringLiteral("output diagnostic location line matches for %1").arg(QLatin1String(c.name)).toUtf8().constData());
@@ -979,6 +987,7 @@ int main() {
                 QJsonObject tokObj = val.toObject();
                 tokObj.remove(QStringLiteral("line"));
                 tokObj.remove(QStringLiteral("col"));
+                tokObj.remove(QStringLiteral("position"));
                 modifiedTokens.append(tokObj);
             }
             bool caught = false;
@@ -992,6 +1001,82 @@ int main() {
             }
             check(caught, "throws DslSyntaxError for unavailable coordinates in P003/P004/P005");
         }
+    }
+
+    // P007 call-form diagnostics test suite
+    {
+        // 1. Inline namespace syntax
+        bool caught = false;
+        try {
+            nm::parse(nm::lex(QStringLiteral("search synth\nlet x = synth.noise()\nrender x")));
+        } catch (const nm::DslSyntaxError& err) {
+            caught = true;
+            const QJsonObject d = err.diagnostic();
+            check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P007"), "inline namespace emits P007");
+            check(d.value(QStringLiteral("stage")).toString() == QStringLiteral("parser"), "P007 stage is parser");
+            check(d.value(QStringLiteral("severity")).toString() == QStringLiteral("error"), "P007 severity is error");
+            const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+            check(loc.value(QStringLiteral("line")).toInt() == 2, "P007 inline namespace line is 2");
+            const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+            check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")), "P007 inline namespace has span");
+        }
+        check(caught, "throws P007 for inline namespace syntax");
+
+        // 2. Mixed positional and keyword arguments
+        caught = false;
+        try {
+            nm::parse(nm::lex(QStringLiteral("search synth\nlet x = noise(1, freq: 2)\nrender x")));
+        } catch (const nm::DslSyntaxError& err) {
+            caught = true;
+            const QJsonObject d = err.diagnostic();
+            check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P007"), "mixed positional/keyword emits P007");
+            check(d.value(QStringLiteral("message")).toString().contains(QStringLiteral("Cannot mix positional and keyword arguments")),
+                  "P007 mixed positional/keyword message");
+        }
+        check(caught, "throws P007 for mixed positional/keyword args");
+
+        // 3. from() call validation: named kwargs
+        caught = false;
+        try {
+            nm::parse(nm::lex(QStringLiteral("search synth\nlet x = from(ns: synth, noise())\nrender x")));
+        } catch (const nm::DslSyntaxError& err) {
+            caught = true;
+            const QJsonObject d = err.diagnostic();
+            check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P007"), "from() kwargs emits P007");
+        }
+        check(caught, "throws P007 for from() with named kwargs");
+
+        // 4. from() call validation: arity mismatch
+        caught = false;
+        try {
+            nm::parse(nm::lex(QStringLiteral("search synth\nlet x = from(synth)\nrender x")));
+        } catch (const nm::DslSyntaxError& err) {
+            caught = true;
+            const QJsonObject d = err.diagnostic();
+            check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P007"), "from() arity emits P007");
+            check(d.value(QStringLiteral("message")).toString().contains(QStringLiteral("'from' requires exactly two arguments")),
+                  "P007 from() arity message");
+        }
+        check(caught, "throws P007 for from() with arity mismatch");
+    }
+
+    // P001 number coercion diagnostics test suite
+    {
+        // 1. Array literal coerced to number in arithmetic
+        bool caught = false;
+        try {
+            nm::parse(nm::lex(QStringLiteral("search synth\nlet x = [1, 2] + 3\nrender x")));
+        } catch (const nm::DslSyntaxError& err) {
+            caught = true;
+            const QJsonObject d = err.diagnostic();
+            check(d.value(QStringLiteral("code")).toString() == QStringLiteral("P001"), "array coercion emits P001");
+            check(d.value(QStringLiteral("message")).toString() == QStringLiteral("Expected number"), "P001 expected number message");
+            const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+            check(loc.value(QStringLiteral("line")).toInt() == 2, "P001 array coercion line is 2");
+            const QJsonObject span = d.value(QStringLiteral("span")).toObject();
+            check(span.contains(QStringLiteral("start")) && span.contains(QStringLiteral("end")), "P001 array coercion has span");
+        }
+        check(caught, "throws P001 for array coerced to number");
     }
 
     if (g_failures == 0) {

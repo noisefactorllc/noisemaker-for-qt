@@ -98,17 +98,31 @@ struct Token {
     bool hasCol = false;
     QString rawLine;
     QString rawCol;
+
+    bool hasPosition = false;
+    int posLine = 0;
+    int posColumn = 0;
+    int posStart = -1;
+    int posEnd = -1;
 };
 
 // {type, lexeme, line, col} — matches the reference token shape exactly
 // (key order is irrelevant to the parity gates, which compare key-order-
-// insensitively).
+// insensitively). Tokens carrying source position attach it under "position".
 inline QJsonObject toJson(const Token& t) {
     QJsonObject o;
     o.insert(QStringLiteral("type"), t.type);
     o.insert(QStringLiteral("lexeme"), t.lexeme);
     o.insert(QStringLiteral("line"), t.line);
     o.insert(QStringLiteral("col"), t.col);
+    if (t.hasPosition) {
+        QJsonObject pos;
+        pos.insert(QStringLiteral("line"), t.posLine);
+        pos.insert(QStringLiteral("column"), t.posColumn);
+        pos.insert(QStringLiteral("start"), t.posStart);
+        pos.insert(QStringLiteral("end"), t.posEnd);
+        o.insert(QStringLiteral("position"), pos);
+    }
     return o;
 }
 
@@ -156,6 +170,31 @@ inline Token tokenFromJson(const QJsonObject& o) {
         t.hasCol = false;
         t.rawCol = containsCol && colVal.isNull() ? QStringLiteral("null") : QStringLiteral("undefined");
     }
+
+    if (o.contains(QStringLiteral("position"))) {
+        const QJsonValue posVal = o.value(QStringLiteral("position"));
+        if (posVal.isObject()) {
+            const QJsonObject posObj = posVal.toObject();
+            const QJsonValue pLineVal = posObj.value(QStringLiteral("line"));
+            const QJsonValue pColVal = posObj.value(QStringLiteral("column"));
+            const QJsonValue startVal = posObj.value(QStringLiteral("start"));
+            const QJsonValue endVal = posObj.value(QStringLiteral("end"));
+            if (pLineVal.isDouble() && pColVal.isDouble() && startVal.isDouble() && endVal.isDouble()) {
+                const int pLine = pLineVal.toInt();
+                const int pCol = pColVal.toInt();
+                const int pStart = startVal.toInt();
+                const int pEnd = endVal.toInt();
+                if (pLine > 0 && pCol > 0 && pStart >= 0 && pEnd >= pStart) {
+                    t.hasPosition = true;
+                    t.posLine = pLine;
+                    t.posColumn = pCol;
+                    t.posStart = pStart;
+                    t.posEnd = pEnd;
+                }
+            }
+        }
+    }
+
     return t;
 }
 
