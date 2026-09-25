@@ -295,12 +295,13 @@ std::string jsStringOf(const QJsonValue& value) {
     if (value.isNull()) return "null";
     if (value.isUndefined()) return "undefined";
     if (value.isArray()) {
-        // String([a, b]) joins the elements with ",".
+        // String(array) is Array.prototype.join: null and undefined elements
+        // render as the empty string, other elements via String(element).
         const QJsonArray array = value.toArray();
         std::string joined;
         for (const QJsonValue& element : array) {
             if (!joined.empty()) joined += ",";
-            joined += jsStringOf(element);
+            if (!element.isNull() && !element.isUndefined()) joined += jsStringOf(element);
         }
         return joined;
     }
@@ -539,13 +540,6 @@ void checkLayoutConflicts(const std::vector<SlotClaim>& entries, Errors& errors,
             }
         }
     }
-}
-
-void checkByteLayoutConflicts(const std::vector<SlotClaim>&, Errors&, const std::string&) {
-    // Reference checkByteLayoutConflicts compares offsets/sizes; the port's
-    // claim record for slot entries carries no byte extents, and no tracked
-    // definition uses the byte form. Byte-layout conflicts are structurally
-    // detected in validateUniformLayout's byte branch below.
 }
 
 // --- validateUniformLayout: reference lines 208-279 ---
