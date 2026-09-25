@@ -619,6 +619,20 @@ async function main () {
     // message and reads the wrong surface (the bug that produced identical
     // default goldens).
     await page.evaluate(({ src, resetStatus }) => {
+      // Rebuild the host controls for every program (GAP-041). The run button
+      // calls checkStructureAndApplyState, which keeps the previous program's
+      // controls when ProgramState._structure (its effect keys) matches the new
+      // program's. No control then coerces the new values, so a numeric
+      // function-valued parameter binds NaN where a rebuild binds its default,
+      // and a batch mint differs from a single mint. An empty structure matches
+      // no program with effects, so loadDslAndCreateControls rebuilds them, as
+      // after the demo's boot program.
+      const programState = window.__noisemakerProgramState
+      if (!programState || !Array.isArray(programState._structure)) {
+        throw new Error('reference demo has no window.__noisemakerProgramState._structure; ' +
+          'the GAP-041 control rebuild needs updating')
+      }
+      programState._structure = []
       const editor = document.getElementById('dsl-editor')
       const runBtn = document.getElementById('dsl-run-btn')
       if (resetStatus) document.getElementById('status').textContent = ''

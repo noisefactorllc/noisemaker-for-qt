@@ -48,6 +48,10 @@ beyond a literal port:
     test_live_dsl_sweep_passes_reference_overlays_only_when_asked (the
     reference's asyncInit overlays reach the candidate only under
     NM_REFERENCE_OVERLAYS=1; GAP-025)
+  - test_batch_golden_mint_rebuilds_controls_for_a_same_structure_fixture
+    and test_golden_mints_fail_without_the_demo_program_state (a batch mint
+    equals the single mint of a fixture whose effect structure matches the
+    previous fixture's; GAP-041)
 """
 
 import os
@@ -100,6 +104,13 @@ export function compileGraph (source) {
 #   and fills o0 with (state, 0, 0). Like the paused demo's
 #   renderSingleFrameIfPaused, the load renders the new graph PAUSED_RENDERS
 #   times before the harness takes over.
+# - "fn R G B" is a function-valued parameter. Like the demo's
+#   checkStructureAndApplyState, a load whose effect structure (the source's
+#   words without numbers) equals window.__noisemakerProgramState._structure
+#   reuses the controls, and fn then binds as 0 (black); a load that
+#   rebuilds the controls binds its default, R G B. The page boots with the
+#   structure of its default program, "fill". FAKE_HARNESS_NO_PROGRAM_STATE=1
+#   removes window.__noisemakerProgramState.
 FAKE_SHADE_HARNESS = """
 const COMPILE_TICKS = 25
 const PAUSED_RENDERS = 22
@@ -124,6 +135,8 @@ function makePage (launchArgs = []) {
   let tick = 0
   let pending = null
   let meshText = ''
+  const structureOf = (source) => source.split(/\\s+/).filter((word) => word && !/^\\d+$/.test(word))
+  const programState = { _structure: ['fill'] }
   const timers = []
   const at = (delay, fn) => timers.push({ due: tick + delay, fn })
   const texture = (w, h) => ({ handle: {}, width: w, height: h, glFormat: { type: 'UNSIGNED_BYTE' }, data: new Uint8Array(w * h * 4) })
@@ -204,6 +217,11 @@ function makePage (launchArgs = []) {
     }
 
     load (source) {
+      const structure = structureOf(source)
+      const previous = programState._structure
+      this.controlsRebuilt = !(previous && previous.length === structure.length &&
+        previous.every((word, i) => word === structure[i]))
+      programState._structure = structure
       const inputs = colorAfter('overlay', source) ? { overlayTex: 'node_1_overlayTex' } : {}
       this.graph = { id: `loaded${tick}`, source, passes: [{ inputs, outputs: { fragColor: 'node_1_out' } }], renderSurface: 'o0' }
       textures.delete('textTex_step_1')
@@ -232,8 +250,10 @@ function makePage (launchArgs = []) {
     render () {
       const text = textures.get('textTex_step_1')
       const source = this.graph.source.includes('mesh0') ? meshText : this.graph.source
+      const fn = colorAfter('fn', source)
       let color = text ? Array.from(text.data.subarray(0, 4))
-        : (this.overlay || colorAfter('fill', source) || [0, 0, 0, 255])
+        : (this.overlay || (fn && (this.controlsRebuilt ? fn : [0, 0, 0, 255])) ||
+           colorAfter('fill', source) || [0, 0, 0, 255])
       if (/ sim/.test(this.graph.source)) {
         simState.data[0] += 1
         color = [simState.data[0], 0, 0, 255]
@@ -260,6 +280,7 @@ function makePage (launchArgs = []) {
   const pageWindow = {
     __noisemakerRenderingPipeline: pipeline,
     __noisemakerCanvasRenderer: renderer,
+    __noisemakerProgramState: process.env.FAKE_HARNESS_NO_PROGRAM_STATE === '1' ? undefined : programState,
     __noisemakerSetPaused () {},
     __noisemakerSetPausedTime () {}
   }
@@ -996,7 +1017,8 @@ class HarnessContractTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("0/3 pass", result.stdout)
 
-    def _mint_with_fake_reference(self, script, programs, meshes=None, playwright=False, env=None, extra_args=()):
+    def _mint_with_fake_reference(self, script, programs, meshes=None, playwright=False, env=None, extra_args=(),
+                                  chunk_size=1):
         parity = self.tmp / "parity"
         tools = self.tmp / "tools"
         reference = self.tmp / "reference"
@@ -1024,7 +1046,7 @@ class HarnessContractTests(unittest.TestCase):
             (parity / f"{name}.obj").write_text(obj_text)
         out = self.tmp / "out"
         if script == "batch-golden.mjs":
-            command = ["node", str(parity / script), str(out), "--size", "8", "--chunk-size", "1", "--"] + paths
+            command = ["node", str(parity / script), str(out), "--size", "8", "--chunk-size", str(chunk_size), "--"] + paths
         else:
             command = ["node", str(parity / script), paths[0], str(out), "--size", "8", *extra_args]
         result = subprocess.run(
@@ -1092,6 +1114,35 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(png_pixel(out / "first.golden.png", 3, 3), (0, 255, 0, 255))
         self.assertEqual(png_pixel(out / "second.golden.png", 3, 3), (0, 0, 255, 255))
         self.assertNotIn("WARNING", result.stderr)
+
+    def test_batch_golden_mint_rebuilds_controls_for_a_same_structure_fixture(self):
+        programs = {"first": "fn 0 0 255\n", "second": "fn 0 255 0\n"}
+        result, out = self._mint_with_fake_reference("export-and-render.mjs", {"second": programs["second"]})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        single = png_pixel(out / "second.golden.png", 3, 3)
+        self.assertEqual(single, (0, 255, 0, 255))
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+
+        # One browser session for both fixtures, as the sweep's chunks share one.
+        result, out = self._mint_with_fake_reference("batch-golden.mjs", programs, chunk_size=len(programs))
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("(2 fixtures, session restart)", result.stderr)
+        self.assertEqual(png_pixel(out / "first.golden.png", 3, 3), (0, 0, 255, 255))
+        self.assertEqual(png_pixel(out / "second.golden.png", 3, 3), single)
+
+    def test_golden_mints_fail_without_the_demo_program_state(self):
+        for script in ("export-and-render.mjs", "batch-golden.mjs"):
+            with self.subTest(script=script):
+                result, out = self._mint_with_fake_reference(
+                    script, {"unguarded": "fn 0 255 0\n"}, env={"FAKE_HARNESS_NO_PROGRAM_STATE": "1"},
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("no window.__noisemakerProgramState._structure", result.stderr)
+                self.assertFalse((out / "unguarded.golden.png").exists())
+                shutil.rmtree(self.tmp)
+                self.tmp.mkdir()
 
     def test_single_golden_mint_loads_the_sidecar_mesh(self):
         result, out = self._mint_with_fake_reference(
