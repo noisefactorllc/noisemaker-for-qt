@@ -541,13 +541,13 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-030: the reference loses the first mesh draw into a new FBO
 
-- Status: open. Priority: P3. Category: authority.
+- Status: blocked. Priority: P3. Category: authority.
 - Affected scope: reference webgl2.js ensureDepthBuffer() and the executePass triangles branch; render/meshRender on the first frame after its output FBO is created (compile, resize).
 - Expected behavior: Every frame draws the mesh into the pass output.
 - Observed behavior: ensureDepthBuffer() binds the default framebuffer after it creates a depth buffer. The reference's first mesh draw into a new FBO goes to the canvas. The port draws into the FBO on every frame, so its first frame differs from the reference's.
 - Evidence: Reference probe at c9ee8a04 (Chromium WebGL2): after pipeline.resize(200, 200), the frame 1 centre pixel is (25, 25, 38, 255) (background) and frame 2 is (163, 163, 163, 255). Goldens render 8 frames and are unaffected.
-- Next action: Fix the reference: bind the pass FBO again after ensureDepthBuffer(). The reference repository owns this change.
-- Dependencies: The reference repository.
+- Next action: The reference repository fixes it: in shaders/src/runtime/backends/webgl2.js, ensureDepthBuffer() (line 381 at 240740dd) ends with gl.bindFramebuffer(gl.FRAMEBUFFER, null); the triangles branch of executePass calls it after binding the pass FBO (line 1307), so the caller must bind `fbo` again after the call (or ensureDepthBuffer must restore the previous binding). Blocked here, 2026-09-25: a reference push deploys noisemaker.app and the shader CDN that every Noisedeck session loads, and the reference's own maintenance jobs own that repository (they synced it twice on 2026-09-24/25); this port's session does not change the reference engine.
+- Dependencies: The reference repository and its deployment.
 - Acceptance criteria: The reference draws the mesh on frame 1, or this divergence stays recorded.
 - Required checks: The 1-frame reference probe after a resize.
 - Last verification: 2026-09-24.
