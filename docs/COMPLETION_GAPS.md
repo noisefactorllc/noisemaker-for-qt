@@ -483,16 +483,16 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-027: filter/text rasterization differs from a browser canvas
 
-- Status: open. Priority: P3. Category: ecosystem.
+- Status: closed. Priority: P3. Category: ecosystem.
 - Affected scope: qt/noisemaker/runtime/text_texture.{h,cpp}; the export kit's text() output.
 - Expected behavior: Text pixels match the reference host's Chromium canvas.
-- Observed behavior: Since 4c2c957 the layout matches Chromium per glyph within 1 px on CoreText, FreeType, and DirectWrite (largest glyph run 0.73 px). Chromium's glyph masks are heavier on macOS: the port draws 0.76 to 0.94 of Chromium's coverage (Linux 0.95 to 1.0). Generic families (serif, sans-serif, monospace) resolve to Qt's default families, not the browser's. Before 4c2c957, Qt shaped the variable font with the default instance's kerning, and "Heavy" at wght 800 was 4.4 px narrower.
-- Evidence: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996. First Windows result (CI run 36034701739, a8aa2a2, Qt 6.10.3, DirectWrite): 9/10. extrabold-rot fails with centroid d=(0.205, -1.395) against the 1.0 bound. The case is rotated -90 degrees, so dy lies along the text direction. The same case gives (0.158, -0.277) on macOS and (0.165, -0.371) on Linux. The other 9 pass with coverage 0.80 to 1.005. Per-glyph ink runs on Windows (CI run 36038944290), qt minus chrome along the text axis: H +2.39, e +2.13, a +2.32, v +2.32, y -2.22 px, ink ratios 0.958 to 0.971. That is the signature of a line about 4.4 px shorter, centred: the wght-800 "vy" kerning delta that Qt does not apply.
-- Next action: Measure generic families (serif, sans-serif, monospace) against the browser's, which resolve to different fonts per platform. First CI result with the fix (run 36046806674, dbdf960): check_text_canvas 10/10 on Linux (extrabold-rot largest run 0.148 px) and 10/10 on Windows DirectWrite (0.187 px). Fix since 4c2c957: the renderer applies the font's GPOS kerning variation deltas (fvar, avar, GDEF ItemVariationStore) as HarfBuzz does, so a wght-800 "Heavy" gains the 4.3995 px "vy" delta. Since 5bf54cf, check_text_canvas gates layout per glyph run at the same 1.0 px bound; the overall ink centroid mixed placement with per-glyph ink weight (macOS before the fix: placement +1.065, ink weight -0.787). The Linux oracle runs Chromium's new headless mode, which positions glyphs on subpixels; the headless shell used whole pixels. Results: macOS CoreText 10/10 (largest run 0.536 px), macOS FreeType 10/10 (0.727), Linux Docker 10/10 (0.346). The pre-fix renderer fails the new gate at 2.580 px (integration check, CoreText). Kerning deltas are pinned for 8 Nunito pairs at wght 300/400/700/800 against HarfBuzz.
+- Observed behavior: Since 4c2c957 the layout matches Chromium per glyph within 1 px on CoreText, FreeType, and DirectWrite. Since f5eccde the CSS generic families resolve to the faces Chromium's own preferences pick on each platform (macOS: Times, Helvetica, Menlo, Apple Chancery, Papyrus, the system UI font; Windows: Times New Roman, Arial, Consolas, Comic Sans MS, Impact, Segoe UI; Linux: fontconfig's serif, sans-serif, and monospace, with Blink's fallback through the standard family). macOS 26 hides Times and Courier from Qt's font list, so the port registers the files CoreText resolves for exactly those names; 6543351 undoes a slant Qt's CoreText engine adds to upright slanted faces (Apple Chancery). Chromium's glyph masks stay heavier on macOS (coverage 0.76 to 0.94). Before 4c2c957, "Heavy" at wght 800 was 4.4 px narrower; before f5eccde, on macOS serif drew Times New Roman where Chromium draws Times, and fantasy drew Zapfino where Chromium draws Papyrus.
+- Evidence: check_text_canvas gates 16 cases (10 Nunito, 6 generic families) and compares each generic face by PostScript name on both sides; its oracle passes a user agent without "Headless", because Playwright's headless mode overrides Chromium's generic families. CI run 36087201186 (241bcce): 16/16 on Linux FreeType (Liberation Serif, Liberation Sans, DejaVu Sans Mono, Liberation Serif for cursive and fantasy, DejaVu Sans) and 16/16 on Windows DirectWrite (TimesNewRomanPSMT, ArialMT, Consolas, ComicSansMS, Impact, SegoeUI; largest glyph run 0.303 px). macOS CoreText 16/16 locally (largest run 0.615 px). Earlier: parity/check_text_canvas.mjs 10/10 at the documented tolerances (centroid 1 px, edges 5 px, coverage 0.70 to 1.05), Chromium 151, macOS arm64, Qt 6.11.1. The font file is byte-identical to the reference's demo/font/Nunito (SHA-256 707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08). Commit ccf0969. On FreeType (Linux, and macOS with QT_QPA_PLATFORM=cocoa:fontengine=freetype), an unset wght axis draws at the fvar default 200. The renderer sets the CSS weight on the axis, so its layout is the same on both engines; test_text_texture measures its reference advance the same way since aa607d5. The renderer applies Chromium's synthetic italic skew itself since 167a62c. check_text_canvas is 10/10 on the FreeType engine (macOS, cocoa:fontengine=freetype); CI runs it on Linux in render-smoke since d4ba5b3. First Linux result (CI run 36029514281, bd5f1a7, Qt 6.11.1, headless Chromium): 10/10 PASS, centroid max |d| 0.762 px, coverage qt/chrome 0.954 to 0.996. First Windows result (CI run 36034701739, a8aa2a2, Qt 6.10.3, DirectWrite): 9/10. extrabold-rot fails with centroid d=(0.205, -1.395) against the 1.0 bound. The case is rotated -90 degrees, so dy lies along the text direction. The same case gives (0.158, -0.277) on macOS and (0.165, -0.371) on Linux. The other 9 pass with coverage 0.80 to 1.005. Per-glyph ink runs on Windows (CI run 36038944290), qt minus chrome along the text axis: H +2.39, e +2.13, a +2.32, v +2.32, y -2.22 px, ink ratios 0.958 to 0.971. That is the signature of a line about 4.4 px shorter, centred: the wght-800 "vy" kerning delta that Qt does not apply.
+- Next action: None. The ui-* families and unknown family names are GAP-044 and GAP-045.
 - Dependencies: None.
 - Acceptance criteria: check_text_canvas passes on each supported platform with the same tolerances, or the tolerances are re-derived from that platform's measurements and recorded.
 - Required checks: check_text_canvas.mjs, test_text_texture.
-- Last verification: 2026-09-24, macOS (CoreText and FreeType engines), Linux CI, and Windows CI (DirectWrite).
+- Last verification: 2026-09-24, macOS CoreText, Linux CI, and Windows CI.
 
 ### GAP-028: compileGraph failures did not say what was wrong
 
@@ -702,11 +702,37 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: parity/run.sh funcHiddenFloat; the full sweep.
 - Last verification: 2026-09-24, reference 30c47030, macOS arm64.
 
+### GAP-044: ui-* font families keep Qt's defaults
+
+- Status: open. Priority: P3. Category: ecosystem.
+- Affected scope: qt/noisemaker/runtime/text_texture.cpp (genericStyleHint); filter/text with font ui-serif, ui-sans-serif, ui-monospace, or ui-rounded.
+- Expected behavior: The port draws what Chromium draws for these names.
+- Observed behavior: Chromium 153 treats ui-serif, ui-sans-serif, ui-monospace, and ui-rounded as unknown names and draws the standard family (Times on macOS, Liberation Serif on the Linux CI fonts). The port maps them to Qt style hints.
+- Evidence: A measurement with CDP CSS.getPlatformFontsForNode, 2026-09-24.
+- Next action: Resolve them as Chromium does, and add check_text_canvas cases on three OSes.
+- Dependencies: None.
+- Acceptance criteria: check_text_canvas cases for the four names pass on macOS, Linux, and Windows with the face comparison.
+- Required checks: check_text_canvas.mjs; test_text_texture.
+- Last verification: 2026-09-24.
+
+### GAP-045: an unknown font family falls back to Qt's default
+
+- Status: open. Priority: P3. Category: ecosystem.
+- Affected scope: qt/noisemaker/runtime/text_texture.cpp; filter/text with a family the platform does not have.
+- Expected behavior: A missing family falls back to the face Chromium falls back to.
+- Observed behavior: Chromium falls back to its standard family (Times on macOS, Times New Roman on Windows, the fontconfig standard family on Linux). The port uses Qt's fallback, for example .AppleSystemUIFont for "Consolas" on macOS.
+- Evidence: A measurement on macOS, 2026-09-24.
+- Next action: Fall back to the platform's standard family when the requested family does not resolve; add a case with an absent family on each OS.
+- Dependencies: None.
+- Acceptance criteria: An absent-family case passes on macOS, Linux, and Windows with the face comparison.
+- Required checks: check_text_canvas.mjs; test_text_texture.
+- Last verification: 2026-09-24.
+
 ## 5. Ordered next actions
 
-1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding.
+1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families.
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. GAP-027: generic font families.
+3. GAP-044 and GAP-045: ui-* families and unknown family names.
 4. GAP-003: owner decisions on the LICENSE copyright line and per-release notes. GAP-030 needs a reference fix; GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.
