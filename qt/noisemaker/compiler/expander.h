@@ -95,6 +95,19 @@ struct ExpandedPass {
     QJsonValue workgroups = QJsonValue(QJsonValue::Undefined);
     QJsonValue storageBuffers = QJsonValue(QJsonValue::Undefined);
     QJsonValue storageTextures = QJsonValue(QJsonValue::Undefined);
+    // GAP-005 pass-field propagation (reference fa83eeabf): pass labels and
+    // per-pass execution controls copied verbatim. `name`/`type` stay
+    // queryable metadata (backend shader-kind dispatch remains
+    // source-derived); `viewport` is the authored spec, resolved to backend
+    // x/y/w/h numbers by the runtime; `clear` drives the render-pass
+    // loadOp; `samplerTypes` selects per-binding samplers. No catalog
+    // definition declares them at the pinned reference, so they stay
+    // Undefined (and unserialized) for every real program today.
+    QJsonValue passName = QJsonValue(QJsonValue::Undefined);
+    QJsonValue passType = QJsonValue(QJsonValue::Undefined);
+    QJsonValue clear = QJsonValue(QJsonValue::Undefined);
+    QJsonValue viewport = QJsonValue(QJsonValue::Undefined);
+    QJsonValue samplerTypes = QJsonValue(QJsonValue::Undefined);
 
     // inputs/outputs: ORDER PRESERVED in DECLARATION order (recovered from
     // raw effect-JSON text for effect passes; blit passes always have

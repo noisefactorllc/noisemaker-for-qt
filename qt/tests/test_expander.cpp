@@ -296,8 +296,9 @@ int main() {
     // verbatim. No catalog definition declares them at the pinned
     // reference, so this synthetic definition stands in. Expected passes
     // were minted by the reference expander over the equivalent
-    // definition.js (expand(validate(parse(lex(src)))), node 26.10.0,
-    // reference c9ee8a04).
+    // definition.js (expand(validate(parse(lex(src)))), node 26.5.1,
+    // reference fa83eeabf — re-minted when GAP-005 added pass-name
+    // propagation, which now carries `name` onto the expanded passes).
     // ======================================================================
     {
         static const char kDefinition[] = R"({
@@ -312,8 +313,8 @@ int main() {
   "textures": {}
 })";
         static const char kReferencePasses[] = R"([
-{"id":"node_0_pass_0","program":"node_0_sim","entryPoint":"simulate","workgroups":[8,8,1],"storageBuffers":{"state":"stateBuf"},"storageTextures":{"outputTex":"outputTex"},"inputs":{},"outputs":{"outputBuffer":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
-{"id":"node_0_pass_1","program":"node_0_sim","entryPoint":"main","inputs":{},"outputs":{"color":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
+{"id":"node_0_pass_0","program":"node_0_sim","entryPoint":"simulate","workgroups":[8,8,1],"storageBuffers":{"state":"stateBuf"},"storageTextures":{"outputTex":"outputTex"},"name":"simulate","inputs":{},"outputs":{"outputBuffer":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
+{"id":"node_0_pass_1","program":"node_0_sim","entryPoint":"main","name":"main","inputs":{},"outputs":{"color":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
 {"id":"node_1_write_blit","program":"blit","type":"render","inputs":{"src":"node_0_out"},"outputs":{"color":"global_o0"},"uniforms":{},"nodeId":"node_1","stepIndex":1}
 ])";
         QTemporaryDir root;
@@ -333,6 +334,51 @@ int main() {
         for (const nm::ExpandedPass& p : r.passes) actual.append(nm::toRawPassJson(p));
         check(r.errors.isEmpty(), "compute fields: no expand errors");
         check(actual == expected, "compute fields: raw passes equal the reference expander's, field for field");
+    }
+
+    // ======================================================================
+    // GAP-005 pass-field propagation (reference fa83eeabf): the reference
+    // expander copies name/type/clear/viewport/samplerTypes onto each
+    // expanded pass verbatim and omits them when unauthored. No catalog
+    // definition declares them at the pinned reference, so this synthetic
+    // definition stands in. Expected passes were minted by the reference
+    // expander over the equivalent definition (node 26.5.1, reference
+    // fa83eeabf, via tools/dump-expand.mjs).
+    // ======================================================================
+    {
+        static const char kDefinition[] = R"({
+  "name": "Pass Field Probe", "namespace": "synth", "func": "passFieldProbe", "starter": true, "paramAliases": {},
+  "globals": {"vol": {"type": "int", "default": 16, "uniform": "vol", "min": 1, "max": 64, "ui": {"label": "vol", "control": "slider"}}},
+  "passes": [
+    {"name": "probePass", "program": "probe", "type": "compute", "clear": true,
+     "samplerTypes": {"src": "nearest"}, "viewport": {"x": 2, "y": 4, "w": 16, "h": 64},
+     "inputs": {}, "outputs": {"color": "outputTex"}},
+    {"name": "plain", "program": "probe", "inputs": {}, "outputs": {"color": "outputTex"}}
+  ],
+  "textures": {}
+})";
+        static const char kReferencePasses[] = R"([
+{"id":"node_0_pass_0","program":"node_0_probe","name":"probePass","type":"compute","clear":true,"viewport":{"x":2,"y":4,"w":16,"h":64},"samplerTypes":{"src":"nearest"},"inputs":{},"outputs":{"color":"node_0_out"},"uniforms":{"vol":16},"effectKey":"synth.passFieldProbe","effectFunc":"passFieldProbe","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"vol":{"min":1,"max":64}}},
+{"id":"node_0_pass_1","program":"node_0_probe","name":"plain","inputs":{},"outputs":{"color":"node_0_out"},"uniforms":{"vol":16},"effectKey":"synth.passFieldProbe","effectFunc":"passFieldProbe","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"vol":{"min":1,"max":64}}},
+{"id":"node_1_write_blit","program":"blit","type":"render","inputs":{"src":"node_0_out"},"outputs":{"color":"global_o0"},"uniforms":{},"nodeId":"node_1","stepIndex":1}
+])";
+        QTemporaryDir root;
+        const bool dirOk = root.isValid() && QDir(root.path()).mkpath(QStringLiteral("effects/synth"));
+        QFile file(root.path() + QStringLiteral("/effects/synth/passFieldProbe.json"));
+        const bool written = dirOk && file.open(QIODevice::WriteOnly)
+                             && file.write(kDefinition) == static_cast<qint64>(sizeof(kDefinition) - 1);
+        file.close();
+        check(written, "pass fields: synthetic definition written");
+        nm::EffectRegistry fieldsRegistry;
+        fieldsRegistry.loadAll(root.path());
+        const QJsonObject validated = nm::validate(
+            nm::parse(nm::lex(QStringLiteral("search synth\npassFieldProbe().write(o0)\nrender(o0)\n"))), fieldsRegistry);
+        const nm::ExpandResult r = nm::expand(validated, fieldsRegistry);
+        const QJsonArray expected = QJsonDocument::fromJson(QByteArray(kReferencePasses)).array();
+        QJsonArray actual;
+        for (const nm::ExpandedPass& p : r.passes) actual.append(nm::toRawPassJson(p));
+        check(r.errors.isEmpty(), "pass fields: no expand errors");
+        check(actual == expected, "pass fields: raw passes equal the reference expander's, field for field");
     }
 
     // ======================================================================

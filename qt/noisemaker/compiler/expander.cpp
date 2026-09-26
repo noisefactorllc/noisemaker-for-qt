@@ -892,6 +892,12 @@ private:
             pass.workgroups = passDef.value(QStringLiteral("workgroups"));
             pass.storageBuffers = passDef.value(QStringLiteral("storageBuffers"));
             pass.storageTextures = passDef.value(QStringLiteral("storageTextures"));
+            // GAP-005 pass-field propagation (reference fa83eeabf): copied verbatim.
+            pass.passName = passDef.value(QStringLiteral("name"));
+            pass.passType = passDef.value(QStringLiteral("type"));
+            pass.clear = passDef.value(QStringLiteral("clear"));
+            pass.viewport = passDef.value(QStringLiteral("viewport"));
+            pass.samplerTypes = passDef.value(QStringLiteral("samplerTypes"));
 
             // Pass-level compile-time defines (reference/03-era `.flatMap()` per-variant pass
             // cloning: several clones of the same `program` name, each carrying its own
@@ -1402,6 +1408,13 @@ QJsonObject toRawPassJson(const ExpandedPass& pass) {
         if (!pass.workgroups.isUndefined()) out.insert(QStringLiteral("workgroups"), pass.workgroups);
         if (!pass.storageBuffers.isUndefined()) out.insert(QStringLiteral("storageBuffers"), pass.storageBuffers);
         if (!pass.storageTextures.isUndefined()) out.insert(QStringLiteral("storageTextures"), pass.storageTextures);
+        // GAP-005 pass-field propagation (reference fa83eeabf): the same five
+        // fields the reference copies, serialized only when authored.
+        if (!pass.passName.isUndefined()) out.insert(QStringLiteral("name"), pass.passName);
+        if (!pass.passType.isUndefined()) out.insert(QStringLiteral("type"), pass.passType);
+        if (!pass.clear.isUndefined()) out.insert(QStringLiteral("clear"), pass.clear);
+        if (!pass.viewport.isUndefined()) out.insert(QStringLiteral("viewport"), pass.viewport);
+        if (!pass.samplerTypes.isUndefined()) out.insert(QStringLiteral("samplerTypes"), pass.samplerTypes);
     }
 
     QJsonObject inputs;
