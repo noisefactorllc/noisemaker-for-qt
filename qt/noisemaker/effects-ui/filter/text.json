@@ -1,0 +1,94 @@
+{
+  "name": "Text",
+  "namespace": "filter",
+  "func": "text",
+  "description": "Overlay text onto the image",
+  "tags": [
+    "text"
+  ],
+  "params": {
+    "text": {
+      "ui": {
+        "label": "text",
+        "multiline": true,
+        "category": "general"
+      }
+    },
+    "font": {
+      "ui": {
+        "label": "font",
+        "control": "dropdown",
+        "category": "general"
+      }
+    },
+    "size": {
+      "step": 0.01,
+      "ui": {
+        "label": "size",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "posX": {
+      "step": 0.01,
+      "ui": {
+        "label": "pos x",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "posY": {
+      "step": 0.01,
+      "ui": {
+        "label": "pos y",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "rotation": {
+      "step": 1,
+      "ui": {
+        "label": "rotation",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "color": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "general"
+      }
+    },
+    "matteColor": {
+      "ui": {
+        "label": "matte color",
+        "control": "color",
+        "category": "background"
+      }
+    },
+    "matteOpacity": {
+      "step": 0.01,
+      "ui": {
+        "label": "matte opacity",
+        "control": "slider",
+        "category": "background"
+      }
+    },
+    "justify": {
+      "ui": {
+        "label": "justify",
+        "control": "dropdown",
+        "category": "general"
+      }
+    },
+    "style": {
+      "ui": {
+        "label": "style",
+        "hidden": true,
+        "category": "general"
+      }
+    }
+  },
+  "help": "# text\n\nOverlay text onto the image\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| text | string | Hello World | - | - |\n| font | string | nunito | nunito/sansSerif/serif/monospace/cursive/fantasy | - |\n| size | float | 0.1 | 0.01-1 | - |\n| posX | float | 0.5 | 0-1 | - |\n| posY | float | 0.5 | 0-1 | - |\n| rotation | float | 0 | -180-180 | - |\n| color | color | #ffffff | - | - |\n| matteColor | color | #000000 | - | - |\n| matteOpacity | float | 0 | 0-1 | - |\n| justify | string | center | left/center/right | - |\n\n## Notes\n\nText is rendered on the CPU side and passed to the shader as a texture overlay.\n"
+}

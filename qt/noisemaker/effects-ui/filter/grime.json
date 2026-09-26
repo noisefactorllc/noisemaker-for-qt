@@ -1,0 +1,26 @@
+{
+  "name": "Grime",
+  "namespace": "filter",
+  "func": "grime",
+  "description": "Grunge/grime texture overlay",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "strength": {
+      "step": 0.01,
+      "ui": {
+        "label": "strength",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# grime\n\nGrunge/grime texture overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| strength | float | 0.5 | 0-1 | Effect strength |\n| seed | int | 1 | 1-100 | Random seed |\n"
+}

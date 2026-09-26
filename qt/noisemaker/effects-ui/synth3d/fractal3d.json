@@ -1,0 +1,90 @@
+{
+  "name": "Fractal3D",
+  "namespace": "synth3d",
+  "func": "fractal3d",
+  "description": "3D Mandelbulb/Mandelcube fractals",
+  "tags": [
+    "3d"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "type": {
+      "ui": {
+        "label": "type",
+        "control": "dropdown"
+      }
+    },
+    "power": {
+      "ui": {
+        "label": "power",
+        "control": "slider"
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider"
+      }
+    },
+    "bailout": {
+      "ui": {
+        "label": "bailout",
+        "control": "slider"
+      }
+    },
+    "juliaX": {
+      "ui": {
+        "label": "julia x",
+        "control": "slider",
+        "category": "julia",
+        "enabledBy": {
+          "param": "type",
+          "in": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    "juliaY": {
+      "ui": {
+        "label": "julia y",
+        "control": "slider",
+        "category": "julia",
+        "enabledBy": {
+          "param": "type",
+          "in": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    "juliaZ": {
+      "ui": {
+        "label": "julia z",
+        "control": "slider",
+        "category": "julia",
+        "enabledBy": {
+          "param": "type",
+          "in": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# fractal3d\n\n3D Mandelbulb/Mandelcube fractals\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x64 | x16/x32/x64/x128 | Volume size |\n| type | int | mandelbulb | mandelbulb/mandelcube/juliaBulb/juliaCube | Type |\n| power | float | 8 | 2-16 | Power |\n| iterations | int | 10 | 1-20 | Iterations |\n| bailout | float | 2 | 1-8 | Bailout |\n| juliaX | float | 0 | -100-100 | Julia X |\n| juliaY | float | 0 | -100-100 | Julia Y |\n| juliaZ | float | 0 | -100-100 | Julia Z |\n| colorMode | int | mono | mono/orbitTrap/iteration | Color mode |\n"
+}

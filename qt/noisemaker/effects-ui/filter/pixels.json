@@ -1,0 +1,18 @@
+{
+  "name": "Pixels",
+  "namespace": "filter",
+  "func": "pixels",
+  "description": "Pixelation effect for retro look",
+  "tags": [
+    "pixel"
+  ],
+  "params": {
+    "size": {
+      "ui": {
+        "label": "size",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# pixels\n\nPixelation effect for retro look\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| size | int | 16 | 1-256 | Size |\n"
+}

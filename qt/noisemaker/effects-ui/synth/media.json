@@ -1,0 +1,81 @@
+{
+  "name": "Media",
+  "namespace": "synth",
+  "func": "media",
+  "description": "Video/camera/image input",
+  "tags": [
+    "image",
+    "video"
+  ],
+  "params": {
+    "position": {
+      "ui": {
+        "label": "position",
+        "control": "dropdown",
+        "category": "orientation"
+      }
+    },
+    "tiling": {
+      "ui": {
+        "label": "tiling",
+        "control": "dropdown",
+        "category": "orientation"
+      }
+    },
+    "flip": {
+      "ui": {
+        "label": "flip/mirror",
+        "control": "dropdown",
+        "category": "orientation"
+      }
+    },
+    "scaleAmt": {
+      "ui": {
+        "label": "scale %",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotate",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset x",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset y",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color",
+        "category": "background"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "bg opacity",
+        "control": "slider",
+        "category": "background"
+      }
+    },
+    "imageSize": {
+      "ui": {
+        "control": false
+      }
+    }
+  },
+  "help": "# media\n\nVideo/camera/image input\n\n## Description\n\nDisplays camera or uploaded media with positioning, tiling, flip/mirror, and transform controls.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| position | int | midCenter | topLeft/topCenter/topRight/midLeft/midCenter/midRight/bottomLeft/bottomCenter/bottomRight | Position |\n| tiling | int | none | none/horizAndVert/horizOnly/vertOnly | Tiling |\n| flip | int | none | none/all/horizontal/vertical/mirrorLtoR/mirrorRtoL/mirrorUtoD/mirrorDtoU/mirrorLtoRUtoD/mirrorLtoRDtoU/mirrorRtoLUtoD/mirrorRtoLDtoU | Flip/mirror |\n| scaleAmt | float | 100 | 25-400 | Scale % |\n| rotation | float | 0 | -180-180 | Rotate |\n| offsetX | float | 0 | -100-100 | Offset x |\n| offsetY | float | 0 | -100-100 | Offset y |\n| backgroundColor | color | 0,0,0 | - | Background color |\n| backgroundOpacity | float | 0 | 0-1 | Background opacity |\n| imageSize | vec2 | 1024,1024 | - | - |\n"
+}

@@ -1,0 +1,74 @@
+{
+  "name": "Flow3D",
+  "namespace": "filter3d",
+  "func": "flow3d",
+  "description": "3D agent-based flow field",
+  "tags": [
+    "3d",
+    "sim"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "behavior": {
+      "ui": {
+        "label": "behavior",
+        "control": "dropdown"
+      }
+    },
+    "density": {
+      "step": 1,
+      "ui": {
+        "label": "density",
+        "control": "slider"
+      }
+    },
+    "stride": {
+      "step": 0.1,
+      "ui": {
+        "label": "stride",
+        "control": "slider"
+      }
+    },
+    "strideDeviation": {
+      "step": 0.01,
+      "ui": {
+        "label": "deviation",
+        "control": "slider"
+      }
+    },
+    "kink": {
+      "step": 0.1,
+      "ui": {
+        "label": "kink",
+        "control": "slider"
+      }
+    },
+    "intensity": {
+      "step": 1,
+      "ui": {
+        "label": "persistence",
+        "control": "slider"
+      }
+    },
+    "inputIntensity": {
+      "step": 1,
+      "ui": {
+        "label": "input mix",
+        "control": "slider"
+      }
+    },
+    "lifetime": {
+      "step": 1,
+      "ui": {
+        "label": "lifetime",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# flow3d\n\n3D agent-based flow field\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x32 | x16/x32/x64/x128 | Volume size |\n| behavior | int | obedient | none/obedient/crosshatch/unruly/chaotic/randomMix/meandering | Behavior |\n| density | float | 20 | 1-100 | Density |\n| stride | float | 1 | 0.1-10 | Stride |\n| strideDeviation | float | 0.05 | 0-0.5 | Stride Deviation |\n| kink | float | 1 | 0-10 | Kink |\n| intensity | float | 90 | 0-100 | Trail Persistence |\n| inputIntensity | float | 50 | 0-100 | Input Intensity |\n| lifetime | float | 30 | 0-60 | Lifetime |\n"
+}

@@ -1,0 +1,33 @@
+{
+  "name": "Seamless",
+  "namespace": "filter",
+  "func": "seamless",
+  "description": "Edge-blend cross-fade for seamless tiling",
+  "tags": [
+    "tiling",
+    "transform"
+  ],
+  "params": {
+    "blend": {
+      "step": 0.01,
+      "ui": {
+        "label": "blend",
+        "control": "slider"
+      }
+    },
+    "repeat": {
+      "step": 1,
+      "ui": {
+        "label": "repeat",
+        "control": "slider"
+      }
+    },
+    "curve": {
+      "ui": {
+        "label": "curve",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# seamless\n\nEdge-blend cross-fade for seamless tiling. Blends opposite edges of the input texture so the output tiles without visible seams.\n\n## Description\n\nApplies a toroidal cross-fade: pixels near the left edge blend toward right-edge content (and vice versa), and similarly for top/bottom. The result is a texture that tiles seamlessly in both directions.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| blend | float | 0.25 | 0-0.5 | Width of the cross-fade zone as fraction of tile |\n| repeat | float | 2 | 1-10 | Number of tile repetitions to display |\n| curve | int | smooth | linear/smooth/sharp | Blend falloff curve |\n\n## Notes\n\n- Set repeat to 1 to output just the seamless tile unit (for chaining with other effects)\n- Higher blend values produce smoother seams but lose more of the original edge content\n- Works best when the input has some visual variation — uniform inputs don't need blending\n"
+}

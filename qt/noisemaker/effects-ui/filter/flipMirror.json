@@ -1,0 +1,18 @@
+{
+  "name": "FlipMirror",
+  "namespace": "filter",
+  "func": "flipMirror",
+  "description": "Flip and mirror image transformations",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# flipMirror\n\nFlip and mirror image transformations\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | mirrorLtoRUtoD | none/all/horizontal/vertical/mirrorLtoR/mirrorRtoL/mirrorUtoD/mirrorDtoU/mirrorLtoRUtoD/mirrorLtoRDtoU/mirrorRtoLUtoD/mirrorRtoLDtoU | Mode |\n"
+}

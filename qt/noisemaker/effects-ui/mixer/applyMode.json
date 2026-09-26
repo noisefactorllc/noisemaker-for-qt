@@ -1,0 +1,29 @@
+{
+  "name": "Apply Mode",
+  "namespace": "mixer",
+  "func": "applyMode",
+  "description": "Apply brightness, hue, or saturation from source B to source A",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# applyMode\n\nApply brightness, hue, or saturation from source B to source A\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| mode | int | brightness | brightness/hue/saturation | Mode |\n| mix | float | 0 | -100-100 | Mix |\n"
+}

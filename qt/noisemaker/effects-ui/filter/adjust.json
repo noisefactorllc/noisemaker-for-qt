@@ -1,0 +1,54 @@
+{
+  "name": "Adjust",
+  "namespace": "filter",
+  "func": "adjust",
+  "description": "Colorspace, hue/saturation, brightness/contrast",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown",
+        "category": "colorspace"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "hue rotation",
+        "control": "slider",
+        "category": "hue / saturation"
+      }
+    },
+    "hueRange": {
+      "ui": {
+        "label": "hue range",
+        "control": "slider",
+        "category": "hue / saturation"
+      }
+    },
+    "saturation": {
+      "ui": {
+        "label": "saturation",
+        "control": "slider",
+        "category": "hue / saturation"
+      }
+    },
+    "brightness": {
+      "ui": {
+        "label": "brightness",
+        "control": "slider",
+        "category": "brightness / contrast"
+      }
+    },
+    "contrast": {
+      "ui": {
+        "label": "contrast",
+        "control": "slider",
+        "category": "brightness / contrast"
+      }
+    }
+  },
+  "help": "# adjust\n\nCombined color adjustment — colorspace reinterpretation, hue/saturation, and brightness/contrast in one pass\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | rgb | hsv/oklab/oklch/rgb | Colorspace mode |\n| rotation | float | 0 | -180–180 | Hue rotation (degrees) |\n| hueRange | float | 100 | 0–200 | Hue range |\n| saturation | float | 1 | 0–4 | Saturation multiplier |\n| brightness | float | 1 | 0–10 | Brightness multiplier |\n| contrast | float | 0.5 | 0–1 | Contrast |\n"
+}

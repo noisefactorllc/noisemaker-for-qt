@@ -1,0 +1,47 @@
+{
+  "name": "Scanline Error",
+  "namespace": "filter",
+  "func": "scanlineError",
+  "description": "Scanline glitch effect/VHS tape artifacts",
+  "tags": [
+    "distort",
+    "glitch"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "timeOffset": {
+      "step": 0.01,
+      "ui": {
+        "label": "time offset",
+        "control": "slider"
+      }
+    },
+    "distortion": {
+      "step": 0.01,
+      "ui": {
+        "label": "distortion",
+        "control": "slider"
+      }
+    },
+    "noise": {
+      "step": 0.01,
+      "ui": {
+        "label": "noise",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# scanlineError\n\nScanline glitch effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | vhs | scanline/vhs | Glitch style |\n| timeOffset | float | 0 | -10-10 | Time offset |\n| distortion | float | 1 | 0-3 | Horizontal displacement amount |\n| noise | float | 1 | 0-3 | Noise overlay amount |\n| speed | float | 1 | 0-5 | Animation speed |\n\n## Notes\n\n- **scanline** mode uses simplex noise with exponential thresholding for sharp glitch bursts\n- **vhs** mode uses hash-based value noise with gradient gating for smoother VHS tracking artifacts\n"
+}

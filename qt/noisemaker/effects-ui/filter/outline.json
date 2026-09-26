@@ -1,0 +1,31 @@
+{
+  "name": "Outline",
+  "namespace": "filter",
+  "func": "outline",
+  "description": "Outline/edge stroke",
+  "tags": [
+    "edges"
+  ],
+  "params": {
+    "shape": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    },
+    "thickness": {
+      "step": 0.1,
+      "ui": {
+        "label": "thickness",
+        "control": "slider"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# outline\n\nOutline/edge stroke\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shape | int | circle | circle/diamond/square/octagon | Shape |\n| thickness | float | 1 | 1-10 | Thickness |\n| invert | boolean | false | - | Invert |\n"
+}

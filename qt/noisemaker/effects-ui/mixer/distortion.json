@@ -1,0 +1,68 @@
+{
+  "name": "Distortion",
+  "namespace": "mixer",
+  "func": "distortion",
+  "description": "Displace, reflect, and refract with two surfaces",
+  "tags": [
+    "blend",
+    "distort"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "mapSource": {
+      "ui": {
+        "label": "map source",
+        "control": "dropdown"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "smoothing": {
+      "ui": {
+        "label": "smoothing",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "neq": 0
+        }
+      }
+    },
+    "aberration": {
+      "ui": {
+        "label": "aberration",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 2
+        }
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# distortion\n\nDisplace, reflect, and refract with two surfaces\n\n## Description\n\nApplies displacement, reflection, and refraction effects between two surfaces using one surface as a height/normal map to distort the other.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| mode | int | refract | displace/refract/reflect | Mode |\n| mapSource | int | sourceB | sourceA/sourceB | Map source |\n| intensity | float | 50 | 0-100 | Intensity |\n| wrap | int | mirror | clamp/mirror/repeat | Wrap |\n| smoothing | float | 1 | 1-100 | Smoothing |\n| aberration | float | 0 | 0-25 | Aberration |\n| antialias | boolean | false | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n\n## Notes\n\n- Use a noise or gradient texture as source B with \"sourceB\" map source to create organic distortion effects\n- Reflection mode with high aberration creates prismatic rainbow effects\n- Refraction mode simulates looking through glass or water\n- Displacement mode creates warping effects based on color intensity\n"
+}

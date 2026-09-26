@@ -1,0 +1,113 @@
+{
+  "name": "Pattern",
+  "namespace": "synth",
+  "func": "pattern",
+  "description": "Geometric pattern generator",
+  "tags": [
+    "geometric",
+    "pattern"
+  ],
+  "params": {
+    "type": {
+      "ui": {
+        "label": "pattern type",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "thickness": {
+      "ui": {
+        "label": "thickness",
+        "control": "slider"
+      }
+    },
+    "smoothness": {
+      "ui": {
+        "label": "smoothness",
+        "control": "slider"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "skew": {
+      "ui": {
+        "label": "skew",
+        "control": "slider"
+      }
+    },
+    "animation": {
+      "ui": {
+        "label": "animation",
+        "control": "dropdown",
+        "category": "animation",
+        "enabledBy": {
+          "param": "type",
+          "notIn": [
+            1,
+            5,
+            6
+          ]
+        }
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider",
+        "category": "animation",
+        "enabledBy": {
+          "or": [
+            {
+              "param": "type",
+              "in": [
+                1,
+                5,
+                6
+              ]
+            },
+            {
+              "and": [
+                {
+                  "param": "animation",
+                  "neq": 0
+                },
+                {
+                  "param": "type",
+                  "notIn": [
+                    1,
+                    5,
+                    6
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "fgColor": {
+      "ui": {
+        "label": "fg color",
+        "control": "color",
+        "category": "color"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color",
+        "category": "color"
+      }
+    }
+  },
+  "help": "# pattern\n\nGeometric pattern generator\n\n## Description\n\nGenerates various geometric patterns including stripes, checkerboard, grid, dots, hexagons, triangles, concentric rings, radial lines, spirals, hearts, waves, and zigzags. Useful for creating backgrounds, textures, and masks with clean geometric shapes. The skew parameter applies a horizontal shear to all pattern types, slanting the result. Supports animation with seamless looping.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| type | int | stripes | checkerboard/concentricRings/dots/grid/hearts/hexagons/radialLines/spiral/stripes/triangularGrid/waves/zigzag | Pattern type |\n| scale | float | 15 | 1-20 | Scale/size of pattern elements |\n| thickness | float | 0.5 | 0-1 | Line/shape thickness |\n| smoothness | float | 0.02 | 0-1 | Edge softness (0=sharp, 1=soft) |\n| rotation | float | 0 | -180-180 | Rotation angle in degrees |\n| skew | float | 0 | -2-2 | Horizontal shear factor (slope); 1 ~= 45 degree lean |\n| animation | int | none | none/pan/rotate | Animation mode |\n| speed | int | 1 | -5-5 | Animation speed and direction |\n| fgColor | color | 1,1,1 | - | Foreground color |\n| bgColor | color | 0,0,0 | - | Background color |\n\n## Pattern Types\n\n- **Checkerboard (0)**: Classic alternating square pattern\n- **Concentric Rings (1)**: Rings emanating from center, thickness controls ring width\n- **Dots (2)**: Regular grid of circles\n- **Grid (3)**: Intersecting lines forming a grid\n- **Hexagons (4)**: Honeycomb hexagonal tiling\n- **Radial Lines (5)**: Lines radiating outward from center, thickness controls line count\n- **Spiral (6)**: Archimedean spiral, thickness controls arm width\n- **Stripes (7)**: Vertical stripes, use rotation for other orientations\n- **Triangular Grid (8)**: Equilateral triangle tiling, thickness controls fill\n- **Hearts (9)**: Tiled heart shapes\n- **Waves (10)**: Sine-displaced horizontal lines\n- **Zigzag (11)**: V-shaped zigzag lines\n\n## Animation\n\nAll animation modes loop seamlessly. Speed controls both rate and direction (negative = reverse). Pan moves along the pattern's own X axis; use the rotation parameter to pan in any other direction while still looping cleanly.\n\n## Usage\n\n```\nsearch synth\n\npattern()\n  .write(o0)\n\nrender(o0)\n```\n\n### Examples\n\n```\n// Diagonal stripes\npattern({ patternType: 0, rotation: 45, scale: 10 })\n  .write(o0)\n\n// Polka dots\npattern({ patternType: 2, scale: 8, thickness: 0.6 })\n  .write(o0)\n\n// Honeycomb\npattern({ patternType: 4, scale: 6, fgColor: [1, 0.8, 0], bgColor: [0.2, 0.1, 0] })\n  .write(o0)\n\n// Animated hearts\npattern({ patternType: 9, scale: 12, animation: 1, speed: 2, fgColor: [1, 0.2, 0.3] })\n  .write(o0)\n```\n"
+}

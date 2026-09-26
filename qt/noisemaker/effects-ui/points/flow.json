@@ -1,0 +1,63 @@
+{
+  "name": "Flow",
+  "namespace": "points",
+  "func": "flow",
+  "description": "Agent-based luminosity flow field with behaviors",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "stateSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "behavior": {
+      "ui": {
+        "label": "behavior",
+        "control": "dropdown",
+        "category": "agents"
+      }
+    },
+    "stride": {
+      "step": 1,
+      "ui": {
+        "label": "stride",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "strideDeviation": {
+      "step": 0.01,
+      "ui": {
+        "label": "deviation",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "kink": {
+      "step": 0.1,
+      "ui": {
+        "label": "kink",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "quantize": {
+      "ui": {
+        "label": "quantize",
+        "control": "checkbox",
+        "category": "agents"
+      }
+    },
+    "inputWeight": {
+      "step": 1,
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "agents"
+      }
+    }
+  },
+  "help": "# flow\n\nAgent-based luminosity flow field with behaviors\n\n## Description\n\nAgents move according to the brightness of the input texture, creating painterly strokes and flow patterns.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| behavior | int | obedient | none/obedient/crosshatch/unruly/chaotic/randomMix/meandering | Behavior |\n| stride | float | 10 | 1-1000 | Stride |\n| strideDeviation | float | 0.05 | 0-0.5 | Stride deviation |\n| kink | float | 1 | 0-10 | Kink |\n| quantize | boolean | false | - | Quantize |\n| inputWeight | float | 100 | 0-100 | Input weight |\n"
+}

@@ -1,0 +1,48 @@
+{
+  "name": "Refract",
+  "namespace": "classicNoisedeck",
+  "func": "refract",
+  "description": "Refraction distortion",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "blendMode": {
+      "ui": {
+        "label": "blend mode",
+        "control": "dropdown"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "direction": {
+      "ui": {
+        "label": "refract dir",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# refract\n\nRefraction distortion\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| blendMode | int | mix | add/colorBurn/colorDodge/darken/difference/exclusion/glow/hardLight/lighten/mix/multiply/negation/overlay/phoenix/reflect/screen/softLight/subtract | Blend |\n| mix | float | 50 | 0-100 | Mix |\n| mode | int | refract | refract/reflect | Mode |\n| amount | float | 50 | 0-100 | Amount |\n| direction | float | 0 | 0-360 | Refract dir |\n| wrap | int | mirror | clamp/mirror/repeat | Wrap |\n"
+}

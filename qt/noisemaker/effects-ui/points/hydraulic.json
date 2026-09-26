@@ -1,0 +1,42 @@
+{
+  "name": "Hydraulic",
+  "namespace": "points",
+  "func": "hydraulic",
+  "description": "Hydraulic erosion flow simulation (gradient descent)",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "stride": {
+      "step": 1,
+      "ui": {
+        "label": "stride",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "quantize": {
+      "ui": {
+        "label": "quantize",
+        "control": "checkbox",
+        "category": "agents"
+      }
+    },
+    "inverse": {
+      "ui": {
+        "label": "inverse",
+        "control": "checkbox",
+        "category": "agents"
+      }
+    },
+    "inputWeight": {
+      "step": 1,
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "agents"
+      }
+    }
+  },
+  "help": "# hydraulic\n\nHydraulic erosion flow simulation (gradient descent)\n\n## Description\n\nAgents flow downhill following the steepest descent of the input texture brightness, simulating water flowing over terrain. Use `inverse: true` for uphill flow (gradient ascent).\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stride | float | 10 | 1-1000 | Stride |\n| quantize | boolean | false | - | Quantize |\n| inverse | boolean | false | - | Inverse |\n| inputWeight | float | 100 | 0-100 | Input weight |\n"
+}

@@ -1,0 +1,69 @@
+{
+  "name": "Hatch",
+  "namespace": "filter",
+  "func": "hatch",
+  "description": "Hand-drawn sketch engine covering Graphic Pen, Charcoal, Chalk & Charcoal, Conte Crayon, Crosshatch, and Colored Pencil filters",
+  "tags": [
+    "noise",
+    "edges",
+    "artist"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "strokeLength": {
+      "ui": {
+        "label": "stroke length",
+        "control": "slider"
+      }
+    },
+    "direction": {
+      "ui": {
+        "label": "direction",
+        "control": "dropdown"
+      }
+    },
+    "balance": {
+      "ui": {
+        "label": "balance",
+        "control": "slider"
+      }
+    },
+    "pressure": {
+      "ui": {
+        "label": "pressure",
+        "control": "slider"
+      }
+    },
+    "inkColor": {
+      "ui": {
+        "label": "ink color",
+        "control": "color",
+        "enabledBy": {
+          "param": "mode",
+          "notIn": [
+            4,
+            5
+          ]
+        }
+      }
+    },
+    "paperColor": {
+      "ui": {
+        "label": "paper color",
+        "control": "color",
+        "enabledBy": {
+          "param": "mode",
+          "notIn": [
+            4
+          ]
+        }
+      }
+    }
+  },
+  "help": "# hatch\n\nHand-drawn sketch engine covering Graphic Pen, Charcoal, Chalk & Charcoal, Conte Crayon, Crosshatch, and Colored Pencil filters\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|--------------|\n| mode | int | pen | pen/charcoal/chalkCharcoal/conte/crosshatch/coloredPencil | Sketch style (see Modes below) |\n| strokeLength | float | 50 | 0-100 | Stroke fiber length; maps to a noise stretch of 4-40px (short choppy marks at 0, long strokes at 100) |\n| direction | int | rightDiag | rightDiag/horizontal/leftDiag/vertical | Stroke angle: 45/0/135/90 degrees |\n| balance | float | 50 | 0-100 | Shadow/highlight tone threshold shift |\n| pressure | float | 50 | 0-100 | Per-mode stroke weight (coverage/darkness/contrast - see Modes) |\n| inkColor | color | (0.1, 0.1, 0.1) | - | Dark stroke tone; used by pen/charcoal/chalkCharcoal/conte |\n| paperColor | color | (0.96, 0.94, 0.88) | - | Light background tone; used by every mode except crosshatch |\n\n## Modes\n\n- **pen** (default) -- Graphic Pen: `ink = step(s, 1-t)` at a single stroke angle, tonemapped straight to ink/paper - the starkest, most binary mode.\n- **charcoal** -- Charcoal: a rougher 2-octave stroke noise inks only the shadow region (tone below ~0.55, softly gated), paper elsewhere; `pressure` scales both ink coverage and how dark the ink itself reads.\n- **chalkCharcoal** -- Chalk & Charcoal: a mid-gray paper base with dark charcoal strokes at the stroke angle filling the shadows and paper-colored chalk strokes at angle+90 filling the highlights; `pressure` sharpens (or softens) both stroke gates' edges.\n- **conte** -- Conte Crayon: a two-level dark/light remap whose midtone band is filled with fbm-textured stroke noise instead of a flat gradient.\n- **crosshatch** -- Crosshatch: COLOR-PRESERVING. Keeps the source image's own color and multiplies in up to 3 stroke fields (angle, angle+45, angle-45), each gated to a progressively darker tone band so shadows accumulate more crossing hatch layers than midtones; `pressure` is the darkness gain of each layer.\n- **coloredPencil** -- Colored Pencil: COLOR-PRESERVING. Image color shows through only inside the stroke mask (paper shows between strokes); mask density follows tone (denser in shadow) and bends to follow local image contours near strong edges; `pressure` is the overall stroke coverage.\n\n## Notes\n\n- Single pass on global (tile-aware) pixel coordinates so the stroke pattern is continuous across CLI render tiles.\n- Every mode shares one stroke field, `strokeField(gc, angle, stretch) = vnoise(rotate(gc, angle) * vec2(1/stretch, 0.9))`: the along-stroke axis varies slowly (over `stretch` pixels) while the cross-stroke axis stays near full-pixel frequency, so the noise reads as thin direction-aligned fibers rather than a blob.\n- `mode` is a compile-time selector (like `filter/oilPaint`'s `mode`): each value compiles as its own shader variant.\n- crosshatch and coloredPencil are the only two color-preserving modes; the other four fully replace the image with an ink/paper tonemap.\n"
+}

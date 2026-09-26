@@ -1,0 +1,90 @@
+{
+  "name": "Shape",
+  "namespace": "synth",
+  "func": "shape",
+  "description": "Interference patterns from geometric shapes",
+  "tags": [
+    "geometric"
+  ],
+  "params": {
+    "loopAOffset": {
+      "ui": {
+        "label": "loop a",
+        "control": "dropdown"
+      }
+    },
+    "loopBOffset": {
+      "ui": {
+        "label": "loop b",
+        "control": "dropdown"
+      }
+    },
+    "loopAScale": {
+      "ui": {
+        "label": "a scale",
+        "control": "slider"
+      }
+    },
+    "loopBScale": {
+      "ui": {
+        "label": "b scale",
+        "control": "slider"
+      }
+    },
+    "speedA": {
+      "ui": {
+        "label": "speed a",
+        "control": "slider"
+      }
+    },
+    "speedB": {
+      "ui": {
+        "label": "speed b",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "noise seed",
+        "control": "slider",
+        "category": "noise",
+        "enabledBy": {
+          "or": [
+            {
+              "param": "loopAOffset",
+              "gte": 300,
+              "lt": 400
+            },
+            {
+              "param": "loopBOffset",
+              "gte": 300,
+              "lt": 400
+            }
+          ]
+        }
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "checkbox",
+        "category": "noise",
+        "enabledBy": {
+          "or": [
+            {
+              "param": "loopAOffset",
+              "gte": 300,
+              "lt": 370
+            },
+            {
+              "param": "loopBOffset",
+              "gte": 300,
+              "lt": 370
+            }
+          ]
+        }
+      }
+    }
+  },
+  "help": "# shape\n\nDual-loop shape pattern generator\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| loopAOffset | int | square | Shapes:/circle/triangle/diamond/square/pentagon/hexagon/heptagon/octagon/nonagon/decagon/hendecagon/dodecagon/Directional:/horizontalScan/verticalScan/Noise:/noiseConstant/noiseLinear/noiseHermite/noiseCatmullRom3x3/noiseCatmullRom4x4/noiseBSpline3x3/noiseBSpline4x4/noiseSimplex/noiseSine/Misc:/rings/sine | Loop a |\n| loopBOffset | int | diamond | Shapes:/circle/triangle/diamond/square/pentagon/hexagon/heptagon/octagon/nonagon/decagon/hendecagon/dodecagon/Directional:/horizontalScan/verticalScan/Noise:/noiseConstant/noiseLinear/noiseHermite/noiseCatmullRom3x3/noiseCatmullRom4x4/noiseBSpline3x3/noiseBSpline4x4/noiseSimplex/noiseSine/Misc:/rings/sine | Loop b |\n| loopAScale | float | 1 | 1-100 | A scale |\n| loopBScale | float | 1 | 1-100 | B scale |\n| speedA | int | 50 | -100-100 | Speed a |\n| speedB | int | 50 | -100-100 | Speed b |\n| seed | int | 1 | 1-100 | Noise seed |\n| wrap | boolean | true | - | Wrap |\n"
+}

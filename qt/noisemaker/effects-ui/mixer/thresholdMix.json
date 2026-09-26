@@ -1,0 +1,121 @@
+{
+  "name": "ThresholdMix",
+  "namespace": "mixer",
+  "func": "thresholdMix",
+  "description": "Blend using threshold masking",
+  "tags": [
+    "blend"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "quantize": {
+      "ui": {
+        "label": "quantize",
+        "control": "slider"
+      }
+    },
+    "mapSource": {
+      "ui": {
+        "label": "map source",
+        "control": "dropdown"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "range": {
+      "ui": {
+        "label": "range",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "thresholdR": {
+      "ui": {
+        "label": "threshold r",
+        "control": "slider",
+        "category": "rgb",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "rangeR": {
+      "ui": {
+        "label": "range r",
+        "control": "slider",
+        "category": "rgb",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "thresholdG": {
+      "ui": {
+        "label": "threshold g",
+        "control": "slider",
+        "category": "rgb",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "rangeG": {
+      "ui": {
+        "label": "range g",
+        "control": "slider",
+        "category": "rgb",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "thresholdB": {
+      "ui": {
+        "label": "threshold b",
+        "control": "slider",
+        "category": "rgb",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "rangeB": {
+      "ui": {
+        "label": "range b",
+        "control": "slider",
+        "category": "rgb",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    }
+  },
+  "help": "# thresholdMix\n\nBlend using threshold masking\n\n## Description\n\nMixes two input textures using a threshold-based mask derived from one of the inputs. Areas below the threshold show source A, areas above show source B, with optional smooth blending across a range. Can operate on luminance or separate RGB channels, and supports quantization for posterized banding effects.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| mode | int | luminance | luminance/rgb | Threshold mode |\n| quantize | int | 0 | 0-8 | Posterization bands (0 = disabled) |\n| mapSource | int | sourceB | sourceA/sourceB | Which input provides threshold values |\n| threshold | float | 0.5 | 0-1 | Threshold cutoff point |\n| range | float | 0 | 0-1 | Soft blend range above threshold |\n| thresholdR | float | 0.5 | 0-1 | Red channel threshold (RGB mode) |\n| rangeR | float | 0 | 0-1 | Red channel blend range (RGB mode) |\n| thresholdG | float | 0.5 | 0-1 | Green channel threshold (RGB mode) |\n| rangeG | float | 0 | 0-1 | Green channel blend range (RGB mode) |\n| thresholdB | float | 0.5 | 0-1 | Blue channel threshold (RGB mode) |\n| rangeB | float | 0 | 0-1 | Blue channel blend range (RGB mode) |\n\n## Notes\n\n- **Luminance mode**: Uses overall brightness to determine mixing, creating uniform transitions\n- **RGB mode**: Each color channel is thresholded independently, allowing for color separation effects\n- **Quantize**: Reduces the threshold map to discrete bands before mixing, creating posterized/banded effects\n- **Range**: When 0, creates hard edges; increase for smooth gradients between sources\n- **mapSource**: Choose whether source A or B provides the threshold map; the other source will be mixed in based on that map\n- Use a gradient or noise texture as the map source for creative masking effects\n- Combine with quantize for retro/posterized looks\n"
+}

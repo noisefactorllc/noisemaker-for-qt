@@ -1,0 +1,63 @@
+{
+  "name": "Polygon",
+  "namespace": "synth",
+  "func": "polygon",
+  "description": "Geometric shape generator",
+  "tags": [
+    "geometric"
+  ],
+  "params": {
+    "sides": {
+      "step": 1,
+      "ui": {
+        "label": "sides",
+        "control": "slider"
+      }
+    },
+    "radius": {
+      "ui": {
+        "label": "radius"
+      }
+    },
+    "smooth": {
+      "ui": {
+        "label": "smooth"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "fgColor": {
+      "ui": {
+        "label": "fg color",
+        "control": "color",
+        "category": "color"
+      }
+    },
+    "fgAlpha": {
+      "ui": {
+        "label": "fg opacity",
+        "control": "slider",
+        "category": "color"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color",
+        "category": "color"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "bg opacity",
+        "control": "slider",
+        "category": "color"
+      }
+    }
+  },
+  "help": "# polygon\n\nGeometric shape generator\n\n## Description\n\nGenerates regular polygons with configurable sides, radius, rotation, and colors. Useful for creating basic geometric shapes as masks or base textures.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| sides | int | 3 | 3-64 | Sides |\n| radius | float | 0.5 | 0-1 | Size |\n| smooth | float | 0.01 | 0-1 | Edge smoothness |\n| rotation | float | 0 | -180-180 | Rotation |\n| fgColor | vec3 | 1,1,1 | - | Foreground Color |\n| fgAlpha | float | 1 | 0-1 | Foreground Opacity |\n| bgColor | vec3 | 0,0,0 | - | Background Color |\n| bgAlpha | float | 1 | 0-1 | Background Opacity |\n"
+}

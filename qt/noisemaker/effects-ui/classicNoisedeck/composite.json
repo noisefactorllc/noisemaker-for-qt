@@ -1,0 +1,41 @@
+{
+  "name": "Composite",
+  "namespace": "classicNoisedeck",
+  "func": "composite",
+  "description": "Multi-layer compositing",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "blendMode": {
+      "ui": {
+        "label": "blend mode",
+        "control": "dropdown"
+      }
+    },
+    "inputColor": {
+      "ui": {
+        "label": "target color",
+        "control": "color"
+      }
+    },
+    "range": {
+      "ui": {
+        "label": "range",
+        "control": "slider"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# composite\n\nMulti-layer compositing\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source surface B |\n| blendMode | int | greenscreenAB | colorSplash/greenscreenAB/greenscreenBA/aBBlack/aBColorBlack/aBHue/aBSaturation/aBValue/bABlack/bAColorBlack/bAHue/bASaturation/bAValue/mix/psychedelic/psychedelic2 | Mode |\n| inputColor | color | 0,0,0 | - | Color |\n| range | float | 20 | 0-100 | Range |\n| mix | float | 50 | 0-100 | Mix |\n"
+}

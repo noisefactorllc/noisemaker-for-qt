@@ -1,0 +1,26 @@
+{
+  "name": "High Pass",
+  "namespace": "filter",
+  "func": "highPass",
+  "description": "High-pass filter isolating edge detail as a flat mid-gray field",
+  "tags": [
+    "edges",
+    "artist"
+  ],
+  "params": {
+    "radius": {
+      "step": 0.5,
+      "ui": {
+        "label": "radius",
+        "control": "slider"
+      }
+    },
+    "mono": {
+      "ui": {
+        "label": "mono",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# highPass\n\nHigh-pass filter isolating edge detail as a flat mid-gray field\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| radius | float | 10 | 0.5-100 | Gaussian blur radius (px) subtracted from the source to isolate edge/detail frequencies |\n| mono | boolean | false | - | Output luminance-only high-pass detail instead of per-channel color |\n\n## Notes\n\n- Implements High Pass filter: `out = image - gaussianBlur(image, radius) + 0.5 gray`, clamped, alpha preserved.\n- Low radius keeps only fine texture/noise; high radius lets broader edge contours through.\n- Taps beyond 32 are strided (`offset *= radius/32`) so the blur kernel reaches the full requested radius using a bounded number of samples.\n"
+}

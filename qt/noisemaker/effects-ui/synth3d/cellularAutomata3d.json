@@ -1,0 +1,82 @@
+{
+  "name": "Cellular Automata 3D",
+  "namespace": "synth3d",
+  "func": "cellularAutomata3d",
+  "description": "3D cellular automata simulation",
+  "tags": [
+    "3d",
+    "sim"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "seed": {
+      "ui": {
+        "control": false
+      }
+    },
+    "ruleIndex": {
+      "ui": {
+        "label": "rules",
+        "control": "dropdown",
+        "category": "rules"
+      }
+    },
+    "neighborMode": {
+      "ui": {
+        "label": "neighborhood",
+        "control": "dropdown",
+        "category": "rules"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "sim speed",
+        "control": "slider"
+      }
+    },
+    "density": {
+      "ui": {
+        "label": "density",
+        "control": "slider"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "label": "reset",
+        "control": "button",
+        "buttonLabel": "reset"
+      }
+    },
+    "source": {
+      "ui": {
+        "label": "source vol",
+        "category": "input"
+      }
+    },
+    "geoSource": {
+      "ui": {
+        "label": "source geo",
+        "category": "input"
+      }
+    },
+    "weight": {
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "input"
+      }
+    }
+  },
+  "help": "# cellularAutomata3d\n\n3D cellular automata simulation\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x32 | x16/x32/x64/x128 | Volume size |\n| seed | int | 1 | 1-100 | - |\n| ruleIndex | int | rule445M | rule445M/rule678/amoeba/builder1/builder2/clouds/crystalGrowth/diamoeba/pyroclastic/slowDecay/spikeyGrowth | Rules |\n| neighborMode | int | moore | moore/vonNeumann | Neighborhood |\n| speed | int | 1 | 0-10 | Sim speed |\n| density | float | 50 | 1-100 | Initial density % |\n| colorMode | int | mono | mono/age | Color mode |\n| resetState | boolean | false | - | State |\n| source | volume | vol0 | - | Source volume |\n| geoSource | geometry | geo0 | - | Source geometry |\n| weight | float | 0 | 0-100 | Input weight |\n"
+}

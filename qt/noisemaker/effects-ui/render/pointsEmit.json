@@ -1,0 +1,43 @@
+{
+  "name": "Points Emit",
+  "namespace": "render",
+  "func": "pointsEmit",
+  "description": "Initialize and maintain agent state for particle systems",
+  "tags": [
+    "agents"
+  ],
+  "params": {
+    "stateSize": {
+      "ui": {
+        "label": "state size",
+        "control": "dropdown"
+      }
+    },
+    "layout": {
+      "ui": {
+        "label": "layout",
+        "control": "dropdown"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "attrition": {
+      "ui": {
+        "label": "attrition",
+        "control": "slider"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "reset"
+      }
+    }
+  },
+  "help": "# pointsEmit\n\nInitialize and maintain agent state for particle systems\n\n## Description\n\nThis is the starting point for all agent-based effects. It creates and manages three state textures:\n- **xyz**: Agent positions (x, y, z, alive_flag)\n- **vel**: Agent velocities and per-agent data\n- **rgba**: Agent colors (sampled from input texture)\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | x256 | x64/x128/x256/x512/x1024/x2048 | State size |\n| layout | int | random | random/grid/center/ring/clusters/spiral | Layout |\n| seed | int | 0 | 0-100 | Seed |\n| attrition | float | 0 | 0-10 | Attrition |\n| resetState | boolean | false | - | State |\n\n## Notes\n\nAgent count by stateSize:\n- 64 × 64 = 4,096 agents\n- 128 × 128 = 16,384 agents\n- 256 × 256 = 65,536 agents\n- 512 × 512 = 262,144 agents\n- 1024 × 1024 = 1,048,576 agents\n- 2048 × 2048 = 4,194,304 agents\n"
+}

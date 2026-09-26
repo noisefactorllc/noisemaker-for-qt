@@ -1,0 +1,38 @@
+{
+  "name": "Craquelure",
+  "namespace": "filter",
+  "func": "craquelure",
+  "description": "Cracked-plaster groove network with carved relief shading over the image (Craquelure)",
+  "tags": [
+    "noise",
+    "edges",
+    "artist"
+  ],
+  "params": {
+    "spacing": {
+      "ui": {
+        "label": "spacing",
+        "control": "slider"
+      }
+    },
+    "depth": {
+      "ui": {
+        "label": "depth",
+        "control": "slider"
+      }
+    },
+    "brightness": {
+      "ui": {
+        "label": "brightness",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# craquelure\n\nCracked-plaster groove network with carved relief shading over the image (Craquelure)\n\n## Description\n\nA jittered Voronoi cell field carves an organic network of plate-like\ncracks across the image: the difference between each pixel's nearest and\nsecond-nearest cell-seed distances (F2-F1) approaches zero exactly on a\ncell border, producing a ridge-shaped groove mask that is darkened onto\nthe source image and beveled with directional relief shading (fixed\nupper-left light) on the groove walls for a 3D carved-plaster look. The\ncrack borders are wobbled with a small noise perturbation so they read\nas organic fissures rather than straight polygon edges.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| spacing | float | 40 | 5-100 | Crack cell size in pixels - larger values produce fewer, larger cracked plates |\n| depth | float | 50 | 0-100 | Groove width and wall-shading strength - higher values widen the cracks and deepen the 3D bevel on their walls |\n| brightness | float | 50 | 0-100 | Crack darkness - higher values leave cracks shallower and paler; lower values darken them toward black |\n| seed | int | 1 | 1-100 | Randomizes the crack network's cell layout without changing its statistics |\n\n## Notes\n\n- Single pass, evaluated on global (tile-aware) pixel coordinates so the crack network and its wobble are continuous across CLI render tiles.\n- The crack mask is a ridge function of `(F2-F1) * spacing`, where F1/F2 are the nearest/second-nearest distances from a jittered Voronoi cell search (Voronoi jitter is fixed at maximum for irregular, organic plate shapes).\n- Wall shading is computed from a true central-difference gradient of the crack mask (5 bounded Voronoi evaluations per pixel total) fed through the same directional relief-shading model used by `filter/relief`, with the light angle fixed at 135 degrees (upper-left).\n- Produces an organic cracked-plaster or crazed-glaze surface.\n"
+}

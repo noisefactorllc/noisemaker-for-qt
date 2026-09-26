@@ -1,0 +1,126 @@
+{
+  "name": "RenderLit3D",
+  "namespace": "render",
+  "func": "renderLit3d",
+  "description": "Universal 3D volume raymarcher with advanced lighting",
+  "tags": [
+    "3d"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "shape": {
+      "ui": {
+        "label": "shape bounds",
+        "control": "dropdown"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert thresh"
+      }
+    },
+    "orbitSpeed": {
+      "ui": {
+        "label": "orbit speed"
+      }
+    },
+    "cameraPosition": {
+      "step": 0.01,
+      "ui": {
+        "label": "camera pos",
+        "control": "vec3"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color",
+        "category": "background"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "bg opacity",
+        "category": "background"
+      }
+    },
+    "lightDirection": {
+      "ui": {
+        "label": "light dir",
+        "control": "vector3",
+        "category": "lighting"
+      }
+    },
+    "diffuseColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "diffuse"
+      }
+    },
+    "diffuseIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "diffuse"
+      }
+    },
+    "specularColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "specular"
+      }
+    },
+    "specularIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "specular"
+      }
+    },
+    "shininess": {
+      "step": 1,
+      "ui": {
+        "label": "shininess",
+        "control": "slider",
+        "category": "specular"
+      }
+    },
+    "rimIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "rim"
+      }
+    },
+    "rimPower": {
+      "step": 0.1,
+      "ui": {
+        "label": "power",
+        "control": "slider",
+        "category": "rim"
+      }
+    },
+    "ambientColor": {
+      "ui": {
+        "label": "ambient color",
+        "control": "color",
+        "category": "lighting"
+      }
+    }
+  },
+  "help": "# renderLit3d\n\nUniversal 3D volume raymarcher with advanced lighting controls\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | v64 | v16/v32/v64/v128 | Volume resolution (inherited from upstream) |\n| shape | int | cube | cube/sphere | Bounding shape for the volume |\n| threshold | float | 0.5 | 0-1 | Surface threshold |\n| invert | boolean | false | - | Invert threshold |\n| orbitSpeed | int | 1 | -5 to 5 | Volume rotation speed |\n| cameraPosition | vec3 | 0,0.1425,1.0 | -1 to 1 | Camera position (scaled 5x, 0,0,0 = center) |\n| bgColor | color | 0,0,0 | - | Background color |\n| bgAlpha | float | 1 | 0-1 | Background alpha |\n\n### Lighting Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| lightDirection | vec3 | 0.5,0.5,1.0 | - | Direction of the light source |\n| diffuseColor | color | 1.0,1.0,1.0 | - | Color of diffuse lighting |\n| diffuseIntensity | float | 0.7 | 0-2 | Intensity of diffuse lighting |\n| specularColor | color | 1.0,1.0,1.0 | - | Color of specular highlights |\n| specularIntensity | float | 0.3 | 0-2 | Intensity of specular highlights |\n| shininess | float | 32 | 1-256 | Specular shininess (higher = tighter highlights) |\n| ambientColor | color | 0.1,0.1,0.1 | - | Ambient light color |\n| rimIntensity | float | 0.15 | 0-1 | Intensity of rim/fresnel lighting |\n| rimPower | float | 3.0 | 0.5-8 | Rim lighting falloff power |\n\n## Notes\n\nThis effect extends `render3d` with full lighting controls, allowing you to fine-tune:\n\n- **Diffuse lighting**: Lambertian shading based on surface normal and light direction\n- **Specular lighting**: Blinn-Phong highlights for shiny surfaces\n- **Ambient lighting**: Base illumination for shadowed areas\n- **Rim lighting**: Fresnel-based edge glow effect\n\n### Bounding Shapes\n\n- **cube**: Classic box-bounded volume (default)\n- **sphere**: Spherical boundary for organic shapes\n- **plane**: Horizontal slab for terrain/landscape effects\n- **none**: Unbounded - marches until max distance (use with care)\n\n### Usage Examples\n\n```\n// Basic lit 3D noise\nnoise3d().renderLit3d().write(o0)\n\n// Spherical bounding for organic look\ncell3d().renderLit3d(shape: sphere, shininess: 128).write(o0)\n\n// Terrain-style plane rendering\nfractal3d().renderLit3d(shape: plane, threshold: 0.3).write(o0)\n\n// Dramatic rim lighting\nfractal3d().renderLit3d(rimIntensity: 0.5, rimPower: 2.0, ambientColor: [0.05, 0.05, 0.1]).write(o0)\n\n// Colored lighting\nshape3d().renderLit3d(diffuseColor: [1.0, 0.8, 0.6], specularColor: [1.0, 0.9, 0.8]).write(o0)\n```\n\nThe volumeSize parameter is automatically inherited from the upstream 3D effect.\n"
+}

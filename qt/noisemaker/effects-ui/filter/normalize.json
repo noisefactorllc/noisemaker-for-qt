@@ -1,0 +1,11 @@
+{
+  "name": "Normalize",
+  "namespace": "filter",
+  "func": "normalize",
+  "description": "Value normalization",
+  "tags": [
+    "color"
+  ],
+  "params": {},
+  "help": "# normalize\n\nValue normalization\n"
+}

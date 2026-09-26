@@ -1,0 +1,33 @@
+{
+  "name": "CRT",
+  "namespace": "filter",
+  "func": "crt",
+  "description": "CRT monitor simulation",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# crt\n\nCRT monitor simulation\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 0.5 | 0-1 | Opacity |\n| speed | float | 1 | 0-5 | Speed |\n| seed | int | 1 | 1-100 | Random seed |\n"
+}

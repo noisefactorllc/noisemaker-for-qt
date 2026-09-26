@@ -1,0 +1,31 @@
+{
+  "name": "Rotate",
+  "namespace": "filter",
+  "func": "rotate",
+  "description": "Rotate image by specified angle",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "rotation": {
+      "step": 0.01,
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# rotate\n\nRotate image by specified angle\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| rotation | float | 45 | -180-180 | Rotation |\n| wrap | int | repeat | mirror/repeat/clamp | Wrap |\n| speed | int | 0 | -4-4 | Animation speed |\n"
+}

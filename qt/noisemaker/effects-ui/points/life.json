@@ -1,0 +1,102 @@
+{
+  "name": "Life",
+  "namespace": "points",
+  "func": "life",
+  "description": "Type-based attraction/repulsion particle simulation",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "stateSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "typeCount": {
+      "step": 1,
+      "ui": {
+        "label": "types",
+        "control": "slider",
+        "category": "types"
+      }
+    },
+    "attractionScale": {
+      "step": 0.1,
+      "ui": {
+        "label": "attraction",
+        "control": "slider",
+        "category": "forces"
+      }
+    },
+    "repulsionScale": {
+      "step": 0.1,
+      "ui": {
+        "label": "repulsion",
+        "control": "slider",
+        "category": "forces"
+      }
+    },
+    "minRadius": {
+      "step": 0.001,
+      "ui": {
+        "label": "min radius",
+        "control": "slider",
+        "category": "forces"
+      }
+    },
+    "maxRadius": {
+      "step": 0.01,
+      "ui": {
+        "label": "max radius",
+        "control": "slider",
+        "category": "forces"
+      }
+    },
+    "maxSpeed": {
+      "step": 0.0001,
+      "ui": {
+        "label": "max speed",
+        "control": "slider",
+        "category": "motion"
+      }
+    },
+    "friction": {
+      "step": 0.01,
+      "ui": {
+        "label": "friction",
+        "control": "slider",
+        "category": "motion"
+      }
+    },
+    "boundaryMode": {
+      "ui": {
+        "label": "boundary",
+        "control": "dropdown",
+        "category": "motion"
+      }
+    },
+    "matrixSeed": {
+      "step": 1,
+      "ui": {
+        "label": "matrix seed",
+        "control": "slider",
+        "category": "types"
+      }
+    },
+    "symmetricForces": {
+      "ui": {
+        "label": "symmetric",
+        "control": "checkbox",
+        "category": "types"
+      }
+    },
+    "useTypeColor": {
+      "ui": {
+        "label": "show types",
+        "control": "checkbox",
+        "category": "types"
+      }
+    }
+  },
+  "help": "# life\n\nType-based attraction/repulsion particle simulation\n\n## Description\n\nEach particle has a type, and type pairs have randomly generated attraction/repulsion forces. Creates emergent self-organizing structures and behaviors.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| typeCount | int | 6 | 2-8 | Types |\n| attractionScale | float | 1 | 0-5 | Attraction |\n| repulsionScale | float | 1 | 0-5 | Repulsion |\n| minRadius | float | 0.01 | 0.001-0.05 | Min radius |\n| maxRadius | float | 0.08 | 0.02-0.2 | Max radius |\n| maxSpeed | float | 0.003 | 0.0005-0.01 | Max speed |\n| friction | float | 0.1 | 0-1 | Friction |\n| boundaryMode | int | wrap | wrap/bounce | Boundary |\n| matrixSeed | float | 42 | 0-1000 | Matrix seed |\n| symmetricForces | boolean | false | - | Symmetric |\n| useTypeColor | boolean | false | - | Show types |\n"
+}

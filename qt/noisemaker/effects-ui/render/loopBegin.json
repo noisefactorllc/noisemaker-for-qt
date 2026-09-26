@@ -1,0 +1,25 @@
+{
+  "name": "LoopBegin",
+  "namespace": "render",
+  "func": "loopBegin",
+  "description": "Start accumulator loop, read from feedback buffer",
+  "tags": [
+    "util",
+    "sim"
+  ],
+  "params": {
+    "alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# loopBegin\n\nStart accumulator loop, read from feedback buffer\n\n## Description\n\nReads from a shared accumulator buffer and blends with the incoming texture using lighten (max) mode. Use `loopEnd()` to complete the feedback loop.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 50 | 0-100 | Alpha |\n| intensity | float | 100 | 0-100 | Intensity |\n"
+}

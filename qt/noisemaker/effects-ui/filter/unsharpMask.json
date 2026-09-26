@@ -1,0 +1,32 @@
+{
+  "name": "Unsharp Mask",
+  "namespace": "filter",
+  "func": "unsharpMask",
+  "description": "Classic unsharp mask sharpening with radius and threshold",
+  "tags": [
+    "edges",
+    "artist"
+  ],
+  "params": {
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "radius": {
+      "step": 0.5,
+      "ui": {
+        "label": "radius",
+        "control": "slider"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# unsharpMask\n\nClassic unsharp mask sharpening with radius and threshold\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 60 | 0-500 | Sharpening strength as a percentage; 0 disables the effect |\n| radius | float | 4 | 0.5-50 | Gaussian blur radius (px) used to build the high-pass sharpening mask |\n| threshold | float | 0 | 0-100 | Minimum edge contrast required before sharpening kicks in, gating flat/noisy areas out |\n\n## Notes\n\n- Implements the classic unsharp mask formula: `out = image + amount * (image - gaussianBlur(image, radius))`, with the correction gated by `threshold`.\n- \"Sharpen Edges\" filter is equivalent to Unsharp Mask with a high `threshold`: only strong, high-contrast edges pass the gate and get sharpened, while smooth regions are left untouched.\n"
+}

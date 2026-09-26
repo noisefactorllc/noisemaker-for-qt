@@ -1,0 +1,32 @@
+{
+  "name": "Translate",
+  "namespace": "filter",
+  "func": "translate",
+  "description": "Translate image in X and Y",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "x": {
+      "step": 0.01,
+      "ui": {
+        "label": "x",
+        "control": "slider"
+      }
+    },
+    "y": {
+      "step": 0.01,
+      "ui": {
+        "label": "y",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# translate\n\nTranslate image in X and Y\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| x | float | 0 | -1-1 | X |\n| y | float | 0 | -1-1 | Y |\n| wrap | int | repeat | mirror/repeat/clamp | Wrap |\n"
+}

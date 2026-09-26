@@ -1,0 +1,65 @@
+{
+  "name": "Flythrough3D",
+  "namespace": "synth3d",
+  "func": "flythrough3d",
+  "description": "3D fractal flythrough with camera-relative volume",
+  "tags": [
+    "3d",
+    "fractal"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "type": {
+      "ui": {
+        "label": "fractal type",
+        "control": "dropdown"
+      }
+    },
+    "power": {
+      "ui": {
+        "label": "power/scale",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "bailout": {
+      "ui": {
+        "label": "bailout",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider",
+        "category": "camera"
+      }
+    },
+    "voiSize": {
+      "ui": {
+        "label": "view size",
+        "control": "slider",
+        "category": "camera"
+      }
+    },
+    "seed": {
+      "ui": {
+        "control": false
+      }
+    }
+  },
+  "help": "# flythrough3d\n\n3D fractal flythrough volume generator with camera-relative sampling.\n\n## Description\n\nGenerates a moving volume-of-interest (VOI) that samples fractal space around a spline-based camera path. Designed for deep interior flythroughs of Mandelbulb and Mandelbox fractals with smooth navigation and collision avoidance.\n\n## Key Features\n\n- **Camera-relative VOI**: The voxel grid moves with the camera, sampling fractal space around the current position\n- **Distance estimation**: Uses DE for stable shell rendering, normals, and collision avoidance\n- **Spline pathing**: Smooth Catmull-Rom spline trajectory through fractal space\n- **Collision avoidance**: Automatic push-away from surfaces using DE gradient\n- **Hybrid density**: Thin surface shell + soft interior haze for depth\n- **Orbit trap coloring**: Rich color variation based on fractal dynamics\n\n## Parameters\n\n### Fractal\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| `type` | int | mandelbulb | mandelbulb/mandelbox | Fractal type |\n| `power` | float | 8.0 | -3-16 | Mandelbulb power exponent |\n| `iterations` | int | 12 | 4-24 | Fractal iteration depth |\n| `bailout` | float | 4.0 | 1-16 | Escape radius |\n\n### Camera\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| `speed` | float | 0.2 | 0-1 | Flight speed along path |\n| `voiSize` | float | 0.5 | 0.1-2 | Half-extent of view volume |\n\n### Volume\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| `volumeSize` | int | x64 | x16/x32/x64/x128 | Voxel grid resolution |\n| `seed` | int | 0 | 0-100 | Flight path seed (no UI control) |\n\n## Examples\n\nBasic flythrough:\n```\nflythrough3d().render3d().write(o0)\n```\n\nFast Mandelbulb flight:\n```\nflythrough3d(type: mandelbulb, speed: 0.5, power: 8).render3d().write(o0)\n```\n\nDeep Mandelbox interior:\n```\nflythrough3d(type: mandelbox, voiSize: 0.3).render3d().write(o0)\n```\n\nVoxel-style rendering:\n```\nflythrough3d().render3d(filtering: voxel, threshold: 0.4).write(o0)\n```\n\n## Architecture\n\n1. **Flight Path**: Procedural spline through fractal space, seeded by `seed`\n2. **VOI Transform**: Camera-relative bounding box mapped to voxel grid\n3. **Fractal Sampling**: DE-based density with hybrid shell/interior\n4. **Collision Response**: Gradient-based push when camera approaches surface\n5. **Volume Output**: Compatible with render3d pipeline\n\n## Tips\n\n- **Mandelbox** with negative scale creates navigable cavern-like interiors\n- **Lower voiSize** = more detail but smaller view distance\n- Change **seed** for different flight paths through the same fractal\n"
+}

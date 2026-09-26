@@ -1,0 +1,183 @@
+{
+  "name": "Mesh Render",
+  "namespace": "render",
+  "func": "meshRender",
+  "description": "Render meshes with Blinn-Phong lighting",
+  "tags": [
+    "mesh",
+    "geometry"
+  ],
+  "params": {
+    "scale": {
+      "ui": {
+        "label": "mesh scale",
+        "control": "slider",
+        "category": "mesh"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "mesh offset x",
+        "control": "slider",
+        "category": "mesh"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "mesh offset y",
+        "control": "slider",
+        "category": "mesh"
+      }
+    },
+    "offsetZ": {
+      "ui": {
+        "label": "mesh offset z",
+        "control": "slider",
+        "category": "mesh"
+      }
+    },
+    "rotateX": {
+      "step": 1,
+      "ui": {
+        "label": "rotate x",
+        "control": "slider",
+        "category": "view"
+      }
+    },
+    "rotateY": {
+      "step": 1,
+      "ui": {
+        "label": "rotate y",
+        "control": "slider",
+        "category": "view"
+      }
+    },
+    "rotateZ": {
+      "step": 1,
+      "ui": {
+        "label": "rotate z",
+        "control": "slider",
+        "category": "view"
+      }
+    },
+    "viewScale": {
+      "ui": {
+        "label": "zoom",
+        "control": "slider",
+        "category": "view"
+      }
+    },
+    "posX": {
+      "ui": {
+        "label": "position x",
+        "control": "slider",
+        "category": "view"
+      }
+    },
+    "posY": {
+      "ui": {
+        "label": "position y",
+        "control": "slider",
+        "category": "view"
+      }
+    },
+    "lightDirection": {
+      "ui": {
+        "label": "direction",
+        "control": "vector3",
+        "category": "lighting"
+      }
+    },
+    "diffuseColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "diffuse"
+      }
+    },
+    "diffuseIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "diffuse"
+      }
+    },
+    "specularColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "specular"
+      }
+    },
+    "specularIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "specular"
+      }
+    },
+    "shininess": {
+      "step": 1,
+      "ui": {
+        "label": "shininess",
+        "control": "slider",
+        "category": "specular"
+      }
+    },
+    "ambientColor": {
+      "ui": {
+        "label": "ambient color",
+        "control": "color",
+        "category": "ambient"
+      }
+    },
+    "rimIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "rim intensity",
+        "control": "slider",
+        "category": "rim"
+      }
+    },
+    "rimPower": {
+      "step": 0.1,
+      "ui": {
+        "label": "rim power",
+        "control": "slider",
+        "category": "rim"
+      }
+    },
+    "meshColor": {
+      "ui": {
+        "label": "base color",
+        "control": "color",
+        "category": "material"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color",
+        "category": "material"
+      }
+    },
+    "bgAlpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "bg opacity",
+        "control": "slider",
+        "category": "material"
+      }
+    },
+    "wireframe": {
+      "ui": {
+        "label": "render mode",
+        "control": "dropdown",
+        "category": "material"
+      }
+    }
+  },
+  "help": "# Mesh Render\n\n**Note:** Mesh rendering is a proof of concept. The mesh loader currently only supports OBJ format.\n\nRenders triangle meshes from mesh surface textures using the triangles draw mode.\n\n## Usage\n\n```\nmeshLoader().meshRender(scale: 1.5, offsetY: -0.5).write(o0)\n```\n\n## Parameters\n\n### Mesh Transform\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| scale | float | 1.0 | Mesh scale factor |\n| offsetX | float | 0.0 | Mesh X translation |\n| offsetY | float | 0.0 | Mesh Y translation |\n| offsetZ | float | 0.0 | Mesh Z translation |\n\n### View\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| rotateX | float | 0.0 | Rotation around X axis (radians) |\n| rotateY | float | 0.0 | Rotation around Y axis (radians) |\n| rotateZ | float | 0.0 | Rotation around Z axis (radians) |\n| viewScale | float | 1.0 | Zoom/scale factor |\n| posX | float | 0.0 | Camera X position |\n| posY | float | 0.0 | Camera Y position |\n\n### Lighting\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| lightDirection | vec3 | 0.5,0.7,0.5 | Light direction |\n| diffuseColor | color | [1.0, 1.0, 1.0] | Diffuse color |\n| diffuseIntensity | float | 0.7 | Diffuse intensity (0.0-2.0) |\n| specularColor | color | [1.0, 1.0, 1.0] | Specular color |\n| specularIntensity | float | 0.3 | Specular intensity (0.0-2.0) |\n| shininess | float | 32.0 | Specular exponent (1.0-256.0) |\n| ambientColor | color | [0.1, 0.1, 0.1] | Ambient color |\n| rimIntensity | float | 0.15 | Rim light intensity (0.0-1.0) |\n| rimPower | float | 3.0 | Rim light falloff exponent (0.5-8.0) |\n\n### Appearance\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| meshColor | color | [0.8, 0.8, 0.8] | Mesh surface color |\n| bgColor | color | [0.1, 0.1, 0.15] | Background color |\n| bgAlpha | float | 1.0 | Background opacity (0.0-1.0) |\n| wireframe | int | solid | Render mode: solid or wireframe |\n\n## Draw Mode\n\nUses `drawMode: \"triangles\"` - vertices are read from mesh textures via `texelFetch` \nin the vertex shader, similar to how `drawMode: \"points\"` works for particle systems.\n\n## Pipeline Integration\n\nTypically used after `meshLoader()`:\n\n```\n// Load and render with transform\nmeshLoader().meshRender(scale: 0.5, rotateY: time * 0.5).write(o0)\n```\n\nCan also be chained with filters:\n\n```\nmeshLoader().meshRender().bloom(radius: 0.02).write(o0)\n```\n"
+}

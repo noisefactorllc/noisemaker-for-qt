@@ -1,0 +1,62 @@
+{
+  "name": "Texture",
+  "namespace": "filter",
+  "func": "texture",
+  "description": "Procedural surface and material texture overlay",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "scale": {
+      "step": 0.1,
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "gt": 4
+        }
+      }
+    },
+    "contrast": {
+      "ui": {
+        "label": "contrast",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "gt": 4
+        }
+      }
+    },
+    "mono": {
+      "ui": {
+        "label": "mono",
+        "control": "checkbox",
+        "enabledBy": {
+          "param": "mode",
+          "gt": 4
+        }
+      }
+    }
+  },
+  "help": "# texture\n\nProcedural surface and material texture overlay. Surface modes derive bump-map\nshading from a height field; material modes blend a controlled noise structure\ninto the source image.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | paper | see Modes | Texture type |\n| alpha | float | 0.5 | 0-1 | Blend opacity |\n| scale | float | 1.0 | 0.1-10 | Texture density |\n| intensity | float | 40 | 0-100 | Material-noise deviation from neutral; active for regular through speckle |\n| contrast | float | 50 | 0-100 | Material-noise contrast; active for regular through speckle |\n| mono | bool | true | - | Use one noise field for all channels; active for regular through speckle |\n\n## Modes\n\n- **canvas** — woven fabric pattern with subtle noise irregularity\n- **crosshatch** — two overlapping diagonal line patterns\n- **halftone** — regular circular dot grid\n- **paper** — ridged multi-octave noise with embossed shading\n- **stucco** — smooth, blobby bumps with strong shadows\n- **regular** — fine, smoothly interpolated material noise\n- **soft** — compact isotropic low-pass noise with fine cells and no hard plateaus\n- **sprinkles** — sparse rounded bright marks over a neutral field\n- **clumped** — broad multi-scale clusters\n- **contrasty** — steep, crisp tonal noise\n- **enlarged** — coarse smoothly interpolated cells\n- **stippled** — binary ink-like points\n- **horizontal** — elongated horizontal fibers\n- **vertical** — elongated vertical fibers\n- **speckle** — fine noise concentrated around source-image edges\n"
+}

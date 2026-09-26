@@ -1,0 +1,53 @@
+{
+  "name": "Bloom",
+  "namespace": "filter",
+  "func": "bloom",
+  "description": "Multi-pass bloom with bright-pass extraction and configurable glow",
+  "tags": [
+    "lens"
+  ],
+  "params": {
+    "threshold": {
+      "step": 0.05,
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    },
+    "softKnee": {
+      "step": 0.01,
+      "ui": {
+        "label": "soft knee",
+        "control": "slider"
+      }
+    },
+    "intensity": {
+      "step": 0.05,
+      "ui": {
+        "label": "intensity",
+        "control": "slider"
+      }
+    },
+    "radius": {
+      "step": 1,
+      "ui": {
+        "label": "radius",
+        "control": "slider"
+      }
+    },
+    "taps": {
+      "step": 1,
+      "ui": {
+        "label": "taps",
+        "control": "slider"
+      }
+    },
+    "tint": {
+      "ui": {
+        "label": "tint",
+        "control": "color"
+      }
+    }
+  },
+  "help": "# bloom\n\nMulti-pass bloom with bright-pass extraction and configurable glow\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| threshold | float | 0.8 | 0-2 | Threshold |\n| softKnee | float | 0.2 | 0-0.5 | Soft Knee |\n| intensity | float | 1 | 0-3 | Intensity |\n| radius | float | 32 | 1-128 | Radius |\n| taps | int | 8 | 8-64 | Taps |\n| tint | color | 1,1,1 | - | Tint |\n"
+}

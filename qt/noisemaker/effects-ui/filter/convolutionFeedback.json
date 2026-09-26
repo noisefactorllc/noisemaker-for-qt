@@ -1,0 +1,58 @@
+{
+  "name": "Convolution Feedback",
+  "namespace": "filter",
+  "func": "convolutionFeedback",
+  "description": "Convolution feedback with blur and sharpen",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "sharpenRadius": {
+      "step": 1,
+      "ui": {
+        "label": "radius",
+        "control": "slider",
+        "category": "sharpen"
+      }
+    },
+    "sharpenAmount": {
+      "step": 0.1,
+      "ui": {
+        "label": "amount",
+        "control": "slider",
+        "category": "sharpen"
+      }
+    },
+    "blurRadius": {
+      "step": 1,
+      "ui": {
+        "label": "radius",
+        "control": "slider",
+        "category": "blur"
+      }
+    },
+    "blurAmount": {
+      "step": 0.01,
+      "ui": {
+        "label": "amount",
+        "control": "slider",
+        "category": "blur"
+      }
+    },
+    "intensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "feedback",
+        "control": "slider"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "state"
+      }
+    }
+  },
+  "help": "# convolutionFeedback\n\nConvolution feedback with blur and sharpen\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| sharpenRadius | int | 5 | 1-10 | Sharpen Radius |\n| sharpenAmount | float | 2.5 | 0-3 | Sharpen Amount |\n| blurRadius | int | 4 | 1-10 | Blur Radius |\n| blurAmount | float | 0.5 | 0-1 | Blur Amount |\n| intensity | float | 0.75 | 0-1 | Feedback Intensity |\n| resetState | boolean | false | - | State |\n\n## Notes\n\nAlgorithm pipeline:\n1. **Sharpen**: Unsharp mask on feedback texture\n2. **Blur**: Gaussian blur with configurable radius and amount\n3. **Blend**: Mix processed feedback with current input based on intensity\n\nThe feedback loop creates evolving, time-accumulating effects.\n"
+}

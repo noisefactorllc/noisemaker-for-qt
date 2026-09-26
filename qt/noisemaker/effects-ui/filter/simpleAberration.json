@@ -1,0 +1,19 @@
+{
+  "name": "Simple Aberration",
+  "namespace": "filter",
+  "func": "simpleAberration",
+  "description": "Chromatic aberration",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "displacement": {
+      "step": 0.001,
+      "ui": {
+        "label": "displacement",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# simpleAberration\n\nChromatic aberration\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| displacement | float | 0.02 | 0-0.1 | Channel displacement amount |\n"
+}

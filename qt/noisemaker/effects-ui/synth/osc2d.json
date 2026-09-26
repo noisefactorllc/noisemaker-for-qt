@@ -1,0 +1,47 @@
+{
+  "name": "Osc2D",
+  "namespace": "synth",
+  "func": "osc2d",
+  "description": "2D oscillator pattern",
+  "tags": [
+    "geometric"
+  ],
+  "params": {
+    "oscType": {
+      "ui": {
+        "label": "osc type"
+      }
+    },
+    "freq": {
+      "step": 1,
+      "ui": {
+        "label": "freq"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed"
+      }
+    },
+    "rotation": {
+      "step": 1,
+      "ui": {
+        "label": "rotation"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "enabledBy": {
+          "param": "oscType",
+          "in": [
+            "oscType.noise1d",
+            "oscType.noise2d"
+          ]
+        }
+      }
+    }
+  },
+  "help": "# osc2d\n\n2D oscillator pattern\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| oscType | member | oscType.sine | - | - |\n| freq | int | 5 | 1-32 | - |\n| speed | int | 4 | 0-10 | - |\n| rotation | float | 0 | -180-180 | - |\n| seed | int | 0 | 0-1000 | Seed |\n"
+}

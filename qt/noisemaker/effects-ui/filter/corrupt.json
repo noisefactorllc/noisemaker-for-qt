@@ -1,0 +1,73 @@
+{
+  "name": "Corrupt",
+  "namespace": "filter",
+  "func": "corrupt",
+  "description": "Scanline-based data corruption",
+  "tags": [
+    "distort",
+    "glitch"
+  ],
+  "params": {
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider"
+      }
+    },
+    "bandHeight": {
+      "ui": {
+        "label": "band height",
+        "control": "slider"
+      }
+    },
+    "sort": {
+      "ui": {
+        "label": "sort",
+        "control": "slider"
+      }
+    },
+    "shift": {
+      "ui": {
+        "label": "shift",
+        "control": "slider"
+      }
+    },
+    "channelShift": {
+      "ui": {
+        "label": "channel shift",
+        "control": "slider"
+      }
+    },
+    "melt": {
+      "ui": {
+        "label": "melt",
+        "control": "slider"
+      }
+    },
+    "scatter": {
+      "ui": {
+        "label": "scatter",
+        "control": "slider"
+      }
+    },
+    "bits": {
+      "ui": {
+        "label": "bits",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# corrupt\n\nScanline-based data corruption with pixel sorting, byte shifting, and bit manipulation\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| intensity | float | 50 | 0-100 | Corruption probability per scanline |\n| bandHeight | float | 10 | 1-100 | Scanline grouping height |\n| sort | float | 50 | 0-100 | Pixel sorting amount |\n| shift | float | 50 | 0-100 | Horizontal byte shifting |\n| channelShift | float | 0 | 0-100 | RGB channel separation |\n| melt | float | 0 | 0-100 | Vertical drip displacement |\n| scatter | float | 0 | 0-100 | Per-pixel random displacement |\n| bits | float | 0 | 0-100 | Bit manipulation and quantization |\n| speed | int | 1 | 0-5 | Animation speed |\n| seed | int | 1 | 1-100 | Random seed |\n"
+}

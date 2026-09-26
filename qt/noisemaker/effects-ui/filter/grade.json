@@ -1,0 +1,334 @@
+{
+  "name": "Grade",
+  "namespace": "filter",
+  "func": "grade",
+  "description": "Professional multi-stage color grading pipeline",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "preset": {
+      "ui": {
+        "label": "preset",
+        "control": "dropdown",
+        "category": "look"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "look",
+        "enabledBy": "preset"
+      }
+    },
+    "temperature": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "temperature",
+        "category": "primary"
+      }
+    },
+    "tint": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "tint",
+        "category": "primary"
+      }
+    },
+    "exposure": {
+      "step": 0.05,
+      "ui": {
+        "control": "slider",
+        "label": "exposure",
+        "category": "primary"
+      }
+    },
+    "contrast": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "contrast",
+        "category": "primary"
+      }
+    },
+    "highlights": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "highlights",
+        "category": "primary"
+      }
+    },
+    "shadows": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "shadows",
+        "category": "primary"
+      }
+    },
+    "whites": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "whites",
+        "category": "primary"
+      }
+    },
+    "blacks": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "blacks",
+        "category": "primary"
+      }
+    },
+    "saturation": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "saturation",
+        "category": "primary"
+      }
+    },
+    "vibrance": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "vibrance",
+        "category": "creative"
+      }
+    },
+    "fadedFilm": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "faded film",
+        "category": "creative"
+      }
+    },
+    "shadowTint": {
+      "ui": {
+        "control": "slider",
+        "label": "shadow tint",
+        "category": "creative"
+      }
+    },
+    "highlightTint": {
+      "ui": {
+        "control": "slider",
+        "label": "highlight tint",
+        "category": "creative"
+      }
+    },
+    "splitToneBalance": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "split tone",
+        "category": "creative"
+      }
+    },
+    "curveShadows": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "shadows",
+        "category": "curves"
+      }
+    },
+    "curveMidtones": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "midtones",
+        "category": "curves"
+      }
+    },
+    "curveHighlights": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "highlights",
+        "category": "curves"
+      }
+    },
+    "wheelShadows": {
+      "ui": {
+        "control": "slider",
+        "label": "shadows",
+        "category": "wheels"
+      }
+    },
+    "wheelMidtones": {
+      "ui": {
+        "control": "slider",
+        "label": "midtones",
+        "category": "wheels"
+      }
+    },
+    "wheelHighlights": {
+      "ui": {
+        "control": "slider",
+        "label": "highlights",
+        "category": "wheels"
+      }
+    },
+    "wheelBalance": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "balance",
+        "category": "wheels",
+        "hint": "Adjust a color wheel above first"
+      }
+    },
+    "hslEnable": {
+      "step": 1,
+      "ui": {
+        "control": "slider",
+        "label": "use hsl key",
+        "category": "hslSecondary"
+      }
+    },
+    "hslHueCenter": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "hue center",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslHueRange": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "hue range",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslSatMin": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "sat min",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslSatMax": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "sat max",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslLumMin": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "lum min",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslLumMax": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "lum max",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslFeather": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "feather",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslHueShift": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "hue shift",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslSatAdjust": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "sat adjust",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "hslLumAdjust": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "lum adjust",
+        "category": "hslSecondary",
+        "enabledBy": "hslEnable"
+      }
+    },
+    "vignetteAmount": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "amount",
+        "category": "vignette"
+      }
+    },
+    "vignetteMidpoint": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "midpoint",
+        "category": "vignette",
+        "enabledBy": "vignetteAmount"
+      }
+    },
+    "vignetteRoundness": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "roundness",
+        "category": "vignette",
+        "enabledBy": "vignetteAmount"
+      }
+    },
+    "vignetteFeather": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "feather",
+        "category": "vignette",
+        "enabledBy": "vignetteAmount"
+      }
+    },
+    "vigHiProtect": {
+      "step": 0.01,
+      "ui": {
+        "control": "slider",
+        "label": "highlights",
+        "category": "vignette",
+        "enabledBy": "vignetteAmount"
+      }
+    }
+  },
+  "help": "# grade\n\nProfessional multi-stage color grading pipeline\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| preset | int | none | none/bleachBypass/cinematic/coolShadows/crossProcess/dayForNight/hardLight/infrared/matrix/monochrome/neon/noir/posterize/psychedelic/sepia/solarize/sunset/tealOrange/technicolor/underwater/vintage/warmFilm | Preset |\n| alpha | float | 1 | 0-1 | Alpha |\n| temperature | float | 0 | -1-1 | Temperature |\n| tint | float | 0 | -1-1 | Tint |\n| exposure | float | 0 | -4-4 | Exposure |\n| contrast | float | 0 | -1-1 | Contrast |\n| highlights | float | 0 | -1-1 | Highlights |\n| shadows | float | 0 | -1-1 | Shadows |\n| whites | float | 0 | -1-1 | Whites |\n| blacks | float | 0 | -1-1 | Blacks |\n| saturation | float | 1 | 0-2 | Saturation |\n| vibrance | float | 0 | -1-1 | Vibrance |\n| fadedFilm | float | 0 | 0-1 | Faded Film |\n| shadowTint | vec3 | 0.5,0.5,0.5 | - | Shadow Tint |\n| highlightTint | vec3 | 0.5,0.5,0.5 | - | Highlight Tint |\n| splitToneBalance | float | 0 | -1-1 | Split Tone Balance |\n| curveShadows | float | 0 | -1-1 | Curve Shadows |\n| curveMidtones | float | 0 | -1-1 | Curve Midtones |\n| curveHighlights | float | 0 | -1-1 | Curve Highlights |\n| wheelShadows | vec3 | 0.5,0.5,0.5 | - | Shadows Wheel |\n| wheelMidtones | vec3 | 0.5,0.5,0.5 | - | Midtones Wheel |\n| wheelHighlights | vec3 | 0.5,0.5,0.5 | - | Highlights Wheel |\n| wheelBalance | float | 0 | -1-1 | Wheel Balance |\n| hslEnable | int | 0 | 0-1 | Enable HSL Key |\n| hslHueCenter | float | 0 | 0-1 | Hue Center |\n| hslHueRange | float | 0.1 | 0-0.5 | Hue Range |\n| hslSatMin | float | 0 | 0-1 | Sat Min |\n| hslSatMax | float | 1 | 0-1 | Sat Max |\n| hslLumMin | float | 0 | 0-1 | Lum Min |\n| hslLumMax | float | 1 | 0-1 | Lum Max |\n| hslFeather | float | 0.1 | 0-0.5 | Feather |\n| hslHueShift | float | 0 | -0.5-0.5 | Hue Shift |\n| hslSatAdjust | float | 0 | -1-1 | Sat Adjust |\n| hslLumAdjust | float | 0 | -1-1 | Lum Adjust |\n| vignetteAmount | float | 0 | -1-1 | Vignette Amount |\n| vignetteMidpoint | float | 0.5 | 0-1 | Vignette Midpoint |\n| vignetteRoundness | float | 0 | -1-1 | Vignette Roundness |\n| vignetteFeather | float | 0.5 | 0-1 | Vignette Feather |\n| vigHiProtect | float | 0 | 0-1 | Highlight Protect |\n\n## Notes\n\nPipeline order:\n1. **Primary**: White balance, exposure, contrast, tonal range\n2. **Creative**: Vibrance, faded film, split toning\n3. **Wheels**: Three-way color correction\n4. **HSL Secondary**: Selective color isolation and adjustment\n5. **LUT**: Apply preset look\n6. **Vignette**: Final vignette with highlight protection\n"
+}

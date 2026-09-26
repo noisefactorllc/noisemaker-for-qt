@@ -1,0 +1,39 @@
+{
+  "name": "Degauss",
+  "namespace": "filter",
+  "func": "degauss",
+  "description": "CRT degauss effect",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "displacement": {
+      "step": 0.001,
+      "ui": {
+        "label": "displacement",
+        "control": "slider"
+      }
+    },
+    "direction": {
+      "ui": {
+        "label": "direction",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# degauss\n\nCRT degauss effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| displacement | float | 0.0625 | 0-0.25 | Displacement amount |\n| direction | float | 0 | -180-180 | Displacement direction |\n| seed | int | 1 | 1-100 | Random seed |\n| speed | float | 1.0 | 0-2 | Animation speed |\n\n"
+}

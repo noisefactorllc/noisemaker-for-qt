@@ -1,0 +1,2679 @@
+{
+  "name": "Remap",
+  "namespace": "synth",
+  "func": "remap",
+  "description": "Polygon zones routed to engine surfaces (companion to the Remap zone-editor app)",
+  "tags": [
+    "geometric",
+    "blend"
+  ],
+  "params": {
+    "zoneCount": {
+      "step": 1,
+      "ui": {
+        "label": "zone count",
+        "control": "slider"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "background",
+        "control": "color"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "background alpha",
+        "control": "slider"
+      }
+    },
+    "smoothEdge": {
+      "step": 0.01,
+      "ui": {
+        "label": "edge smoothing",
+        "control": "slider"
+      }
+    },
+    "zone0_tex": {
+      "ui": {
+        "label": "zone 1 source",
+        "category": "zone 1",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 0
+        }
+      }
+    },
+    "zone0_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 1",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 0
+        }
+      }
+    },
+    "zone0_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 1",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 0
+        }
+      }
+    },
+    "zone0_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone0_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 1"
+      }
+    },
+    "zone1_tex": {
+      "ui": {
+        "label": "zone 2 source",
+        "category": "zone 2",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 1
+        }
+      }
+    },
+    "zone1_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 2",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 1
+        }
+      }
+    },
+    "zone1_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 2",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 1
+        }
+      }
+    },
+    "zone1_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone1_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 2"
+      }
+    },
+    "zone2_tex": {
+      "ui": {
+        "label": "zone 3 source",
+        "category": "zone 3",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 2
+        }
+      }
+    },
+    "zone2_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 3",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 2
+        }
+      }
+    },
+    "zone2_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 3",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 2
+        }
+      }
+    },
+    "zone2_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone2_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 3"
+      }
+    },
+    "zone3_tex": {
+      "ui": {
+        "label": "zone 4 source",
+        "category": "zone 4",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 3
+        }
+      }
+    },
+    "zone3_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 4",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 3
+        }
+      }
+    },
+    "zone3_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 4",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 3
+        }
+      }
+    },
+    "zone3_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone3_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 4"
+      }
+    },
+    "zone4_tex": {
+      "ui": {
+        "label": "zone 5 source",
+        "category": "zone 5",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 4
+        }
+      }
+    },
+    "zone4_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 5",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 4
+        }
+      }
+    },
+    "zone4_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 5",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 4
+        }
+      }
+    },
+    "zone4_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone4_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 5"
+      }
+    },
+    "zone5_tex": {
+      "ui": {
+        "label": "zone 6 source",
+        "category": "zone 6",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 5
+        }
+      }
+    },
+    "zone5_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 6",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 5
+        }
+      }
+    },
+    "zone5_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 6",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 5
+        }
+      }
+    },
+    "zone5_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone5_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 6"
+      }
+    },
+    "zone6_tex": {
+      "ui": {
+        "label": "zone 7 source",
+        "category": "zone 7",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 6
+        }
+      }
+    },
+    "zone6_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 7",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 6
+        }
+      }
+    },
+    "zone6_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 7",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 6
+        }
+      }
+    },
+    "zone6_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone6_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 7"
+      }
+    },
+    "zone7_tex": {
+      "ui": {
+        "label": "zone 8 source",
+        "category": "zone 8",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 7
+        }
+      }
+    },
+    "zone7_count": {
+      "ui": {
+        "label": "vertices",
+        "control": "slider",
+        "hidden": true,
+        "category": "zone 8",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 7
+        }
+      }
+    },
+    "zone7_alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider",
+        "category": "zone 8",
+        "enabledBy": {
+          "param": "zoneCount",
+          "gt": 7
+        }
+      }
+    },
+    "zone7_bounds": {
+      "ui": {
+        "label": "bounds",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v0": {
+      "ui": {
+        "label": "verts 0–1",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v1": {
+      "ui": {
+        "label": "verts 2–3",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v2": {
+      "ui": {
+        "label": "verts 4–5",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v3": {
+      "ui": {
+        "label": "verts 6–7",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v4": {
+      "ui": {
+        "label": "verts 8–9",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v5": {
+      "ui": {
+        "label": "verts 10–11",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v6": {
+      "ui": {
+        "label": "verts 12–13",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v7": {
+      "ui": {
+        "label": "verts 14–15",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v8": {
+      "ui": {
+        "label": "verts 16–17",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v9": {
+      "ui": {
+        "label": "verts 18–19",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v10": {
+      "ui": {
+        "label": "verts 20–21",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v11": {
+      "ui": {
+        "label": "verts 22–23",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v12": {
+      "ui": {
+        "label": "verts 24–25",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v13": {
+      "ui": {
+        "label": "verts 26–27",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v14": {
+      "ui": {
+        "label": "verts 28–29",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v15": {
+      "ui": {
+        "label": "verts 30–31",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v16": {
+      "ui": {
+        "label": "verts 32–33",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v17": {
+      "ui": {
+        "label": "verts 34–35",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v18": {
+      "ui": {
+        "label": "verts 36–37",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v19": {
+      "ui": {
+        "label": "verts 38–39",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v20": {
+      "ui": {
+        "label": "verts 40–41",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v21": {
+      "ui": {
+        "label": "verts 42–43",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v22": {
+      "ui": {
+        "label": "verts 44–45",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v23": {
+      "ui": {
+        "label": "verts 46–47",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v24": {
+      "ui": {
+        "label": "verts 48–49",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v25": {
+      "ui": {
+        "label": "verts 50–51",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v26": {
+      "ui": {
+        "label": "verts 52–53",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v27": {
+      "ui": {
+        "label": "verts 54–55",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v28": {
+      "ui": {
+        "label": "verts 56–57",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v29": {
+      "ui": {
+        "label": "verts 58–59",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v30": {
+      "ui": {
+        "label": "verts 60–61",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    },
+    "zone7_v31": {
+      "ui": {
+        "label": "verts 62–63",
+        "control": "slider",
+        "hidden": true,
+        "format": "vector",
+        "category": "zone 8"
+      }
+    }
+  },
+  "help": "# synth/remap\n\nPolygon-zone router with live canvas editing in Noisedeck.\n\n## Overview\n\nEach pixel is tested against up to eight polygon zones. Zones stack in index order: the last (highest-numbered) zone that contains a pixel is on top, and lower zones show through wherever the zones above them are transparent. Pixels outside every active zone — and pixels in zones whose source isn't wired — show the background color.\n\nEdge smoothing feathers each zone outward by a pixel width proportional to the shorter canvas side, so adjacent zones blend without a seam and canvas borders stay clean; a zone's interior is never eroded. Sources are composited with their alpha, so a transparent source shows the background or the zone below, and each zone has its own alpha on top of that.\n\nIn Noisedeck, edit zones directly over the live canvas from the Remap effect. Existing `.remap.json` maps can be imported, and the effect exports the same portable version 1 format.\n\n## Workflow\n\n1. Add Remap to your Noisedeck composition and choose **edit zones**.\n2. Choose **add zone**, then click points on the live canvas. Click the first point or press Enter to finish; Escape cancels an unfinished shape.\n3. In Noisedeck a newly finished zone takes the first written surface not used by another zone; change it with the zone's source control. The mapped image updates as you drag vertices. Click an edge midpoint to insert a vertex; right-click a vertex to remove it.\n4. Set zone names, outline colors, and opacity in the effect controls.\n5. Choose **export remap config** to save the portable map, or **import remap config** to load an existing map.\n\nThe canvas editor manages the hidden shape parameters (`zoneN_count`, `zoneN_vP`). Runtime integrations can still apply these parameters through `applyStepParameterValues({ step_N: params })` and wire source surfaces in DSL with `zoneN_tex: read(oN)`. Existing maps and hexadecimal vertex literals remain valid.\n\n## Parameters\n\n### General\n- **Zone count**: how many of the eight slots are active (0–8). Slots with `vertices < 3` or with `zoneN_tex` unwired are skipped automatically.\n- **Background**: color for pixels outside every active zone. It also shows through transparent sources and partially transparent zones.\n- **Background alpha**: alpha channel for the background. The output is premultiplied, so a background alpha below 1 leaves the surface partially transparent.\n- **Edge smoothing**: outward feather at polygon boundaries. At 1 the feather is 5% of the shorter canvas side wide (54 px on a 1920×1080 canvas); at the default 0.04 it is about 2 px on that same canvas. The feather only extends outward, so a zone never shrinks, shared edges never show the background, and the same value gives the same pixel width on both axes whatever the aspect ratio. Set it to 0 for hard edges.\n\n### Zones (1–8)\nFor each zone:\n- **Zone N source** (`zoneN_tex`): the engine surface to sample. Wire in DSL with `zoneN_tex: read(oN)`. When unwired (default `\"none\"`), the zone is skipped.\n- **Alpha**: per-zone opacity, multiplied with the source's own alpha. Zones with a higher number are composited on top of lower ones.\n- **Vertices** (hidden): vertex count, managed by canvas editing or map import.\n- **verts P–P+1** (hidden): packed `vec4` holding two vertices, managed by canvas editing or map import.\n- **bounds** (hidden, `zoneN_bounds`): the polygon's bounding box as `[minX, minY, maxX, maxY]` in normalized coordinates, written by the canvas editor. The shader skips the zone for pixels outside this box (dilated by the feather), which is what keeps many-vertex maps fast. The default `[0, 0, 1, 1]` never skips anything, so maps and hosts that do not supply bounds render identically, only slower; a box tighter than the polygon clips it.\n\n## Coordinate space\n\nVertices are normalized: `(0, 0)` is top-left and `(1, 1)` is bottom-right. Both backends flip the y axis internally, so polygons match the canvas editor's orientation whichever one is running.\n\nRegenerated DSL stores each packed vertex pair as four exact numbers, such as `[0.8000000780001997, 0.45, 0.1, 0.45]`. The effect's `ui.format: 'vector'` metadata preserves these coordinates through editing and saving. Legacy hexadecimal vertex literals still load, with their original 8-bit color precision.\n\n## Limits\n\n- 8 zones (matches the eight engine user surfaces `o0`…`o7`)\n- 64 vertices per zone\n\nIf you need more than 64 vertices per zone, decompose the polygon into multiple zones and wire them all to the same source surface.\n\n## Geometry correction (deferred)\n\nThis effect intentionally does not include software geometry correction (warping the rectangular projector output onto a non-rectangular physical surface). For now, use your projector's keystone or 4-corner correction.\n\nA future revision may bring back an 8-handle Coons-patch warp, suitable for the cases hardware can't handle:\n\n- curved surfaces (cylinders, columns, fabric drops)\n- non-contiguous targets (one projector hitting multiple separate surfaces)\n- multi-projector setups with edge feathering\n\nWhen that happens, the warp will be additive: the existing zone-routing semantics will not change, and the new uniforms will be opt-in.\n"
+}

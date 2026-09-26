@@ -1,0 +1,57 @@
+{
+  "name": "Octave Warp",
+  "namespace": "filter",
+  "func": "octaveWarp",
+  "description": "Per-octave noise warp distortion",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "freq": {
+      "step": 0.1,
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "octaves": {
+      "step": 1,
+      "ui": {
+        "label": "octaves",
+        "control": "slider"
+      }
+    },
+    "displacement": {
+      "step": 0.01,
+      "ui": {
+        "label": "displacement",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# octaveWarp\n\nPer-octave noise warp distortion\n\n## Description\n\nFor each octave, generates noise at increasing frequencies and uses it to displace UV coordinates. Displacement decreases with each octave, building up layered organic warping. Each octave animates with a unique phase and radius to avoid uniform circular motion.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| freq | float | 2 | 1-10 | Noise frequency |\n| octaves | int | 3 | 1-5 | Number of octaves |\n| displacement | float | 0.2 | 0-1 | Displacement amount |\n| speed | int | 1 | 0-5 | Animation speed |\n| seed | int | 1 | 1-100 | Random seed for noise pattern |\n| wrap | int | mirror | mirror/repeat/clamp | Edge wrapping |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling |\n"
+}

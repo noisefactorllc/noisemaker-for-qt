@@ -1,0 +1,48 @@
+{
+  "name": "Waves",
+  "namespace": "filter",
+  "func": "waves",
+  "description": "Sine wave distortion",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "strength": {
+      "ui": {
+        "label": "strength",
+        "control": "slider"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# waves\n\nSine wave distortion\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| strength | float | 25 | 0-100 | Strength |\n| scale | float | 1 | 1-5 | Scale |\n| speed | int | 0 | -5-5 | Speed |\n| wrap | int | mirror | mirror/repeat/clamp | Wrap |\n| rotation | float | 0 | -180-180 | Rotation |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n"
+}

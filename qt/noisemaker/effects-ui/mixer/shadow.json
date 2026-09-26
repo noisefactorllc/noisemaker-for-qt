@@ -1,0 +1,77 @@
+{
+  "name": "Shadow",
+  "namespace": "mixer",
+  "func": "shadow",
+  "description": "Cast a shadow or glow from one input onto another",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "maskSource": {
+      "ui": {
+        "label": "mask source",
+        "control": "dropdown"
+      }
+    },
+    "sourceChannel": {
+      "ui": {
+        "label": "channel",
+        "control": "dropdown"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    },
+    "color": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "shadow"
+      }
+    },
+    "blur": {
+      "ui": {
+        "label": "blur",
+        "control": "slider",
+        "category": "shadow"
+      }
+    },
+    "spread": {
+      "ui": {
+        "label": "spread",
+        "control": "slider",
+        "category": "shadow"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset x",
+        "control": "slider",
+        "category": "offset"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset y",
+        "control": "slider",
+        "category": "offset"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown",
+        "category": "offset"
+      }
+    }
+  },
+  "help": "# shadow\n\nCast a shadow or glow from one input onto another\n\nUses one input as a mask to generate an offset, blurred shadow that composites onto the other input. Select which input provides the mask shape and which channel to read. The threshold creates a hard silhouette, which is then offset, blurred, and spread to form the shadow. Use a dark color for shadows or a bright color for glows.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | — | Source B input surface |\n| maskSource | int | sourceA | dropdown | Which input provides the mask shape (sourceA or sourceB) |\n| sourceChannel | int | red | dropdown | Channel to read from mask (red, green, blue, alpha) |\n| threshold | float | 0.5 | 0-1 | Cutoff for the mask — values above become shadow, below are ignored |\n| color | color | black | — | Shadow or glow color |\n| offsetX | float | 0.1 | -1-1 | Horizontal shadow offset as fraction of width |\n| offsetY | float | -0.1 | -1-1 | Vertical shadow offset as fraction of height |\n| wrap | int | mirror | dropdown | How offset mask samples outside the texture are handled (hide, mirror, repeat, clamp) | \n| blur | float | 1.0 | 0-3 | Gaussian blur radius for shadow softness |\n| spread | float | 0.0 | 0-1 | Expand the shadow edge — higher values make the shadow cover more area |\n"
+}

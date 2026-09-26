@@ -1,0 +1,90 @@
+{
+  "name": "Mosaic Tiles",
+  "namespace": "filter",
+  "func": "mosaicTiles",
+  "description": "Wavy grouted ceramic tiles with beveled relief, or pixelized squares sampled from randomly offset sources with gap fill (Mosaic Tiles, Tiles)",
+  "tags": [
+    "pixel",
+    "noise",
+    "artist"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "tileSize": {
+      "ui": {
+        "label": "tile size",
+        "control": "slider"
+      }
+    },
+    "groutWidth": {
+      "ui": {
+        "label": "grout width",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "relief": {
+      "ui": {
+        "label": "relief",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "maxOffset": {
+      "ui": {
+        "label": "max offset",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "gapFill": {
+      "ui": {
+        "label": "gap fill",
+        "control": "dropdown",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "backgroundColor": {
+      "ui": {
+        "label": "background color",
+        "control": "color",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "mode",
+              "eq": 1
+            },
+            {
+              "param": "gapFill",
+              "eq": 0
+            }
+          ]
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# mosaicTiles\n\nWavy grouted ceramic tiles with beveled relief, or pixelized squares sampled from randomly offset sources with gap fill (Mosaic Tiles, Tiles)\n\n## Description\n\nCovers two filters via `mode`. **mosaic** warps a square\ntileSize grid with value noise into wavy ceramic tiles: each tile is\npixelized to one representative sample from its own image region, separated by\ngrout that is darkened and beveled with directional relief shading\n(fixed 135-degree light) on the grout walls. **shifted** keeps a\nregular, unwarped square grid; each tile is pixelized to one representative\ncolor sampled from a randomly shifted source position (a per-cell random\noffset up to maxOffset% of a tile width), leaving a\nsmall fixed gap between tiles that is filled with backgroundColor, the\ninverse of the tile's own home pixel, or the unaltered home pixel, per\n`gapFill`.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | 0 | mosaic:0, shifted:1 | mosaic: wavy warped-grid ceramic tiles with beveled grout. shifted: regular pixelized tiles sampled from shifted source positions with gaps between them |\n| tileSize | float | 32 | 4-128 | Tile/cell size in pixels |\n| groutWidth | float | 12 | 0-100 | mosaic-only control; grout band half-width as a percent of tileSize/2. The same uniform also sets shifted mode's fixed inter-tile gap width (percent of tileSize) for visual consistency between the two modes, but its control is only shown in mosaic mode - see Notes |\n| relief | float | 40 | 0-100 | mosaic-only; strength of the beveled 3D relief shading on the grout walls - 0 leaves the grout flat and darkened only, higher values increase the light/dark bevel band |\n| maxOffset | float | 25 | 0-100 | shifted-only; maximum random source-position offset per tile, as a percent of tile width |\n| gapFill | int | 0 | background:0, inverse:1, unaltered:2 | shifted-only; how the gap between shifted tiles is filled - a solid backgroundColor, the color inverse of the tile's own home pixel, or the unaltered home pixel |\n| backgroundColor | color | [0.1, 0.1, 0.1] | - | shifted-only, gapFill=background only; the gap fill color |\n| seed | int | 1 | 1-100 | Randomizes the mosaic warp pattern and the shifted per-tile offsets without changing their statistics |\n\n## Notes\n\n- Single pass, evaluated on global (tile-aware) pixel coordinates so the grid, warp, and per-cell hashes are continuous across CLI render tiles.\n- mosaic's wavy borders come from perturbing the grid-space coordinate with value noise before the floor/fract cell assignment, so neighboring pixels straddling a nominal border pick up slightly different offsets and bend the actual quantized boundary between them.\n- mosaic assigns one representative source sample to every pixel in a warped tile, producing a genuinely pixelized tile face while keeping the source lookup inside that tile's image region.\n- groutWidth is a single value reused by both modes rather than adding a second gap-width param: mosaic reads it as the grout band's half-width, shifted reads it as the fixed inter-tile gap width. Only mosaic exposes a control for it, since shifted's gap is meant to read as a small fixed structural constant - switch to mosaic mode to change it, then switch back.\n- shifted derives one source sample from the tile center plus a per-cell offset, so every tile face is genuinely pixelized rather than showing the continuous input beneath a grid.\n- Alpha always comes from the pixel's own unmodified home position.\n- Covers wavy ceramic mosaic tiles and pixelized shifted square tiles in one effect.\n"
+}

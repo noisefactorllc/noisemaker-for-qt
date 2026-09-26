@@ -1,0 +1,42 @@
+{
+  "name": "Pinch",
+  "namespace": "filter",
+  "func": "pinch",
+  "description": "Pinch distortion toward center",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "strength": {
+      "ui": {
+        "label": "strength",
+        "control": "slider"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# pinch\n\nPinch distortion toward center\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| strength | float | 75 | 0-100 | Strength |\n| aspectLens | boolean | true | - | 1:1 Aspect |\n| wrap | int | mirror | mirror/repeat/clamp | Wrap |\n| rotation | float | 0 | -180-180 | Rotation |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n"
+}

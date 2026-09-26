@@ -1,0 +1,32 @@
+{
+  "name": "Roll",
+  "namespace": "synth",
+  "func": "roll",
+  "description": "MIDI piano roll visualizer",
+  "tags": [
+    "midi"
+  ],
+  "params": {
+    "color": {
+      "ui": {
+        "label": "color",
+        "control": "color"
+      }
+    },
+    "gain": {
+      "step": 0.1,
+      "ui": {
+        "label": "gain",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# roll\n\nMIDI piano roll visualizer\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| color | color | [0, 1, 0] | - | Note color |\n| gain | float | 1 | 0.1–5 | Brightness gain |\n| speed | float | 1 | 0.5–5 | Scroll speed |\n"
+}

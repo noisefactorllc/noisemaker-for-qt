@@ -1,0 +1,26 @@
+{
+  "name": "Step",
+  "namespace": "filter",
+  "func": "step",
+  "description": "Hard threshold at specified value",
+  "tags": [
+    "edges",
+    "util"
+  ],
+  "params": {
+    "threshold": {
+      "step": 0.01,
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# step\n\nHard threshold at specified value\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| threshold | float | 0.5 | 0-1 | Threshold |\n| antialias | boolean | true | on/off | Smooth edges between threshold bands |\n"
+}

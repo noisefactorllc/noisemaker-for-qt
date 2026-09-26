@@ -1,0 +1,79 @@
+{
+  "name": "Bitwise",
+  "namespace": "synth",
+  "func": "bitwise",
+  "description": "Bitwise operation patterns (XOR squares, AND, OR, etc.)",
+  "tags": [
+    "geometric",
+    "pattern"
+  ],
+  "params": {
+    "operation": {
+      "ui": {
+        "label": "operation",
+        "control": "dropdown"
+      }
+    },
+    "mask": {
+      "ui": {
+        "label": "bit depth",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset X",
+        "control": "slider"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset Y",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown",
+        "category": "color"
+      }
+    },
+    "colorOffset": {
+      "ui": {
+        "label": "color offset",
+        "control": "slider",
+        "category": "color",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 1
+        }
+      }
+    }
+  },
+  "help": "# bitwise\n\nBitwise operation patterns (XOR squares, AND, OR, etc.)\n\n## Description\n\nGenerates patterns by applying bitwise and arithmetic operations to pixel coordinates. The classic \"XOR squares\" pattern emerges from `x XOR y & 0xFF` — other operations produce dramatically different results with the same inputs.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| operation | int | xor | xor/and/or/nand/xnor/mul/add/sub | Bitwise operation |\n| scale | float | 50 | 1-100 | Cell size (higher = bigger cells) |\n| rotation | float | 0 | -180-180 | Rotation (degrees) |\n| offsetX | int | 0 | -256-256 | Horizontal coordinate offset |\n| offsetY | int | 0 | -256-256 | Vertical coordinate offset |\n| mask | int | bit8 | bit8/bit7/bit6/bit5/bit4/bit3/bit2/bit1 | Bit depth mask |\n| seed | int | 0 | 0-255 | XORs into coordinates for pattern variation |\n| colorMode | int | mono | mono/rgb/hsv | Color mode |\n| colorOffset | int | 7 | 0-64 | Color offset |\n| speed | int | 0 | -5-5 | Animation speed (panning) |\n\n## Operations\n\n- **XOR (0)**: Classic recursive Sierpinski-like squares\n- **AND (1)**: Chaotic diagonal emphasis\n- **OR (2)**: Dense coverage with triangular gaps\n- **NAND (3)**: Inverted AND\n- **XNOR (4)**: Inverted XOR\n- **MUL (5)**: Multiplication table (hyperbolic curves)\n- **ADD (6)**: Diagonal stripes\n- **SUB (7)**: Directional stripes\n\n## Bit Depth\n\nLower bit depth (smaller mask) quantizes the output into fewer steps, producing chunkier, more graphic results. 1-bit mask gives pure black/white patterns.\n"
+}

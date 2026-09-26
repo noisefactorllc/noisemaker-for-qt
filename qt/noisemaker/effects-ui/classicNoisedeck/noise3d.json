@@ -1,0 +1,95 @@
+{
+  "name": "Noise3d",
+  "namespace": "classicNoisedeck",
+  "func": "noise3d",
+  "description": "3D noise volumes",
+  "tags": [
+    "3d",
+    "noise"
+  ],
+  "params": {
+    "type": {
+      "ui": {
+        "label": "noise type",
+        "control": "dropdown"
+      }
+    },
+    "ridges": {
+      "ui": {
+        "label": "ridges",
+        "control": "checkbox",
+        "enabledBy": {
+          "param": "type",
+          "eq": 12
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "enabledBy": {
+          "param": "type",
+          "neq": 50
+        }
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset x",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset y",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown",
+        "category": "color"
+      }
+    },
+    "hueRotation": {
+      "ui": {
+        "label": "hue rotate",
+        "control": "slider",
+        "category": "color",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 6
+        }
+      }
+    },
+    "hueRange": {
+      "ui": {
+        "label": "hue range",
+        "control": "slider",
+        "category": "color",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 6
+        }
+      }
+    }
+  },
+  "help": "# noise3d\n\n3D noise volumes\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| type | int | simplex | cubes/simplex/sine/spheres/wavyPlanes/wavyPlaneLower/wavyPlaneUpper | Noise type |\n| ridges | boolean | false | - | Ridges |\n| seed | int | 1 | 1-100 | Seed |\n| speed | int | 1 | -10-10 | Speed |\n| scale | float | 25 | 1-100 | Scale |\n| offsetX | float | 0 | -100-100 | Offset x |\n| offsetY | float | 0 | -100-100 | Offset y |\n| colorMode | int | hsv | depthMap/mono/hsv/surfaceNormal | Color mode |\n| hueRotation | float | 0 | 0-360 | Hue rotate |\n| hueRange | float | 10 | 0-100 | Hue range |\n\n"
+}

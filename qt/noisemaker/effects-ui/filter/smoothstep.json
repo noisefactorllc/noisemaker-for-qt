@@ -1,0 +1,27 @@
+{
+  "name": "Smoothstep",
+  "namespace": "filter",
+  "func": "smoothstep",
+  "description": "Smooth Hermite interpolation between edges",
+  "tags": [
+    "edges",
+    "util"
+  ],
+  "params": {
+    "edge0": {
+      "step": 0.01,
+      "ui": {
+        "label": "edge 0",
+        "control": "slider"
+      }
+    },
+    "edge1": {
+      "step": 0.01,
+      "ui": {
+        "label": "edge 1",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# smoothstep\n\nSmooth Hermite interpolation between edges\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| edge0 | float | 0 | 0-1 | Edge 0 |\n| edge1 | float | 1 | 0-1 | Edge 1 |\n"
+}

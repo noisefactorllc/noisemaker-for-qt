@@ -1,0 +1,34 @@
+{
+  "name": "Chroma",
+  "namespace": "filter",
+  "func": "chroma",
+  "description": "Isolate specific hue range with feathering",
+  "tags": [
+    "color",
+    "util"
+  ],
+  "params": {
+    "targetHue": {
+      "step": 0.01,
+      "ui": {
+        "label": "target hue",
+        "control": "slider"
+      }
+    },
+    "range": {
+      "step": 0.01,
+      "ui": {
+        "label": "range",
+        "control": "slider"
+      }
+    },
+    "feather": {
+      "step": 0.01,
+      "ui": {
+        "label": "feather",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# chroma\n\nIsolate specific hue range with feathering\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| targetHue | float | 0.33 | 0-1 | Target Hue |\n| range | float | 0.25 | 0-0.5 | Range |\n| feather | float | 0.05 | 0-0.25 | Feather |\n"
+}

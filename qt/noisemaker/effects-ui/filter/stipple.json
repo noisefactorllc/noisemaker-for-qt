@@ -1,0 +1,66 @@
+{
+  "name": "Stipple",
+  "namespace": "filter",
+  "func": "stipple",
+  "description": "Discrete random marks reproducing image tone: pointillize dots, mezzotint dots/lines/strokes, or reticulation (Pointillize, Mezzotint, Reticulation)",
+  "tags": [
+    "pixel",
+    "noise",
+    "artist"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "cellSize": {
+      "ui": {
+        "label": "cell size",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "grainSize": {
+      "ui": {
+        "label": "grain size",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "neq": 0
+        }
+      }
+    },
+    "density": {
+      "ui": {
+        "label": "density",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "neq": 0
+        }
+      }
+    },
+    "paperColor": {
+      "ui": {
+        "label": "paper color",
+        "control": "color",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# stipple\n\nDiscrete random marks reproducing image tone: pointillize dots, mezzotint dots/lines/strokes, or reticulation (Pointillize, Mezzotint, Reticulation)\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | 0 | pointillize:0, mezzoDots:1, mezzoLines:2, mezzoStrokes:3, reticulation:4 | pointillize paints colored dots on paperColor, one per Voronoi cell; mezzoDots/Lines/Strokes hard-threshold each RGB channel against isotropic/vertical-streak/diagonal-streak value noise (Mezzotint's three conversion types); reticulation is a two-tone ink/paper tonemap against clumped fBm noise |\n| cellSize | float | 8 | 3-64 | pointillize-only; Voronoi cell size in pixels (dot spacing) |\n| grainSize | float | 2 | 0.5-16 | mezzo/reticulation-only; noise scale - smaller values give finer grain |\n| density | float | 50 | 0-100 | mezzo/reticulation-only; biases the noise threshold - higher values darken the result (more ink) |\n| paperColor | color | [0.98, 0.96, 0.9] | - | pointillize-only; background color showing between dots |\n| seed | int | 1 | 1-100 | Randomizes the dot jitter / noise field pattern without changing its statistics |\n\n## Notes\n\n- Single pass, evaluated on global (tile-aware) pixel coordinates so the dot grid and noise fields align seamlessly across CLI render tiles.\n- Pointillize dot radius grows with the cell seed point's inverse luminance (darker areas get bigger dots), matching Pointillize's tendency to thicken coverage in shadow regions; edges are antialiased via `fwidth`.\n- Mezzotint modes are intentionally hard-edged (no antialiasing) - real mezzotint conversion is a binary process, and each RGB channel is thresholded independently, which is what produces the characteristic colored (non-grayscale) speckle on color images.\n- mezzoLines streaks noise vertically; mezzoStrokes uses the same streaked noise rotated 45 degrees for a diagonal engraving look.\n- Reticulation's clump noise amplitude is modulated by local luminance so shadows fill in with dense, broad clumps while highlights break up into fine grain.\n- Covers pointillize dots, mezzotint marks, and reticulated ink/paper texture in one effect.\n"
+}

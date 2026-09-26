@@ -1,0 +1,51 @@
+{
+  "name": "Split",
+  "namespace": "mixer",
+  "func": "split",
+  "description": "Split/wipe between two inputs",
+  "tags": [
+    "blend"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "swap a/b",
+        "control": "dropdown"
+      }
+    },
+    "position": {
+      "ui": {
+        "label": "position",
+        "control": "slider",
+        "enabledBy": {
+          "param": "speed",
+          "eq": 0
+        }
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "softness": {
+      "ui": {
+        "label": "softness",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# split\n\nSplit/wipe between two inputs\n\n## Description\n\nDivides the frame along a straight line, showing source A on one side and source B on the other. The line can be rotated to any angle and offset to any position. Use softness to feather the edge.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| position | float | 0 | -1-1 | Offset of the split line from center |\n| rotation | float | 0 | -180-180 | Angle of the split line in degrees |\n| softness | float | 0 | 0-1 | Edge feathering (0 = hard edge) |\n| invert | int | off | off/on | Swap which side shows which source |\n| speed | int | 0 | 0-4 | Animation speed\n\n## Notes\n\n- **rotation at 0**: Horizontal split (top/bottom)\n- **rotation at 90**: Vertical split (left/right)\n- **rotation at 45**: Diagonal split\n- **position**: Slides the split line along its perpendicular axis\n- **softness at 0**: Pixel-perfect hard edge between sources\n- **softness increased**: Smooth gradient transition at the boundary\n- Animate for wipe transitions between sources\n"
+}

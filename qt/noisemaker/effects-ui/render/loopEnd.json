@@ -1,0 +1,12 @@
+{
+  "name": "LoopEnd",
+  "namespace": "render",
+  "func": "loopEnd",
+  "description": "End accumulator loop, write back to feedback buffer",
+  "tags": [
+    "util",
+    "sim"
+  ],
+  "params": {},
+  "help": "# loopEnd\n\nEnd accumulator loop, write back to feedback buffer\n\n## Description\n\nWrites the chain result back to the shared accumulator buffer, completing the feedback loop. The processed result is written back to the same accumulator texture that `loopBegin()` reads from, creating a temporal feedback loop.\n\n## Parameters\n\nNo configurable parameters.\n"
+}

@@ -1,0 +1,89 @@
+{
+  "name": "Mod Pattern",
+  "namespace": "synth",
+  "func": "modPattern",
+  "description": "Interference patterns from modulo operations",
+  "tags": [
+    "geometric",
+    "pattern"
+  ],
+  "params": {
+    "shape1": {
+      "ui": {
+        "label": "shape1",
+        "category": "layer 1"
+      }
+    },
+    "scale1": {
+      "ui": {
+        "label": "scale1",
+        "category": "layer 1"
+      }
+    },
+    "repeat1": {
+      "ui": {
+        "label": "repeat1",
+        "category": "layer 1"
+      }
+    },
+    "shape2": {
+      "ui": {
+        "label": "shape2",
+        "category": "layer 2"
+      }
+    },
+    "scale2": {
+      "ui": {
+        "label": "scale2",
+        "category": "layer 2"
+      }
+    },
+    "repeat2": {
+      "ui": {
+        "label": "repeat2",
+        "category": "layer 2"
+      }
+    },
+    "shape3": {
+      "ui": {
+        "label": "shape3",
+        "category": "layer 3"
+      }
+    },
+    "scale3": {
+      "ui": {
+        "label": "scale3",
+        "category": "layer 3"
+      }
+    },
+    "repeat3": {
+      "ui": {
+        "label": "repeat3",
+        "category": "layer 3"
+      }
+    },
+    "blend": {
+      "ui": {
+        "label": "blend mode"
+      }
+    },
+    "smoothing": {
+      "ui": {
+        "label": "smoothing"
+      }
+    },
+    "animMode": {
+      "ui": {
+        "label": "animation",
+        "category": "animation"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "category": "animation"
+      }
+    }
+  },
+  "help": "# modPattern\n\nThis effect creates layered geometric patterns using modulo folding operations.\nThree layers of shapes (plus, square, diamond) are combined with configurable\nscales and blend modes to produce complex moiré and interference patterns.\n\n## Parameters\n\n### General\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| blend | int | add | add/max/mix/rgb | Blend mode |\n| smoothing | float | 0 | 0-3 | Edge smoothing amount |\n\n### Animation\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| animMode | int | shift | shift/pan/phase | Animation mode |\n| speed | int | 1 | 0-5 | Animation speed |\n\n### Layer 1\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shape1 | int | plus | plus/square/diamond | Shape type |\n| scale1 | float | 18.0 | 0.1-20 | Scale/frequency of the first layer |\n| repeat1 | float | 5.0 | 0-20 | Repetition multiplier for interference patterns |\n\n### Layer 2\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shape2 | int | square | plus/square/diamond | Shape type |\n| scale2 | float | 8.0 | 0.1-10 | Scale/frequency of the second layer |\n| repeat2 | float | 8.0 | 0-10 | Repetition multiplier for interference patterns |\n\n### Layer 3\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shape3 | int | diamond | plus/square/diamond | Shape type |\n| scale3 | float | 1.5 | 0.1-20 | Scale/frequency of the third layer |\n| repeat3 | float | 1.5 | 0-5 | Repetition multiplier for interference patterns |\n\n## Animation Modes\n\n- **Shift**: Slides the combined pattern through fract space. Continuous forward motion, loops seamlessly at integer speed.\n- **Pan**: Each layer oscillates in a different direction (right, up, left) via sine, with amplitude scaled to match visual weight across layers. Loops seamlessly.\n- **Phase**: Each layer's value is offset independently over time, creating evolving moiré interference. Loops seamlessly at integer speed.\n\n## Usage\n\n```\nmodPattern()\n  .write(o0)\n\nrender(o0)\n```\n\n### Custom parameters\n\n```\nmodPattern(shape1: 2, scale1: 8.0, shape2: 0, scale2: 5.0, blend: 1)\n  .write(o0)\n\nrender(o0)\n```\n\n### With color palette\n\n```\nmodPattern(scale1: 6.0, repeat1: 10.0)\n  .palette(preset: \"rainbow\")\n  .write(o0)\n\nrender(o0)\n```\n"
+}

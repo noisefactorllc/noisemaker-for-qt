@@ -1,0 +1,83 @@
+{
+  "name": "Low Poly",
+  "namespace": "filter",
+  "func": "lowPoly",
+  "description": "Low-polygon style render using Voronoi cells",
+  "tags": [
+    "geometric",
+    "noise"
+  ],
+  "params": {
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "edgeStrength": {
+      "ui": {
+        "label": "strength",
+        "control": "slider",
+        "enabledBy": {
+          "param": "mode",
+          "neq": 0
+        }
+      }
+    },
+    "edgeColor": {
+      "ui": {
+        "label": "edge color",
+        "control": "color",
+        "enabledBy": {
+          "or": [
+            {
+              "param": "borderWidth",
+              "gt": 0
+            },
+            {
+              "param": "mode",
+              "eq": 1
+            }
+          ]
+        }
+      }
+    },
+    "borderWidth": {
+      "ui": {
+        "label": "border width",
+        "control": "slider"
+      }
+    },
+    "lightIntensity": {
+      "ui": {
+        "label": "light intensity",
+        "control": "slider"
+      }
+    },
+    "alpha": {
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# lowPoly\n\nLow-polygon style render using Voronoi cells\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| scale | int | 50 | 2-100 | Cell size |\n| seed | int | 1 | 1-100 | Random seed for cell layout |\n| mode | int | edges | flat/edges/distance2/distance3 | Low Poly rendering mode |\n| edgeStrength | float | 0.15 | 0-1 | Strength of edge or distance shading; inactive in flat mode |\n| edgeColor | color | 0,0,0 | - | Color used by edges mode and explicit cell borders |\n| borderWidth | float | 0 | 0-100 | Width of the Voronoi cell boundary drawn in edgeColor |\n| lightIntensity | float | 0 | 0-100 | Brightens the selected mode's cell shading while preserving hue and border color; 0 = off |\n| alpha | float | 1.0 | 0-1 | Blend with original input |\n| speed | int | 0 | 0-5 | Animation speed (0=static) |\n\n## Modes\n\n- **flat**: Pure solid cell color, no edges\n- **edges**: Solid cell color with darkened edges toward edge color\n- **distance2**: 2nd-nearest Voronoi distance multiplied with cell color — shows cell edge structure\n- **distance3**: 3rd-nearest Voronoi distance multiplied with cell color — shows ridge/intersection patterns\n\n## Animation\n\nSeed points drift in per-cell circular paths that loop seamlessly. Each cell has a unique phase and radius so the motion looks organic rather than uniform.\n\n## Borders and lighting\n\n`borderWidth` and `lightIntensity` are optional modifiers on the selected Low Poly\nmode. They do not replace the mode or disable its controls.\n\n`borderWidth` is scaled as a percentage of the nominal cell radius (`0.5 / n`). A\nbounded 5x5 site search measures perpendicular distance to the true nearest Voronoi\nbisector, producing consistent geometric border thickness across differently shaped\ncells. Only a derivative-sized screen-space fringe is antialiased; the band has a\nsolid `edgeColor` core.\n\n`lightIntensity` raises the selected mode's value with a bounded exposure curve and\nscales RGB channels together to retain hue without clipping. The opaque `edgeColor`\nborder is composited after the light so it does not brighten.\n"
+}

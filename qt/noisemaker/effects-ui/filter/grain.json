@@ -1,0 +1,25 @@
+{
+  "name": "Grain",
+  "namespace": "filter",
+  "func": "grain",
+  "description": "Film grain overlay",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "pause": {
+      "ui": {
+        "label": "pause",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# grain\n\nFilm grain overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 0.25 | 0-1 | Alpha |\n| pause | bool | false | - | Pause |\n"
+}

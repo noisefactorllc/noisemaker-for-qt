@@ -1,0 +1,60 @@
+{
+  "name": "Tile",
+  "namespace": "filter",
+  "func": "tile",
+  "description": "Symmetry-based kaleidoscope tiler",
+  "tags": [
+    "tiling",
+    "transform"
+  ],
+  "params": {
+    "symmetry": {
+      "ui": {
+        "label": "symmetry",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "step": 0.05,
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "offsetX": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset x",
+        "control": "slider"
+      }
+    },
+    "offsetY": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset y",
+        "control": "slider"
+      }
+    },
+    "angle": {
+      "step": 1,
+      "ui": {
+        "label": "angle",
+        "control": "slider"
+      }
+    },
+    "repeat": {
+      "step": 1,
+      "ui": {
+        "label": "repeat",
+        "control": "slider"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# tile\n\nSymmetry-based kaleidoscope tiler. Applies wallpaper-group symmetry operations to produce seamlessly tileable patterns from any input.\n\n## Description\n\nSelects a region of the input and folds it using mirror or rotational symmetry. The output tiles seamlessly when repeated. Inspired by Terrazzo-style pattern generation.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| symmetry | int | mirrorXY | mirrorXY/rotate2/rotate4/rotate6 | Symmetry group |\n| scale | float | 1.0 | 0.1-4.0 | Scale of source sampling region |\n| offsetX | float | 0 | -1 to 1 | Pan source region horizontally |\n| offsetY | float | 0 | -1 to 1 | Pan source region vertically |\n| angle | float | 0 | 0-360 | Rotate the entire tiled output |\n| repeat | float | 2 | 1-10 | Number of tile repetitions to display |\n| aspectLens | boolean | true | on/off | Correct tiles to square aspect ratio |\n\n## Notes\n\n- mirrorXY reflects both axes for a four-quadrant pattern\n- rotate2 applies 180° rotational symmetry\n- rotate4 produces square kaleidoscope patterns\n- rotate6 produces hexagonal kaleidoscope patterns\n- Adjust offset and scale to explore different regions of the input\n- Angle rotates the entire output grid, preserving seamlessness\n- Set repeat to 1 to output just the tile unit\n- When 1:1 aspect is enabled, tiles are square on non-square canvases (more tiles along the longer axis). Disable if you need the output image itself to tile seamlessly at the canvas aspect ratio.\n"
+}

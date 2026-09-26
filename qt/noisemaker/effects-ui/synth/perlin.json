@@ -1,0 +1,74 @@
+{
+  "name": "Perlin",
+  "namespace": "synth",
+  "func": "perlin",
+  "description": "Perlin-like noise with optional warping",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "scale": {
+      "ui": {
+        "label": "scale"
+      }
+    },
+    "octaves": {
+      "ui": {
+        "label": "octaves"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    },
+    "dimensions": {
+      "ui": {
+        "label": "dimensions"
+      }
+    },
+    "ridges": {
+      "ui": {
+        "label": "ridges"
+      }
+    },
+    "warpIterations": {
+      "ui": {
+        "label": "warp iterations",
+        "category": "warp"
+      }
+    },
+    "warpScale": {
+      "ui": {
+        "label": "warp scale",
+        "category": "warp",
+        "enabledBy": {
+          "param": "warpIterations",
+          "neq": 0
+        }
+      }
+    },
+    "warpIntensity": {
+      "ui": {
+        "label": "warp intensity",
+        "category": "warp",
+        "enabledBy": {
+          "param": "warpIterations",
+          "neq": 0
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed"
+      }
+    }
+  },
+  "help": "# perlin\n\nPerlin-like noise with a periodic Z\n\n## Description\n\nGenerates classic Perlin gradient noise with optional fractal octaves. Supports 2D and 3D dimensions with animated looping through the Z axis.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| scale | float | 25 | 0-100 | - |\n| octaves | int | 1 | 1-6 | - |\n| colorMode | int | rgb | mono/rgb | Color mode |\n| dimensions | int | 2 | 2-3 | - |\n| ridges | boolean | false | - | - |\n| warpIterations | int | 0 | 0-4 | Domain warp iterations (0 = off) |\n| warpScale | float | 50 | 0-100 | Warp noise frequency |\n| warpIntensity | float | 50 | 0-100 | Warp displacement amount |\n| seed | int | 0 | 0-100 | - |\n| speed | int | 1 | 0-5 | - |\n\n## Notes\n\n- **Domain warp** displaces coordinates using noise before computing the main perlin noise, creating organic swirling distortion\n- Higher iterations produce more complex, folded patterns\n- warpScale controls the frequency of the warp noise relative to the base noise\n- warpIntensity controls how far coordinates are displaced\n"
+}

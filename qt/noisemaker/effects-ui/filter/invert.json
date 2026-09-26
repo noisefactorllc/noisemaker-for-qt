@@ -1,0 +1,18 @@
+{
+  "name": "Invert",
+  "namespace": "filter",
+  "func": "invert",
+  "description": "Invert image luminance",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# invert\n\nInvert image luminance\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | full | full/solarize | full inverts every channel (1-v); solarize folds bright values down (min(v, 1-v)) |\n\n## Notes\n\n- `mode=full` (default) is byte-identical to this effect's pre-`mode` behavior.\n- `mode=solarize` is Solarize parity: per RGB channel, `v <= 128 ? v : 255 - v`\n  (equivalently `min(v, 1-v)` in the shader's 0..1 range). Output never exceeds 0.5 per\n  channel - dark input stays unchanged, bright input inverts and folds down into darkness\n  (classic Sabattier effect).\n- Alpha is always preserved unchanged, in both modes.\n"
+}

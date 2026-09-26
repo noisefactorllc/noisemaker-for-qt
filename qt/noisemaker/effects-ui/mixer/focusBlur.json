@@ -1,0 +1,42 @@
+{
+  "name": "Focus Blur",
+  "namespace": "mixer",
+  "func": "focusBlur",
+  "description": "Focus blur using luminance depth map",
+  "tags": [
+    "blend",
+    "blur"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "depthSource": {
+      "ui": {
+        "label": "depth source",
+        "control": "dropdown"
+      }
+    },
+    "focalDistance": {
+      "ui": {
+        "label": "focal dist",
+        "control": "slider"
+      }
+    },
+    "aperture": {
+      "ui": {
+        "label": "aperture",
+        "control": "slider"
+      }
+    },
+    "sampleBias": {
+      "ui": {
+        "label": "bias",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# focusBlur\n\nFocus blur using luminance depth map\n\n## Description\n\nUses the luminosity of the depth source texture as a proxy for depth. Pixels with luminosity values close to the focal distance remain sharp, while pixels with luminosity far from the focal distance become blurred.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| focalDistance | float | 50 | 1-100 | Focal dist |\n| aperture | float | 4 | 1-10 | Aperture |\n| sampleBias | float | 10 | 2-20 | Sample spread |\n| depthSource | int | sourceB | sourceA/sourceB | Depth source |\n\n## Notes\n\n- Use a gradient or noise texture as the depth map for interesting focus transitions\n- Lower aperture values create more gradual focus falloff\n- Higher bias values create softer, more diffuse blur but may impact performance\n- The focal distance parameter maps luminosity (0–1) to a percentage, so 50 means pixels with ~0.5 luminosity will be in focus\n"
+}

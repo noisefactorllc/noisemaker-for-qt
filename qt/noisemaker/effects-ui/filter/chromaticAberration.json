@@ -1,0 +1,25 @@
+{
+  "name": "ChromaticAberration",
+  "namespace": "filter",
+  "func": "chromaticAberration",
+  "description": "Color fringing effect simulating lens aberration",
+  "tags": [
+    "distort",
+    "lens"
+  ],
+  "params": {
+    "aberration": {
+      "ui": {
+        "label": "aberration",
+        "control": "slider"
+      }
+    },
+    "passthru": {
+      "ui": {
+        "label": "passthru",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# chromaticAberration\n\nColor fringing effect simulating lens aberration\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| aberration | float | 50 | 0-100 | Aberration |\n| passthru | float | 50 | 0-100 | Passthru |\n"
+}

@@ -1,0 +1,97 @@
+{
+  "name": "CellRefract",
+  "namespace": "classicNoisedeck",
+  "func": "cellRefract",
+  "description": "Cell-based refraction",
+  "tags": [
+    "distort",
+    "noise"
+  ],
+  "params": {
+    "amount": {
+      "ui": {
+        "label": "refract",
+        "control": "slider"
+      }
+    },
+    "direction": {
+      "ui": {
+        "label": "refract dir",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "shape": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown",
+        "category": "cells"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider",
+        "category": "cells"
+      }
+    },
+    "cellScale": {
+      "ui": {
+        "label": "cell scale",
+        "control": "slider",
+        "category": "cells"
+      }
+    },
+    "smooth": {
+      "ui": {
+        "label": "cell smooth",
+        "control": "slider",
+        "category": "cells"
+      }
+    },
+    "variation": {
+      "ui": {
+        "label": "cell variation",
+        "control": "slider",
+        "category": "cells"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "category": "cells"
+      }
+    },
+    "kernel": {
+      "ui": {
+        "label": "effect",
+        "control": "dropdown",
+        "category": "effect"
+      }
+    },
+    "effectWidth": {
+      "ui": {
+        "label": "effect width",
+        "control": "slider",
+        "category": "effect",
+        "enabledBy": {
+          "param": "kernel",
+          "neq": 0
+        }
+      }
+    }
+  },
+  "help": "# cellRefract\n\nCell-based refraction\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 23 | 0-100 | Refract |\n| direction | float | 0 | 0-360 | Refract dir |\n| wrap | int | mirror | mirror/repeat | Wrap |\n| speed | int | 1 | 0-5 | Speed |\n| shape | int | diamond | circle/diamond/hexagon/octagon/square/triangle | Shape |\n| scale | float | 50 | 1-100 | Scale |\n| cellScale | float | 75 | 1-100 | Cell scale |\n| smooth | float | 0 | 0-100 | Cell smooth |\n| variation | float | 0 | 0-100 | Cell variation |\n| seed | int | 1 | 1-100 | Seed |\n| kernel | int | none | none/blur/derivatives/derivDivide/edge/emboss/litEdge/outline/pixels/posterize/shadow/sharpen/sobel | Effect |\n| effectWidth | int | 0 | 0-10 | Effect width |\n\n\n"
+}

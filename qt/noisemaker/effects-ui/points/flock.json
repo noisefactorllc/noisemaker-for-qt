@@ -1,0 +1,91 @@
+{
+  "name": "Flock",
+  "namespace": "points",
+  "func": "flock",
+  "description": "2D \"Boids\" flocking agent simulation",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "separation": {
+      "step": 0.1,
+      "ui": {
+        "label": "separation",
+        "control": "slider",
+        "category": "boids"
+      }
+    },
+    "alignment": {
+      "step": 0.1,
+      "ui": {
+        "label": "alignment",
+        "control": "slider",
+        "category": "boids"
+      }
+    },
+    "cohesion": {
+      "step": 0.1,
+      "ui": {
+        "label": "cohesion",
+        "control": "slider",
+        "category": "boids"
+      }
+    },
+    "perceptionRadius": {
+      "step": 1,
+      "ui": {
+        "label": "perception",
+        "control": "slider",
+        "category": "boids"
+      }
+    },
+    "separationRadius": {
+      "step": 1,
+      "ui": {
+        "label": "sep radius",
+        "control": "slider",
+        "category": "boids"
+      }
+    },
+    "maxSpeed": {
+      "step": 0.1,
+      "ui": {
+        "label": "max speed",
+        "control": "slider",
+        "category": "motion"
+      }
+    },
+    "maxForce": {
+      "step": 0.01,
+      "ui": {
+        "label": "max force",
+        "control": "slider",
+        "category": "motion"
+      }
+    },
+    "boundaryMode": {
+      "ui": {
+        "label": "boundary",
+        "control": "dropdown",
+        "category": "motion"
+      }
+    },
+    "wallMargin": {
+      "step": 1,
+      "ui": {
+        "label": "wall margin",
+        "control": "slider",
+        "category": "motion"
+      }
+    },
+    "noiseWeight": {
+      "step": 0.01,
+      "ui": {
+        "label": "noise",
+        "control": "slider",
+        "category": "motion"
+      }
+    }
+  },
+  "help": "# flock\n\n2D \"Boids\" flocking agent simulation\n\n## Description\n\nAgents follow classic flocking rules:\n- **Separation**: Steer to avoid crowding neighbors\n- **Alignment**: Steer towards average heading of neighbors\n- **Cohesion**: Steer towards average position of neighbors\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| separation | float | 2 | 0-5 | Separation |\n| alignment | float | 1 | 0-5 | Alignment |\n| cohesion | float | 1 | 0-5 | Cohesion |\n| perceptionRadius | float | 50 | 10-200 | Perception |\n| separationRadius | float | 25 | 5-100 | Separation radius |\n| maxSpeed | float | 4 | 0.5-10 | Max speed |\n| maxForce | float | 0.3 | 0.01-1 | Max force |\n| boundaryMode | int | wrap | wrap/softWall | Boundary |\n| wallMargin | float | 50 | 10-200 | Wall margin |\n| noiseWeight | float | 0.1 | 0-1 | Noise |\n"
+}

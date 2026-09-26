@@ -1,0 +1,75 @@
+{
+  "name": "Physarum",
+  "namespace": "points",
+  "func": "physarum",
+  "description": "Physarum slime mold simulation",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "moveSpeed": {
+      "step": 0.01,
+      "ui": {
+        "label": "move speed",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "turnSpeed": {
+      "step": 0.01,
+      "ui": {
+        "label": "turn speed",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "sensorAngle": {
+      "step": 0.01,
+      "ui": {
+        "label": "sensor angle",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "sensorDistance": {
+      "step": 0.001,
+      "ui": {
+        "label": "sensor dist",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "inputWeight": {
+      "step": 1,
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "agents"
+      }
+    },
+    "deposit": {
+      "step": 0.01,
+      "ui": {
+        "label": "deposit",
+        "control": "slider",
+        "category": "chemistry"
+      }
+    },
+    "decay": {
+      "step": 0.01,
+      "ui": {
+        "label": "decay",
+        "control": "slider",
+        "category": "chemistry"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "reset"
+      }
+    }
+  },
+  "help": "# physarum\n\nPhysarum slime mold simulation\n\n## Description\n\nAgents sense pheromone trails using forward sensors and steer towards higher concentrations, depositing their own pheromone as they move. Creates organic network patterns. Lower `sensorAngle` creates tighter networks; higher values create more branching.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| moveSpeed | float | 1.78 | 0.05-3 | Move speed |\n| turnSpeed | float | 1 | 0-3.14159 | Turn speed |\n| sensorAngle | float | 1.26 | 0.1-1.5 | Sensor angle |\n| sensorDistance | float | 0.03 | 0.002-0.1 | Sensor distance |\n| inputWeight | float | 0 | 0-100 | Input weight |\n| deposit | float | 0.5 | 0-1 | Deposit |\n| decay | float | 0.1 | 0-1 | Decay |\n| resetState | boolean | false | - | State |\n"
+}

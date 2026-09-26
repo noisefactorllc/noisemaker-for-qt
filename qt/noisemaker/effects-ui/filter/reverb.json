@@ -1,0 +1,38 @@
+{
+  "name": "Reverb",
+  "namespace": "filter",
+  "func": "reverb",
+  "description": "Visual reverb/echo effect",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "iterations": {
+      "step": 1,
+      "ui": {
+        "label": "iterations",
+        "control": "slider"
+      }
+    },
+    "ridges": {
+      "ui": {
+        "label": "ridges",
+        "control": "checkbox"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# reverb\n\nVisual reverb/echo effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| iterations | int | 3 | 1-8 | Iterations |\n| ridges | boolean | false | - | Ridges |\n| alpha | float | 1.0 | 0-1 | Blend amount |\n| wrap | int | mirror | mirror/repeat/clamp | Wrap |\n"
+}

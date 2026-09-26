@@ -1,0 +1,39 @@
+{
+  "name": "Light Leak",
+  "namespace": "filter",
+  "func": "lightLeak",
+  "description": "Film light leak overlay with colorful Voronoi regions",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "color": {
+      "ui": {
+        "label": "color",
+        "control": "color"
+      }
+    },
+    "speed": {
+      "step": 0.01,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# lightLeak\n\nFilm light leak overlay with colorful Voronoi regions\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 1 | 0-1 | Opacity |\n| color | color | [1.0, 0.8, 0.3] | - | Leak color |\n| speed | float | 0.5 | 0-5 | Animation speed |\n| seed | int | 1 | 1-100 | Random seed |\n"
+}

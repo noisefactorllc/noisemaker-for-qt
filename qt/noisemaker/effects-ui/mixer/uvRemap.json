@@ -1,0 +1,48 @@
+{
+  "name": "UvRemap",
+  "namespace": "mixer",
+  "func": "uvRemap",
+  "description": "Remap UVs of one input using color channels of another",
+  "tags": [
+    "blend",
+    "distort"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "mapSource": {
+      "ui": {
+        "label": "map source",
+        "control": "dropdown"
+      }
+    },
+    "channel": {
+      "ui": {
+        "label": "channel",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "offset": {
+      "ui": {
+        "label": "offset",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# uvRemap\n\nRemap UVs of one input using color channels of another\n\n## Description\n\nUses the color channels of one input as UV coordinates to sample the other input. This creates distortion, displacement, and feedback effects by treating pixel color values as texture lookup coordinates. The map source provides the UV data, the other source is sampled at those remapped coordinates.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| mapSource | int | sourceA | sourceA/sourceB | Which input provides the UV map |\n| channel | int | redGreen | redGreen/redBlue/greenBlue | Which color channels to use as U and V |\n| scale | float | 100 | 0-200 | UV scale as percentage (100 = identity mapping) |\n| offset | float | 0 | -1-1 | Offset applied to remapped UVs |\n| wrap | int | mirror | clamp/mirror/repeat | How to handle UVs outside 0-1 range |\n\n## Notes\n\n- **scale at 100**: Color values map directly to UV coordinates (red=U, green=V for rg mode)\n- **scale below 100**: Compresses the UV range, zooming into a portion of the sampled texture\n- **scale above 100**: Expands the UV range, stretching and repeating the sampled texture\n- **offset**: Shifts the entire UV mapping, useful for centering or biasing the remap\n- **clamp wrap**: UVs outside 0-1 stick to the edge pixels\n- **mirror wrap**: UVs ping-pong back when they exceed 0-1 boundaries\n- **repeat wrap**: UVs tile seamlessly using fractional wrapping\n- **channel selection**: Choose which pair of RGB channels encode the U and V coordinates. Different channels from the same source create different displacement patterns\n- Feed a gradient or noise generator into one input to create controlled displacement patterns\n- Chain with feedback effects for evolving, self-modifying distortions\n"
+}

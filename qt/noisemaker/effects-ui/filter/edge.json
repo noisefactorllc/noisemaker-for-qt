@@ -1,0 +1,86 @@
+{
+  "name": "Edge",
+  "namespace": "filter",
+  "func": "edge",
+  "description": "Edge detection filter",
+  "tags": [
+    "edges"
+  ],
+  "params": {
+    "kernel": {
+      "ui": {
+        "label": "kernel",
+        "control": "dropdown"
+      }
+    },
+    "level": {
+      "ui": {
+        "label": "level",
+        "control": "slider",
+        "enabledBy": {
+          "param": "kernel",
+          "eq": 2
+        }
+      }
+    },
+    "contourSide": {
+      "ui": {
+        "label": "contour side",
+        "control": "dropdown",
+        "enabledBy": {
+          "param": "kernel",
+          "eq": 2
+        }
+      }
+    },
+    "size": {
+      "ui": {
+        "label": "size",
+        "control": "dropdown",
+        "enabledBy": {
+          "param": "kernel",
+          "notIn": [
+            2
+          ]
+        }
+      }
+    },
+    "channel": {
+      "ui": {
+        "label": "channel",
+        "control": "dropdown"
+      }
+    },
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert",
+        "control": "dropdown"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    },
+    "blend": {
+      "ui": {
+        "label": "blend",
+        "control": "dropdown"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# edge\n\nEdge detection with multiple kernels, sizes, and blend modes\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| kernel | int | bold | fine/bold/contour | Edge detection kernel type |\n| level | float | 50 | 0-100 | Contour trace level (percent); used by the contour kernel only |\n| contourSide | int | lower | lower/upper | Side of the level crossing marked by the contour kernel |\n| size | int | kernel5x5 | kernel5x5/kernel7x7 | Convolution kernel size; used by fine and bold only |\n| channel | int | color | color/luminance | Edge detection mode |\n| amount | float | 100 | 0-500 | Edge intensity |\n| invert | int | off | off/on | Invert edge result |\n| threshold | float | 0 | 0-100 | Edge cutoff for line-art look |\n| blend | int | normal | add/darken/difference/dodge/lighten/multiply/normal/overlay/screen | How edges combine with original |\n| mix | float | 100 | 0-100 | Wet/dry blend with original |\n\n## Notes\n\n- The `contour` kernel traces classic Trace Contour iso-lines against\n  the 4 cardinal neighbors. `lower` marks only the below-level pixel at a\n  crossing; `upper` marks only the above-level pixel. Marked pixels are dark\n  (0.0), unmarked pixels are white (1.0), matching the fine/bold kernels'\n  convention of feeding a raw signal into the shared amount/threshold/invert/\n  blend/mix stages. `level` and `contourSide` are exposed only for contour;\n  `size` is exposed only for fine and bold.\n"
+}

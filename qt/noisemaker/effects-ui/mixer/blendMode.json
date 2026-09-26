@@ -1,0 +1,29 @@
+{
+  "name": "BlendMode",
+  "namespace": "mixer",
+  "func": "blendMode",
+  "description": "Blend two inputs using selectable blend mode",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# blendMode\n\nBlend two inputs using selectable blend mode\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| mode | int | add | add/burn/darken/diff/dodge/exclusion/hardLight/lighten/mix/multiply/negation/overlay/phoenix/screen/softLight/subtract | Mode |\n| mix | float | 0 | -100-100 | Mix |\n"
+}

@@ -1,0 +1,61 @@
+{
+  "name": "Shape3D",
+  "namespace": "synth3d",
+  "func": "shape3d",
+  "description": "3D polyhedral shape generator",
+  "tags": [
+    "3d",
+    "geometric"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    },
+    "loopAOffset": {
+      "ui": {
+        "label": "loop a",
+        "control": "dropdown"
+      }
+    },
+    "loopBOffset": {
+      "ui": {
+        "label": "loop b",
+        "control": "dropdown"
+      }
+    },
+    "loopAScale": {
+      "ui": {
+        "label": "a scale",
+        "control": "slider"
+      }
+    },
+    "loopBScale": {
+      "ui": {
+        "label": "b scale",
+        "control": "slider"
+      }
+    },
+    "speedA": {
+      "ui": {
+        "label": "speed a",
+        "control": "slider"
+      }
+    },
+    "speedB": {
+      "ui": {
+        "label": "speed b",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# shape3d\n\n3D polyhedral shape generator\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x64 | x16/x32/x64/x128 | Volume size |\n| colorMode | int | mono | mono/rgb | Color mode |\n| loopAOffset | int | dodecahedron | Platonic Solids:/tetrahedron/cube/octahedron/dodecahedron/icosahedron/Other Primitives:/sphere/torus/cylinder/cone/capsule | Loop a |\n| loopBOffset | int | octahedron | Platonic Solids:/tetrahedron/cube/octahedron/dodecahedron/icosahedron/Other Primitives:/sphere/torus/cylinder/cone/capsule | Loop b |\n| loopAScale | float | 1 | 1-100 | A scale |\n| loopBScale | float | 1 | 1-100 | B scale |\n| speedA | int | 1 | -5-5 | Animation speed a |\n| speedB | int | 1 | -5-5 | Animation speed b |\n"
+}

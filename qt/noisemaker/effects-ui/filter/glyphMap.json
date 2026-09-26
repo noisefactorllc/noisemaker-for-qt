@@ -1,0 +1,31 @@
+{
+  "name": "Glyph Map",
+  "namespace": "filter",
+  "func": "glyphMap",
+  "description": "ASCII/glyph art conversion using procedural glyphs",
+  "tags": [
+    "color",
+    "pixel"
+  ],
+  "params": {
+    "cellSize": {
+      "ui": {
+        "label": "cell size",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# glyphMap\n\nASCII/glyph art conversion using procedural glyphs\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| cellSize | int | 16 | 4-32 | Glyph cell size in pixels |\n| seed | int | 1 | 1-100 | Random seed |\n| colorMode | int | 1 (rgb) | mono, rgb | Mono or per-channel RGB |\n"
+}

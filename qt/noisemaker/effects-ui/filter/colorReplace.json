@@ -1,0 +1,60 @@
+{
+  "name": "Color Replace",
+  "namespace": "filter",
+  "func": "colorReplace",
+  "description": "Color replacement with alpha output. Matches pixels near targetColor and remaps their RGB and/or alpha.",
+  "tags": [
+    "color",
+    "util"
+  ],
+  "params": {
+    "targetColor": {
+      "ui": {
+        "label": "target color",
+        "control": "color"
+      }
+    },
+    "replaceColor": {
+      "ui": {
+        "label": "replace color",
+        "control": "color"
+      }
+    },
+    "sensitivity": {
+      "step": 0.01,
+      "ui": {
+        "label": "sensitivity",
+        "control": "slider"
+      }
+    },
+    "smoothing": {
+      "step": 0.01,
+      "ui": {
+        "label": "smoothing",
+        "control": "slider"
+      }
+    },
+    "colorMix": {
+      "step": 0.01,
+      "ui": {
+        "label": "color mix",
+        "control": "slider"
+      }
+    },
+    "replaceAlpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "matched α",
+        "control": "slider"
+      }
+    },
+    "keepAlpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "unmatched α",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# colorReplace\n\nColor replacement with alpha output. Matches pixels near `targetColor` by RGB distance, then independently remaps RGB and alpha based on match strength.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| targetColor | color | 0,0,0 | - | Color to find in the input |\n| replaceColor | color | 1,1,1 | - | Color matched pixels are blended toward |\n| sensitivity | float | 0.3 | 0-1 | Match tolerance (higher = broader match) |\n| smoothing | float | 0.1 | 0-1 | Width of the soft falloff edge |\n| colorMix | float | 1.0 | 0-1 | How much of replaceColor to blend in at matched pixels |\n| replaceAlpha | float | 1.0 | 0-1 | Alpha multiplier for matched pixels |\n| keepAlpha | float | 1.0 | 0-1 | Alpha multiplier for unmatched pixels |\n\n## Notes\n\n- Match strength is `1 - smoothstep(sensitivity - smoothing/2, sensitivity + smoothing/2, dist)` where `dist` is normalized euclidean RGB distance.\n- Output alpha is the input alpha multiplied by the per-pixel blend between `keepAlpha` and `replaceAlpha`. Existing transparency is preserved.\n\n## Common recipes\n\n- **Replace black with red** — `targetColor: #000000, replaceColor: #ff0000, colorMix: 1, replaceAlpha: 1, keepAlpha: 1`\n- **Key out black (cut it out)** — `targetColor: #000000, colorMix: 0, replaceAlpha: 0, keepAlpha: 1`\n- **Isolate green (keep only matches)** — `targetColor: #00ff00, colorMix: 0, replaceAlpha: 1, keepAlpha: 0`\n- **Luminance to alpha** (black = transparent, white = opaque, RGB unchanged) — `targetColor: #000000, sensitivity: 0.5, smoothing: 1, colorMix: 0, replaceAlpha: 0, keepAlpha: 1`\n"
+}

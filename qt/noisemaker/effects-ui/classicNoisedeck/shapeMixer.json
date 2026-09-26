@@ -1,0 +1,142 @@
+{
+  "name": "ShapeMixer",
+  "namespace": "classicNoisedeck",
+  "func": "shapeMixer",
+  "description": "Shape-based mixing",
+  "tags": [
+    "blend",
+    "geometric"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "blendMode": {
+      "ui": {
+        "label": "blend mode",
+        "control": "dropdown"
+      }
+    },
+    "loopOffset": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    },
+    "loopScale": {
+      "ui": {
+        "label": "shape scale",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "noise wrap",
+        "control": "checkbox",
+        "enabledBy": {
+          "param": "loopOffset",
+          "in": [
+            300,
+            310,
+            320,
+            350
+          ]
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "noise seed",
+        "control": "slider",
+        "enabledBy": {
+          "param": "loopOffset",
+          "in": [
+            300,
+            310,
+            320,
+            350,
+            370,
+            380
+          ]
+        }
+      }
+    },
+    "animate": {
+      "ui": {
+        "label": "animate",
+        "control": "dropdown"
+      }
+    },
+    "palette": {
+      "ui": {
+        "label": "palette",
+        "control": "dropdown",
+        "category": "palette"
+      }
+    },
+    "paletteMode": {
+      "ui": {
+        "control": false
+      }
+    },
+    "paletteOffset": {
+      "ui": {
+        "label": "palette offset",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "paletteAmp": {
+      "ui": {
+        "label": "palette amplitude",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "paletteFreq": {
+      "ui": {
+        "label": "palette frequency",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "palettePhase": {
+      "ui": {
+        "label": "palette phase",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "cyclePalette": {
+      "ui": {
+        "label": "rotation",
+        "control": "dropdown",
+        "category": "palette"
+      }
+    },
+    "rotatePalette": {
+      "ui": {
+        "label": "offset",
+        "control": "slider",
+        "category": "palette"
+      }
+    },
+    "repeatPalette": {
+      "ui": {
+        "label": "repeat",
+        "control": "slider",
+        "category": "palette"
+      }
+    },
+    "levels": {
+      "ui": {
+        "label": "posterize",
+        "control": "slider",
+        "category": "palette"
+      }
+    }
+  },
+  "help": "# shapeMixer\n\nShape-based mixing\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| blendMode | int | max | add/divide/max/min/mix/mod/multiply/reflect/refract/subtract | Mode |\n| loopOffset | int | circle | none/Shapes:/circle/triangle/diamond/square/pentagon/hexagon/heptagon/octagon/Directional:/horizontalScan/verticalScan/Noise:/noiseConstant/noiseLinear/noiseHermite/noiseBSpline3x3/noiseSimplex/noiseSine/Misc:/rings/sine | Shape |\n| loopScale | float | 80 | 1-100 | Shape scale |\n| animate | int | forward | off/forward/backward | Animate |\n| palette | palette | skykissed | none/seventiesShirt/fiveG/afterimage/barstow/bloob/blueSkies/brushedMetal/burningSky/california/columbia/cottonCandy/darkSatin/dealerHat/dreamy/eventHorizon/ghostly/grayscale/hazySunset/heatmap/hypercolor/jester/justBlue/justCyan/justGreen/justPurple/justRed/justYellow/mars/modesto/moss/neptune/netOfGems/organic/papaya/radioactive/royal/santaCruz/sherbet/sherbetDouble/silvermane/skykissed/solaris/spooky/springtime/sproingtime/sulphur/summoning/superhero/toxic/tropicalia/tungsten/vaporwave/vibrant/vintage/vintagePhoto | Palette |\n| paletteMode | int | 0 | - | - |\n| paletteOffset | vec3 | 0.83,0.6,0.63 | - | Palette offset |\n| paletteAmp | vec3 | 0.5,0.5,0.5 | - | Palette amplitude |\n| paletteFreq | vec3 | 1,1,1 | - | Palette frequency |\n| palettePhase | vec3 | 0.3,0.1,0 | - | Palette phase |\n| cyclePalette | int | forward | off/forward/backward | Cycle palette |\n| rotatePalette | float | 0 | 0-100 | Rotate palette |\n| repeatPalette | int | 1 | 1-10 | Repeat palette |\n| levels | int | 0 | 0-32 | Posterize |\n| wrap | boolean | true | - | Noise wrap |\n| seed | int | 1 | 1-100 | Noise seed |\n"
+}

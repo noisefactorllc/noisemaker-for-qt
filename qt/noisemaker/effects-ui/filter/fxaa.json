@@ -1,0 +1,31 @@
+{
+  "name": "Fxaa",
+  "namespace": "filter",
+  "func": "fxaa",
+  "description": "Fast approximate anti-aliasing",
+  "tags": [
+    "antialiasing"
+  ],
+  "params": {
+    "strength": {
+      "ui": {
+        "label": "strength",
+        "control": "slider"
+      }
+    },
+    "sharpness": {
+      "step": 0.1,
+      "ui": {
+        "label": "sharpness",
+        "control": "slider"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# fxaa\n\nFast approximate anti-aliasing\n\nApplies an edge-aware blur weighted by luminance differences. Neighboring pixels with similar luminance are blended together while edges (large luminance jumps) are preserved. Alpha is passed through unchanged.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| strength | float | 1.0 | 0-1 | Mix between original and anti-aliased output (0 = bypass, 1 = full effect) |\n| sharpness | float | 1.0 | 0.1-10 | Edge sensitivity of the weight falloff. Higher values preserve edges more; lower values blur more aggressively |\n| threshold | float | 0.0 | 0-1 | Minimum luminance contrast to trigger AA. Pixels with all neighbors below this contrast are left untouched |\n"
+}

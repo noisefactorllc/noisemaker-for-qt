@@ -1,0 +1,26 @@
+{
+  "name": "Blur",
+  "namespace": "filter",
+  "func": "blur",
+  "description": "Gaussian blur with separate X and Y radius controls",
+  "tags": [
+    "blur"
+  ],
+  "params": {
+    "radiusX": {
+      "step": 1,
+      "ui": {
+        "label": "radius x",
+        "control": "slider"
+      }
+    },
+    "radiusY": {
+      "step": 1,
+      "ui": {
+        "label": "radius y",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# blur\n\nGaussian blur with separate X and Y radius controls\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| radiusX | float | 5 | 0-50 | Radius X |\n| radiusY | float | 5 | 0-50 | Radius Y |\n"
+}

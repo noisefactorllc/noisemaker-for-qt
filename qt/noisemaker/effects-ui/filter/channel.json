@@ -1,0 +1,28 @@
+{
+  "name": "Channel",
+  "namespace": "filter",
+  "func": "channel",
+  "description": "Channel isolation (r, g, b, or a)",
+  "tags": [
+    "color",
+    "util"
+  ],
+  "params": {
+    "channel": {
+      "ui": {
+        "label": "channel"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale"
+      }
+    },
+    "offset": {
+      "ui": {
+        "label": "offset"
+      }
+    }
+  },
+  "help": "# channel\n\nChannel isolation (r, g, b, or a)\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| channel | member | channel.r | - | - |\n| scale | float | 1 | -10-10 | - |\n| offset | float | 0 | -10-10 | - |\n"
+}

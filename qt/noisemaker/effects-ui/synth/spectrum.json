@@ -1,0 +1,32 @@
+{
+  "name": "Spectrum",
+  "namespace": "synth",
+  "func": "spectrum",
+  "description": "Audio spectrum analyzer",
+  "tags": [
+    "audio"
+  ],
+  "params": {
+    "color": {
+      "ui": {
+        "label": "color",
+        "control": "color"
+      }
+    },
+    "thickness": {
+      "step": 0.5,
+      "ui": {
+        "label": "thickness",
+        "control": "slider"
+      }
+    },
+    "gain": {
+      "step": 0.1,
+      "ui": {
+        "label": "gain",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# spectrum\n\nAudio spectrum analyzer\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| color | color | [0, 1, 0] | - | Spectrum color |\n| thickness | float | 2 | 0.5–10 | Line thickness |\n| gain | float | 1 | 0.1–5 | Amplitude gain |\n"
+}

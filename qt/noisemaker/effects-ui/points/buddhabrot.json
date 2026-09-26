@@ -1,0 +1,65 @@
+{
+  "name": "Buddhabrot",
+  "namespace": "points",
+  "func": "buddhabrot",
+  "description": "Buddhabrot fractal via progressive orbit accumulation",
+  "tags": [
+    "fractal",
+    "sim"
+  ],
+  "params": {
+    "stateSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown",
+        "category": "fractal"
+      }
+    },
+    "maxIter": {
+      "step": 10,
+      "ui": {
+        "label": "max iterations",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "minIter": {
+      "step": 1,
+      "ui": {
+        "label": "min iterations",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "centerX": {
+      "step": 0.01,
+      "ui": {
+        "label": "center x",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "centerY": {
+      "step": 0.01,
+      "ui": {
+        "label": "center y",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "zoom": {
+      "step": 0.1,
+      "ui": {
+        "label": "zoom",
+        "control": "slider",
+        "category": "navigation"
+      }
+    }
+  },
+  "help": "# buddhabrot\n\nBuddhabrot fractal via progressive orbit accumulation — agents test random c values and deposit escaped orbit traces\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 512 | - | Particle state texture size (no UI control) |\n| mode | int | standard | anti/standard | Standard or anti-buddhabrot |\n| maxIter | int | 200 | 20–2000 | Max orbit iterations |\n| minIter | int | 1 | 1–1000 | Min orbit iterations |\n| centerX | float | -0.5 | -3–3 | Center x |\n| centerY | float | 0 | -3–3 | Center y |\n| zoom | float | 1 | 0.1–5 | Zoom level |\n"
+}

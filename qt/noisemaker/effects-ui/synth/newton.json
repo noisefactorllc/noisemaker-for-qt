@@ -1,0 +1,135 @@
+{
+  "name": "Newton",
+  "namespace": "synth",
+  "func": "newton",
+  "description": "Newton fractal explorer with deep zoom",
+  "tags": [
+    "fractal"
+  ],
+  "params": {
+    "poi": {
+      "ui": {
+        "label": "preset",
+        "control": "dropdown",
+        "category": "fractal"
+      }
+    },
+    "outputMode": {
+      "ui": {
+        "label": "output mode",
+        "control": "dropdown",
+        "category": "fractal"
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "degree": {
+      "ui": {
+        "label": "degree",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "relaxation": {
+      "step": 0.01,
+      "ui": {
+        "label": "relaxation",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "tolerance": {
+      "step": 0.0001,
+      "ui": {
+        "label": "tolerance",
+        "control": "slider",
+        "category": "fractal"
+      }
+    },
+    "centerX": {
+      "step": 0.001,
+      "ui": {
+        "label": "center x",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "centerY": {
+      "step": 0.001,
+      "ui": {
+        "label": "center y",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "rotation": {
+      "step": 0.1,
+      "ui": {
+        "label": "rotation",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "zoomSpeed": {
+      "step": 0.01,
+      "ui": {
+        "label": "zoom speed",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "zoomDepth": {
+      "step": 0.001,
+      "ui": {
+        "label": "zoom depth",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "degreeSpeed": {
+      "step": 0.01,
+      "ui": {
+        "label": "degree speed",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "degreeRange": {
+      "step": 0.01,
+      "ui": {
+        "label": "degree range",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "relaxSpeed": {
+      "step": 0.01,
+      "ui": {
+        "label": "relax speed",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "relaxRange": {
+      "step": 0.01,
+      "ui": {
+        "label": "relax range",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert",
+        "control": "checkbox",
+        "category": "output"
+      }
+    }
+  },
+  "help": "# newton\n\nNewton fractal explorer with deep zoom, variable polynomial degree, relaxation control, and curated points of interest\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| poi | int | hexWeb6 | manual/hexWeb6/octoFlower8/pentaSpiral5/spiralJunction3/starCenter5/triplePoint3 | Preset location |\n| outputMode | int | blended | blended/iteration/rootIndex | Output algorithm |\n| iterations | int | 100 | 10–500 | Max iterations |\n| degree | int | 3 | 3–8 | Polynomial degree (manual mode) |\n| relaxation | float | 1 | 0.5–2 | Newton relaxation factor |\n| tolerance | float | 0.001 | 0.0001–0.01 | Convergence tolerance |\n| centerX | float | 0 | -3–3 | Center x (manual mode) |\n| centerY | float | 0 | -3–3 | Center y (manual mode) |\n| rotation | float | 0 | -180-180 | Rotation (degrees) |\n| zoomSpeed | float | 0 | 0–5 | Auto-zoom speed |\n| zoomDepth | float | 0 | 0–14 | Zoom depth (powers of 10) |\n| degreeSpeed | float | 0 | 0–1 | Degree animation speed (manual mode) |\n| degreeRange | float | 0 | 0–3 | Degree animation range (manual mode) |\n| relaxSpeed | float | 0 | 0–1 | Relaxation animation speed |\n| relaxRange | float | 0 | 0–0.5 | Relaxation animation range |\n| invert | boolean | false | - | Invert output |\n"
+}

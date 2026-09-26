@@ -1,0 +1,55 @@
+{
+  "name": "Dither",
+  "namespace": "filter",
+  "func": "dither",
+  "description": "Ordered dithering with classic patterns and palettes",
+  "tags": [
+    "color",
+    "pixel"
+  ],
+  "params": {
+    "type": {
+      "ui": {
+        "label": "type",
+        "control": "dropdown"
+      }
+    },
+    "matrixScale": {
+      "ui": {
+        "label": "pattern scale",
+        "control": "slider"
+      }
+    },
+    "threshold": {
+      "step": 0.01,
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    },
+    "palette": {
+      "ui": {
+        "label": "palette",
+        "control": "dropdown"
+      }
+    },
+    "levels": {
+      "ui": {
+        "label": "levels",
+        "control": "slider",
+        "enabledBy": {
+          "param": "palette",
+          "eq": 0
+        }
+      }
+    },
+    "mix": {
+      "step": 0.01,
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# dither\n\nOrdered dithering with classic patterns and retro color palettes\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| type | int | bayer4x4 | bayer2x2/bayer4x4/bayer8x8/dot/line/crosshatch/noise/errorDiffusion | Dithering pattern type |\n| threshold | float | 0 | -0.5 to 0.5 | Threshold bias/offset for dither pattern |\n| matrixScale | int | 2 | 1-8 | Scale of the dither pattern on screen |\n| palette | int | input | input/monochrome/dotMatrixGreen/amberMonitor/pico8/commodore64/cgaPalette1/zxSpectrum/appleII/ega | Color palette for quantization |\n| levels | int | 4 | 2-16 | Quantization levels per channel when palette = input |\n| mix | float | 1 | 0-1 | Blend between original input (0) and dithered output (1) |\n\n## Dither Types\n\n### Bayer Matrices\nClassic ordered dithering using threshold matrices of various sizes:\n- **2x2**: Coarse, visible pattern with 4 threshold levels\n- **4x4**: Standard dithering with 16 threshold levels\n- **8x8**: Fine dithering with 64 threshold levels (default)\n\n### Pattern Types\n- **dot**: Circular halftone-style pattern\n- **line**: Horizontal line pattern\n- **crosshatch**: Diagonal crosshatch pattern\n- **noise**: Random noise dithering (animated)\n- **error diffusion**: Floyd-Steinberg error diffusion, computed block-wise with a seeded burn-in margin\n\n## Palettes\n\n### Input-based Quantization\n- **input**: quantizes each RGB channel independently to `levels` steps (2-16). levels = 2 is high-contrast 1-bit; levels = 4 matches the classic 2-bit look.\n\n### Preset Palettes\n- **monochrome**: Pure black and white\n- **dot matrix green**: Game Boy-style green tones\n- **amber monitor**: Classic amber CRT monitor colors\n- **pico8**: PICO-8 fantasy console 16-color palette\n- **commodore 64**: C64 16-color palette\n- **CGA palette 1**: Cyan, magenta, white, black\n- **zx spectrum**: ZX Spectrum 15-color palette\n- **apple II**: Apple II 16-color palette\n- **EGA**: Enhanced Graphics Adapter 16-color palette\n\n## Tips\n\n- Use larger pattern scales for a more pronounced retro look\n- Combine with the pixels filter for authentic low-resolution aesthetics\n- The threshold parameter can help balance dark and light areas\n- Noise dithering animates over time for a film grain-like effect\n- Lower levels values give a starker poster-like reduction\n"
+}

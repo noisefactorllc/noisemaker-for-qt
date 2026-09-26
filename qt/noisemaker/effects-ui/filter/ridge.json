@@ -1,0 +1,19 @@
+{
+  "name": "Ridge",
+  "namespace": "filter",
+  "func": "ridge",
+  "description": "Ridge/crease enhancement",
+  "tags": [
+    "edges"
+  ],
+  "params": {
+    "level": {
+      "step": 0.01,
+      "ui": {
+        "label": "level",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# ridge\n\nRidge/crease enhancement\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| level | float | 0.5 | 0-1 | Ridge midpoint level |\n"
+}

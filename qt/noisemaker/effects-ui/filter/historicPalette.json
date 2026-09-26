@@ -1,0 +1,51 @@
+{
+  "name": "Historic Palette",
+  "namespace": "filter",
+  "func": "historicPalette",
+  "description": "Apply historical art color palettes",
+  "tags": [
+    "color",
+    "palette"
+  ],
+  "params": {
+    "index": {
+      "ui": {
+        "label": "palette",
+        "control": "dropdown"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "dropdown"
+      }
+    },
+    "offset": {
+      "step": 1,
+      "ui": {
+        "label": "offset",
+        "control": "slider"
+      }
+    },
+    "repeat": {
+      "ui": {
+        "label": "repeat",
+        "control": "slider"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "smoothness": {
+      "ui": {
+        "label": "smoothness",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# historicPalette\n\nApply historical art color palettes based on luminance\n\nMaps the luminance of the input image to 5-color palettes inspired by various art history movements and cultural traditions from around the world.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| index | int | bauhaus | dropdown | Select from 21 historical art palettes |\n| smoothness | float | 0 | 0-1 | Controls blending between palette colors (0 = hard edges, 1 = smooth gradients) |\n| rotation | float | none | none/fwd/back | Animate palette cycling using time |\n| offset | float | 0 | 0-100 | Static offset into the palette |\n| repeat | float | 1 | 0.1-10 | Multiplier for luminance mapping |\n| alpha | float | 1 | 0-1 | Blend between original and palette color |\n\n## Available Palettes\n\n| Index | Name | Period/Origin | Character |\n|-------|------|---------------|-----------|\n| 0 | Aboriginal Dot | Australian | Earthy ochres with spiritual depth |\n| 1 | Abstract Expressionism | 1940s-1950s | Bold primaries with earthy drama |\n| 2 | Art Deco | 1920s-1930s | Glamorous metallics and bold contrasts |\n| 3 | Art Nouveau | 1890-1910 | Organic, flowing pastels with jewel accents |\n| 4 | Bauhaus | 1919-1933 | Primary colors and geometric simplicity |\n| 5 | Cave Art | Prehistoric | Earth pigments and ochres |\n| 6 | Chinese Ink | Song Dynasty+ | Monochromatic ink washes |\n| 7 | Dutch Golden Age | 17th Century | Rich, somber earth tones |\n| 8 | Fauvism | 1905-1910 | Wild, unnatural, vibrant colors |\n| 9 | Impressionism | 1860s-1880s | Soft, light-filled naturalistic tones |\n| 10 | Indian Miniature | Mughal/Rajput | Jewel-bright, ornate colors |\n| 11 | Islamic Geometric | Traditional | Harmonious, mathematical precision |\n| 12 | Kente Cloth | West African | Vibrant, symbolic woven colors |\n| 13 | Māori Carving | New Zealand | Natural pigments and wood tones |\n| 14 | Mexican Muralism | 1920s-1970s | Bold, political, vibrant |\n| 15 | Minimalism | 1960s-1970s | Reduced, neutral palette |\n| 16 | Persian Miniature | 13th-17th Century | Luminous, intricate jewel tones |\n| 17 | Pop Art | 1950s-1960s | Bold, commercial, high-contrast |\n| 18 | Renaissance | 15th-16th Century | Rich jewel tones and earth pigments |\n| 19 | Surrealism | 1920s-1940s | Dreamlike, atmospheric tones |\n| 20 | Ukiyo-e | 17th-19th Century | Japanese woodblock print colors |\n"
+}

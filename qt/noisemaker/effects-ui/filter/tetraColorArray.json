@@ -1,0 +1,291 @@
+{
+  "name": "TetraColorArray",
+  "namespace": "filter",
+  "func": "tetraColorArray",
+  "description": "Apply Tetra color array palettes based on luminance",
+  "tags": [
+    "color",
+    "palette"
+  ],
+  "params": {
+    "colorMode": {
+      "ui": {
+        "label": "blend space",
+        "control": "dropdown"
+      }
+    },
+    "colorCount": {
+      "step": 1,
+      "ui": {
+        "label": "color count",
+        "control": "slider"
+      }
+    },
+    "positionMode": {
+      "ui": {
+        "label": "positioning",
+        "control": "dropdown"
+      }
+    },
+    "color0": {
+      "ui": {
+        "label": "color 1",
+        "control": "color",
+        "category": "colors"
+      }
+    },
+    "color1": {
+      "ui": {
+        "label": "color 2",
+        "control": "color",
+        "category": "colors"
+      }
+    },
+    "color2": {
+      "ui": {
+        "label": "color 3",
+        "control": "color",
+        "category": "colors",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 2
+        }
+      }
+    },
+    "color3": {
+      "ui": {
+        "label": "color 4",
+        "control": "color",
+        "category": "colors",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 3
+        }
+      }
+    },
+    "color4": {
+      "ui": {
+        "label": "color 5",
+        "control": "color",
+        "category": "colors",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 4
+        }
+      }
+    },
+    "color5": {
+      "ui": {
+        "label": "color 6",
+        "control": "color",
+        "category": "colors",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 5
+        }
+      }
+    },
+    "color6": {
+      "ui": {
+        "label": "color 7",
+        "control": "color",
+        "category": "colors",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 6
+        }
+      }
+    },
+    "color7": {
+      "ui": {
+        "label": "color 8",
+        "control": "color",
+        "category": "colors",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 7
+        }
+      }
+    },
+    "pos0": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 1",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "param": "positionMode",
+          "eq": 1
+        }
+      }
+    },
+    "pos1": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 2",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "param": "positionMode",
+          "eq": 1
+        }
+      }
+    },
+    "pos2": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 3",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "positionMode",
+              "eq": 1
+            },
+            {
+              "param": "colorCount",
+              "gt": 2
+            }
+          ]
+        }
+      }
+    },
+    "pos3": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 4",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "positionMode",
+              "eq": 1
+            },
+            {
+              "param": "colorCount",
+              "gt": 3
+            }
+          ]
+        }
+      }
+    },
+    "pos4": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 5",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "positionMode",
+              "eq": 1
+            },
+            {
+              "param": "colorCount",
+              "gt": 4
+            }
+          ]
+        }
+      }
+    },
+    "pos5": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 6",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "positionMode",
+              "eq": 1
+            },
+            {
+              "param": "colorCount",
+              "gt": 5
+            }
+          ]
+        }
+      }
+    },
+    "pos6": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 7",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "positionMode",
+              "eq": 1
+            },
+            {
+              "param": "colorCount",
+              "gt": 6
+            }
+          ]
+        }
+      }
+    },
+    "pos7": {
+      "step": 0.01,
+      "ui": {
+        "label": "position 8",
+        "control": "slider",
+        "category": "positions",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "positionMode",
+              "eq": 1
+            },
+            {
+              "param": "colorCount",
+              "gt": 7
+            }
+          ]
+        }
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "dropdown"
+      }
+    },
+    "repeat": {
+      "step": 0.01,
+      "ui": {
+        "label": "repeat",
+        "control": "slider",
+        "category": "mapping"
+      }
+    },
+    "offset": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset",
+        "control": "slider",
+        "category": "mapping"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "smoothness": {
+      "ui": {
+        "label": "smoothness",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# tetraColorArray\n\nApply Tetra color array gradients to images based on luminance.\n\n## Overview\n\nThe `tetraColorArray` effect maps input pixel luminance to a gradient created from 2-8 discrete colors. Colors are interpolated smoothly between stops, with optional custom positioning.\n\nThis effect is fully compatible with Tetra's color array palette format and can load saved Tetra palettes.\n\n## Parameters\n\n### Mode Settings\n- **Blend Space**: Choose the color space for interpolation\n  - RGB (default): Standard RGB color space\n  - HSV: Hue-Saturation-Value for smooth hue interpolation\n  - OkLab: Perceptually uniform color space\n  - OKLCH: Cylindrical perceptual space\n\n- **Color Count**: Number of colors in the gradient (2-8)\n\n- **Position Mode**: How colors are distributed\n  - Auto: Colors evenly distributed across the gradient\n  - Manual: Use custom positions for each color\n\n### Colors\n- **Color 1-8**: Color pickers for each gradient stop\n  - Color 6 visible when Color Count is 6+\n  - Color 7 visible when Color Count is 7+\n  - Color 8 visible when Color Count is 8\n\n### Positions (Manual Mode)\n- **Position 1-8**: Position (0-1) for each color in the gradient\n  - Only visible when Position Mode is set to Manual\n  - Positions should generally be in ascending order\n\n### Rotation\n- **Rotation**: Animate the palette mapping over time\n  - None: No animation\n  - Fwd: Palette cycles forward\n  - Back: Palette cycles backward\n\n### Mapping\n- **Repeat**: Multiplier for the luminance value (1-10)\n  - Higher values create more repetitions across the luminance range\n- **Offset**: Offset added to the luminance value (0-1)\n  - Shifts the entire gradient mapping\n\n### Output\n- **Alpha**: Blend amount with original image (0-1)\n  - 0 = original image, 1 = full effect\n- **Smoothness**: Blend width between palette colors (0-1)\n  - 0 = no blending, 1 = widest blend\n\n## Example Gradients\n\n### Grayscale (Default)\n5 colors from black to white, evenly spaced.\n\n### Ocean Blues\n```\ncolors: [\n  [0.05, 0.10, 0.30],  // Deep sea\n  [0.10, 0.25, 0.50],\n  [0.20, 0.45, 0.70],\n  [0.50, 0.75, 0.90],\n  [0.80, 0.92, 0.98]   // Shallow water\n]\n```\n\n### Fire\n```\ncolors: [\n  [0.1, 0.0, 0.0],     // Dark red\n  [0.8, 0.2, 0.0],     // Red-orange\n  [1.0, 0.5, 0.0],     // Orange\n  [1.0, 0.9, 0.3],     // Yellow\n  [1.0, 1.0, 0.9]      // White-hot\n]\n```\n\n## Custom Positions\n\nManual positioning allows you to control exactly where each color appears in the gradient:\n\n```\ncolors: [[0,0,0], [1,0,0], [1,1,0], [1,1,1]]\npositions: [0.0, 0.2, 0.5, 1.0]\n```\n\nThis creates:\n- Black at 0% luminance\n- Red at 20% luminance\n- Yellow at 50% luminance\n- White at 100% luminance\n\n## Tetra Config Compatibility\n\nThis effect uses the same parameter format as Tetra's color array palettes. To use a Tetra palette:\n\n1. Export a palette from Tetra as JSON\n2. The `params` object contains `colors`, `positions`, and `positionMode`\n3. Set each color picker and position slider to match\n\nExample Tetra palette JSON:\n```json\n{\n  \"name\": \"My Gradient\",\n  \"type\": \"colors\",\n  \"colorMode\": \"rgb\",\n  \"params\": {\n    \"colors\": [\n      [0.05, 0.10, 0.30],\n      [0.10, 0.25, 0.50],\n      [0.20, 0.45, 0.70],\n      [0.50, 0.75, 0.90],\n      [0.80, 0.92, 0.98]\n    ],\n    \"positions\": [0.0, 0.25, 0.5, 0.75, 1.0],\n    \"positionMode\": \"manual\"\n  }\n}\n```\n\n## DSL Usage\n\n```javascript\n// Basic 5-color grayscale\nnoise().tetraColorArray()\n\n// Custom fire gradient\nnoise().tetraColorArray({\n  colorCount: 5,\n  color0: \"#1a0000\",\n  color1: \"#cc3300\",\n  color2: \"#ff8000\",\n  color3: \"#ffe64d\",\n  color4: \"#ffffe6\"\n})\n\n// Two-color with custom positions\nnoise().tetraColorArray({\n  colorCount: 2,\n  color0: \"#000066\",\n  color1: \"#ffff00\",\n  positionMode: 1,  // manual\n  pos0: 0.0,\n  pos1: 0.7  // Yellow starts at 70% luminance\n})\n\n// HSV mode for smooth hue transitions\nnoise().tetraColorArray({\n  colorMode: 1,  // HSV\n  colorCount: 3,\n  color0: \"#ff0000\",  // Red\n  color1: \"#00ff00\",  // Green\n  color2: \"#0000ff\"   // Blue\n})\n```\n\n## References\n\n- [Tetra Palette Editor](https://tetra.noisedeck.app)\n"
+}

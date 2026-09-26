@@ -1,0 +1,38 @@
+{
+  "name": "Scale",
+  "namespace": "filter",
+  "func": "scale",
+  "description": "Scale transform",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "x": {
+      "ui": {
+        "label": "scale x"
+      }
+    },
+    "y": {
+      "ui": {
+        "label": "scale y"
+      }
+    },
+    "centerX": {
+      "ui": {
+        "label": "center x"
+      }
+    },
+    "centerY": {
+      "ui": {
+        "label": "center y"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# scale\n\nScale transform\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| x | float | 0.5 | 0-10 | Horizontal scale |\n| y | float | 0.5 | 0-10 | Vertical scale |\n| centerX | float | 0.5 | 0-1 | Horizontal center |\n| centerY | float | 0.5 | 0-1 | Vertical center |\n| wrap | int | repeat | mirror/repeat/clamp | Wrap |\n"
+}

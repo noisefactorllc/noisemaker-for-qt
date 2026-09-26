@@ -1,0 +1,54 @@
+{
+  "name": "CellSplit",
+  "namespace": "mixer",
+  "func": "cellSplit",
+  "description": "Split between inputs using Voronoi cell regions",
+  "tags": [
+    "blend",
+    "noise"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "edge source",
+        "control": "dropdown"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "edgeWidth": {
+      "ui": {
+        "label": "edge width",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# cellSplit\n\nSplit between inputs using Voronoi cell regions\n\n## Description\n\nGenerates a Voronoi diagram and randomly assigns each cell to show either source A or source B. Creates an organic, stained-glass-like split between two inputs. Uses PCG hashing for deterministic, cross-platform results.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| mode | int | edges | edges/split | Edges uses cells for A and edges for B. Split assigns cells randomly to A/B  |\n| scale | float | 15 | 1-30 | Number of cells (higher = more, smaller cells) |\n| edgeWidth | float | 0.08 | 0-0.2 | Width of visible edge lines at cell boundaries |\n| seed | int | 1 | 1-100 | Random seed for cell layout and assignment |\n| speed | int | 1 | 0-5 | Animation speed |\n| invert | int | sourceA | sourceA/sourceB | Swap source assignment |\n\n## Notes\n\n- **split mode**: Each cell is randomly assigned to show source A or source B, creating an organic mosaic. Edge pixels show a 50/50 mix of both sources.\n- **edges mode**: All cell interiors show source A, cell boundaries show source B. Creates a Voronoi wireframe overlay.\n- **scale**: Controls cell density; low values create many small cells, high values create a few large regions\n- **edge width at 0**: No visible boundaries, cells tile seamlessly\n- **edge width increased**: Sharp lines appear between cells\n- **seed**: Each seed produces a completely different cell layout and A/B assignment\n- **invert**: In split mode, swaps which cells show A vs B. In edges mode, swaps cells and edges.\n"
+}

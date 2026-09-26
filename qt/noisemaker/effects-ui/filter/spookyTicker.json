@@ -1,0 +1,40 @@
+{
+  "name": "Spooky Ticker",
+  "namespace": "filter",
+  "func": "spookyTicker",
+  "description": "Scrolling pseudo-text ticker overlay",
+  "tags": [
+    "text"
+  ],
+  "params": {
+    "rows": {
+      "step": 1,
+      "ui": {
+        "label": "rows",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# spookyTicker\n\nScrolling pseudo-text ticker overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 0.75 | 0-1 | Ticker opacity |\n| speed | float | 1.0 | 0-5 | Scroll speed |\n| rows | int | 2 | 1-3 | Number of ticker rows |\n| seed | int | 1 | 1-100 | Random seed |\n"
+}

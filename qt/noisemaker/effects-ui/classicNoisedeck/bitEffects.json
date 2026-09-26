@@ -1,0 +1,179 @@
+{
+  "name": "BitEffects",
+  "namespace": "classicNoisedeck",
+  "func": "bitEffects",
+  "description": "Bit field and bit mask effects",
+  "tags": [
+    "geometric",
+    "pattern"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "formula": {
+      "ui": {
+        "label": "formula",
+        "control": "dropdown",
+        "category": "bit field",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "n": {
+      "ui": {
+        "label": "mod",
+        "control": "slider",
+        "category": "bit field",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider",
+        "category": "bit field",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotate",
+        "control": "slider",
+        "category": "bit field",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "colorScheme": {
+      "ui": {
+        "label": "colors",
+        "control": "dropdown",
+        "category": "bit field",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "interp": {
+      "ui": {
+        "label": "blend",
+        "control": "dropdown",
+        "category": "bit field",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 0
+        }
+      }
+    },
+    "maskFormula": {
+      "ui": {
+        "label": "formula",
+        "control": "dropdown",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "tiles": {
+      "ui": {
+        "label": "tiles",
+        "control": "slider",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "complexity": {
+      "ui": {
+        "label": "complexity",
+        "control": "slider",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "maskColorScheme": {
+      "ui": {
+        "label": "color space",
+        "control": "dropdown",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "baseHueRange": {
+      "ui": {
+        "label": "hue variants",
+        "control": "slider",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "hueRotation": {
+      "ui": {
+        "label": "hue rotate",
+        "control": "slider",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "hueRange": {
+      "ui": {
+        "label": "hue range",
+        "control": "slider",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "category": "bit mask",
+        "enabledBy": {
+          "param": "mode",
+          "eq": 1
+        }
+      }
+    }
+  },
+  "help": "# bitEffects\n\nBit field and bit mask effects\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | bitMask | bitField/bitMask | Mode |\n| speed | float | 50 | 0-100 | Speed |\n| formula | int | alien | alien/sierpinski | Formula |\n| n | int | 1 | 1-200 | Mod |\n| colorScheme | int | redGreenAndBlue | blue/cyan/green/magenta/red/white/yellow/blueAndGreen/blueAndRed/blueAndYellow/greenAndMagenta/greenAndRed/redAndCyan/redGreenAndBlue | Colors |\n| interp | int | constant | constant/linear | Blend |\n| scale | float | 75 | 1-100 | Scale |\n| rotation | float | 0 | -180-180 | Rotate |\n| maskFormula | int | invaders | invaders/wideInvaders/glyphs/areciboNumber | Formula |\n| tiles | int | 5 | 1-40 | Tiles |\n| complexity | float | 57 | 1-100 | Complexity |\n| maskColorScheme | int | hsv | blackWhite/justHue/hueSaturation/hsv | Color space |\n| baseHueRange | float | 50 | 0-100 | Hue variants |\n| hueRotation | float | 180 | 0-360 | Hue rotate |\n| hueRange | float | 25 | 0-100 | Hue range |\n| seed | int | 63 | 1-100 | Seed |\n"
+}

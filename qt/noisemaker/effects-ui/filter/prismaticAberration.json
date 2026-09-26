@@ -1,0 +1,49 @@
+{
+  "name": "PrismaticAberration",
+  "namespace": "filter",
+  "func": "prismaticAberration",
+  "description": "Prismatic aberration with hue controls",
+  "tags": [
+    "color",
+    "lens"
+  ],
+  "params": {
+    "aberration": {
+      "ui": {
+        "label": "aberration",
+        "control": "slider"
+      }
+    },
+    "modulate": {
+      "ui": {
+        "label": "modulate",
+        "control": "checkbox"
+      }
+    },
+    "hueRotation": {
+      "ui": {
+        "label": "hue rotate",
+        "control": "slider"
+      }
+    },
+    "hueRange": {
+      "ui": {
+        "label": "hue range",
+        "control": "slider"
+      }
+    },
+    "saturation": {
+      "ui": {
+        "label": "saturation",
+        "control": "slider"
+      }
+    },
+    "passthru": {
+      "ui": {
+        "label": "passthru",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# prismaticAberration\n\nPrismatic aberration with hue controls\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| aberration | float | 50 | 0-100 | Aberration |\n| modulate | boolean | false | - | Modulate |\n| hueRotation | float | 0 | -180-180 | Hue rotate |\n| hueRange | float | 0 | 0-100 | Hue range |\n| saturation | float | 0 | -100-100 | Saturation |\n| passthru | float | 50 | 0-100 | Passthru |\n"
+}

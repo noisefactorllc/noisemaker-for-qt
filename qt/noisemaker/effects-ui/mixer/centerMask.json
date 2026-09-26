@@ -1,0 +1,41 @@
+{
+  "name": "CenterMask",
+  "namespace": "mixer",
+  "func": "centerMask",
+  "description": "Blend from edges (A) into center (B) using a distance mask",
+  "tags": [
+    "blend"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "blendMode": {
+      "ui": {
+        "label": "blend mode",
+        "control": "dropdown"
+      }
+    },
+    "shape": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    },
+    "hardness": {
+      "ui": {
+        "label": "hard edge",
+        "control": "slider"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# centerMask\n\nBlend from edges (A) into center (B) using a distance mask\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B (center) |\n| blendMode | int | mix | add/burn/darken/diff/dodge/exclusion/hardLight/lighten/mix/multiply/negation/overlay/phoenix/screen/softLight/subtract | Blend mode |\n| shape | int | square | circle/diamond/square | Shape |\n| hardness | float | 0 | 0-100 | Edge hardness |\n| mix | float | 0 | -100-100 | Mix |\n"
+}

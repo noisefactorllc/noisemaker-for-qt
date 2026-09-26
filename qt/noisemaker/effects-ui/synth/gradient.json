@@ -1,0 +1,107 @@
+{
+  "name": "Gradient",
+  "namespace": "synth",
+  "func": "gradient",
+  "description": "Multi-color gradient generator with various styles",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "type": {
+      "ui": {
+        "label": "type",
+        "control": "dropdown",
+        "category": "general"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider",
+        "category": "general",
+        "enabledBy": {
+          "param": "type",
+          "neq": 2
+        }
+      }
+    },
+    "repeat": {
+      "ui": {
+        "label": "repeat",
+        "control": "slider",
+        "category": "general",
+        "enabledBy": {
+          "param": "type",
+          "neq": 2
+        }
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider",
+        "category": "general",
+        "enabledBy": {
+          "param": "type",
+          "neq": 2
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "category": "general",
+        "enabledBy": {
+          "param": "type",
+          "eq": 4
+        }
+      }
+    },
+    "color1": {
+      "ui": {
+        "label": "color 1",
+        "control": "color",
+        "category": "color"
+      }
+    },
+    "color2": {
+      "ui": {
+        "label": "color 2",
+        "control": "color",
+        "category": "color"
+      }
+    },
+    "color3": {
+      "ui": {
+        "label": "color 3",
+        "control": "color",
+        "category": "color",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 2
+        }
+      }
+    },
+    "color4": {
+      "ui": {
+        "label": "color 4",
+        "control": "color",
+        "category": "color",
+        "enabledBy": {
+          "param": "colorCount",
+          "gt": 3
+        }
+      }
+    },
+    "colorCount": {
+      "step": 1,
+      "ui": {
+        "label": "color count",
+        "control": "slider",
+        "category": "color"
+      }
+    }
+  },
+  "help": "# gradient\n\nMulti-color gradient generator with various styles\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| type | int | conic | conic/diamond/fourCorners/linear/noiseGradient/radial/spiral | Type |\n| rotation | float | 0 | -180-180 | Rotation |\n| repeat | int | 1 | 1-4 | Repeat |\n| speed | int | 0 | -5-5 | Animation speed |\n| seed | int | 1 | 0-100 | Random seed (noise gradient only) |\n| color1 | color | 1,0,0 | - | Color 1 |\n| color2 | color | 1,1,0 | - | Color 2 |\n| color3 | color | 0,1,0 | - | Color 3 |\n| color4 | color | 0,0,1 | - | Color 4 |\n| colorCount | int | 4 | 2-4 | Number of colors |\n\n## Notes\n\nGradient types:\n- **conic**: Angular/sweep gradient rotating around the center\n- **diamond**: Diamond-shaped (L1/Manhattan distance) gradient from center\n- **fourCorners**: Bilinear interpolation with each color at a corner\n- **linear**: Smooth gradient transitioning through all 4 colors vertically\n- **noiseGradient**: Value noise using PCG PRNG, driven by seed. Rotation rotates the noise field\n- **radial**: Circular gradient emanating from the center\n- **spiral**: Spiral gradient combining angle and distance\n"
+}

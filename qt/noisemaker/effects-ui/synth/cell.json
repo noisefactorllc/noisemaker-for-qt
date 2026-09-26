@@ -1,0 +1,55 @@
+{
+  "name": "Cell",
+  "namespace": "synth",
+  "func": "cell",
+  "description": "Cellular/Voronoi noise with selectable cell shapes",
+  "tags": [
+    "noise",
+    "geometric"
+  ],
+  "params": {
+    "shape": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "noise scale",
+        "control": "slider"
+      }
+    },
+    "cellScale": {
+      "ui": {
+        "label": "cell scale",
+        "control": "slider"
+      }
+    },
+    "cellSmooth": {
+      "ui": {
+        "label": "cell smooth",
+        "control": "slider"
+      }
+    },
+    "variation": {
+      "ui": {
+        "label": "cell variation",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# cell\n\nCellular/Voronoi noise with distance metrics\n\n## Description\n\nGenerates cellular noise patterns based on Voronoi distance calculations. Supports multiple distance metrics for different cell shapes.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shape | int | circle | circle/diamond/hexagon/octagon/square/triangle | Shape |\n| scale | float | 75 | 1-100 | Noise scale |\n| cellScale | float | 87 | 1-100 | Cell scale |\n| cellSmooth | float | 0 | 0-100 | Cell smooth |\n| variation | float | 50 | 0-100 | Cell variation |\n| speed | int | 1 | 0-5 | Speed |\n| seed | int | 1 | 1-100 | Seed |\n"
+}

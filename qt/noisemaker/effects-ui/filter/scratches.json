@@ -1,0 +1,33 @@
+{
+  "name": "Scratches",
+  "namespace": "filter",
+  "func": "scratches",
+  "description": "Film scratch overlay",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "density": {
+      "step": 0.01,
+      "ui": {
+        "label": "density",
+        "control": "slider"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# scratches\n\nFilm scratch overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| density | float | 0.3 | 0-1 | Scratch density |\n| alpha | float | 0.75 | 0-1 | Scratch opacity |\n| seed | int | 1 | 1-100 | Random seed |\n"
+}

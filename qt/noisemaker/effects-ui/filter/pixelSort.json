@@ -1,0 +1,39 @@
+{
+  "name": "PixelSort",
+  "namespace": "filter",
+  "func": "pixelSort",
+  "description": "Pixel sorting glitch effect",
+  "tags": [
+    "glitch",
+    "pixel"
+  ],
+  "params": {
+    "angled": {
+      "step": 1,
+      "ui": {
+        "label": "angle",
+        "control": "slider"
+      }
+    },
+    "darkest": {
+      "ui": {
+        "label": "darkest first",
+        "control": "checkbox"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "input mix",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# pixelSort\n\nPixel sorting glitch effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| angled | float | 0 | -180-180 | Angle |\n| darkest | boolean | false | - | Darkest First |\n| wrap | int | 0 (mirror) | mirror, repeat, clamp | Edge wrapping mode |\n| alpha | float | 1.0 | 0-1 | Input opacity |\n"
+}

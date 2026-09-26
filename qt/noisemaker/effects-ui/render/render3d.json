@@ -1,0 +1,49 @@
+{
+  "name": "Render3D",
+  "namespace": "render",
+  "func": "render3d",
+  "description": "Universal 3D volume raymarcher",
+  "tags": [
+    "3d"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "filtering": {
+      "ui": {
+        "label": "filtering",
+        "control": "dropdown"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert thresh"
+      }
+    },
+    "orbitSpeed": {
+      "ui": {
+        "label": "orbit speed"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "bg opacity"
+      }
+    }
+  },
+  "help": "# render3d\n\nUniversal 3D volume raymarcher\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | v64 | v16/v32/v64/v128 | - |\n| filtering | int | isosurface | isosurface/voxel | Filtering |\n| threshold | float | 0.5 | 0-1 | Surface threshold |\n| invert | boolean | false | - | Invert threshold |\n| orbitSpeed | int | 1 | -5-5 | Orbit speed |\n| bgColor | color | 0.02,0.02,0.02 | - | Background color |\n| bgAlpha | float | 1 | 0-1 | Background alpha |\n\n## Notes\n\n- **isosurface**: Smooth raymarching with trilinear interpolation and bisection refinement\n- **voxel**: DDA voxel traversal with flat face shading\n\nThe volumeSize parameter is automatically inherited from the upstream 3D effect.\n"
+}

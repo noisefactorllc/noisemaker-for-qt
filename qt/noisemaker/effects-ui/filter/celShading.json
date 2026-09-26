@@ -1,0 +1,77 @@
+{
+  "name": "Cel Shading",
+  "namespace": "filter",
+  "func": "celShading",
+  "description": "Cartoon-style shading with posterization and outlines",
+  "tags": [
+    "color",
+    "edges"
+  ],
+  "params": {
+    "mix": {
+      "step": 0.01,
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    },
+    "levels": {
+      "step": 1,
+      "ui": {
+        "label": "levels",
+        "control": "slider"
+      }
+    },
+    "gamma": {
+      "step": 0.05,
+      "ui": {
+        "label": "gamma",
+        "control": "slider"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    },
+    "edgeWidth": {
+      "ui": {
+        "label": "width",
+        "control": "slider",
+        "category": "edges"
+      }
+    },
+    "edgeThreshold": {
+      "step": 0.01,
+      "ui": {
+        "label": "threshold",
+        "control": "slider",
+        "category": "edges"
+      }
+    },
+    "edgeColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "edges"
+      }
+    },
+    "lightDirection": {
+      "ui": {
+        "label": "light dir",
+        "control": "vector3",
+        "category": "shading"
+      }
+    },
+    "strength": {
+      "step": 0.01,
+      "ui": {
+        "label": "shading",
+        "control": "slider",
+        "category": "shading"
+      }
+    }
+  },
+  "help": "# celShading\n\nCartoon-style shading with posterization and outlines\n\n## Description\n\nUses a three-pass approach:\n1. **Color Pass**: Applies quantized diffuse lighting and posterizes colors into discrete bands\n2. **Edge Pass**: Performs Sobel edge detection on the quantized colors for clean outlines\n3. **Blend Pass**: Combines the cel-shaded colors with edge outlines and mixes with the original image\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| levels | int | 4 | 2-8 | Levels |\n| gamma | float | 0.65 | 0.1-3 | Gamma curve before quantization |\n| antialias | boolean | false | on/off | Smooth edges between color bands |\n| edgeWidth | int | 1 | 0-5 | Width |\n| edgeThreshold | float | 0.15 | 0.01-1 | Threshold |\n| edgeColor | color | 0,0,0 | - | Color |\n| lightDirection | vec3 | 0.5,0.5,1 | - | Light Direction |\n| strength | float | 0 | 0-1 | Shading Strength |\n| mix | float | 1 | 0-1 | Mix |\n\n## Notes\n\n- **Anime Style**: Use 3-4 levels with moderate edge width (~1.5)\n- **Comic Book**: Use 2-3 levels with thick edges (3-4) and high shading strength\n- **Adjust Edges**: Lower edgeThreshold to detect more edges, increase edgeWidth for bolder outlines\n- **Subtle Effect**: Reduce mix to blend the cel-shaded look with the original image\n"
+}

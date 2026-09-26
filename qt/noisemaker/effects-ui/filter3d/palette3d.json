@@ -1,0 +1,52 @@
+{
+  "name": "Palette3D",
+  "namespace": "filter3d",
+  "func": "palette3d",
+  "description": "Apply cosine color palettes to a 3D volume based on luminance",
+  "tags": [
+    "3d",
+    "color",
+    "palette"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "index": {
+      "ui": {
+        "label": "palette",
+        "control": "dropdown"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "dropdown"
+      }
+    },
+    "offset": {
+      "step": 1,
+      "ui": {
+        "label": "offset",
+        "control": "slider"
+      }
+    },
+    "repeat": {
+      "ui": {
+        "label": "repeat",
+        "control": "slider"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# palette3d\n\nApply cosine color palettes to a 3D volume based on luminance.\n\n3D port of `palette`: recolors a volume per-voxel using the same 55 cosine\npalettes and RGB/HSV/OkLab colorspace modes. The volume's shape (geometry) is\npreserved — only its color changes.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x64 | x16/x32/x64/x128 | Volume size (inherited from upstream) |\n| index | member | palette.brushedMetal | - | Palette |\n| rotation | int | none | none/fwd/back | Rotation |\n| offset | float | 0 | 0-100 | Offset |\n| repeat | int | 1 | 1-10 | Repeat |\n| alpha | float | 1 | 0-1 | Alpha |\n"
+}

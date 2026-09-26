@@ -1,0 +1,40 @@
+{
+  "name": "Heightmap 3D",
+  "namespace": "synth3d",
+  "func": "heightmap3d",
+  "description": "Voxel heightfield from separate 2D height and color surfaces",
+  "tags": [
+    "3d"
+  ],
+  "params": {
+    "heightTex": {
+      "ui": {
+        "label": "height image"
+      }
+    },
+    "tex": {
+      "ui": {
+        "label": "color image"
+      }
+    },
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "heightScale": {
+      "ui": {
+        "label": "height scale",
+        "control": "slider"
+      }
+    },
+    "baseHeight": {
+      "ui": {
+        "label": "base height",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# heightmap3d\n\nBake a height map and a diffuse color image into a voxel volume: for each `(x, z)` column, luminance from `heightTex` sets how tall the column is filled, and `tex` supplies the RGB stored at every occupied voxel in that column. Companion generator for `renderLandscape3d`, which raymarches the resulting volume.\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| heightTex | surface | none | - | Height source; luminance sets column height |\n| tex | surface | none | - | Color source; sampled per column and stored at every occupied voxel |\n| volumeSize | int | x64 | x16/x32/x64/x128 | Voxel grid resolution along each axis |\n| heightScale | float | 0.35 | 0-1 | Height-map luminance multiplier before it is quantized into voxel columns |\n| baseHeight | float | 0 | 0-1 | Minimum column height added before scaling, so black pixels still fill some voxels |\n\nHeight uses Rec. 709 luminance weights (0.2126 red, 0.7152 green, 0.0722 blue) applied to `heightTex`'s sampled RGB. `heightScale` and `baseHeight` combine as `clamp(luminance * heightScale + baseHeight, 0, 1) * volumeSize` voxels tall. Chain into `renderLandscape3d()` to view the result; see that effect's help for camera controls.\n"
+}

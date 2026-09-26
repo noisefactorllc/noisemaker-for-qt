@@ -1,0 +1,23 @@
+{
+  "name": "Threshold",
+  "namespace": "filter",
+  "func": "threshold",
+  "description": "Threshold/step function",
+  "tags": [
+    "color",
+    "edges"
+  ],
+  "params": {
+    "level": {
+      "ui": {
+        "label": "level"
+      }
+    },
+    "sharpness": {
+      "ui": {
+        "label": "sharpness"
+      }
+    }
+  },
+  "help": "# threshold\n\nThreshold/step function\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| level | float | 0.5 | 0-1 | - |\n| sharpness | float | 0.5 | 0-1 | - |\n"
+}

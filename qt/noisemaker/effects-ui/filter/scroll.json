@@ -1,0 +1,38 @@
+{
+  "name": "Scroll",
+  "namespace": "filter",
+  "func": "scroll",
+  "description": "Scrolling offset animation",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "x": {
+      "ui": {
+        "label": "offset x"
+      }
+    },
+    "y": {
+      "ui": {
+        "label": "offset y"
+      }
+    },
+    "speedX": {
+      "ui": {
+        "label": "speed x"
+      }
+    },
+    "speedY": {
+      "ui": {
+        "label": "speed y"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# scroll\n\nScrolling offset animation\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| x | float | 0 | -10-10 | Horizontal offset |\n| y | float | 0 | -10-10 | Vertical offset |\n| speedX | float | 1 | -10-10 | - |\n| speedY | float | 1 | -10-10 | - |\n| wrap | int | repeat | mirror/repeat/clamp | Wrap |\n"
+}

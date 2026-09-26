@@ -1,0 +1,42 @@
+{
+  "name": "Alpha Mask",
+  "namespace": "mixer",
+  "func": "alphaMask",
+  "description": "Alpha transparency blend",
+  "tags": [
+    "blend"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "baseTex": {
+      "ui": {
+        "label": "mask background",
+        "enabledBy": {
+          "param": "maskMode",
+          "eq": true
+        }
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider",
+        "enabledBy": {
+          "param": "maskMode",
+          "eq": false
+        }
+      }
+    },
+    "maskMode": {
+      "ui": {
+        "label": "grayscale mask",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# alphaMask\n\nAlpha transparency blend\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source B |\n| baseTex | surface | none | - | Background for grayscale masking; transparent by default. The mask interpolates premultiplied RGBA between this background and the input. |\n| mix | float | 0 | -100-100 | Mix |\n| maskMode | boolean | false | - | Use the mask's grayscale luminance instead of its alpha |\n"
+}

@@ -1,0 +1,65 @@
+{
+  "name": "Physical",
+  "namespace": "points",
+  "func": "physical",
+  "description": "Physics-based particle simulation with wind and gravity forces",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "stateSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "gravity": {
+      "step": 0.01,
+      "ui": {
+        "label": "gravity",
+        "control": "slider",
+        "category": "physics"
+      }
+    },
+    "wind": {
+      "step": 0.01,
+      "ui": {
+        "label": "wind",
+        "control": "slider",
+        "category": "physics"
+      }
+    },
+    "energy": {
+      "step": 0.01,
+      "ui": {
+        "label": "energy",
+        "control": "slider",
+        "category": "physics"
+      }
+    },
+    "drag": {
+      "step": 0.005,
+      "ui": {
+        "label": "drag",
+        "control": "slider",
+        "category": "physics"
+      }
+    },
+    "deviation": {
+      "step": 0.01,
+      "ui": {
+        "label": "deviation",
+        "control": "slider",
+        "category": "physics"
+      }
+    },
+    "wander": {
+      "step": 0.01,
+      "ui": {
+        "label": "wander",
+        "control": "slider",
+        "category": "physics"
+      }
+    }
+  },
+  "help": "# physical\n\nPhysics-based particle simulation with wind and gravity forces\n\n## Description\n\nParticles fall under gravity, get pushed by wind, and experience drag and random wandering. Use negative gravity for rising particles (like smoke or bubbles).\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| gravity | float | 0.05 | -2-2 | Gravity |\n| wind | float | 0 | -2-2 | Wind |\n| energy | float | 0.5 | 0-2 | Energy |\n| drag | float | 0.15 | 0-0.2 | Drag |\n| deviation | float | 0.75 | 0-1 | Deviation |\n| wander | float | 0.25 | 0-1 | Wander |\n"
+}

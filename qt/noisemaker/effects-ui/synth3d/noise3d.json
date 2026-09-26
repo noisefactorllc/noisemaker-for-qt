@@ -1,0 +1,50 @@
+{
+  "name": "Noise3D",
+  "namespace": "synth3d",
+  "func": "noise3d",
+  "description": "3D simplex noise volume",
+  "tags": [
+    "3d",
+    "noise"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "scale"
+      }
+    },
+    "octaves": {
+      "ui": {
+        "label": "octaves"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    },
+    "ridges": {
+      "ui": {
+        "label": "ridges"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed"
+      }
+    }
+  },
+  "help": "# noise3d\n\n3D simplex noise volume\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x64 | x16/x32/x64/x128 | Volume size |\n| scale | float | 3 | 0-100 | - |\n| octaves | int | 1 | 1-6 | - |\n| colorMode | int | mono | mono/rgb | Color mode |\n| ridges | boolean | false | - | - |\n| seed | int | 0 | 0-100 | - |\n| speed | int | 1 | 0-5 | - |\n"
+}

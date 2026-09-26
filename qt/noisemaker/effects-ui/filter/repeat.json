@@ -1,0 +1,39 @@
+{
+  "name": "Repeat",
+  "namespace": "filter",
+  "func": "repeat",
+  "description": "Tiling repeat",
+  "tags": [
+    "tiling",
+    "transform"
+  ],
+  "params": {
+    "x": {
+      "ui": {
+        "label": "repeat x"
+      }
+    },
+    "y": {
+      "ui": {
+        "label": "repeat y"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset x"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset y"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# repeat\n\nTiling repeat\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| x | float | 3 | 1-20 | Horizontal tiles |\n| y | float | 3 | 1-20 | Vertical tiles |\n| offsetX | float | 0 | -1-1 | Horizontal offset |\n| offsetY | float | 0 | -1-1 | Vertical offset |\n| wrap | int | repeat | mirror/repeat/clamp | Wrap |\n"
+}

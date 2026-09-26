@@ -1,0 +1,35 @@
+{
+  "name": "Attractor",
+  "namespace": "points",
+  "func": "attractor",
+  "description": "Strange attractors: chaotic dynamic systems visualization",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "stateSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "attractor": {
+      "ui": {
+        "label": "attractor",
+        "control": "dropdown"
+      }
+    },
+    "speed": {
+      "step": 0.01,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "viewMode": {
+      "ui": {
+        "control": false
+      }
+    }
+  },
+  "help": "# attractor\n\nStrange attractors: chaotic dynamic systems visualization\n\n## Description\n\nParticles follow trajectories in 3D attractor space, creating complex orbital patterns. Best viewed with 3D orthographic projection (`viewMode: ortho`) in pointsRender.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| attractor | int | lorenz | lorenz/rossler/aizawa/thomas/halvorsen/chen/dadras | Attractor |\n| speed | float | 1 | 0.01-2 | Speed |\n| viewMode | int | 1 | - | - |\n"
+}

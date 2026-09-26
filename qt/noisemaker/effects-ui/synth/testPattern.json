@@ -1,0 +1,33 @@
+{
+  "name": "Test Pattern",
+  "namespace": "synth",
+  "func": "testPattern",
+  "description": "Test patterns for debugging and calibration",
+  "tags": [
+    "util"
+  ],
+  "params": {
+    "pattern": {
+      "ui": {
+        "label": "pattern",
+        "control": "dropdown"
+      }
+    },
+    "gridSize": {
+      "ui": {
+        "label": "grid size",
+        "control": "slider",
+        "enabledBy": {
+          "param": "pattern",
+          "in": [
+            0,
+            4,
+            5,
+            6
+          ]
+        }
+      }
+    }
+  },
+  "help": "# testPattern\n\nConfigurable test patterns for debugging and calibration\n\n## Description\n\nGenerates various test patterns useful for debugging coordinate systems, verifying color output, and calibrating displays.\n\n## Patterns\n\n| Pattern | Description |\n|---------|-------------|\n| checkerboard | NxN numbered checkerboard for identifying axis flips |\n| colorBars | 8 vertical SMPTE-style color bars |\n| gradient | Horizontal black-to-white gradient ramp |\n| uvMap | UV coordinate visualization (R=u, G=v, B=0) |\n| gridLines | Thin anti-aliased white lines at grid cell boundaries |\n| colorGrid | Each cell colored with a unique hue (golden-ratio distributed) |\n| dotGrid | White filled circles at grid intersection points |\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| pattern | int | 0 | 0-6 | Pattern selection (see table above) |\n| gridSize | int | 4 | 1-16 | Grid size (used by checkerboard, gridLines, colorGrid, dotGrid) |\n"
+}

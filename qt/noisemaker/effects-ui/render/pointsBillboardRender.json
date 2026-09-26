@@ -1,0 +1,210 @@
+{
+  "name": "Points Billboard Render",
+  "namespace": "render",
+  "func": "pointsBillboardRender",
+  "description": "Render particles as billboard sprites",
+  "tags": [
+    "agents"
+  ],
+  "params": {
+    "shapeMode": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown",
+        "category": "source"
+      }
+    },
+    "tex": {
+      "ui": {
+        "label": "sprite",
+        "category": "source",
+        "enabledBy": {
+          "param": "shapeMode",
+          "eq": 0
+        }
+      }
+    },
+    "blendMode": {
+      "ui": {
+        "label": "blend",
+        "control": "dropdown",
+        "category": "visual"
+      }
+    },
+    "depositOpacity": {
+      "ui": {
+        "label": "opacity",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "pointSize": {
+      "ui": {
+        "label": "point size",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "sizeVariation": {
+      "ui": {
+        "label": "size variation",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "rotationVar": {
+      "ui": {
+        "label": "rot variation",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "density": {
+      "ui": {
+        "label": "density",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "trail intensity",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "inputIntensity": {
+      "ui": {
+        "label": "input mix",
+        "control": "slider",
+        "category": "visual"
+      }
+    },
+    "viewMode": {
+      "ui": {
+        "label": "view",
+        "control": "dropdown",
+        "category": "view"
+      }
+    },
+    "rotateX": {
+      "step": 0.01,
+      "ui": {
+        "label": "rotate x",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "rotateY": {
+      "step": 0.01,
+      "ui": {
+        "label": "rotate y",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "rotateZ": {
+      "step": 0.01,
+      "ui": {
+        "label": "rotate z",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "viewScale": {
+      "step": 0.01,
+      "ui": {
+        "label": "zoom",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "posX": {
+      "step": 0.1,
+      "ui": {
+        "label": "pos x",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "posY": {
+      "step": 0.1,
+      "ui": {
+        "label": "pos y",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "posZ": {
+      "step": 0.1,
+      "ui": {
+        "label": "pos z",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": "viewMode"
+      }
+    },
+    "fieldOfView": {
+      "step": 1,
+      "ui": {
+        "label": "field of view",
+        "control": "slider",
+        "category": "view",
+        "enabledBy": {
+          "param": "viewMode",
+          "eq": 2
+        }
+      }
+    },
+    "sizeDistance": {
+      "step": 1,
+      "ui": {
+        "label": "size fade distance",
+        "control": "slider",
+        "category": "distance",
+        "enabledBy": "viewMode"
+      }
+    },
+    "brightnessDistance": {
+      "step": 1,
+      "ui": {
+        "label": "brightness fade distance",
+        "control": "slider",
+        "category": "distance",
+        "enabledBy": "viewMode"
+      }
+    },
+    "aperture": {
+      "step": 0.1,
+      "ui": {
+        "label": "aperture",
+        "control": "slider",
+        "category": "focus",
+        "enabledBy": "viewMode"
+      }
+    },
+    "focalDistance": {
+      "step": 1,
+      "ui": {
+        "label": "focal dist",
+        "control": "slider",
+        "category": "focus",
+        "enabledBy": "viewMode"
+      }
+    }
+  },
+  "help": "# pointsBillboardRender\n\nRender agent particles as billboard sprites with built-in shapes or texture sampling\n\n## Description\n\nEach particle is rendered as a quad with a procedural SDF shape or external texture. Shapes include circle, ring, square, diamond, triangle, star, and a soft gaussian glow. Particles can be sized, rotated, and varied per-particle using deterministic noise.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shapeMode | int | circle | texture/circle/ring/square/diamond/triangle/star/soft | Particle shape |\n| tex | surface | none | - | Sprite texture (only used when shape is \"texture\") |\n| blendMode | int | additive | additive/alpha | Blend mode |\n| depositOpacity | float | 20 | 1-100 | Deposit opacity — scales particle contribution to reduce additive blowout |\n| pointSize | float | 8 | 1-64 | Point size |\n| sizeVariation | float | 0 | 0-100 | Size variation |\n| rotationVar | float | 0 | 0-100 | Rotation variation |\n| seed | int | 42 | 0-1000 | Seed |\n| density | float | 50 | 0-100 | Density |\n| intensity | float | 75 | 0-100 | Trail intensity |\n| inputIntensity | float | 10.15 | 0-100 | Input mix |\n| viewMode | int | flat | flat/ortho/perspective | View |\n| rotateX | float | 0.3 | 0-6.283185 | Rotate X |\n| rotateY | float | 0 | 0-6.283185 | Rotate Y |\n| rotateZ | float | 0 | 0-6.283185 | Rotate Z |\n| viewScale | float | 0.8 | 0.1-10 | Zoom |\n| posX | float | 0 | -50-50 | Pos X |\n| posY | float | 0 | -50-50 | Pos Y |\n| posZ | float | 0 | -200-200 | Move the landscape toward or away from the camera; positive values move it closer |\n| fieldOfView | float | 60 | 10-150 | Vertical perspective field of view in degrees |\n| sizeDistance | float | 0 | 0-500 | Distance at which particle size reaches zero; 0 disables the fade |\n| brightnessDistance | float | 0 | 0-500 | Distance at which brightness and alpha reach zero; 0 disables the fade |\n| aperture | float | 0 | 0-20 | Defocus strength in pixels; 0 keeps particles sharp |\n| focalDistance | float | 80 | 1-500 | Distance along the camera axis where particles stay sharp |\n\nPerspective mode uses world coordinates, with the camera at Z=80 looking down the negative Z axis. Rotations apply first; X, Y, and Z offsets then move the scene in camera space. Use `heightGrid()` after `pointsEmit()` to create an XZ landscape with Y elevation. The distance fades use distance from the camera; focus uses depth along its viewing axis. Set trail intensity to 0 for clean camera movement. Flat mode ignores distance controls. Orthographic mode keeps its existing coordinate interpretation.\n"
+}

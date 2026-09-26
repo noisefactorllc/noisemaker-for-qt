@@ -1,0 +1,78 @@
+{
+  "name": "Glitch",
+  "namespace": "classicNoisedeck",
+  "func": "glitch",
+  "description": "Digital glitch effects",
+  "tags": [
+    "distort",
+    "glitch"
+  ],
+  "params": {
+    "glitchiness": {
+      "ui": {
+        "label": "glitchiness",
+        "control": "slider"
+      }
+    },
+    "aberration": {
+      "ui": {
+        "label": "aberration",
+        "control": "slider"
+      }
+    },
+    "xChonk": {
+      "ui": {
+        "label": "width",
+        "control": "slider"
+      }
+    },
+    "yChonk": {
+      "ui": {
+        "label": "height",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "scanlinesAmt": {
+      "ui": {
+        "label": "scanlines",
+        "control": "slider",
+        "category": "effects"
+      }
+    },
+    "snowAmt": {
+      "ui": {
+        "label": "snow",
+        "control": "slider",
+        "category": "effects"
+      }
+    },
+    "vignetteAmt": {
+      "ui": {
+        "label": "vignette",
+        "control": "slider",
+        "category": "effects"
+      }
+    },
+    "distortion": {
+      "ui": {
+        "label": "lens",
+        "control": "slider",
+        "category": "distortion"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox",
+        "category": "distortion"
+      }
+    }
+  },
+  "help": "# glitch\n\nDigital glitch effects\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| glitchiness | float | 0 | 0-100 | Glitchiness |\n| aberration | float | 0 | 0-100 | Aberration |\n| xChonk | int | 1 | 1-100 | Width |\n| yChonk | int | 1 | 1-100 | Height |\n| seed | int | 1 | 1-100 | Seed |\n| scanlinesAmt | int | 0 | 0-100 | Scanlines |\n| snowAmt | float | 0 | 0-100 | Snow |\n| vignetteAmt | float | 0 | -100-100 | Vignette |\n| distortion | float | 0 | -100-100 | Lens |\n| aspectLens | boolean | false | - | 1:1 aspect |\n"
+}

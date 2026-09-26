@@ -1,0 +1,60 @@
+{
+  "name": "Gabor",
+  "namespace": "synth",
+  "func": "gabor",
+  "description": "Anisotropic bandlimited noise via sparse Gabor convolution",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "scale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "orientation": {
+      "ui": {
+        "label": "orientation",
+        "control": "slider"
+      }
+    },
+    "bandwidth": {
+      "ui": {
+        "label": "bandwidth",
+        "control": "slider"
+      }
+    },
+    "isotropy": {
+      "ui": {
+        "label": "isotropy",
+        "control": "slider"
+      }
+    },
+    "density": {
+      "ui": {
+        "label": "density",
+        "control": "slider"
+      }
+    },
+    "octaves": {
+      "ui": {
+        "label": "octaves",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# gabor\n\nAnisotropic bandlimited noise via sparse Gabor convolution\n\n## Description\n\nGenerates procedural noise by scattering Gabor kernels (windowed cosines) across a grid. Unlike isotropic noise generators, Gabor noise supports directional control, making it suitable for wood grain, fabric, flowing water, brushed metal, and other oriented textures.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| scale | float | 75 | 1-100 | Spatial frequency of the noise |\n| orientation | float | 0 | -180-180 | Dominant grain direction in degrees |\n| bandwidth | float | 75 | 1-100 | Kernel width — lower values give sharper, more defined patterns |\n| isotropy | float | 0 | 0-100 | 0 = fully directional, 100 = random orientations per kernel |\n| density | int | 3 | 1-8 | Number of impulse points per grid cell |\n| octaves | int | 1 | 1-5 | Fractal layering — each octave adds finer detail |\n| speed | int | 1 | 0-5 | Animation rate (0 = frozen) |\n| seed | int | 1 | 1-100 | Randomization seed |\n\n## Notes\n\n- **Orientation** is the key differentiator from other noise types — it controls the dominant direction of the pattern\n- **Isotropy** at 0 gives strongly directional patterns; at 100 each kernel picks a random angle, producing noise closer to standard isotropic noise\n- **Density** increases the number of kernels per cell — higher values give smoother, more filled results but cost more to compute\n- **Octaves** layer noise at increasing frequencies, adding fine detail on top of coarser structure\n"
+}

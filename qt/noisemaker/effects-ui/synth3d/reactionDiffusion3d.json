@@ -1,0 +1,96 @@
+{
+  "name": "Reaction-Diffusion 3D",
+  "namespace": "synth3d",
+  "func": "reactionDiffusion3d",
+  "description": "3D reaction-diffusion simulation",
+  "tags": [
+    "3d",
+    "sim"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "seed": {
+      "ui": {
+        "control": false
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider"
+      }
+    },
+    "feed": {
+      "ui": {
+        "label": "feed rate",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "kill": {
+      "ui": {
+        "label": "kill rate",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "rate1": {
+      "ui": {
+        "label": "diffuse rate a",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "rate2": {
+      "ui": {
+        "label": "diffuse rate b",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "sim speed",
+        "control": "slider"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "label": "reset",
+        "control": "button",
+        "buttonLabel": "reset"
+      }
+    },
+    "source": {
+      "ui": {
+        "label": "source vol",
+        "category": "input"
+      }
+    },
+    "geoSource": {
+      "ui": {
+        "label": "source geo",
+        "category": "input"
+      }
+    },
+    "weight": {
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "input"
+      }
+    }
+  },
+  "help": "# reactionDiffusion3d\n\n3D reaction-diffusion simulation\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x32 | x16/x32/x64/x128 | Volume size |\n| seed | int | 1 | 0-100 | - |\n| iterations | int | 8 | 1-32 | Iterations |\n| feed | float | 110 | 10-110 | Feed rate |\n| kill | float | 62 | 45-70 | Kill rate |\n| rate1 | float | 120 | 50-120 | Diffuse rate A |\n| rate2 | float | 30 | 20-80 | Diffuse rate B |\n| speed | int | 100 | 10-200 | Sim speed |\n| colorMode | int | mono | mono/gradient | Color mode |\n| resetState | boolean | false | - | State |\n| source | volume | vol0 | - | Source volume |\n| geoSource | geometry | geo0 | - | Source geometry |\n| weight | float | 0 | 0-100 | Input weight |\n\n## Notes\n\nAdjust feed and kill rates to achieve different pattern types. Common ranges:\n- Spots: feed ~55, kill ~62\n- Stripes: feed ~42, kill ~63\n- Coral: feed ~62, kill ~61\n"
+}

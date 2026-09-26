@@ -1,0 +1,104 @@
+{
+  "name": "Lighting",
+  "namespace": "filter",
+  "func": "lighting",
+  "description": "Applies 3D lighting effects",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "normalStrength": {
+      "step": 0.01,
+      "ui": {
+        "label": "depth",
+        "control": "slider",
+        "category": "general"
+      }
+    },
+    "smoothing": {
+      "step": 0.1,
+      "ui": {
+        "label": "smoothing",
+        "control": "slider",
+        "category": "general"
+      }
+    },
+    "diffuseColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "diffuse"
+      }
+    },
+    "specularColor": {
+      "ui": {
+        "label": "color",
+        "control": "color",
+        "category": "specular"
+      }
+    },
+    "specularIntensity": {
+      "step": 0.01,
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "specular"
+      }
+    },
+    "shininess": {
+      "step": 1,
+      "ui": {
+        "label": "shininess",
+        "control": "slider",
+        "category": "specular"
+      }
+    },
+    "ambientColor": {
+      "ui": {
+        "label": "ambient",
+        "control": "color"
+      }
+    },
+    "lightDirection": {
+      "ui": {
+        "label": "direction",
+        "control": "vector3",
+        "category": "diffuse"
+      }
+    },
+    "reflection": {
+      "step": 0.1,
+      "ui": {
+        "label": "reflection",
+        "control": "slider",
+        "category": "reflection"
+      }
+    },
+    "refraction": {
+      "step": 0.1,
+      "ui": {
+        "label": "refraction",
+        "control": "slider"
+      }
+    },
+    "aberration": {
+      "step": 0.1,
+      "ui": {
+        "label": "aberration",
+        "control": "slider",
+        "category": "reflection",
+        "enabledBy": {
+          "param": "reflection",
+          "gt": 0
+        }
+      }
+    },
+    "heightMap": {
+      "ui": {
+        "label": "height map",
+        "category": "general"
+      }
+    }
+  },
+  "help": "# lighting\n\nApplies 3D lighting effects\n\n## Description\n\nUses a three-step process:\n1. **Normal Calculation**: Uses Sobel convolution on the input texture's luminosity to extract gradients, which are converted into 3D surface normals\n2. **Lighting Model**: Applies Blinn-Phong lighting with diffuse, specular, and ambient components\n3. **Output**: The lit result is combined with the original texture colors\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| normalStrength | float | 1.5 | 0-5 | Depth |\n| smoothing | float | 1 | 1-10 | Smoothing |\n| diffuseColor | color | 1,1,1 | - | Color |\n| specularColor | color | 1,1,1 | - | Color |\n| specularIntensity | float | 0.5 | 0-2 | Intensity |\n| shininess | float | 64 | 8-256 | Shininess |\n| ambientColor | color | 0.2,0.2,0.2 | - | Ambient |\n| lightDirection | vec3 | 0.5,0.5,1 | - | Direction |\n| reflection | float | 0 | 0-100 | Reflection |\n| refraction | float | 0 | 0-100 | Refraction |\n| aberration | float | 0 | 0-100 | Aberration |\n| heightMap | surface | inputTex | - | Surface sampled for height, defaulting to the input |\n\n## Notes\n\n- Increase **normalStrength** to make surface features more pronounced\n- Adjust **lightDirection** to change where highlights appear\n- Higher **shininess** creates tighter, shinier specular highlights\n- Use **reflection** and **refraction** for glass/water-like effects\n- **aberration** adds RGB channel splitting for dispersion effects\n"
+}

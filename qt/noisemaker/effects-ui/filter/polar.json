@@ -1,0 +1,49 @@
+{
+  "name": "Polar",
+  "namespace": "filter",
+  "func": "polar",
+  "description": "Polar and vortex coordinate transforms",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "step": 0.1,
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rot speed",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "polar speed",
+        "control": "slider"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# polar\n\nPolar and vortex coordinate transforms\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | polar | polar/vortex | Transform mode |\n| scale | float | 0 | -2–2 | Scale offset |\n| rotation | int | 0 | -2–2 | Rotation speed |\n| speed | int | 0 | -2–2 | Radial animation speed |\n| aspectLens | boolean | true | on/off | Correct for aspect ratio so transform is circular |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n"
+}

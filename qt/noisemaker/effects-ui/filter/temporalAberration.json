@@ -1,0 +1,34 @@
+{
+  "name": "Temporal Chromatic Aberration",
+  "namespace": "filter",
+  "func": "temporalAberration",
+  "description": "Chromatic aberration via per-channel temporal frame delay",
+  "tags": [
+    "color",
+    "lens"
+  ],
+  "params": {
+    "redDelay": {
+      "step": 0.1,
+      "ui": {
+        "label": "red delay",
+        "control": "slider"
+      }
+    },
+    "greenDelay": {
+      "step": 0.1,
+      "ui": {
+        "label": "green delay",
+        "control": "slider"
+      }
+    },
+    "blueDelay": {
+      "step": 0.1,
+      "ui": {
+        "label": "blue delay",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# temporalAberration\n\nChromatic aberration via per-channel temporal frame delay\n\n## Description\n\nSeparates red, green, and blue in *time* instead of space: each output\nchannel is sampled from a different past frame, so moving content leaves\ncolor trails that lag behind or lead ahead. This is the temporal counterpart\nto the spatial aberration filters (simpleAberration, chromaticAberration).\n\nInternally the filter keeps an eight-frame history of its input. Each delay\ncontrol picks a frame age from 0 (live) to 8; fractional values interpolate\nbetween the two adjacent stored frames.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| redDelay | float | 0 | 0-8 | Red channel delay, in frames |\n| greenDelay | float | 4 | 0-8 | Green channel delay, in frames |\n| blueDelay | float | 8 | 0-8 | Blue channel delay, in frames |\n\n## Notes\n\n- Static content is unaffected — with no motion, every past frame matches the live one\n- History slots that have not been written yet fall back to the live frame, so the effect ramps in cleanly over the first frames instead of flashing black\n- Output alpha comes from the live frame\n"
+}

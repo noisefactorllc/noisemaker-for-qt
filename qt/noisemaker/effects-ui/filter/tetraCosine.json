@@ -1,0 +1,141 @@
+{
+  "name": "TetraCosine",
+  "namespace": "filter",
+  "func": "tetraCosine",
+  "description": "Apply Tetra cosine palettes based on luminance",
+  "tags": [
+    "color",
+    "palette"
+  ],
+  "params": {
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    },
+    "offsetR": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset r",
+        "control": "slider",
+        "category": "offset"
+      }
+    },
+    "offsetG": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset g",
+        "control": "slider",
+        "category": "offset"
+      }
+    },
+    "offsetB": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset b",
+        "control": "slider",
+        "category": "offset"
+      }
+    },
+    "ampR": {
+      "step": 0.01,
+      "ui": {
+        "label": "amp r",
+        "control": "slider",
+        "category": "amplitude"
+      }
+    },
+    "ampG": {
+      "step": 0.01,
+      "ui": {
+        "label": "amp g",
+        "control": "slider",
+        "category": "amplitude"
+      }
+    },
+    "ampB": {
+      "step": 0.01,
+      "ui": {
+        "label": "amp b",
+        "control": "slider",
+        "category": "amplitude"
+      }
+    },
+    "freqR": {
+      "ui": {
+        "label": "freq r",
+        "control": "slider",
+        "category": "frequency"
+      }
+    },
+    "freqG": {
+      "ui": {
+        "label": "freq g",
+        "control": "slider",
+        "category": "frequency"
+      }
+    },
+    "freqB": {
+      "ui": {
+        "label": "freq b",
+        "control": "slider",
+        "category": "frequency"
+      }
+    },
+    "phaseR": {
+      "step": 0.01,
+      "ui": {
+        "label": "phase r",
+        "control": "slider",
+        "category": "phase"
+      }
+    },
+    "phaseG": {
+      "step": 0.01,
+      "ui": {
+        "label": "phase g",
+        "control": "slider",
+        "category": "phase"
+      }
+    },
+    "phaseB": {
+      "step": 0.01,
+      "ui": {
+        "label": "phase b",
+        "control": "slider",
+        "category": "phase"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "dropdown"
+      }
+    },
+    "repeat": {
+      "step": 0.01,
+      "ui": {
+        "label": "repeat",
+        "control": "slider",
+        "category": "mapping"
+      }
+    },
+    "offset": {
+      "step": 0.01,
+      "ui": {
+        "label": "offset",
+        "control": "slider",
+        "category": "mapping"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# tetraCosine\n\nApply Tetra cosine gradient palettes to images based on luminance.\n\n## Overview\n\nThe `tetraCosine` effect uses the Inigo Quilez cosine gradient formula to map input luminance to colors:\n\n```\ncolor(t) = offset + amplitude × cos(2π × (frequency × t + phase))\n```\n\nWhere `t` is the input pixel's luminance (0-1).\n\nThis effect is fully compatible with Tetra's cosine palette format and can load saved Tetra palettes.\n\n## Parameters\n\n### Color Mode\n- **Color Mode**: Choose the color space for the gradient calculation\n  - RGB (default): Standard RGB color space\n  - HSV: Hue-Saturation-Value for intuitive hue cycling\n  - OkLab: Perceptually uniform color space\n  - OKLCH: Cylindrical perceptual space with explicit hue control\n\n### Offset (Center/Bias)\n- **Offset R/G/B**: The center point for each channel (0-1)\n  - Controls the \"midpoint\" color of the gradient\n  - Default: 0.5, 0.5, 0.5 (gray center)\n\n### Amplitude\n- **Amp R/G/B**: The amplitude of color variation for each channel (0-1)\n  - Controls how far the gradient swings from the offset\n  - Default: 0.5, 0.5, 0.5 (full range)\n\n### Frequency\n- **Freq R/G/B**: How many cycles per gradient length (0-4)\n  - Higher values create more repetitions\n  - Default: 1.0, 1.0, 1.0 (one cycle)\n\n### Phase\n- **Phase R/G/B**: Phase offset for each channel (0-1)\n  - Controls where in the cosine cycle each channel starts\n  - Default: 0.0, 0.33, 0.67 (rainbow)\n\n### Rotation\n- **Rotation**: Animate the palette mapping over time\n  - None: No animation\n  - Fwd: Palette cycles forward\n  - Back: Palette cycles backward\n\n### Mapping\n- **Repeat**: Multiplier for the luminance value (1-10)\n  - Higher values create more repetitions across the luminance range\n- **Offset**: Offset added to the luminance value (0-1)\n  - Shifts the entire gradient mapping\n\n### Output\n- **Alpha**: Blend amount with original image (0-1)\n  - 0 = original image, 1 = full effect\n\n## Classic Presets\n\n### Rainbow (Default)\n```\noffset: [0.5, 0.5, 0.5]\namp: [0.5, 0.5, 0.5]\nfreq: [1.0, 1.0, 1.0]\nphase: [0.0, 0.33, 0.67]\n```\n\n### Fire\n```\noffset: [0.5, 0.5, 0.0]\namp: [0.5, 0.5, 0.0]\nfreq: [1.0, 1.0, 0.0]\nphase: [0.0, 0.15, 0.0]\n```\n\n### Ocean\n```\noffset: [0.5, 0.5, 0.5]\namp: [0.5, 0.5, 0.5]\nfreq: [1.0, 1.0, 1.0]\nphase: [0.0, 0.1, 0.2]\n```\n\n## Tetra Config Compatibility\n\nThis effect uses the same parameter format as Tetra's cosine palettes. To use a Tetra palette:\n\n1. Export a palette from Tetra as JSON\n2. The `params` object contains `offset`, `amp`, `freq`, `phase` arrays\n3. Set each slider to match the corresponding values\n\nExample Tetra palette JSON:\n```json\n{\n  \"name\": \"My Palette\",\n  \"type\": \"cosine\",\n  \"colorMode\": \"rgb\",\n  \"params\": {\n    \"offset\": [0.5, 0.5, 0.5],\n    \"amp\": [0.5, 0.5, 0.5],\n    \"freq\": [1.0, 1.0, 1.0],\n    \"phase\": [0.0, 0.33, 0.67]\n  }\n}\n```\n\n## DSL Usage\n\n```javascript\n// Basic rainbow gradient\nnoise().tetraCosine()\n\n// Fire gradient\nnoise().tetraCosine({\n  offsetR: 0.5, offsetG: 0.5, offsetB: 0.0,\n  ampR: 0.5, ampG: 0.5, ampB: 0.0,\n  freqR: 1.0, freqG: 1.0, freqB: 0.0,\n  phaseR: 0.0, phaseG: 0.15, phaseB: 0.0\n})\n\n// HSV color mode with hue cycling\nnoise().tetraCosine({\n  colorMode: 1,  // HSV\n  offsetR: 0.5, offsetG: 0.85, offsetB: 0.85,\n  ampR: 0.5, ampG: 0.1, ampB: 0.1,\n  freqR: 1.0, freqG: 0.5, freqB: 0.5,\n  phaseR: 0.0, phaseG: 0.0, phaseB: 0.0\n})\n```\n\n## References\n\n- [Inigo Quilez - Palettes](https://iquilezles.org/articles/palettes/)\n- [Tetra Palette Editor](https://tetra.noisedeck.app)\n"
+}

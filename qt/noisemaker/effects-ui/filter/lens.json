@@ -1,0 +1,32 @@
+{
+  "name": "Lens",
+  "namespace": "filter",
+  "func": "lens",
+  "description": "Barrel or pincushion lens distortion",
+  "tags": [
+    "distort",
+    "lens"
+  ],
+  "params": {
+    "displacement": {
+      "step": 0.01,
+      "ui": {
+        "label": "displacement",
+        "control": "slider"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# lens\n\nBarrel or pincushion lens distortion — warps the image radially around the frame center\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| displacement | float | 0 | -1–1 | Distortion amount: positive = barrel, negative = pincushion |\n| aspectLens | boolean | true | on/off | Correct for aspect ratio so distortion is circular |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n"
+}

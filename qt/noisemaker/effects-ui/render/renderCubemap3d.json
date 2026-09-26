@@ -1,0 +1,49 @@
+{
+  "name": "RenderCubemap3D",
+  "namespace": "render",
+  "func": "renderCubemap3d",
+  "description": "Render a 3D volume into cubemap faces (lit isosurface/voxel)",
+  "tags": [
+    "3d"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "control": false
+      }
+    },
+    "filtering": {
+      "ui": {
+        "label": "filtering",
+        "control": "dropdown"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold"
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert thresh"
+      }
+    },
+    "cubeBasis": {
+      "ui": {
+        "control": false
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "bg opacity"
+      }
+    }
+  },
+  "help": "# RenderCubemap3D\n\nRenders a 3D volume into seamless cubemap faces as a lit \"blob in space\" — a\nmulti-face clone of `render3d`. The camera sits at the volume center and looks\nout through a 90-degree frustum per face (`cubeBasis`), so adjacent faces share\nedge directions and tile without seams. Keeps render3d's lighting and gamma.\n\nFor the raw, true-color sample with no lighting or gamma, use `renderCubemapSurface`.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | v64 | v16/v32/v64/v128 | Voxel grid resolution, inherited from the upstream volume effect (no UI control) |\n| filtering | int | isosurface | isosurface/voxel | Render the volume as a smooth isosurface or blocky voxels |\n| threshold | float | 0.5 | 0-1 | Surface threshold |\n| invert | boolean | false | - | Invert the inside/outside test |\n| cubeBasis | mat3 | identity | - | Cube face orientation basis (no UI control) |\n| bgColor | color | 0.02,0.02,0.02 | - | Background color |\n| bgAlpha | float | 1 | 0-1 | Background alpha |\n\n## Notes\n\n- **isosurface**: Smooth raymarching with trilinear interpolation and bisection refinement.\n- **voxel**: DDA voxel traversal with flat face shading.\n\nvolumeSize is inherited from the upstream 3D effect.\n"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Reindex",
+  "namespace": "filter",
+  "func": "reindex",
+  "description": "Palette reindexing",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "displacement": {
+      "step": 0.01,
+      "ui": {
+        "label": "displacement",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# reindex\n\nPalette reindexing\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| displacement | float | 0.5 | 0-2 | Displacement |\n"
+}

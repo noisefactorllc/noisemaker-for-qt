@@ -1,0 +1,111 @@
+{
+  "name": "Kaleido",
+  "namespace": "classicNoisedeck",
+  "func": "kaleido",
+  "description": "Kaleidoscope effect",
+  "tags": [
+    "geometric",
+    "transform"
+  ],
+  "params": {
+    "sides": {
+      "ui": {
+        "label": "sides",
+        "control": "slider"
+      }
+    },
+    "metric": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    },
+    "loopOffset": {
+      "ui": {
+        "label": "loop offset",
+        "control": "dropdown",
+        "category": "animation"
+      }
+    },
+    "loopScale": {
+      "ui": {
+        "label": "loop scale",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider",
+        "category": "animation",
+        "enabledBy": {
+          "param": "loopOffset",
+          "in": [
+            300,
+            310,
+            320,
+            330,
+            340,
+            350,
+            360,
+            370,
+            380
+          ]
+        }
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "checkbox",
+        "category": "animation",
+        "enabledBy": {
+          "param": "loopOffset",
+          "in": [
+            300,
+            310,
+            320,
+            330,
+            340,
+            350,
+            360
+          ]
+        }
+      }
+    },
+    "direction": {
+      "ui": {
+        "label": "rotate",
+        "control": "dropdown",
+        "category": "animation"
+      }
+    },
+    "kernel": {
+      "ui": {
+        "label": "effect",
+        "control": "dropdown",
+        "category": "effect"
+      }
+    },
+    "effectWidth": {
+      "ui": {
+        "label": "effect width",
+        "control": "slider",
+        "category": "effect",
+        "enabledBy": {
+          "param": "kernel",
+          "neq": 0
+        }
+      }
+    }
+  },
+  "help": "# kaleido\n\nKaleidoscope effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| sides | int | 8 | 2-32 | Sides |\n| metric | int | circle | circle/diamond/hexagon/octagon/square/triangle | Shape |\n| loopOffset | int | circle | Shapes:/circle/triangle/diamond/square/pentagon/hexagon/heptagon/octagon/nonagon/decagon/hendecagon/dodecagon/Directional:/horizontalScan/verticalScan/Noise:/noiseConstant/noiseLinear/noiseHermite/noiseCatmullRom3x3/noiseCatmullRom4x4/noiseBSpline3x3/noiseBSpline4x4/noiseSimplex/noiseSine/Misc:/rings/sine | Loop offset |\n| loopScale | float | 1 | 1-100 | Loop scale |\n| speed | float | 5 | -100-100 | Speed |\n| seed | int | 1 | 1-100 | Seed |\n| wrap | boolean | true | - | Wrap |\n| direction | int | none | clockwise/counterclock/none | Rotate |\n| kernel | int | none | none/blur/derivatives/derivDivide/edge/emboss/outline/pixels/posterize/shadow/sharpen/sobel | Effect |\n| effectWidth | float | 0 | 0-10 | Effect width |\n"
+}

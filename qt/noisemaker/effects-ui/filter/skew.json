@@ -1,0 +1,30 @@
+{
+  "name": "Skew",
+  "namespace": "filter",
+  "func": "skew",
+  "description": "Skew and rotate transform",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "skew": {
+      "ui": {
+        "label": "skew",
+        "control": "slider"
+      }
+    },
+    "rotate": {
+      "ui": {
+        "label": "rotate",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# skew\n\nSkew and rotate transform\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| skew | float | 0.25 | -1 to 1 | Horizontal shear |\n| rotate | float | 0 | -180 to 180 | Rotation in degrees |\n| wrap | int | mirror | clamp/mirror/repeat | Edge wrapping mode |\n"
+}

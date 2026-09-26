@@ -1,0 +1,134 @@
+{
+  "name": "Reaction-Diffusion",
+  "namespace": "synth",
+  "func": "reactionDiffusion",
+  "description": "Gray-Scott reaction-diffusion",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "texture",
+        "category": "input"
+      }
+    },
+    "zoom": {
+      "ui": {
+        "label": "zoom",
+        "control": "dropdown"
+      }
+    },
+    "smoothing": {
+      "ui": {
+        "label": "smoothing",
+        "control": "dropdown"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "state"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": false
+      }
+    },
+    "sourceF": {
+      "ui": {
+        "label": "feed source",
+        "control": "dropdown",
+        "category": "rules"
+      }
+    },
+    "feed": {
+      "ui": {
+        "label": "feed value",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "sourceK": {
+      "ui": {
+        "label": "kill source",
+        "control": "dropdown",
+        "category": "rules"
+      }
+    },
+    "kill": {
+      "ui": {
+        "label": "kill value",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "sourceR1": {
+      "ui": {
+        "label": "rate 1 source",
+        "control": "dropdown",
+        "category": "rules"
+      }
+    },
+    "rate1": {
+      "ui": {
+        "label": "rate 1 value",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "sourceR2": {
+      "ui": {
+        "label": "rate 2 source",
+        "control": "dropdown",
+        "category": "rules"
+      }
+    },
+    "rate2": {
+      "ui": {
+        "label": "rate 2 value",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "weight": {
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "input",
+        "enabledBy": {
+          "param": "tex",
+          "neq": "none"
+        }
+      }
+    },
+    "inputIntensity": {
+      "ui": {
+        "label": "input mix",
+        "control": "slider",
+        "category": "input",
+        "enabledBy": {
+          "param": "tex",
+          "neq": "none"
+        }
+      }
+    }
+  },
+  "help": "# reactionDiffusion\n\nGray-Scott reaction-diffusion\n\n## Description\n\nImplements the Gray-Scott model of reaction-diffusion, producing organic, self-organizing patterns. The simulation models two virtual chemicals that diffuse and react, creating spots, stripes, and complex patterns depending on the feed and kill rates.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Texture |\n| zoom | int | x8 | x1/x2/x4/x8/x16/x32/x64 | Zoom |\n| smoothing | int | linear | constant/linear/hermite/catmullRom3x3/catmullRom4x4/bSpline3x3/bSpline4x4 | Smoothing |\n| speed | float | 100 | 10-145 | Speed |\n| resetState | boolean | false | - | State |\n| seed | int | 1 | 1-100 | Random seed |\n| sourceF | int | slider | slider/sliderInput/brightness/darkness/red/green/blue | Feed source |\n| feed | float | 70 | 10-110 | Feed value |\n| sourceK | int | slider | slider/sliderInput/brightness/darkness/red/green/blue | Kill source |\n| kill | float | 67 | 45-70 | Kill value |\n| sourceR1 | int | slider | slider/sliderInput/brightness/darkness/red/green/blue | Rate 1 source |\n| rate1 | float | 92 | 50-120 | Rate 1 value |\n| sourceR2 | int | slider | slider/sliderInput/brightness/darkness/red/green/blue | Rate 2 source |\n| rate2 | float | 22 | 20-50 | Rate 2 value |\n| iterations | int | 8 | 1-32 | Iterations |\n| weight | float | 0 | 0-100 | Input weight |\n| inputIntensity | float | 0 | 0-100 | Input mix |\n"
+}

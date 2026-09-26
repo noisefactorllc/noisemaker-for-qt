@@ -1,0 +1,31 @@
+{
+  "name": "Spin Blur",
+  "namespace": "filter",
+  "func": "spinBlur",
+  "description": "Rotational blur around a center point (Radial Blur, Spin mode)",
+  "tags": [
+    "blur",
+    "artist"
+  ],
+  "params": {
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "centerX": {
+      "ui": {
+        "label": "center x",
+        "control": "slider"
+      }
+    },
+    "centerY": {
+      "ui": {
+        "label": "center y",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# spinBlur\n\nRotational blur around a center point (Radial Blur, Spin mode)\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 15 | 1-90 | Total arc span in degrees; taps are spread evenly across [-amount/2, +amount/2] around the center |\n| centerX | float | 0.5 | 0-1 | Horizontal center of rotation, in normalized image coordinates |\n| centerY | float | 0.5 | 0-1 | Vertical center of rotation, in normalized image coordinates |\n\n## Notes\n\n- Averages a fixed 32-tap comb; each tap resamples the input after rotating the pixel's offset from (centerX, centerY) by an angle evenly spaced across the `amount`-degree arc.\n- Blur strength grows with distance from the center (arc length = radius x angle), so the image stays sharp near the center and smears into curved streaks farther out - the signature look of Radial Blur in Spin mode.\n- Each pixel's tap comb is shifted by a random per-pixel offset (up to half an angular step) to hide banding from the fixed tap count.\n- Sampling clamps at the image edges (no wrap/mirror/repeat option).\n- Distinct from `filter/zoomBlur`, which covers Radial Blur Zoom mode (blur radiating outward from center) rather than Spin mode (blur curving around center).\n"
+}

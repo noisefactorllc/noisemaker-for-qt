@@ -1,0 +1,203 @@
+{
+  "name": "Julia",
+  "namespace": "synth",
+  "func": "julia",
+  "description": "Julia set explorer with deep zoom",
+  "tags": [
+    "fractal"
+  ],
+  "params": {
+    "poi": {
+      "ui": {
+        "label": "preset",
+        "control": "dropdown",
+        "category": "fractal"
+      }
+    },
+    "outputMode": {
+      "ui": {
+        "label": "output mode",
+        "control": "dropdown",
+        "category": "fractal"
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider",
+        "category": "fractal",
+        "enabledBy": {
+          "param": "outputMode",
+          "neq": 1
+        }
+      }
+    },
+    "cReal": {
+      "ui": {
+        "label": "c real",
+        "control": "slider",
+        "category": "fractal",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "poi",
+              "eq": 0
+            },
+            {
+              "param": "cPath",
+              "eq": 0
+            }
+          ]
+        }
+      }
+    },
+    "cImag": {
+      "ui": {
+        "label": "c imaginary",
+        "control": "slider",
+        "category": "fractal",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "poi",
+              "eq": 0
+            },
+            {
+              "param": "cPath",
+              "eq": 0
+            }
+          ]
+        }
+      }
+    },
+    "centerX": {
+      "step": 0.001,
+      "ui": {
+        "label": "center x",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "centerY": {
+      "step": 0.001,
+      "ui": {
+        "label": "center y",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider",
+        "category": "navigation"
+      }
+    },
+    "cPath": {
+      "ui": {
+        "label": "c path",
+        "control": "dropdown",
+        "category": "animation",
+        "enabledBy": {
+          "param": "poi",
+          "eq": 0
+        }
+      }
+    },
+    "cSpeed": {
+      "ui": {
+        "label": "c speed",
+        "control": "slider",
+        "category": "animation",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "poi",
+              "eq": 0
+            },
+            {
+              "param": "cPath",
+              "neq": 0
+            }
+          ]
+        }
+      }
+    },
+    "cRadius": {
+      "ui": {
+        "label": "c radius",
+        "control": "slider",
+        "category": "animation",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "poi",
+              "eq": 0
+            },
+            {
+              "param": "cPath",
+              "eq": 2
+            }
+          ]
+        }
+      }
+    },
+    "zoomSpeed": {
+      "step": 0.01,
+      "ui": {
+        "label": "zoom speed",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "zoomDepth": {
+      "step": 0.001,
+      "ui": {
+        "label": "zoom depth",
+        "control": "slider",
+        "category": "animation"
+      }
+    },
+    "stripeFreq": {
+      "ui": {
+        "label": "stripe frequency",
+        "control": "slider",
+        "category": "output",
+        "enabledBy": {
+          "param": "outputMode",
+          "eq": 2
+        }
+      }
+    },
+    "trapShape": {
+      "ui": {
+        "label": "trap shape",
+        "control": "dropdown",
+        "category": "output",
+        "enabledBy": {
+          "param": "outputMode",
+          "eq": 3
+        }
+      }
+    },
+    "lightAngle": {
+      "ui": {
+        "label": "light angle",
+        "control": "slider",
+        "category": "output",
+        "enabledBy": {
+          "param": "outputMode",
+          "eq": 4
+        }
+      }
+    },
+    "invert": {
+      "ui": {
+        "label": "invert",
+        "control": "checkbox",
+        "category": "output"
+      }
+    }
+  },
+  "help": "# julia\n\nJulia set explorer with deep zoom, distance estimation, and curated c-value gallery\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| poi | int | doubleSpiral | manual/basilica/dendrite/douadyRabbit/doubleSpiral/dragonCurve/galaxy/lightning/sanMarco/siegel/starfish | Preset c-value |\n| cReal | float | -0.123 | -2–2 | c real (manual mode) |\n| cImag | float | 0.745 | -2–2 | c imaginary (manual mode) |\n| cPath | int | none | none/bulb/cardioid/circle | Animated c-path |\n| cSpeed | float | 0.3 | 0–2 | c animation speed |\n| cRadius | float | 0.7885 | 0.01–1.5 | Circle path radius |\n| centerX | float | 0 | -3–3 | Center x |\n| centerY | float | 0 | -3–3 | Center y |\n| rotation | float | 0 | -180–180 | Rotation (degrees) |\n| outputMode | int | orbitTrap | distance/normalMap/orbitTrap/smoothIteration/stripeAverage | Output algorithm |\n| iterations | int | 300 | 50–1000 | Max iterations |\n| stripeFreq | float | 5 | 0.5–20 | Stripe frequency |\n| trapShape | int | point | circle/cross/point | Orbit trap shape |\n| lightAngle | float | 45 | 0–360 | Normal map light angle |\n| invert | boolean | false | - | Invert output |\n| zoomSpeed | float | 0 | 0–5 | Auto-zoom speed |\n| zoomDepth | float | 0 | 0–14 | Zoom depth (powers of 10) |\n"
+}

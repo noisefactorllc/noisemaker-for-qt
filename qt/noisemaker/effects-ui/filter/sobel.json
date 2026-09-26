@@ -1,0 +1,25 @@
+{
+  "name": "Sobel",
+  "namespace": "filter",
+  "func": "sobel",
+  "description": "Classic Sobel edge detection",
+  "tags": [
+    "edges"
+  ],
+  "params": {
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# sobel\n\nClassic Sobel edge detection\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 1 | 0.1-5 | Amount |\n| alpha | float | 1 | 0-1 | Opacity |\n"
+}

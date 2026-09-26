@@ -1,0 +1,87 @@
+{
+  "name": "Subdivide",
+  "namespace": "synth",
+  "func": "subdivide",
+  "description": "Recursive grid subdivision with shapes",
+  "tags": [
+    "geometric",
+    "pattern"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "texture",
+        "category": "input"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "depth": {
+      "ui": {
+        "label": "depth",
+        "control": "slider"
+      }
+    },
+    "density": {
+      "ui": {
+        "label": "density",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "fill": {
+      "ui": {
+        "label": "fill",
+        "control": "dropdown",
+        "enabledBy": {
+          "param": "mode",
+          "neq": 0
+        }
+      }
+    },
+    "outline": {
+      "ui": {
+        "label": "outline",
+        "control": "slider"
+      }
+    },
+    "inputMix": {
+      "ui": {
+        "label": "input mix",
+        "control": "slider",
+        "category": "input",
+        "enabledBy": {
+          "param": "tex",
+          "neq": "none"
+        }
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown",
+        "category": "input",
+        "enabledBy": {
+          "param": "tex",
+          "neq": "none"
+        }
+      }
+    }
+  },
+  "help": "# subdivide\n\nRecursive grid subdivision with shapes\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | quad | binary/quad | Subdivision type |\n| depth | int | 5 | 1-6 | Max subdivision levels |\n| density | float | 75 | 30-100 | Subdivision probability |\n| seed | int | 69 | 1-100 | Random seed |\n| fill | int | solid | solid/circle/diamond/square/arc/mixed | Cell fill shape |\n| outline | float | 3 | 0-10 | Grid line width in pixels |\n| speed | int | 1 | 0-20 | Animation speed |\n| tex | surface | none | - | Optional texture input |\n| inputMix | float | 0 | 0-100 | Blend with input texture |\n| wrap | int | mirror | mirror/repeat/clamp | Input texture coordinate wrap |\n"
+}

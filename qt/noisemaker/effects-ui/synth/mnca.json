@@ -1,0 +1,150 @@
+{
+  "name": "Mnca",
+  "namespace": "synth",
+  "func": "mnca",
+  "description": "Multi-neighborhood cellular automata",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "texture",
+        "category": "input"
+      }
+    },
+    "zoom": {
+      "ui": {
+        "label": "zoom",
+        "control": "dropdown"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": false
+      }
+    },
+    "smoothing": {
+      "ui": {
+        "label": "smoothing",
+        "control": "dropdown"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "state"
+      }
+    },
+    "weight": {
+      "ui": {
+        "label": "input weight",
+        "control": "slider",
+        "category": "input",
+        "enabledBy": {
+          "param": "tex",
+          "neq": "none"
+        }
+      }
+    },
+    "n1v1": {
+      "ui": {
+        "label": "n1 thresh 1",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1r1": {
+      "ui": {
+        "label": "n1 range 1",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1v2": {
+      "ui": {
+        "label": "n1 thresh 2",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1r2": {
+      "ui": {
+        "label": "n1 range 2",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1v3": {
+      "ui": {
+        "label": "n1 thresh 3",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1r3": {
+      "ui": {
+        "label": "n1 range 3",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1v4": {
+      "ui": {
+        "label": "n1 thresh 4",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n1r4": {
+      "ui": {
+        "label": "n1 range 4",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n2v1": {
+      "ui": {
+        "label": "n2 thresh 1",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n2r1": {
+      "ui": {
+        "label": "n2 range 1",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n2v2": {
+      "ui": {
+        "label": "n2 thresh 2",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "n2r2": {
+      "ui": {
+        "label": "n2 range 2",
+        "control": "slider",
+        "category": "rules"
+      }
+    },
+    "source": {
+      "ui": {
+        "control": false,
+        "category": "misc"
+      }
+    }
+  },
+  "help": "# mnca\n\nMulti-neighborhood cellular automata\n\n## Description\n\nMNCA extends classic cellular automata by using multiple neighborhood configurations with configurable thresholds and ranges. This creates more complex emergent patterns than traditional single-neighborhood rules.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Texture |\n| zoom | int | x8 | x1/x2/x4/x8/x16/x32/x64 | Zoom |\n| seed | float | 1 | 1-100 | Seed |\n| smoothing | int | constant | constant/linear/hermite/catmullRom3x3/catmullRom4x4/bSpline3x3/bSpline4x4 | Smoothing |\n| speed | float | 10 | 1-100 | Speed |\n| resetState | boolean | false | - | State |\n| weight | float | 0 | 0-100 | Input weight |\n| n1v1 | float | 21 | 0-100 | N1 thresh 1 |\n| n1r1 | float | 1 | 0-100 | N1 range 1 |\n| n1v2 | float | 35 | 0-100 | N1 thresh 2 |\n| n1r2 | float | 15 | 0-100 | N1 range 2 |\n| n1v3 | float | 75 | 0-100 | N1 thresh 3 |\n| n1r3 | float | 10 | 0-100 | N1 range 3 |\n| n1v4 | float | 12 | 0-100 | N1 thresh 4 |\n| n1r4 | float | 3 | 0-100 | N1 range 4 |\n| n2v1 | float | 10 | 0-100 | N2 thresh 1 |\n| n2r1 | float | 18 | 0-100 | N2 range 1 |\n| n2v2 | float | 43 | 0-100 | N2 thresh 2 |\n| n2r2 | float | 12 | 0-100 | N2 range 2 |\n| source | int | 0 | 0-7 | - |\n"
+}

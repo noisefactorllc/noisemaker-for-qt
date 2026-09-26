@@ -1,0 +1,25 @@
+{
+  "name": "Sine",
+  "namespace": "filter",
+  "func": "sine",
+  "description": "Sine wave color transform",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "amount": {
+      "step": 0.1,
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# sine\n\nSine wave color transform\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 7 | 0-20 | Transform intensity |\n| colorMode | int | 1 (rgb) | mono, rgb | Mono or per-channel RGB |\n"
+}

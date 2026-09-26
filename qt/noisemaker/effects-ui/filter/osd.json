@@ -1,0 +1,39 @@
+{
+  "name": "OSD",
+  "namespace": "filter",
+  "func": "osd",
+  "description": "On-screen display overlay",
+  "tags": [
+    "text"
+  ],
+  "params": {
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "corner": {
+      "ui": {
+        "label": "position",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# osd\n\nOn-screen display overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 0.75 | 0-1 | Opacity |\n| seed | int | 1 | 1-100 | Random seed |\n| speed | float | 0 | 0-50 | Animation speed |\n| corner | int | bottomRight | topLeft/topRight/bottomLeft/bottomRight | Display corner |\n"
+}

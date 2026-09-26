@@ -1,0 +1,50 @@
+{
+  "name": "Emboss",
+  "namespace": "filter",
+  "func": "emboss",
+  "description": "Emboss relief with color convolution or opt-in gray directional edge tracing",
+  "tags": [
+    "edges"
+  ],
+  "params": {
+    "style": {
+      "ui": {
+        "label": "style",
+        "control": "dropdown"
+      }
+    },
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider",
+        "enabledBy": {
+          "param": "style",
+          "eq": 0
+        }
+      }
+    },
+    "angle": {
+      "ui": {
+        "label": "angle",
+        "control": "slider"
+      }
+    },
+    "height": {
+      "ui": {
+        "label": "height",
+        "control": "slider"
+      }
+    },
+    "colorAmount": {
+      "ui": {
+        "label": "color amount",
+        "control": "slider",
+        "enabledBy": {
+          "param": "style",
+          "eq": 1
+        }
+      }
+    }
+  },
+  "help": "# emboss\n\nEmboss relief with color convolution or an opt-in gray\ndirectional-edge rendition.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| style | choice | color | color, gray | Select the color convolution or gray relief |\n| amount | float | 1 | 0.1-5 | Color-style 3x3 convolution sample radius |\n| angle | float | 135 | -360-360 | Direction from which the relief is sampled |\n| height | float | 1 | 1-10 | Directional sample distance in pixels |\n| colorAmount | float | 100 | Gray-style amount of source chroma retained on traced edges |\n\n## Styles\n\n- `color` is the default color convolution. At `angle=135, height=1` it uses\n  the established 3x3 offsets and arithmetic exactly. Other angle and height\n  values rotate and scale that same kernel. `amount` retains its sample-\n  radius meaning in this style.\n- `gray` is a bounded directional-difference rendition: uniform fill becomes neutral gray,\n  while edges receive light and dark relief. `height` alone controls the\n  directional sample distance. `colorAmount` retains source chroma in\n  proportion to edge strength, so flat interiors stay neutral at every value.\n\nThe gray style uses a symmetric pair of luminance samples and centers their\nsigned difference at 50% gray. It does not claim undocumented reference-exact\ncoefficients.\n"
+}

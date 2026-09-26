@@ -1,0 +1,26 @@
+{
+  "name": "Motion Blur",
+  "namespace": "filter",
+  "func": "motionBlur",
+  "description": "Simple motion blur via frame blending",
+  "tags": [
+    "lens",
+    "blur"
+  ],
+  "params": {
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "state"
+      }
+    }
+  },
+  "help": "# motionBlur\n\nSimple motion blur via frame blending\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 50 | 0-100 | Amount |\n| resetState | boolean | false | - | State |\n\n## Notes\n\nThe effect maintains an internal feedback buffer that stores the previous frame output. Each frame blends the current input with this buffer based on the amount parameter. Higher values create longer motion trails.\n\nThe amount is internally clamped at 98% to prevent complete freeze.\n"
+}

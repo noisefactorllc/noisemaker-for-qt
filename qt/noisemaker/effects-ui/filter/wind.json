@@ -1,0 +1,37 @@
+{
+  "name": "Wind",
+  "namespace": "filter",
+  "func": "wind",
+  "description": "Soft directional streaks drawn from bright edges, with wind, blast, and stagger methods",
+  "tags": [
+    "distort",
+    "artist"
+  ],
+  "params": {
+    "method": {
+      "ui": {
+        "label": "method",
+        "control": "dropdown"
+      }
+    },
+    "direction": {
+      "ui": {
+        "label": "direction",
+        "control": "dropdown"
+      }
+    },
+    "strength": {
+      "ui": {
+        "label": "strength",
+        "control": "slider"
+      }
+    },
+    "threshold": {
+      "ui": {
+        "label": "threshold",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# wind\n\nSoft horizontal streaks drawn from bright image structure.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| method | int | 1 | wind:0, blast:1, stagger:2 | wind tapers quickly, blast makes a broader dense trail, and stagger continuously varies the run phase between neighboring scanlines |\n| direction | int | 0 | fromLeft:0, fromRight:1 | Side the wind blows from; trails extend toward the opposite side |\n| strength | float | 90 | 0-100 | Trail reach and blend amount, up to 128 pixels; zero leaves the source unchanged |\n| threshold | float | 10 | 0-100 | Required luminance contrast between a trail source and the current pixel |\n\n## Notes\n\n- A weighted scanline integration carries brighter source color downwind. It does not use random row or segment masks.\n- The contrast threshold has a smooth transition, and a final distance envelope fades every trail before its reach boundary.\n- Stagger uses a continuous scanline phase instead of discrete row bands, avoiding horizontal seams.\n- The source alpha is preserved.\n"
+}

@@ -1,0 +1,31 @@
+{
+  "name": "Snow",
+  "namespace": "filter",
+  "func": "snow",
+  "description": "TV snow/static noise",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    },
+    "pause": {
+      "ui": {
+        "label": "pause",
+        "control": "checkbox"
+      }
+    },
+    "density": {
+      "ui": {
+        "label": "density",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# snow\n\nTV snow/static noise\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 0.5 | 0-1 | Alpha |\n| pause | boolean | false | - | Pause |\n| density | float | 75 | 0-100 | Density |\n"
+}

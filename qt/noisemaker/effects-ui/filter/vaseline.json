@@ -1,0 +1,19 @@
+{
+  "name": "Vaseline",
+  "namespace": "filter",
+  "func": "vaseline",
+  "description": "Vaseline lens blur effect",
+  "tags": [
+    "blur"
+  ],
+  "params": {
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# vaseline\n\nVaseline lens blur effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| alpha | float | 0.5 | 0-1 | Effect opacity |\n"
+}

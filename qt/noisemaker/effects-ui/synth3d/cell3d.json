@@ -1,0 +1,46 @@
+{
+  "name": "Cell3D",
+  "namespace": "synth3d",
+  "func": "cell3d",
+  "description": "3D cellular/Voronoi noise volume",
+  "tags": [
+    "3d",
+    "noise"
+  ],
+  "params": {
+    "volumeSize": {
+      "ui": {
+        "label": "volume size",
+        "control": "dropdown"
+      }
+    },
+    "metric": {
+      "ui": {
+        "label": "cell shape",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "cell scale"
+      }
+    },
+    "variation": {
+      "ui": {
+        "label": "cell variation"
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# cell3d\n\n3D cellular/Voronoi noise volume\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| volumeSize | int | x64 | x16/x32/x64/x128 | Volume size |\n| metric | int | sphere | sphere/octahedron/cube | Cell shape |\n| scale | float | 10 | 1-15 | Cell scale |\n| variation | float | 100 | 0-100 | Cell variation |\n| seed | int | 1 | 0-100 | - |\n| colorMode | int | rgb | mono/rgb | Color mode |\n"
+}

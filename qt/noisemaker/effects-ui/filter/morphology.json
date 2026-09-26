@@ -1,0 +1,31 @@
+{
+  "name": "Morphology",
+  "namespace": "filter",
+  "func": "morphology",
+  "description": "Grayscale morphology dilate/erode (Maximum/Minimum)",
+  "tags": [
+    "blur",
+    "artist"
+  ],
+  "params": {
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "radius": {
+      "ui": {
+        "label": "radius",
+        "control": "slider"
+      }
+    },
+    "shape": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# morphology\n\nGrayscale morphology dilate/erode (Maximum/Minimum)\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| mode | int | 0 | dilate:0, erode:1 | dilate takes the per-channel max over the structuring element (Maximum: bright regions expand, dark details erode away); erode takes the per-channel min (Minimum: dark regions expand) |\n| radius | float | 4 | 1-32 | Structuring element size in pixels |\n| shape | int | 0 | square:0, round:1 | square uses a separable box structuring element (sharp corners); round uses a disc structuring element capped at radius 12 (rounded corners) |\n\n## Notes\n\n- square shape is computed as two separable 1D passes (horizontal then vertical) since min/max over a box region is separable; round shape is computed as a single full 2D disc pass since min/max over a disc is not separable.\n- The round shape's structuring element radius is capped at 12px regardless of the `radius` value, to bound the per-pixel tap count; the square shape uses the full `radius` (up to 32px).\n- Maximum and Minimum filters are the same per-channel dilate/erode operator; `mode` switches between them.\n"
+}

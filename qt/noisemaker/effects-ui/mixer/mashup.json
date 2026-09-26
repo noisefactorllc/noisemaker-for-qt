@@ -1,0 +1,110 @@
+{
+  "name": "Mashup",
+  "namespace": "mixer",
+  "func": "mashup",
+  "description": "Posterize a control input by luminance and route each band to a different surface",
+  "tags": [
+    "blend"
+  ],
+  "params": {
+    "source": {
+      "ui": {
+        "label": "input"
+      }
+    },
+    "layers": {
+      "step": 1,
+      "ui": {
+        "label": "layers",
+        "control": "slider"
+      }
+    },
+    "smoothness": {
+      "ui": {
+        "label": "smoothness",
+        "control": "slider"
+      }
+    },
+    "layer0_tex": {
+      "ui": {
+        "label": "layer 1 source",
+        "category": "layer 1",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 0
+        }
+      }
+    },
+    "layer1_tex": {
+      "ui": {
+        "label": "layer 2 source",
+        "category": "layer 2",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 1
+        }
+      }
+    },
+    "layer2_tex": {
+      "ui": {
+        "label": "layer 3 source",
+        "category": "layer 3",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 2
+        }
+      }
+    },
+    "layer3_tex": {
+      "ui": {
+        "label": "layer 4 source",
+        "category": "layer 4",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 3
+        }
+      }
+    },
+    "layer4_tex": {
+      "ui": {
+        "label": "layer 5 source",
+        "category": "layer 5",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 4
+        }
+      }
+    },
+    "layer5_tex": {
+      "ui": {
+        "label": "layer 6 source",
+        "category": "layer 6",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 5
+        }
+      }
+    },
+    "layer6_tex": {
+      "ui": {
+        "label": "layer 7 source",
+        "category": "layer 7",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 6
+        }
+      }
+    },
+    "layer7_tex": {
+      "ui": {
+        "label": "layer 8 source",
+        "category": "layer 8",
+        "enabledBy": {
+          "param": "layers",
+          "gt": 7
+        }
+      }
+    }
+  },
+  "help": "# mixer/mashup\n\nPosterize one control input by luminance and route each gray-level band to a different engine surface — a \"mega mixer\" that mashes up to eight sources together, driven by a single grayscale control.\n\n## Overview\n\nMashup reads the luminance of its **input** (the `source` slot) and divides the `0…1` range into `layers` equal bands. Each band shows a different surface: the darkest band shows `layer 1`, the brightest shows the last layer. The `smoothness` control feathers each band boundary so adjacent sources cross-fade instead of meeting at a hard edge.\n\nIt is the luminance-driven cousin of [`synth/remap`](../../synth/remap): where Remap routes engine surfaces to *polygon zones*, Mashup routes them to *gray-level bands*. Like Remap, every source — including the control input — is an explicit slot wired in DSL with `read(oN)`. A band whose layer source is left unwired falls back to showing the control input.\n\n## Usage\n\nMashup is a starter: wire the control into `source` and each band into its `layerN_tex` slot.\n\n```\nnoise(ridges: true).write(o0)\nsolid(color: #ee3322).write(o1)\nsolid(color: #2266cc).write(o2)\ngradient().write(o3)\n\nmashup(layers: 3, source: read(o3), layer0_tex: read(o0), layer1_tex: read(o1), layer2_tex: read(o2))\n  .write(o4)\n```\n\nThe `source` input is only sampled for its luminance — its color never shows directly unless a band's layer source is unwired.\n\n## Parameters\n\n### General\n- **Input** (`source`): the control surface whose luminance is posterized into bands. Wire with `source: read(oN)`.\n- **Layers**: how many luminance bands to posterize the control into (2–8). With N layers the boundaries fall at `1/N, 2/N, …`. Layer slots above the current count are greyed out.\n- **Smoothness**: half-width of the cross-fade applied at every band boundary, in luminance units (`0–0.5`). `0` gives hard posterized edges; larger values blend neighbouring sources together.\n\n### Layers (1–8)\nFor each layer:\n- **Layer N source** (`layerN_tex`): the engine surface shown in band N. Wire with `layerN_tex: read(oN)`. When unwired (default `\"none\"`), that band shows the control input instead.\n\n## Notes\n\n- Bands are sampled darkest → brightest, so reordering the wired sources reorders which luminance range each one occupies.\n- The control input's luminance uses the standard `0.299 / 0.587 / 0.114` RGB weights.\n- All sources are sampled at the output pixel position; wire surfaces at the same resolution as the composition.\n"
+}

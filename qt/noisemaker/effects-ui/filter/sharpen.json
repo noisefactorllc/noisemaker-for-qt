@@ -1,0 +1,18 @@
+{
+  "name": "Sharpen",
+  "namespace": "filter",
+  "func": "sharpen",
+  "description": "Sharpen using convolution",
+  "tags": [
+    "edges"
+  ],
+  "params": {
+    "amount": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# sharpen\n\nSharpen using convolution\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| amount | float | 1 | 0.1-5 | Amount |\n"
+}

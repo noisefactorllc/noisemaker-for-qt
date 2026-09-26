@@ -1,0 +1,167 @@
+{
+  "name": "Splat",
+  "namespace": "classicNoisedeck",
+  "func": "splat",
+  "description": "Splatter paint effect",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "enabled": {
+      "ui": {
+        "label": "splats",
+        "control": "checkbox"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "splat mode",
+        "control": "dropdown",
+        "enabledBy": {
+          "param": "enabled",
+          "eq": true
+        }
+      }
+    },
+    "scale": {
+      "ui": {
+        "label": "splat scale",
+        "control": "slider",
+        "enabledBy": {
+          "param": "enabled",
+          "eq": true
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "splat seed",
+        "control": "slider",
+        "enabledBy": {
+          "param": "enabled",
+          "eq": true
+        }
+      }
+    },
+    "color": {
+      "ui": {
+        "label": "splat color",
+        "control": "color",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "enabled",
+              "eq": true
+            },
+            {
+              "param": "mode",
+              "eq": 0
+            }
+          ]
+        }
+      }
+    },
+    "cutoff": {
+      "ui": {
+        "label": "splat cutoff",
+        "control": "slider",
+        "enabledBy": {
+          "param": "enabled",
+          "eq": true
+        }
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "splat speed",
+        "control": "slider",
+        "enabledBy": {
+          "param": "enabled",
+          "eq": true
+        }
+      }
+    },
+    "useSpecks": {
+      "ui": {
+        "label": "specks",
+        "control": "checkbox",
+        "category": "specks"
+      }
+    },
+    "speckMode": {
+      "ui": {
+        "label": "speck mode",
+        "control": "dropdown",
+        "category": "specks",
+        "enabledBy": {
+          "param": "useSpecks",
+          "eq": true
+        }
+      }
+    },
+    "speckScale": {
+      "ui": {
+        "label": "speck scale",
+        "control": "slider",
+        "category": "specks",
+        "enabledBy": {
+          "param": "useSpecks",
+          "eq": true
+        }
+      }
+    },
+    "speckSeed": {
+      "ui": {
+        "label": "speck seed",
+        "control": "slider",
+        "category": "specks",
+        "enabledBy": {
+          "param": "useSpecks",
+          "eq": true
+        }
+      }
+    },
+    "speckColor": {
+      "ui": {
+        "label": "speck color",
+        "control": "color",
+        "category": "specks",
+        "enabledBy": {
+          "and": [
+            {
+              "param": "useSpecks",
+              "eq": true
+            },
+            {
+              "param": "speckMode",
+              "eq": 0
+            }
+          ]
+        }
+      }
+    },
+    "speckCutoff": {
+      "ui": {
+        "label": "speck cutoff",
+        "control": "slider",
+        "category": "specks",
+        "enabledBy": {
+          "param": "useSpecks",
+          "eq": true
+        }
+      }
+    },
+    "speckSpeed": {
+      "ui": {
+        "label": "speck speed",
+        "control": "slider",
+        "category": "specks",
+        "enabledBy": {
+          "param": "useSpecks",
+          "eq": true
+        }
+      }
+    }
+  },
+  "help": "# splat\n\nSplatter paint effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| enabled | boolean | true | - | Splats |\n| mode | int | invert | color/displace/invert/negative | Splat mode |\n| scale | float | 3 | 1-5 | Splat scale |\n| seed | int | 1 | 1-100 | Splat seed |\n| color | color | 1,1,1 | - | Splat color |\n| cutoff | float | 25 | 0-100 | Splat cutoff |\n| speed | int | 1 | 0-5 | Splat speed |\n| useSpecks | boolean | true | - | Specks |\n| speckScale | float | 5 | 1-5 | Speck scale |\n| speckCutoff | float | 70 | 0-100 | Speck cutoff |\n| speckSpeed | int | 1 | 0-5 | Speck speed |\n| speckSeed | int | 1 | 1-100 | Speck seed |\n| speckMode | int | color | color/displace/invert/negative | Speck mode |\n| speckColor | color | 0.8,0.8,0.8 | - | Speck color |\n"
+}

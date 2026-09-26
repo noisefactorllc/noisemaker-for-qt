@@ -1,0 +1,55 @@
+{
+  "name": "Tunnel",
+  "namespace": "filter",
+  "func": "tunnel",
+  "description": "Perspective tunnel effect with shape options",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "shape": {
+      "ui": {
+        "label": "shape",
+        "control": "dropdown"
+      }
+    },
+    "scale": {
+      "step": 0.1,
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rot speed",
+        "control": "slider"
+      }
+    },
+    "center": {
+      "ui": {
+        "label": "center",
+        "control": "slider"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# tunnel\n\nPerspective tunnel effect with shape options\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| shape | int | circle | circle/triangle/roundedRect/square/hexagon/octagon | Tunnel shape |\n| scale | float | 0 | -1–1 | Scale offset |\n| speed | int | 1 | -5–5 | Forward speed |\n| rotation | int | 0 | -2–2 | Rotation speed |\n| center | float | 100 | -100–100 | Center vignette (negative=darken, positive=brighten) |\n| aspectLens | boolean | true | on/off | 1:1 aspect correction |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n"
+}

@@ -1,0 +1,32 @@
+{
+  "name": "Clouds",
+  "namespace": "filter",
+  "func": "clouds",
+  "description": "Cloud texture overlay",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "seed": {
+      "step": 1,
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "scale": {
+      "step": 0.05,
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# clouds\n\nCloud texture overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| seed | int | 1 | 1-100 | Cloud pattern variation |\n| scale | float | 0.25 | 0.1-1 | Cloud scale |\n| speed | int | 0 | 0-4 | Animation speed |\n"
+}

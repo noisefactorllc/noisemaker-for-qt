@@ -1,0 +1,75 @@
+{
+  "name": "Effects",
+  "namespace": "classicNoisedeck",
+  "func": "effects",
+  "description": "Multi-effect processor",
+  "tags": [
+    "color",
+    "edges",
+    "transform"
+  ],
+  "params": {
+    "effect": {
+      "ui": {
+        "label": "effect",
+        "control": "dropdown"
+      }
+    },
+    "effectAmt": {
+      "ui": {
+        "label": "effect amt",
+        "control": "slider"
+      }
+    },
+    "scaleAmt": {
+      "ui": {
+        "label": "scale %",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotate",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset x",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset y",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "flip": {
+      "ui": {
+        "label": "flip/mirror",
+        "control": "dropdown",
+        "category": "transform"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "adjustments"
+      }
+    },
+    "saturation": {
+      "ui": {
+        "label": "saturation",
+        "control": "slider",
+        "category": "adjustments"
+      }
+    }
+  },
+  "help": "# effects\n\nMulti-effect processor\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| effect | int | none | none/bloom/blur/blurSharpen/cga/derivatives/derivDivide/edge/emboss/litEdge/outline/pixels/posterize/shadow/sharpen/smoothEdge/sobel/subpixel/zoomBlur | Effect |\n| effectAmt | int | 1 | 0-20 | Effect amt |\n| flip | int | none | none/Flip:/all/horizontal/vertical/Mirror:/leftToRight/rightToLeft/upToDown/downToUp/lrUd/lrDu/rlUd/rlDu | Flip/mirror |\n| scaleAmt | float | 100 | 25-400 | Scale % |\n| rotation | float | 0 | -180-180 | Rotate |\n| offsetX | float | 0 | -100-100 | Offset x |\n| offsetY | float | 0 | -100-100 | Offset y |\n| intensity | float | 0 | -100-100 | Intensity |\n| saturation | float | 0 | -100-100 | Saturation |\n"
+}

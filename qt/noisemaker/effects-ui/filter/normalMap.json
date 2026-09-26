@@ -1,0 +1,11 @@
+{
+  "name": "Normal Map",
+  "namespace": "filter",
+  "func": "normalMap",
+  "description": "Normal map generation",
+  "tags": [
+    "color"
+  ],
+  "params": {},
+  "help": "# normalMap\n\nNormal map generation\n"
+}

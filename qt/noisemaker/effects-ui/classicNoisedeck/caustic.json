@@ -1,0 +1,70 @@
+{
+  "name": "Caustic",
+  "namespace": "classicNoisedeck",
+  "func": "caustic",
+  "description": "Dual-noise caustic pattern with reflect blend",
+  "tags": [
+    "noise"
+  ],
+  "params": {
+    "interp": {
+      "ui": {
+        "label": "noise type",
+        "control": "dropdown"
+      }
+    },
+    "noiseScale": {
+      "ui": {
+        "label": "scale",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "checkbox",
+        "enabledBy": {
+          "param": "interp",
+          "notIn": [
+            10,
+            11
+          ]
+        }
+      }
+    },
+    "seed": {
+      "ui": {
+        "label": "seed",
+        "control": "slider"
+      }
+    },
+    "hueRotation": {
+      "ui": {
+        "label": "hue rotation",
+        "control": "slider",
+        "category": "color"
+      }
+    },
+    "hueRange": {
+      "ui": {
+        "label": "hue range",
+        "control": "slider",
+        "category": "color"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "color"
+      }
+    }
+  },
+  "help": "# caustic\n\nDual-noise caustic pattern with reflect blend\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| interp | int | simplex | constant/linear/hermite/catmullRom3x3/catmullRom4x4/bSpline3x3/bSpline4x4/simplex/sine | Interpolation |\n| noiseScale | float | 85 | 1-200 | Scale |\n| speed | float | 25 | 0-100 | Animation Speed |\n| wrap | boolean | true | - | Wrap |\n| seed | int | 44 | 0-100 | Seed |\n| hueRotation | float | 180 | 0-360 | Hue Rotation |\n| hueRange | float | 25 | 0-100 | Hue Range |\n| intensity | float | 0 | -100-100 | Intensity |\n"
+}

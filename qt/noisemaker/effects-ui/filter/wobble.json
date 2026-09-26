@@ -1,0 +1,32 @@
+{
+  "name": "Wobble",
+  "namespace": "filter",
+  "func": "wobble",
+  "description": "Wobble animation effect",
+  "tags": [
+    "transform"
+  ],
+  "params": {
+    "speed": {
+      "step": 0.1,
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "range": {
+      "step": 0.05,
+      "ui": {
+        "label": "range",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# wobble\n\nWobble animation effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| speed | float | 5.0 | 0-5 | Animation speed |\n| range | float | 0.5 | 0-5 | Wobble amplitude |\n| wrap | int | mirror | mirror/repeat/clamp | Wrap |\n"
+}

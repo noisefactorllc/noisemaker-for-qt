@@ -1,0 +1,101 @@
+{
+  "name": "Feedback",
+  "namespace": "filter",
+  "func": "feedback",
+  "description": "Feedback loop with blend modes and transforms",
+  "tags": [
+    "sim"
+  ],
+  "params": {
+    "blendMode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "feedback",
+        "control": "slider"
+      }
+    },
+    "scaleAmt": {
+      "ui": {
+        "label": "scale %",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotate",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "refractAAmt": {
+      "ui": {
+        "label": "refract a→b",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "refractBAmt": {
+      "ui": {
+        "label": "refract b→a",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "refractADir": {
+      "ui": {
+        "label": "refract dir a",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "refractBDir": {
+      "ui": {
+        "label": "refract dir b",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "hueRotation": {
+      "ui": {
+        "label": "hue shift",
+        "control": "slider",
+        "category": "color"
+      }
+    },
+    "intensity": {
+      "ui": {
+        "label": "intensity",
+        "control": "slider",
+        "category": "color"
+      }
+    },
+    "aberration": {
+      "ui": {
+        "label": "aberration",
+        "control": "slider",
+        "category": "lens"
+      }
+    },
+    "distortion": {
+      "ui": {
+        "label": "distortion",
+        "control": "slider",
+        "category": "lens"
+      }
+    },
+    "resetState": {
+      "ui": {
+        "control": "button",
+        "buttonLabel": "reset",
+        "label": "state"
+      }
+    }
+  },
+  "help": "# feedback\n\nFeedback loop with blend modes and transforms\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| blendMode | int | mix | add/cloak/colorBurn/colorDodge/darken/difference/exclusion/glow/hardLight/lighten/mix/multiply/negation/overlay/phoenix/reflect/screen/softLight/subtract | Mode |\n| mix | float | 0 | 0-100 | Feedback |\n| scaleAmt | float | 100 | 75-200 | Scale % |\n| rotation | float | 0 | -180-180 | Rotate |\n| refractAAmt | float | 0 | 0-100 | Refract a→b |\n| refractBAmt | float | 0 | 0-100 | Refract b→a |\n| refractADir | float | 0 | 0-360 | Refract dir a |\n| refractBDir | float | 0 | 0-360 | Refract dir b |\n| hueRotation | float | 0 | -180-180 | Hue shift |\n| intensity | float | 0 | -100-100 | Intensity |\n| aberration | float | 0 | 0-100 | Aberration |\n| distortion | float | 0 | -100-100 | Distortion |\n| resetState | boolean | false | - | State |\n\n## Notes\n\nParameter categories:\n- **Transform**: scaleAmt, rotation\n- **Refract**: refractAAmt, refractBAmt, refractADir, refractBDir\n- **Color**: hueRotation, intensity\n- **Lens**: aberration, distortion\n"
+}

@@ -1,0 +1,46 @@
+{
+  "name": "Wormhole",
+  "namespace": "filter",
+  "func": "wormhole",
+  "description": "Luminance-driven scatter displacement field",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "kink": {
+      "step": 0.1,
+      "ui": {
+        "label": "kink",
+        "control": "slider"
+      }
+    },
+    "stride": {
+      "step": 0.01,
+      "ui": {
+        "label": "stride",
+        "control": "slider"
+      }
+    },
+    "rotation": {
+      "step": 1,
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "alpha": {
+      "step": 0.01,
+      "ui": {
+        "label": "alpha",
+        "control": "slider"
+      }
+    }
+  },
+  "help": "# wormhole\n\nLuminance-driven scatter displacement field\n\n## Description\n\nEach pixel is scattered to a new position based on its OKLab luminance. The displacement angle is determined by luminance × kink, and the distance by stride. The result is accumulated and normalized to produce a luminance-driven warp effect.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| kink | float | 1 | 0-5 | Displacement curve intensity |\n| stride | float | 1 | 0-2 | Scatter distance |\n| rotation | float | 0 | -180-180 | Displacement angle offset |\n| wrap | int | repeat | mirror/repeat/clamp | Out-of-bounds handling |\n| alpha | float | 1 | 0-1 | Blend with original |\n\n## Wrap Modes\n\n- **mirror**: Pixels that scatter beyond the edge reflect back\n- **repeat**: Pixels wrap around to the opposite side (default)\n- **clamp**: Pixels that scatter beyond the edge pile up at the border\n"
+}

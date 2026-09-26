@@ -1,0 +1,30 @@
+{
+  "name": "Tint",
+  "namespace": "filter",
+  "func": "tint",
+  "description": "Colorize input texture with a color overlay",
+  "tags": [
+    "color"
+  ],
+  "params": {
+    "color": {
+      "ui": {
+        "label": "color",
+        "control": "color"
+      }
+    },
+    "alpha": {
+      "ui": {
+        "label": "amount",
+        "control": "slider"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown"
+      }
+    }
+  },
+  "help": "# tint\n\nColorize input texture with a color overlay\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| color | color | 1,1,1 | - | Tint color |\n| alpha | float | 0.5 | 0-1 | Tint amount |\n| mode | int | overlay | overlay/multiply/recolor | Blend mode |\n\n## Notes\n\n- **overlay** mode lerps between the input and the tint color\n- **multiply** mode multiplies input RGB by the tint color\n- **recolor** mode replaces the input hue with the tint color's hue in HSV space, preserving brightness\n"
+}

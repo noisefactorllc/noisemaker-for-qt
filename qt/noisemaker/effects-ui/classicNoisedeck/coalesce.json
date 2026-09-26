@@ -1,0 +1,58 @@
+{
+  "name": "Coalesce",
+  "namespace": "classicNoisedeck",
+  "func": "coalesce",
+  "description": "Coalescing blend effect",
+  "tags": [
+    "blend",
+    "distort"
+  ],
+  "params": {
+    "tex": {
+      "ui": {
+        "label": "source b"
+      }
+    },
+    "blendMode": {
+      "ui": {
+        "label": "blend mode",
+        "control": "dropdown"
+      }
+    },
+    "mix": {
+      "ui": {
+        "label": "mix",
+        "control": "slider"
+      }
+    },
+    "refractAAmt": {
+      "ui": {
+        "label": "refract a → b",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "refractBAmt": {
+      "ui": {
+        "label": "refract b → a",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "refractADir": {
+      "ui": {
+        "label": "refract dir a",
+        "control": "slider",
+        "category": "refract"
+      }
+    },
+    "refractBDir": {
+      "ui": {
+        "label": "refract dir b",
+        "control": "slider",
+        "category": "refract"
+      }
+    }
+  },
+  "help": "# coalesce\n\nCoalescing blend effect\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| tex | surface | none | - | Source surface B |\n| blendMode | int | mix | add/alpha/brightnessAB/brightnessBA/cloak/colorBurn/colorDodge/darken/difference/exclusion/glow/hardLight/hueAB/hueBA/lighten/mix/multiply/negation/overlay/phoenix/reflect/saturationAB/saturationBA/screen/softLight/subtract | Mode |\n| mix | float | 0 | -100-100 | Mix |\n| refractAAmt | float | 0 | 0-100 | Refract a→b |\n| refractBAmt | float | 0 | 0-100 | Refract b→a |\n| refractADir | float | 0 | -180-180 | Refract dir a |\n| refractBDir | float | 0 | -180-180 | Refract dir b |\n"
+}

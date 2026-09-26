@@ -1,0 +1,48 @@
+{
+  "name": "Spiral",
+  "namespace": "filter",
+  "func": "spiral",
+  "description": "Spiral distortion",
+  "tags": [
+    "distort"
+  ],
+  "params": {
+    "strength": {
+      "ui": {
+        "label": "strength",
+        "control": "slider"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotation",
+        "control": "slider"
+      }
+    },
+    "wrap": {
+      "ui": {
+        "label": "wrap",
+        "control": "dropdown"
+      }
+    },
+    "aspectLens": {
+      "ui": {
+        "label": "1:1 aspect",
+        "control": "checkbox"
+      }
+    },
+    "antialias": {
+      "ui": {
+        "label": "antialias",
+        "control": "checkbox"
+      }
+    }
+  },
+  "help": "# spiral\n\nSpiral distortion\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| strength | float | -100 | -100-100 | Strength |\n| speed | int | 0 | -5-5 | Speed |\n| rotation | float | 0 | -180-180 | Rotation |\n| wrap | int | mirror | mirror/repeat/clamp | Wrap |\n| aspectLens | boolean | true | - | 1:1 Aspect |\n| antialias | boolean | true | on/off | 4x rotated-grid supersampling (disable before palette effects) |\n"
+}

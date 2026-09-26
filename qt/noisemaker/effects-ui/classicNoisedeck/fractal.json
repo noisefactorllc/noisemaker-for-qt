@@ -1,0 +1,209 @@
+{
+  "name": "Fractal",
+  "namespace": "classicNoisedeck",
+  "func": "fractal",
+  "description": "Fractal pattern generator",
+  "tags": [
+    "geometric"
+  ],
+  "params": {
+    "type": {
+      "ui": {
+        "label": "type",
+        "control": "dropdown"
+      }
+    },
+    "symmetry": {
+      "ui": {
+        "label": "symmetry",
+        "control": "slider"
+      }
+    },
+    "zoomAmt": {
+      "ui": {
+        "label": "zoom",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "rotation": {
+      "ui": {
+        "label": "rotate",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "speed": {
+      "ui": {
+        "label": "speed",
+        "control": "slider"
+      }
+    },
+    "offsetX": {
+      "ui": {
+        "label": "offset x",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "offsetY": {
+      "ui": {
+        "label": "offset y",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "centerX": {
+      "ui": {
+        "label": "center x",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "centerY": {
+      "ui": {
+        "label": "center y",
+        "control": "slider",
+        "category": "transform"
+      }
+    },
+    "mode": {
+      "ui": {
+        "label": "mode",
+        "control": "dropdown",
+        "category": "rendering"
+      }
+    },
+    "iterations": {
+      "ui": {
+        "label": "iterations",
+        "control": "slider",
+        "category": "rendering"
+      }
+    },
+    "colorMode": {
+      "ui": {
+        "label": "color mode",
+        "control": "dropdown",
+        "category": "color"
+      }
+    },
+    "palette": {
+      "ui": {
+        "label": "palette",
+        "control": "dropdown",
+        "category": "palette",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 4
+        }
+      }
+    },
+    "paletteMode": {
+      "ui": {
+        "control": false
+      }
+    },
+    "paletteOffset": {
+      "ui": {
+        "label": "palette offset",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "paletteAmp": {
+      "ui": {
+        "label": "palette amplitude",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "paletteFreq": {
+      "ui": {
+        "label": "palette frequency",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "palettePhase": {
+      "ui": {
+        "label": "palette phase",
+        "control": "slider",
+        "hidden": true
+      }
+    },
+    "cyclePalette": {
+      "ui": {
+        "label": "rotation",
+        "control": "dropdown",
+        "category": "palette",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 4
+        }
+      }
+    },
+    "rotatePalette": {
+      "ui": {
+        "label": "offset",
+        "control": "slider",
+        "category": "palette",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 4
+        }
+      }
+    },
+    "repeatPalette": {
+      "ui": {
+        "label": "repeat",
+        "control": "slider",
+        "category": "palette",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 4
+        }
+      }
+    },
+    "hueRange": {
+      "ui": {
+        "label": "hue range",
+        "control": "slider",
+        "category": "color",
+        "enabledBy": {
+          "param": "colorMode",
+          "eq": 6
+        }
+      }
+    },
+    "levels": {
+      "ui": {
+        "label": "posterize",
+        "control": "slider",
+        "category": "color"
+      }
+    },
+    "bgColor": {
+      "ui": {
+        "label": "bg color",
+        "control": "color",
+        "category": "background"
+      }
+    },
+    "bgAlpha": {
+      "ui": {
+        "label": "bg opacity",
+        "control": "slider",
+        "category": "background"
+      }
+    },
+    "cutoff": {
+      "ui": {
+        "label": "cutoff",
+        "control": "slider",
+        "category": "background"
+      }
+    }
+  },
+  "help": "# fractal\n\nFractal pattern generator\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| type | int | julia | julia/mandelbrot/newton | Type |\n| symmetry | int | 0 | - | Symmetry |\n| zoomAmt | float | 0 | 0-130 | Zoom |\n| rotation | float | 0 | -180-180 | Rotate |\n| speed | float | 30 | 0-100 | Speed |\n| offsetX | float | 70 | -100-100 | Offset x |\n| offsetY | float | 50 | -100-100 | Offset y |\n| centerX | float | 0 | -100-100 | Center x |\n| centerY | float | 0 | -100-100 | Center y |\n| mode | int | iter | iter/z | Mode |\n| iterations | int | 50 | 1-50 | Iterations |\n| colorMode | int | palette | mono/palette/hsv | Color space |\n| palette | palette | darkSatin | none/seventiesShirt/fiveG/afterimage/barstow/bloob/blueSkies/brushedMetal/burningSky/california/columbia/cottonCandy/darkSatin/dealerHat/dreamy/eventHorizon/ghostly/grayscale/hazySunset/heatmap/hypercolor/jester/justBlue/justCyan/justGreen/justPurple/justRed/justYellow/mars/modesto/moss/neptune/netOfGems/organic/papaya/radioactive/royal/santaCruz/sherbet/sherbetDouble/silvermane/skykissed/solaris/spooky/springtime/sproingtime/sulphur/summoning/superhero/toxic/tropicalia/tungsten/vaporwave/vibrant/vintage/vintagePhoto | Palette |\n| paletteMode | int | 0 | - | - |\n| cyclePalette | int | forward | off/forward/backward | Cycle palette |\n| rotatePalette | float | 0 | 0-100 | Rotate palette |\n| repeatPalette | int | 1 | 1-10 | Repeat palette |\n| hueRange | float | 100 | 1-100 | Hue range |\n| levels | int | 0 | 0-32 | Posterize |\n| bgColor | color | 0,0,0 | - | Bkg color |\n| bgAlpha | float | 100 | 0-100 | Bkg opacity |\n| cutoff | float | 0 | 0-100 | Cutoff |\n"
+}
