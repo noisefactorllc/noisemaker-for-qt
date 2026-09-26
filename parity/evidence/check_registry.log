@@ -1,0 +1,7 @@
+REGISTRY PARITY:
+  PASS  ops            (ref 210 / mine 210 keys)
+  PASS  enums          (ref 8 / mine 8 keys)
+  PASS  paramAliases   (ref 44 / mine 44 keys)
+  PASS  effectAliases  (ref 0 / mine 0 keys)
+  PASS  effectKeys     (ref 628 / mine 628 keys)
+REGISTRY: 5/5

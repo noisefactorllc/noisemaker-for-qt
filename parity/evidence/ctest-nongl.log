@@ -1,0 +1,34 @@
+Internal ctest changing into directory: /workspace/repos/noisemaker-for-qt/qt/build
+Test project /workspace/repos/noisemaker-for-qt/qt/build
+      Start  1: test_shader_assembly
+ 1/14 Test  #1: test_shader_assembly .............   Passed    0.01 sec
+      Start  2: test_graph_load
+ 2/14 Test  #2: test_graph_load ..................   Passed    0.01 sec
+      Start  3: test_output_runtime
+ 3/14 Test  #3: test_output_runtime ..............   Passed    0.01 sec
+      Start  4: test_automation
+ 4/14 Test  #4: test_automation ..................   Passed    0.02 sec
+      Start  5: test_lexer
+ 5/14 Test  #5: test_lexer .......................   Passed    0.01 sec
+      Start  6: test_parser
+ 6/14 Test  #6: test_parser ......................   Passed    0.03 sec
+      Start  7: test_registry
+ 7/14 Test  #7: test_registry ....................   Passed    0.10 sec
+      Start  8: test_validator
+ 8/14 Test  #8: test_validator ...................   Passed    0.07 sec
+      Start  9: test_effect_validator
+ 9/14 Test  #9: test_effect_validator ............   Passed    0.05 sec
+      Start 10: test_js_syntax
+10/14 Test #10: test_js_syntax ...................   Passed    0.01 sec
+      Start 11: test_js_number
+11/14 Test #11: test_js_number ...................   Passed    0.01 sec
+      Start 12: test_expander
+12/14 Test #12: test_expander ....................   Passed    0.05 sec
+      Start 13: test_resources
+13/14 Test #13: test_resources ...................   Passed    0.01 sec
+      Start 14: test_obj_parser
+14/14 Test #14: test_obj_parser ..................   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 14
+
+Total Test time (real) =   0.42 sec

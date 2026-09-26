@@ -1,0 +1,38 @@
+Raw gate output for candidate a4feeec1f0fad6070318416f8c659e373d35db84
+(noisemaker-for-qt main), regenerated 2026-09-26 in the worker container.
+
+Reference checkout: noisefactorllc/noisemaker at
+6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa (the declared job ranges'
+end 8eeb7b5ac14e is an ancestor; verified: git merge-base --is-ancestor).
+Reference provenance: NM_REFERENCE_ROOT=/state/cache/scratch/noisemaker-up.
+
+Executed commands (verbatim, from the repo root):
+
+  NM_REFERENCE_ROOT=<ref> node parity/check_shaders.mjs       -> check_shaders.log        (SHADERS: 317/317 byte-identical)
+  NM_REFERENCE_ROOT=<ref> node parity/check_definitions.mjs   -> check_definitions.log    (DEFINITIONS: 210/210 byte-identical)
+  NM_REFERENCE_ROOT=<ref> node parity/check_effects_ui.mjs    -> check_effects_ui.log     (EFFECTS_UI: 211/211 byte-identical)
+  QT_QPA_PLATFORM=offscreen LD_LIBRARY_PATH=<egl> \
+    NM_REFERENCE_ROOT=<ref> node parity/check_lex.mjs         -> check_lex.log            (LEX: 388/388)
+  ... same for check_parse / check_validate (388/388), check_expand (388/388),
+  check_graph (388/388), check_registry (5/5), check_midi_state (66/66),
+  check_audio_state (93/93), check_obj_parser (443/443)
+  cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH=/state/qt/6.11.1/gcc_64 ... (see note) ; \
+    cmake --build qt/build -j$(nproc)  -> full build clean
+  QT_QPA_PLATFORM=offscreen LD_LIBRARY_PATH=<egl> \
+    ctest --test-dir qt/build --output-on-failure -E "<GL-context tests>"
+      -> ctest-nongl.log (100% tests passed, 0 failed out of 14)
+  python3 -m unittest parity.test_artistic_matrix parity.test_harness_contract
+      -> unittest-parity.log (Ran 54 tests ... OK)
+
+Environment limits, unchanged from prior rounds (recorded in STATUS.md):
+- The 12 GL-context ctest tests abort in this container (no GL 4.1 core
+  context driver available); they build. Excluded with -E above; the
+  full set passes in CI's llvmpipe jobs.
+- check_audio_analyzer not run (needs the reference checkout's
+  playwright node_modules, absent here).
+
+Qt build note: Qt 6.11.1 installed via aqtinstall into /state/qt;
+OPENGL_* and an extracted libEGL supplied CMake because the container
+has no libgl/egl development packages. These are container workarounds
+only; no repository file is affected.

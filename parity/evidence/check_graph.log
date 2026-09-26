@@ -1,0 +1,10 @@
+[noisemaker] S002: Argument out of range for 'color' in solid()
+[noisemaker] S002: Argument out of range for 'paletteOffset' in cellNoise()
+[noisemaker] S002: Array element must be a number for 'paletteOffset' in cellNoise()
+[noisemaker] S002: osc() min must be a number or automation source: '{time}'
+[noisemaker] S002: osc() max must be a number or automation source: '{1}'
+[noisemaker] S002: midi() channel must be a number: '{1}'
+[noisemaker] S002: audio() band must resolve to an integer from 0 to 4 (got undefined): '{1}'
+[noisemaker] S002: audio() min must be a number or automation source: '{0}'
+[noisemaker] S002: Argument out of range for 'color' in solid()
+GRAPH: 388/388
