@@ -113,16 +113,21 @@ int main(int argc, char** argv) {
     Viewer viewer;
     viewer.setWindowTitle(QStringLiteral("noisemaker-for-qt viewer"));
     if (selfCheck) {
-        // Offscreen-positioned: just past the right edge of the union of
-        // all real screens. On macOS the cocoa QPA plugin moves a window
-        // that intersects no screen back onto the primary screen ("outside
-        // any known screen, using primary screen"), so the window is
-        // briefly visible there; the checks below are unaffected.
-        QRect virtualGeometry;
-        for (const QScreen* screen : QGuiApplication::screens()) {
-            virtualGeometry = virtualGeometry.united(screen->geometry());
+        // Offscreen-positioned on macOS only: just past the right edge of
+        // the union of all real screens. On macOS the cocoa QPA plugin
+        // moves a window that intersects no screen back onto the primary
+        // screen ("outside any known screen, using primary screen"), so
+        // the window is briefly visible there; the checks below are
+        // unaffected. Windows keeps the window on-screen: a window outside
+        // the virtual desktop is not exposed there (CI run 36070432259
+        // painted no frames for either example), so painting never starts.
+        if (QGuiApplication::platformName() != QStringLiteral("windows")) {
+            QRect virtualGeometry;
+            for (const QScreen* screen : QGuiApplication::screens()) {
+                virtualGeometry = virtualGeometry.united(screen->geometry());
+            }
+            viewer.move(virtualGeometry.right() + 100, virtualGeometry.top());
         }
-        viewer.move(virtualGeometry.right() + 100, virtualGeometry.top());
     }
     viewer.show();
 
