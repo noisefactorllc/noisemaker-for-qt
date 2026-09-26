@@ -1,0 +1,74 @@
+GAP-004 bounded verification (the 2026-09-25 review correction): the
+embedding workflow re-run at ae488059046e3b98ec3273f38546f43bccd8da11
+(noisemaker-for-qt main), 2026-09-26, in the worker container.
+
+Environment: Debian 12, CMake 3.25.1, Qt 6.11.1 from
+/state/qt/6.11.1/gcc_64 (aqtinstall), Mesa llvmpipe 22.3.6 (OpenGL 4.5
+core) through Xvfb display :98, GL headers/libraries from /state/glroot
+(container workaround, no repository file affected). CMAKE_PREFIX_PATH
+for every configure: /state/qt/6.11.1/gcc_64 + /state/glroot/usr.
+Render/crun working directory: /tmp (unrelated to the checkout).
+
+Executed commands (verbatim, from the repo root unless stated):
+
+  cmake -S qt -B <scratch>/build-top -DCMAKE_PREFIX_PATH=<qt+gl> \
+    -DCMAKE_BUILD_TYPE=Release   -> gap004-top-configure.log   exit 0
+  cmake --build <scratch>/build-top -j4
+                                 -> gap004-top-build.log       exit 0
+  DISPLAY=:98 LIBGL_ALWAYS_SOFTWARE=1 QT_QPA_PLATFORM=xcb \
+    ctest --test-dir <scratch>/build-top --output-on-failure
+                                 -> gap004-top-ctest.log       25/26
+  cmake -S <consumer> -B <scratch>/work/build-embedded \
+    -DCMAKE_PREFIX_PATH=<qt+gl>  -> gap004-embedded-configure.log  exit 0
+  cmake --build ... -j4          -> gap004-embedded-build.log  exit 0
+  ctest ...                      -> gap004-embedded-ctest.log  1/1
+  <build-embedded>/consumer from /tmp (also recorded inside the ctest
+    log) -> "pixel(10,10)=3d837b" (alpha ff), exit 0
+  cmake -S <consumer+NM_QT_BUILD_TESTS=ON NM_QT_BUILD_TOOLS=ON> ...
+                                 -> gap004-embedded-opts-configure.log exit 0
+  cmake --build ... -j4          -> gap004-embedded-opts-build.log exit 0
+  ctest ...                      -> gap004-embedded-opts-ctest.log 25/26
+  FetchContent_Declare(noisemaker_qt GIT_REPOSITORY <this checkout>
+    GIT_TAG ae488059046e3b98ec3273f38546f43bccd8da11 SOURCE_SUBDIR qt)
+  FetchContent_MakeAvailable (default options); configure + build
+                                 -> gap004-fetchcontent-{configure,build}.log exit 0
+  ctest ...                      -> gap004-fetchcontent-ctest.log 1/1
+  <build>/consumer from /tmp     -> "pixel(10,10)=3d837b", exit 0
+  cmake --install <scratch>/work/build-install --prefix <scratch>/install
+                                 -> gap004-install-configure.log,
+                                    gap004-install-build.log (exit 0),
+                                    gap004-install.log (exit 0)
+  cmake -S <installed consumer> -B <scratch>/work/build-installed \
+    -DCMAKE_PREFIX_PATH=<scratch>/install+<qt+gl>
+                                 -> gap004-installed-configure.log exit 0
+  cmake --build ... -j4          -> gap004-installed-build.log exit 0
+  ctest ...                      -> gap004-installed-ctest.log 1/1
+  <build>/consumer from /tmp     -> "pixel(10,10)=3d837b", exit 0
+
+Acceptance results:
+- Top-level: nm-render built; ctest 25/26.
+- Embedded default options: no nm-render or test targets (grep of the
+  build's TargetDirectories.txt for nm-render/tests: 0 matches, noted in
+  the gap record); ctest lists 1 test (consumer_renders) only; the
+  consumer links noisemaker-qt::noisemaker-qt, compiles
+  "search synth / noise().write(o0) / render(o0)" against
+  NOISEMAKER_QT_DATA_ROOT, and renders 64x64 from /tmp; pixel (10,10) =
+  ff3d837b (the log prints the 24-bit RGB 3d837b).
+- Embedded with NM_QT_BUILD_TESTS=ON NM_QT_BUILD_TOOLS=ON: build exit 0;
+  ctest 26 of 26 ran (consumer + the port's 25 tests), 25/26 passed.
+- FetchContent consumer: configure and build exit 0 with no tool or test
+  targets; ctest 1 of 1; pixel ff3d837b.
+- Installed consumer: cmake --install exit 0; find_package(noisemaker-qt
+  CONFIG) exposes the same target, variable and property names
+  (noisemaker-qt::noisemaker-qt, NOISEMAKER_QT_DATA_ROOT /
+  NOISEMAKER_QT_DATA_DIR and the target property); ctest 1 of 1; pixel
+  ff3d837b.
+
+Single ctest failure, one environment limit (not a code difference):
+test_text_texture's "ui-* names and an absent family fall back to the
+standard family, as serif resolves" fails here because the container's
+fontconfig maps ui-serif/ui-sans-serif/ui-monospace/ui-rounded and an
+absent family to DejaVu Sans while serif resolves to DejaVu Serif; the
+Linux CI llvmpipe job (ubuntu-latest, wider font set) passes this test.
+All other 25 tests pass. The historical macOS measurements (2026-09-24)
+are preserved unchanged in docs/COMPLETION_GAPS.md.

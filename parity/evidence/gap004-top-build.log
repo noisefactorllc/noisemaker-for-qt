@@ -1,0 +1,111 @@
+[  1%] Automatic MOC for target noisemaker-qt
+[  1%] Automatic MOC for target test_nm_render_cli
+[  1%] Built target noisemaker-qt_autogen
+[  1%] Built target test_nm_render_cli_autogen
+[  3%] Built target test_nm_render_cli
+[ 22%] Built target noisemaker-qt
+[ 22%] Automatic MOC for target test_graph_load
+[ 23%] Automatic MOC for target nm-render
+[ 23%] Automatic MOC for target test_shader_assembly
+[ 23%] Automatic MOC for target noisemaker-qt-quick
+[ 23%] Built target test_graph_load_autogen
+[ 23%] Built target nm-render_autogen
+[ 23%] Built target noisemaker-qt-quick_autogen
+[ 23%] Built target test_shader_assembly_autogen
+[ 24%] Automatic MOC for target test_device_limits
+[ 25%] Automatic MOC for target test_automation
+[ 25%] Automatic MOC for target test_output_runtime
+[ 26%] Automatic MOC for target test_frame_export
+[ 26%] Built target test_device_limits_autogen
+[ 26%] Built target test_automation_autogen
+[ 26%] Built target test_output_runtime_autogen
+[ 26%] Built target test_frame_export_autogen
+[ 26%] Automatic MOC for target test_host_inputs
+[ 27%] Automatic MOC for target test_midi_state
+[ 27%] Automatic MOC for target test_audio_input
+[ 27%] Automatic MOC for target test_text_texture
+[ 27%] Built target test_host_inputs_autogen
+[ 27%] Built target test_midi_state_autogen
+[ 27%] Built target test_audio_input_autogen
+[ 27%] Built target test_text_texture_autogen
+[ 28%] Automatic MOC for target test_export_kit_host
+[ 29%] Automatic MOC for target test_backend_lifecycle
+[ 30%] Automatic MOC for target test_lexer
+[ 30%] Built target test_export_kit_host_autogen
+[ 31%] Automatic MOC for target test_parser
+[ 31%] Built target test_backend_lifecycle_autogen
+[ 31%] Built target test_lexer_autogen
+[ 32%] Automatic MOC for target test_registry
+[ 32%] Automatic MOC for target test_validator
+[ 32%] Built target test_parser_autogen
+[ 32%] Automatic MOC for target test_effect_validator
+[ 32%] Built target test_registry_autogen
+[ 33%] Automatic MOC for target test_js_syntax
+[ 33%] Built target test_validator_autogen
+[ 33%] Built target test_effect_validator_autogen
+[ 33%] Automatic MOC for target test_js_number
+[ 33%] Automatic MOC for target registry_dump
+[ 33%] Built target test_js_syntax_autogen
+[ 33%] Built target test_js_number_autogen
+[ 33%] Automatic MOC for target test_expander
+[ 34%] Automatic MOC for target test_resources
+[ 34%] Built target registry_dump_autogen
+[ 34%] Automatic MOC for target expand_dump
+[ 34%] Built target test_expander_autogen
+[ 34%] Built target test_resources_autogen
+[ 34%] Automatic MOC for target midi_state_dump
+[ 34%] Built target expand_dump_autogen
+[ 35%] Automatic MOC for target audio_analyzer_dump
+[ 36%] Automatic MOC for target audio_state_dump
+[ 36%] Built target midi_state_dump_autogen
+[ 37%] Automatic MOC for target text_texture_dump
+[ 37%] Built target audio_analyzer_dump_autogen
+[ 37%] Built target audio_state_dump_autogen
+[ 37%] Automatic MOC for target test_obj_parser
+[ 37%] Built target text_texture_dump_autogen
+[ 38%] Automatic MOC for target test_mesh_render
+[ 38%] Automatic MOC for target obj_parser_dump
+[ 38%] Built target test_obj_parser_autogen
+[ 39%] Automatic MOC for target async_overlay_dump
+[ 39%] Built target test_mesh_render_autogen
+[ 39%] Built target obj_parser_dump_autogen
+[ 39%] Automatic MOC for target test_async_overlay
+[ 39%] Built target async_overlay_dump_autogen
+[ 41%] Built target noisemaker-qt-quick
+[ 41%] Built target test_async_overlay_autogen
+[ 43%] Built target test_shader_assembly
+[ 47%] Built target nm-render
+[ 50%] Built target test_device_limits
+[ 50%] Built target test_graph_load
+[ 52%] Built target test_output_runtime
+[ 54%] Built target test_automation
+[ 56%] Built target test_host_inputs
+[ 57%] Built target test_frame_export
+[ 58%] Built target test_midi_state
+[ 60%] Built target test_audio_input
+[ 61%] Automatic MOC for target test_quick_item
+[ 63%] Built target test_text_texture
+[ 64%] Built target test_backend_lifecycle
+[ 66%] Built target test_export_kit_host
+[ 66%] Built target test_quick_item_autogen
+[ 69%] Built target test_lexer
+[ 69%] Built target test_parser
+[ 70%] Built target test_registry
+[ 72%] Built target test_js_syntax
+[ 74%] Built target test_effect_validator
+[ 76%] Built target test_validator
+[ 78%] Built target registry_dump
+[ 80%] Built target test_expander
+[ 81%] Built target test_resources
+[ 83%] Built target test_js_number
+[ 85%] Built target expand_dump
+[ 86%] Built target audio_analyzer_dump
+[ 88%] Built target midi_state_dump
+[ 89%] Built target audio_state_dump
+[ 91%] Built target test_obj_parser
+[ 93%] Built target text_texture_dump
+[ 94%] Built target test_mesh_render
+[ 96%] Built target obj_parser_dump
+[ 97%] Built target async_overlay_dump
+[ 99%] Built target test_async_overlay
+[100%] Built target test_quick_item

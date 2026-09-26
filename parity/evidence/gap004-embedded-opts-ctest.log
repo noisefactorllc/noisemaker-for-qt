@@ -1,0 +1,120 @@
+Internal ctest changing into directory: /state/cache/scratch/gap004/work/build-embedded-opts
+Test project /state/cache/scratch/gap004/work/build-embedded-opts
+      Start  1: consumer_renders
+ 1/26 Test  #1: consumer_renders .................   Passed    0.53 sec
+      Start  2: test_shader_assembly
+ 2/26 Test  #2: test_shader_assembly .............   Passed    0.01 sec
+      Start  3: test_graph_load
+ 3/26 Test  #3: test_graph_load ..................   Passed    0.01 sec
+      Start  4: test_device_limits
+ 4/26 Test  #4: test_device_limits ...............   Passed    2.62 sec
+      Start  5: test_output_runtime
+ 5/26 Test  #5: test_output_runtime ..............   Passed    0.01 sec
+      Start  6: test_automation
+ 6/26 Test  #6: test_automation ..................   Passed    0.04 sec
+      Start  7: test_frame_export
+ 7/26 Test  #7: test_frame_export ................   Passed    0.67 sec
+      Start  8: test_host_inputs
+ 8/26 Test  #8: test_host_inputs .................   Passed   10.02 sec
+      Start  9: test_midi_state
+ 9/26 Test  #9: test_midi_state ..................   Passed    0.89 sec
+      Start 10: test_audio_input
+10/26 Test #10: test_audio_input .................   Passed    0.72 sec
+      Start 11: test_text_texture
+11/26 Test #11: test_text_texture ................***Failed    0.50 sec
+Failed to create /home/node/.cache for shader cache (Read-only file system)---disabling.
+PASS: absent uniforms keep the filter/text definition defaults
+PASS: compiled text uniforms are read verbatim
+PASS: a [r, g, b, a] colour in 0..1 rounds to rgb bytes
+PASS: a #rrggbb colour string parses
+PASS: a colour string that is not #rrggbb reads as white, as Noisedeck _hexToRgb does
+PASS: the bundled Nunito file matches the SHA-256 recorded in README.md
+PASS: the font's OFL ships beside it
+PASS: registerBundledFonts registers the bundled Nunito family
+PASS: a second registration of the same files adds nothing
+PASS: the default text family resolves to Nunito
+PASS: an empty canvas size yields a null image
+PASS: empty text yields a transparent RGBA8888 canvas of the requested size
+PASS: a font size that rounds to 0 px draws nothing
+PASS: opaque text pixels carry the exact fill colour (straight alpha)
+  advance=124.203 left.cx=317.128 center.cx=255.040 right.cx=192.936 cy=252.571
+PASS: left, center and right justification shift the line by half its advance each
+PASS: left text starts at posX, right text ends at posX (within the side bearing)
+PASS: justification moves the line without changing it
+PASS: posX and posY place the origin in canvas pixels from the top left
+PASS: textBaseline middle straddles posY
+PASS: lines are 1.2 x the font size apart and centered as a block on posY
+  rotated cx=258.429 cy=255.043
+PASS: rotation turns the text clockwise about its origin
+  coverage ExtraLight=4001.2 Regular=7038.4 Bold=10276.5 ExtraBold=12063.4
+PASS: style labels map to increasing weights (ExtraLight < Regular < Bold < ExtraBold)
+PASS: an Italic style label changes the glyphs
+PASS: family 'serif' falls back to an installed font and draws
+PASS: family 'sans-serif' falls back to an installed font and draws
+PASS: family 'monospace' falls back to an installed font and draws
+PASS: family 'cursive' falls back to an installed font and draws
+PASS: family 'fantasy' falls back to an installed font and draws
+PASS: family 'system-ui' falls back to an installed font and draws
+PASS: family 'No Such Family 7f3a' falls back to an installed font and draws
+  serif, sans-serif, monospace, cursive, fantasy: DejaVu Serif, DejaVu Sans, DejaVu Sans Mono, DejaVu Sans, DejaVu Sans
+  ui-serif, ui-sans-serif, ui-monospace, ui-rounded, Nmqt Absent Family: DejaVu Sans, DejaVu Sans, DejaVu Sans, DejaVu Sans, DejaVu Sans
+FAIL: ui-* names and an absent family fall back to the standard family, as serif resolves
+  DejaVu Sans: DejaVu Sans
+PASS: a family the platform has resolves to itself
+PASS: kerning variation deltas of Nunito pairs match HarfBuzz at wght 300, 400, 700 and 800
+PASS: in "Heavy" at wght 800 only the v of the vy pair carries a delta
+PASS: the default instance (wght 200) has no deltas
+PASS: wght beyond the axis maximum clamps to it
+PASS: an invalid font or a single glyph gets zero deltas
+PASS: without kerning deltas the line outline equals QPainterPath::addText exactly
+  Heavy: elements=364 delta=4.39950 px
+PASS: the line advance grows by the vy delta in pixels
+  Heavy: got elements=364, glyph elements=364, element types equal
+  Heavy: outline coordinates double precision, largest |coordinate| 148.768 px, tolerance 1e-09 px
+  Heavy: H, e, a, v largest |shift| 1.42e-14 px at element 24 (H, -93.1771, -58.1849); y largest |shift - delta| 2.04e-14 px at element 339 (y, 125.1250, -3.1094)
+PASS: only the glyph after the kerned pair moves, by the delta (within the engine's outline precision)
+PASS: updateTextTextures uploads textTex_step_N
+  green pixels=162 in top half=162
+PASS: the uploaded text composites over the input
+PASS: text at posY 0.2 appears in the top of the read-back image (flipY = true)
+PASS: the matte comes from the shader, not from the canvas
+FAILED (1 failure)
+
+      Start 12: test_backend_lifecycle
+12/26 Test #12: test_backend_lifecycle ...........   Passed    8.97 sec
+      Start 13: test_nm_render_cli
+13/26 Test #13: test_nm_render_cli ...............   Passed    2.40 sec
+      Start 14: test_export_kit_host
+14/26 Test #14: test_export_kit_host .............   Passed    0.56 sec
+      Start 15: test_lexer
+15/26 Test #15: test_lexer .......................   Passed    0.01 sec
+      Start 16: test_parser
+16/26 Test #16: test_parser ......................   Passed    0.04 sec
+      Start 17: test_registry
+17/26 Test #17: test_registry ....................   Passed    0.13 sec
+      Start 18: test_validator
+18/26 Test #18: test_validator ...................   Passed    0.11 sec
+      Start 19: test_effect_validator
+19/26 Test #19: test_effect_validator ............   Passed    0.09 sec
+      Start 20: test_js_syntax
+20/26 Test #20: test_js_syntax ...................   Passed    0.04 sec
+      Start 21: test_js_number
+21/26 Test #21: test_js_number ...................   Passed    0.01 sec
+      Start 22: test_expander
+22/26 Test #22: test_expander ....................   Passed    0.09 sec
+      Start 23: test_resources
+23/26 Test #23: test_resources ...................   Passed    0.01 sec
+      Start 24: test_obj_parser
+24/26 Test #24: test_obj_parser ..................   Passed    0.02 sec
+      Start 25: test_mesh_render
+25/26 Test #25: test_mesh_render .................   Passed    1.22 sec
+      Start 26: test_async_overlay
+26/26 Test #26: test_async_overlay ...............   Passed   97.74 sec
+
+96% tests passed, 1 tests failed out of 26
+
+Total Test time (real) = 127.45 sec
+
+The following tests FAILED:
+	 11 - test_text_texture (Failed)
+Errors while running CTest

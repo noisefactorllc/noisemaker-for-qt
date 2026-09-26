@@ -1,0 +1,6 @@
+[ 25%] Automatic MOC for target consumer
+[ 25%] Built target consumer_autogen
+[ 50%] Building CXX object CMakeFiles/consumer.dir/consumer_autogen/mocs_compilation.cpp.o
+[ 75%] Building CXX object CMakeFiles/consumer.dir/consumer.cpp.o
+[100%] Linking CXX executable consumer
+[100%] Built target consumer

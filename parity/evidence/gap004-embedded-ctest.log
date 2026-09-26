@@ -1,0 +1,8 @@
+Internal ctest changing into directory: /state/cache/scratch/gap004/work/build-embedded
+Test project /state/cache/scratch/gap004/work/build-embedded
+    Start 1: consumer_renders
+1/1 Test #1: consumer_renders .................   Passed    0.46 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.47 sec

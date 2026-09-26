@@ -1,0 +1,255 @@
+[  2%] Automatic MOC for target noisemaker-qt
+[  2%] Automatic MOC for target test_nm_render_cli
+[  2%] Built target test_nm_render_cli_autogen
+[  2%] Built target noisemaker-qt_autogen
+[  3%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_nm_render_cli.dir/test_nm_render_cli.cpp.o
+[  3%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_nm_render_cli.dir/test_nm_render_cli_autogen/mocs_compilation.cpp.o
+[  4%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/graph.cpp.o
+[  4%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker-qt_autogen/mocs_compilation.cpp.o
+[  4%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/shader_assembly.cpp.o
+[  5%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/surface.cpp.o
+[  5%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/device_limits.cpp.o
+[  6%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/pingpong.cpp.o
+[  6%] Linking CXX executable test_nm_render_cli
+[  6%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/agents.cpp.o
+[  6%] Built target test_nm_render_cli
+[  7%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/output_sink.cpp.o
+[  7%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/frame_export.cpp.o
+[  8%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/obj_parser.cpp.o
+[  9%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/backend.cpp.o
+[  9%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/png_io.cpp.o
+[ 10%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/parameters.cpp.o
+[ 10%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/midi_state.cpp.o
+[ 11%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/audio_analyzer.cpp.o
+[ 11%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/audio_state.cpp.o
+[ 12%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/text_texture.cpp.o
+[ 12%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/stroke_canvas.cpp.o
+[ 13%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/worm_tracer.cpp.o
+[ 13%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/async_overlay.cpp.o
+[ 14%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/diagnostics.cpp.o
+[ 15%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/lexer.cpp.o
+[ 15%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/parser.cpp.o
+[ 16%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/enums.cpp.o
+[ 16%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/effect_registry.cpp.o
+[ 17%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/effect_validator.cpp.o
+[ 17%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_number.cpp.o
+[ 18%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_unicode.cpp.o
+[ 18%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_regexp.cpp.o
+[ 19%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_syntax.cpp.o
+[ 19%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/validator.cpp.o
+[ 20%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/dim.cpp.o
+[ 21%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/resources.cpp.o
+[ 21%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/expander.cpp.o
+[ 22%] Building CXX object noisemaker-qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/dsl_compiler.cpp.o
+[ 22%] Linking CXX static library libnoisemaker-qt.a
+[ 22%] Built target noisemaker-qt
+[ 22%] Automatic MOC for target consumer
+[ 24%] Automatic MOC for target test_graph_load
+[ 24%] Automatic MOC for target nm-render
+[ 25%] Automatic MOC for target test_shader_assembly
+[ 25%] Built target consumer_autogen
+[ 25%] Built target test_shader_assembly_autogen
+[ 25%] Built target test_graph_load_autogen
+[ 25%] Built target nm-render_autogen
+[ 25%] Automatic MOC for target test_device_limits
+[ 26%] Automatic MOC for target test_automation
+[ 26%] Automatic MOC for target test_output_runtime
+[ 26%] Automatic MOC for target test_frame_export
+[ 26%] Built target test_device_limits_autogen
+[ 26%] Built target test_automation_autogen
+[ 26%] Built target test_output_runtime_autogen
+[ 26%] Built target test_frame_export_autogen
+[ 27%] Automatic MOC for target test_host_inputs
+[ 28%] Automatic MOC for target test_midi_state
+[ 28%] Automatic MOC for target test_audio_input
+[ 28%] Automatic MOC for target test_text_texture
+[ 28%] Built target test_host_inputs_autogen
+[ 28%] Built target test_midi_state_autogen
+[ 28%] Built target test_audio_input_autogen
+[ 28%] Built target test_text_texture_autogen
+[ 29%] Automatic MOC for target test_backend_lifecycle
+[ 29%] Automatic MOC for target test_export_kit_host
+[ 29%] Automatic MOC for target test_lexer
+[ 29%] Automatic MOC for target test_parser
+[ 29%] Built target test_backend_lifecycle_autogen
+[ 29%] Built target test_export_kit_host_autogen
+[ 29%] Built target test_lexer_autogen
+[ 30%] Automatic MOC for target test_registry
+[ 30%] Automatic MOC for target test_validator
+[ 30%] Built target test_parser_autogen
+[ 30%] Automatic MOC for target test_effect_validator
+[ 30%] Automatic MOC for target test_js_syntax
+[ 30%] Built target test_registry_autogen
+[ 30%] Built target test_validator_autogen
+[ 30%] Built target test_effect_validator_autogen
+[ 31%] Automatic MOC for target test_js_number
+[ 31%] Automatic MOC for target registry_dump
+[ 31%] Automatic MOC for target test_expander
+[ 31%] Built target test_js_syntax_autogen
+[ 31%] Built target test_js_number_autogen
+[ 31%] Built target registry_dump_autogen
+[ 32%] Automatic MOC for target test_resources
+[ 32%] Built target test_expander_autogen
+[ 32%] Automatic MOC for target expand_dump
+[ 33%] Automatic MOC for target midi_state_dump
+[ 34%] Automatic MOC for target audio_analyzer_dump
+[ 34%] Built target test_resources_autogen
+[ 34%] Built target midi_state_dump_autogen
+[ 34%] Built target expand_dump_autogen
+[ 34%] Automatic MOC for target audio_state_dump
+[ 34%] Built target audio_analyzer_dump_autogen
+[ 35%] Automatic MOC for target text_texture_dump
+[ 36%] Automatic MOC for target test_obj_parser
+[ 36%] Automatic MOC for target test_mesh_render
+[ 36%] Built target audio_state_dump_autogen
+[ 36%] Built target text_texture_dump_autogen
+[ 36%] Built target test_obj_parser_autogen
+[ 36%] Built target test_mesh_render_autogen
+[ 37%] Automatic MOC for target obj_parser_dump
+[ 38%] Automatic MOC for target async_overlay_dump
+[ 38%] Automatic MOC for target test_async_overlay
+[ 39%] Building CXX object CMakeFiles/consumer.dir/consumer_autogen/mocs_compilation.cpp.o
+[ 39%] Built target obj_parser_dump_autogen
+[ 39%] Building CXX object CMakeFiles/consumer.dir/consumer.cpp.o
+[ 39%] Built target async_overlay_dump_autogen
+[ 39%] Built target test_async_overlay_autogen
+[ 39%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_shader_assembly.dir/test_shader_assembly_autogen/mocs_compilation.cpp.o
+[ 39%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/nm-render_autogen/mocs_compilation.cpp.o
+[ 40%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_graph_load.dir/test_graph_load_autogen/mocs_compilation.cpp.o
+[ 42%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_shader_assembly.dir/test_shader_assembly.cpp.o
+[ 42%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/tools/nm-render/dump_graph.cpp.o
+[ 42%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_graph_load.dir/test_graph_load.cpp.o
+[ 42%] Linking CXX executable test_shader_assembly
+[ 43%] Linking CXX executable consumer
+[ 44%] Linking CXX executable test_graph_load
+[ 44%] Built target test_shader_assembly
+[ 44%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/tools/nm-render/dump_lex.cpp.o
+[ 44%] Built target test_graph_load
+[ 45%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/tools/nm-render/dump_parse.cpp.o
+[ 45%] Built target consumer
+[ 45%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_device_limits.dir/test_device_limits_autogen/mocs_compilation.cpp.o
+[ 46%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_device_limits.dir/test_device_limits.cpp.o
+[ 46%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/tools/nm-render/dump_validate.cpp.o
+[ 47%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_output_runtime.dir/test_output_runtime_autogen/mocs_compilation.cpp.o
+[ 47%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_output_runtime.dir/test_output_runtime.cpp.o
+[ 48%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_automation.dir/test_automation_autogen/mocs_compilation.cpp.o
+[ 49%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_automation.dir/test_automation.cpp.o
+[ 50%] Linking CXX executable test_device_limits
+[ 51%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/tools/nm-render/main.cpp.o
+[ 51%] Built target test_device_limits
+[ 51%] Building CXX object noisemaker-qt-build/CMakeFiles/nm-render.dir/tools/nm-render/render_samples.cpp.o
+[ 52%] Linking CXX executable test_output_runtime
+[ 52%] Linking CXX executable test_automation
+[ 52%] Built target test_output_runtime
+[ 53%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_frame_export.dir/test_frame_export_autogen/mocs_compilation.cpp.o
+[ 53%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_frame_export.dir/test_frame_export.cpp.o
+[ 53%] Built target test_automation
+[ 53%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_host_inputs.dir/test_host_inputs_autogen/mocs_compilation.cpp.o
+[ 54%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_host_inputs.dir/test_host_inputs.cpp.o
+[ 55%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_midi_state.dir/test_midi_state_autogen/mocs_compilation.cpp.o
+[ 56%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_midi_state.dir/test_midi_state.cpp.o
+[ 57%] Linking CXX executable nm-render
+[ 57%] Built target nm-render
+[ 58%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_audio_input.dir/test_audio_input_autogen/mocs_compilation.cpp.o
+[ 58%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_audio_input.dir/test_audio_input.cpp.o
+[ 59%] Linking CXX executable test_frame_export
+[ 59%] Built target test_frame_export
+[ 59%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_text_texture.dir/test_text_texture_autogen/mocs_compilation.cpp.o
+[ 60%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_text_texture.dir/test_text_texture.cpp.o
+[ 60%] Linking CXX executable test_host_inputs
+[ 60%] Built target test_host_inputs
+[ 60%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_backend_lifecycle.dir/test_backend_lifecycle_autogen/mocs_compilation.cpp.o
+[ 61%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_backend_lifecycle.dir/test_backend_lifecycle.cpp.o
+[ 61%] Linking CXX executable test_midi_state
+[ 61%] Built target test_midi_state
+[ 62%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_export_kit_host.dir/test_export_kit_host_autogen/mocs_compilation.cpp.o
+[ 63%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_export_kit_host.dir/test_export_kit_host.cpp.o
+[ 64%] Linking CXX executable test_audio_input
+[ 64%] Built target test_audio_input
+[ 64%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_export_kit_host.dir/workspace/repos/noisemaker-for-qt/export-kit/kit/src/host_inputs.cpp.o
+[ 65%] Linking CXX executable test_text_texture
+[ 65%] Linking CXX executable test_backend_lifecycle
+[ 65%] Built target test_text_texture
+[ 66%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_lexer.dir/test_lexer_autogen/mocs_compilation.cpp.o
+[ 66%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_lexer.dir/test_lexer.cpp.o
+[ 66%] Built target test_backend_lifecycle
+[ 67%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_parser.dir/test_parser_autogen/mocs_compilation.cpp.o
+[ 67%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_parser.dir/test_parser.cpp.o
+[ 68%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_registry.dir/test_registry_autogen/mocs_compilation.cpp.o
+[ 68%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_registry.dir/test_registry.cpp.o
+[ 69%] Linking CXX executable test_export_kit_host
+[ 69%] Built target test_export_kit_host
+[ 70%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_validator.dir/test_validator_autogen/mocs_compilation.cpp.o
+[ 70%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_validator.dir/test_validator.cpp.o
+[ 71%] Linking CXX executable test_lexer
+[ 71%] Built target test_lexer
+[ 72%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_effect_validator.dir/test_effect_validator_autogen/mocs_compilation.cpp.o
+[ 72%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_effect_validator.dir/test_effect_validator.cpp.o
+[ 73%] Linking CXX executable test_parser
+[ 73%] Built target test_parser
+[ 74%] Linking CXX executable test_registry
+[ 74%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_js_syntax.dir/test_js_syntax_autogen/mocs_compilation.cpp.o
+[ 75%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_js_syntax.dir/test_js_syntax.cpp.o
+[ 75%] Built target test_registry
+[ 75%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_js_number.dir/test_js_number_autogen/mocs_compilation.cpp.o
+[ 76%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_js_number.dir/test_js_number.cpp.o
+[ 77%] Linking CXX executable test_validator
+[ 77%] Built target test_validator
+[ 77%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/registry_dump.dir/registry_dump_autogen/mocs_compilation.cpp.o
+[ 78%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/registry_dump.dir/registry_dump.cpp.o
+[ 79%] Linking CXX executable test_js_syntax
+[ 79%] Built target test_js_syntax
+[ 80%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_expander.dir/test_expander_autogen/mocs_compilation.cpp.o
+[ 80%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_expander.dir/test_expander.cpp.o
+[ 80%] Linking CXX executable test_js_number
+[ 80%] Built target test_js_number
+[ 80%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_resources.dir/test_resources_autogen/mocs_compilation.cpp.o
+[ 81%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_resources.dir/test_resources.cpp.o
+[ 82%] Linking CXX executable test_effect_validator
+[ 82%] Built target test_effect_validator
+[ 83%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/expand_dump.dir/expand_dump_autogen/mocs_compilation.cpp.o
+[ 83%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/expand_dump.dir/expand_dump.cpp.o
+[ 84%] Linking CXX executable registry_dump
+[ 84%] Built target registry_dump
+[ 85%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/midi_state_dump.dir/midi_state_dump_autogen/mocs_compilation.cpp.o
+[ 86%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/midi_state_dump.dir/midi_state_dump.cpp.o
+[ 86%] Linking CXX executable test_resources
+[ 86%] Built target test_resources
+[ 86%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/audio_analyzer_dump.dir/audio_analyzer_dump_autogen/mocs_compilation.cpp.o
+[ 87%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/audio_analyzer_dump.dir/audio_analyzer_dump.cpp.o
+[ 88%] Linking CXX executable test_expander
+[ 88%] Built target test_expander
+[ 88%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/audio_state_dump.dir/audio_state_dump_autogen/mocs_compilation.cpp.o
+[ 89%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/audio_state_dump.dir/audio_state_dump.cpp.o
+[ 90%] Linking CXX executable expand_dump
+[ 90%] Built target expand_dump
+[ 91%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/text_texture_dump.dir/text_texture_dump_autogen/mocs_compilation.cpp.o
+[ 91%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/text_texture_dump.dir/text_texture_dump.cpp.o
+[ 91%] Linking CXX executable midi_state_dump
+[ 91%] Linking CXX executable audio_analyzer_dump
+[ 91%] Built target midi_state_dump
+[ 91%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_obj_parser.dir/test_obj_parser_autogen/mocs_compilation.cpp.o
+[ 92%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_obj_parser.dir/test_obj_parser.cpp.o
+[ 92%] Built target audio_analyzer_dump
+[ 93%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_mesh_render.dir/test_mesh_render_autogen/mocs_compilation.cpp.o
+[ 93%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_mesh_render.dir/test_mesh_render.cpp.o
+[ 94%] Linking CXX executable audio_state_dump
+[ 94%] Built target audio_state_dump
+[ 94%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/obj_parser_dump.dir/obj_parser_dump_autogen/mocs_compilation.cpp.o
+[ 95%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/obj_parser_dump.dir/obj_parser_dump.cpp.o
+[ 96%] Linking CXX executable text_texture_dump
+[ 96%] Built target text_texture_dump
+[ 96%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/async_overlay_dump.dir/async_overlay_dump_autogen/mocs_compilation.cpp.o
+[ 97%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/async_overlay_dump.dir/async_overlay_dump.cpp.o
+[ 97%] Linking CXX executable test_obj_parser
+[ 97%] Built target test_obj_parser
+[ 98%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_async_overlay.dir/test_async_overlay_autogen/mocs_compilation.cpp.o
+[ 98%] Building CXX object noisemaker-qt-build/tests/CMakeFiles/test_async_overlay.dir/test_async_overlay.cpp.o
+[ 99%] Linking CXX executable test_mesh_render
+[ 99%] Linking CXX executable obj_parser_dump
+[ 99%] Built target obj_parser_dump
+[ 99%] Built target test_mesh_render
+[ 99%] Linking CXX executable async_overlay_dump
+[ 99%] Built target async_overlay_dump
+[100%] Linking CXX executable test_async_overlay
+[100%] Built target test_async_overlay

@@ -131,17 +131,17 @@ These entries record missing qualification. They do not infer implementation def
 
 ### GAP-004: embedded CMake build pollutes the host project
 
-- Status: open. Priority: P2. Category: ecosystem.
+- Status: closed. Priority: P2. Category: ecosystem.
 - Review correction, 2026-09-25: Current CMake options use PROJECT_IS_TOP_LEVEL and installed-consumer CI passes. The required default-options embedded consumer run is not present in the retained raw evidence. Repeat that existing embedding workflow before accepting closure. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log). [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
 - Affected scope: qt/CMakeLists.txt, qt/tests/CMakeLists.txt, qt/cmake/noisemaker-qt-config.cmake.in, EffectRegistry::defaultDataRoot().
 - Expected behavior: add_subdirectory or FetchContent builds only the library. The host can locate the data tree without a working-directory assumption.
 - Observed behavior: Before the fix, the embedded build always built nm-render and the tests, and called enable_testing(). Data lookup was working-directory-relative.
 - Evidence: NM_QT_BUILD_TOOLS, NM_QT_BUILD_TESTS and NM_QT_INSTALL default to PROJECT_IS_TOP_LEVEL. NOISEMAKER_QT_DATA_ROOT names the data tree. Checks are listed below.
-- Next action: Complete the bounded verification check in the dated review correction above. Preserve the historical measurements below.
+- Next action: None. Closed 2026-09-26: the review-correction embedding workflow was re-run at `ae488059046e3b98ec3273f38546f43bccd8da11` on Linux (Debian 12, CMake 3.25.1, Qt 6.11.1, Mesa llvmpipe 22.3.6 OpenGL 4.5 core via Xvfb) with the raw logs retained in [parity/evidence/gap004-MANIFEST.txt](../parity/evidence/gap004-MANIFEST.txt) and its 18 `gap004-*.log` files. Every required check re-verified by fresh execution: top-level configure/build exit 0 with nm-render and ctest 25/26; the default-options embedded consumer configured and built with zero nm-render or test targets, its ctest listed only its own `consumer_renders` test (1 of 1), and the same consumer linked `noisemaker-qt::noisemaker-qt`, compiled `search synth` / `noise().write(o0)` / `render(o0)` against `NOISEMAKER_QT_DATA_ROOT`, and rendered 64x64 from the unrelated working directory /tmp at exit 0 with pixel (10,10) = `ff3d837b`; the embedded consumer with `NM_QT_BUILD_TESTS=ON NM_QT_BUILD_TOOLS=ON` built and passed the consumer plus the port's 25 tests (25/26, one environment-only failure noted below); a FetchContent consumer at the same SHA (SOURCE_SUBDIR qt, default options) configured, built, ctest 1 of 1, pixel `ff3d837b`; `cmake --install` exit 0 and the installed `find_package(noisemaker-qt CONFIG)` consumer exposed the same target, variable and property names and rendered pixel `ff3d837b` from /tmp, exit 0. The single ctest failure (`test_text_texture`'s ui-\* font-fallback case) is a container fontconfig difference — this host maps ui-\* and absent families to DejaVu Sans while serif resolves to DejaVu Serif; the Linux CI llvmpipe job passes it — not a code difference.
 - Dependencies: None.
 - Acceptance criteria: Top-level build builds nm-render and passes ctest. An embedded consumer with default options has no tool or test targets, links, and renders.
 - Required checks: Top-level configure, build, and ctest. Embedded consumer configure, build, ctest, and run from an unrelated working directory. Installed consumer build and run.
-- Last verification: 2026-09-24, macOS 26.5 arm64, Qt 6 from /opt/homebrew/opt/qt, CMake 4.4.3.
+- Last verification: 2026-09-26, Linux (Debian 12, llvmpipe/Xvfb), Qt 6.11.1, CMake 3.25.1, at `ae488059046e3b98ec3273f38546f43bccd8da11`; prior 2026-09-24 verification was macOS 26.5 arm64, Qt 6 from /opt/homebrew/opt/qt, CMake 4.4.3.
 
 <details><summary>GAP-004 evidence</summary>
 
@@ -761,7 +761,7 @@ Subsequent historical actions remain dependent on that evidence. No implementati
 
 1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families; GAP-044 and GAP-045 (ui-* and absent families).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. Retained CI evidence for the reopened entries (GAP-004, 017, 022, 025, 026, 027, 034, 035, 037, 038, 041): the qualification workflow in progress.
+3. Retained CI evidence for the reopened entries (017, 022, 025, 026, 027, 034, 035, 037, 038, 041): the qualification workflow in progress. GAP-004 left this list on 2026-09-26: its required embedding workflow was re-run with fresh raw evidence (parity/evidence/gap004-MANIFEST.txt) and the entry is closed.
 4. Blocked or waiting: GAP-030 needs a reference fix (blocked, see the entry); GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
 
 Record measured results. Close entries only when their acceptance criteria pass.

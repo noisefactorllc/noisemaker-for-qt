@@ -1,0 +1,45 @@
+[  2%] Automatic MOC for target noisemaker-qt
+[  2%] Built target noisemaker-qt_autogen
+[  4%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/graph.cpp.o
+[  7%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker-qt_autogen/mocs_compilation.cpp.o
+[  9%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/shader_assembly.cpp.o
+[ 12%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/surface.cpp.o
+[ 14%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/device_limits.cpp.o
+[ 17%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/pingpong.cpp.o
+[ 19%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/agents.cpp.o
+[ 21%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/output_sink.cpp.o
+[ 24%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/frame_export.cpp.o
+[ 26%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/obj_parser.cpp.o
+[ 29%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/backend.cpp.o
+[ 31%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/png_io.cpp.o
+[ 34%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/parameters.cpp.o
+[ 36%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/midi_state.cpp.o
+[ 39%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/audio_analyzer.cpp.o
+[ 41%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/audio_state.cpp.o
+[ 43%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/text_texture.cpp.o
+[ 46%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/stroke_canvas.cpp.o
+[ 48%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/worm_tracer.cpp.o
+[ 51%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/runtime/async_overlay.cpp.o
+[ 53%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/diagnostics.cpp.o
+[ 56%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/lexer.cpp.o
+[ 58%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/parser.cpp.o
+[ 60%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/enums.cpp.o
+[ 63%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/effect_registry.cpp.o
+[ 65%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/effect_validator.cpp.o
+[ 68%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_number.cpp.o
+[ 70%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_unicode.cpp.o
+[ 73%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_regexp.cpp.o
+[ 75%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/js_syntax.cpp.o
+[ 78%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/validator.cpp.o
+[ 80%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/dim.cpp.o
+[ 82%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/resources.cpp.o
+[ 85%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/expander.cpp.o
+[ 87%] Building CXX object _deps/noisemaker_qt-build/CMakeFiles/noisemaker-qt.dir/noisemaker/compiler/dsl_compiler.cpp.o
+[ 90%] Linking CXX static library libnoisemaker-qt.a
+[ 90%] Built target noisemaker-qt
+[ 92%] Automatic MOC for target consumer
+[ 92%] Built target consumer_autogen
+[ 95%] Building CXX object CMakeFiles/consumer.dir/consumer.cpp.o
+[ 97%] Building CXX object CMakeFiles/consumer.dir/consumer_autogen/mocs_compilation.cpp.o
+[100%] Linking CXX executable consumer
+[100%] Built target consumer
