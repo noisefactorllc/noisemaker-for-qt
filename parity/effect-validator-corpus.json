@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCommit": "9d3474dfdc6cb737ebb7b2f3598b16d940af1544",
+  "referenceCommit": "2f47612c29045c1b91af94887a8ff20106e980ef",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "referenceErrors are the reference validateEffectDefinition() output at referenceCommit, verbatim. Consumers compare SORTED error lists (port emits sorted key order; see effect_validator.h deviation note)."
  },
@@ -5101,6 +5101,2152 @@
    "referenceErrors": [
     "Pass 0: inputs['scratchTex'] references unsupported texture 'scratch'",
     "Texture 't': unknown format '1'"
+   ]
+  },
+  {
+   "id": "filter policy on a 2D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "t": {
+      "filter": "linear"
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ]
+   },
+   "referenceErrors": [
+    "Pass 0: inputs['scratchTex'] references unsupported texture 'scratch'",
+    "Texture 't': \"filter\" is only supported on 3D texture specs (\"textures3d\")"
+   ]
+  },
+  {
+   "id": "unknown filter policy on a 3D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "scratch": {
+      "width": 64,
+      "height": "100%",
+      "format": "rgba16f"
+     },
+     "scaled": {
+      "width": {
+       "param": "volumeSize",
+       "power": 2,
+       "default": 1024
+      },
+      "height": {
+       "screenDivide": "zoom",
+       "default": 8
+      }
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ],
+    "textures3d": {
+     "t": {
+      "depth": 8,
+      "filter": "cubic"
+     }
+    }
+   },
+   "referenceErrors": [
+    "Texture 't': unknown filter 'cubic' (expected 'nearest' or 'linear')"
+   ]
+  },
+  {
+   "id": "filter policy is a number on a 3D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "scratch": {
+      "width": 64,
+      "height": "100%",
+      "format": "rgba16f"
+     },
+     "scaled": {
+      "width": {
+       "param": "volumeSize",
+       "power": 2,
+       "default": 1024
+      },
+      "height": {
+       "screenDivide": "zoom",
+       "default": 8
+      }
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ],
+    "textures3d": {
+     "t": {
+      "depth": 8,
+      "filter": 2
+     }
+    }
+   },
+   "referenceErrors": [
+    "Texture 't': unknown filter '2' (expected 'nearest' or 'linear')"
+   ]
+  },
+  {
+   "id": "valid filter policy on a 3D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "scratch": {
+      "width": 64,
+      "height": "100%",
+      "format": "rgba16f"
+     },
+     "scaled": {
+      "width": {
+       "param": "volumeSize",
+       "power": 2,
+       "default": 1024
+      },
+      "height": {
+       "screenDivide": "zoom",
+       "default": 8
+      }
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ],
+    "textures3d": {
+     "t": {
+      "depth": 8,
+      "filter": "nearest"
+     }
+    }
+   },
+   "referenceErrors": []
+  },
+  {
+   "id": "mipmaps policy on a 3D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "scratch": {
+      "width": 64,
+      "height": "100%",
+      "format": "rgba16f"
+     },
+     "scaled": {
+      "width": {
+       "param": "volumeSize",
+       "power": 2,
+       "default": 1024
+      },
+      "height": {
+       "screenDivide": "zoom",
+       "default": 8
+      }
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ],
+    "textures3d": {
+     "t": {
+      "depth": 8,
+      "mipmaps": true
+     }
+    }
+   },
+   "referenceErrors": [
+    "Texture 't': \"mipmaps\" is only supported on 2D texture specs (\"textures\")"
+   ]
+  },
+  {
+   "id": "mipmaps policy is a number on a 2D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "t": {
+      "mipmaps": 1
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ]
+   },
+   "referenceErrors": [
+    "Pass 0: inputs['scratchTex'] references unsupported texture 'scratch'",
+    "Texture 't': \"mipmaps\" must be a boolean"
+   ]
+  },
+  {
+   "id": "valid mipmaps policy on a 2D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "t": {
+      "mipmaps": false
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ]
+   },
+   "referenceErrors": [
+    "Pass 0: inputs['scratchTex'] references unsupported texture 'scratch'"
+   ]
+  },
+  {
+   "id": "persistent policy on a 3D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "scratch": {
+      "width": 64,
+      "height": "100%",
+      "format": "rgba16f"
+     },
+     "scaled": {
+      "width": {
+       "param": "volumeSize",
+       "power": 2,
+       "default": 1024
+      },
+      "height": {
+       "screenDivide": "zoom",
+       "default": 8
+      }
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ],
+    "textures3d": {
+     "t": {
+      "depth": 8,
+      "persistent": true
+     }
+    }
+   },
+   "referenceErrors": [
+    "Texture 't': \"persistent\" is only supported on 2D texture specs (\"textures\")"
+   ]
+  },
+  {
+   "id": "persistent policy is a string on a 2D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "t": {
+      "persistent": "yes"
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ]
+   },
+   "referenceErrors": [
+    "Pass 0: inputs['scratchTex'] references unsupported texture 'scratch'",
+    "Texture 't': \"persistent\" must be a boolean"
+   ]
+  },
+  {
+   "id": "valid persistent policy on a 2D texture",
+   "def": {
+    "name": "Validator Probe",
+    "namespace": "synth",
+    "func": "validatorProbe",
+    "description": "Used by the definition-validator tests",
+    "tags": [
+     "noise",
+     "util"
+    ],
+    "openCategories": [
+     "general"
+    ],
+    "defaultProgram": "search synth\nvalidatorProbe().write(o0)",
+    "hidden": false,
+    "uniformLayout": {
+     "resolution": {
+      "slot": 0,
+      "components": "xy"
+     },
+     "time": {
+      "slot": 0,
+      "components": "z"
+     }
+    },
+    "uniformLayouts": {
+     "alt": {
+      "amount": {
+       "slot": 0,
+       "components": "x"
+      }
+     }
+    },
+    "paramAliases": {
+     "amt": "amount"
+    },
+    "textures": {
+     "t": {
+      "persistent": true
+     }
+    },
+    "globals": {
+     "amount": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "zero": 0,
+      "ui": {
+       "label": "amount",
+       "control": "slider",
+       "category": "effect"
+      }
+     },
+     "mode": {
+      "type": "int",
+      "default": 1,
+      "uniform": "mode",
+      "define": "PROBE_MODE",
+      "choices": {
+       "off": 0,
+       "on": 1,
+       "Group:": null
+      },
+      "ui": {
+       "label": "mode",
+       "control": "dropdown",
+       "enabledBy": "amount"
+      }
+     },
+     "flag": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "flag",
+      "ui": {
+       "label": "flag",
+       "control": "checkbox",
+       "enabledBy": {
+        "param": "mode",
+        "eq": 1
+       }
+      }
+     },
+     "tint": {
+      "type": "color",
+      "default": [
+       1,
+       0,
+       0
+      ],
+      "uniform": "tint",
+      "ui": {
+       "label": "tint",
+       "control": "color"
+      }
+     },
+     "point": {
+      "type": "vec3",
+      "default": [
+       0,
+       0,
+       0
+      ],
+      "uniform": "point",
+      "min": [
+       -1,
+       -1,
+       -1
+      ],
+      "max": [
+       1,
+       1,
+       1
+      ],
+      "ui": {
+       "label": "point",
+       "control": "vector3",
+       "format": "x/y/z"
+      }
+     },
+     "table": {
+      "type": "int",
+      "default": 7,
+      "choices": {
+       "a": 7,
+       "b": 9
+      },
+      "ui": {
+       "label": "table",
+       "control": "dropdown",
+       "hidden": true
+      }
+     },
+     "surfaceIn": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "surfaceActive",
+      "ui": {
+       "label": "surface",
+       "control": false
+      }
+     }
+    },
+    "passes": [
+     {
+      "name": "render",
+      "program": "probe",
+      "type": "compute",
+      "drawMode": "points",
+      "count": "input",
+      "countUniform": "mode",
+      "repeat": 2,
+      "blend": [
+       "ONE",
+       "ONE_MINUS_SRC_ALPHA"
+      ],
+      "drawBuffers": 2,
+      "workgroups": [
+       8,
+       8,
+       1
+      ],
+      "viewport": {
+       "width": {
+        "param": "volumeSize",
+        "paramDefault": 64
+       },
+       "height": 32
+      },
+      "conditions": {
+       "runIf": [
+        {
+         "uniform": "mode",
+         "equals": 1
+        }
+       ],
+       "skipIf": [
+        {
+         "uniform": "flag",
+         "equals": false
+        }
+       ]
+      },
+      "uniforms": {
+       "amount": "amount",
+       "literal": 3
+      },
+      "inputs": {
+       "srcTex": "inputTex",
+       "scratchTex": "scratch",
+       "paramTex": "surfaceIn"
+      },
+      "outputs": {
+       "fragColor": "outputTex"
+      }
+     }
+    ]
+   },
+   "referenceErrors": [
+    "Pass 0: inputs['scratchTex'] references unsupported texture 'scratch'"
    ]
   },
   {

@@ -87,6 +87,36 @@ add('texture width has an unknown field', (d) => {
 add('texture width is negative', (d) => { d.textures = { t: { width: -4 } } })
 add('texture format is unknown', (d) => { d.textures = { t: { format: 'rgba999' } } })
 add('texture format is a number', (d) => { d.textures = { t: { format: 1 } } })
+
+// --- GAP-004 authorable texture policies (reference 2f47612c) ---
+add('filter policy on a 2D texture', (d) => { d.textures = { t: { filter: 'linear' } } })
+add('unknown filter policy on a 3D texture', (d) => {
+    d.textures3d = { t: { depth: 8, filter: 'cubic' } }
+})
+add('filter policy is a number on a 3D texture', (d) => {
+    d.textures3d = { t: { depth: 8, filter: 2 } }
+})
+add('valid filter policy on a 3D texture', (d) => {
+    d.textures3d = { t: { depth: 8, filter: 'nearest' } }
+})
+add('mipmaps policy on a 3D texture', (d) => {
+    d.textures3d = { t: { depth: 8, mipmaps: true } }
+})
+add('mipmaps policy is a number on a 2D texture', (d) => {
+    d.textures = { t: { mipmaps: 1 } }
+})
+add('valid mipmaps policy on a 2D texture', (d) => {
+    d.textures = { t: { mipmaps: false } }
+})
+add('persistent policy on a 3D texture', (d) => {
+    d.textures3d = { t: { depth: 8, persistent: true } }
+})
+add('persistent policy is a string on a 2D texture', (d) => {
+    d.textures = { t: { persistent: 'yes' } }
+})
+add('valid persistent policy on a 2D texture', (d) => {
+    d.textures = { t: { persistent: true } }
+})
 add('uniformLayout slot is a string', (d) => {
     d.uniformLayout = { u: { slot: 'x', components: 'x' } }
 })

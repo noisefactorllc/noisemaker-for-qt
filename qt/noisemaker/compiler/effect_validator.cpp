@@ -120,8 +120,15 @@ const QStringList& textureSpecKeys() {
     static const QStringList keys = {
         QStringLiteral("width"), QStringLiteral("height"), QStringLiteral("depth"),
         QStringLiteral("format"), QStringLiteral("is3D"),
+        // GAP-004 authorable texture policies (reference 2f47612c).
+        QStringLiteral("filter"), QStringLiteral("mipmaps"), QStringLiteral("persistent"),
     };
     return keys;
+}
+
+const QStringList& textureFilters() {
+    static const QStringList filters = { QStringLiteral("nearest"), QStringLiteral("linear") };
+    return filters;
 }
 
 const QStringList& conditionContainerKeys() {
@@ -1152,6 +1159,34 @@ void validateTextureMap(const QJsonValue& textures, Errors& errors, const std::s
         const QJsonValue is3D = spec.value(QStringLiteral("is3D"));
         if (!is3D.isUndefined() && !is3D.isBool()) {
             errors.push_back(label + ": \"is3D\" must be a boolean");
+        }
+        // GAP-004 authorable texture policies (reference 2f47612c):
+        // filtering policies are authorable on 3D textures only; mipmap and
+        // persistence policies are authorable on 2D textures only.
+        const QJsonValue filter = spec.value(QStringLiteral("filter"));
+        if (!filter.isUndefined()) {
+            if (containerName != "textures3d") {
+                errors.push_back(label + ": \"filter\" is only supported on 3D texture specs (\"textures3d\")");
+            } else if (!filter.isString() || !textureFilters().contains(filter.toString())) {
+                errors.push_back(label + ": unknown filter '" + jsStringOf(filter)
+                                 + "' (expected 'nearest' or 'linear')");
+            }
+        }
+        const QJsonValue mipmaps = spec.value(QStringLiteral("mipmaps"));
+        if (!mipmaps.isUndefined()) {
+            if (containerName == "textures3d") {
+                errors.push_back(label + ": \"mipmaps\" is only supported on 2D texture specs (\"textures\")");
+            } else if (!mipmaps.isBool()) {
+                errors.push_back(label + ": \"mipmaps\" must be a boolean");
+            }
+        }
+        const QJsonValue persistent = spec.value(QStringLiteral("persistent"));
+        if (!persistent.isUndefined()) {
+            if (containerName == "textures3d") {
+                errors.push_back(label + ": \"persistent\" is only supported on 2D texture specs (\"textures\")");
+            } else if (!persistent.isBool()) {
+                errors.push_back(label + ": \"persistent\" must be a boolean");
+            }
         }
     }
 }
