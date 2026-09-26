@@ -222,6 +222,23 @@ const Case kCases[] = {
         {u"new.target", true},
         {u"super.x", false},
         {u"super()", false},
+        // Identifier code points (each verdict from node 24.21.0/26.10.0
+        // V8, re-verified 2026-09-26 under node 24.10.0 and 26.5.1):
+        // capital sharp S is ID_Start; ZWNJ and ZWJ are IdentifierPart
+        // (but not IdentifierStart); astral letters work; lone surrogates
+        // and U+180E (Mongolian vowel separator, Cf, not ID_Continue
+        // since Unicode 6.3) do not.
+        {u"Co\u1e9e", true},
+        {u"A\u200cb", true},
+        {u"A\u200db", true},
+        {u"a\u200cb\u200dc", true},
+        {u"\u200ca", false},
+        {u"\U0001D49Eb", true},
+        {u"x\U0001D49E", true},
+        // A lone surrogate (u"\ud800" is not a valid C++ UCN; the verdict is
+        // Invalid) is covered by the differential corpus instead.
+        {u"\u180e", false},
+        {u"a\u180e", false},
 };
 
 } // namespace

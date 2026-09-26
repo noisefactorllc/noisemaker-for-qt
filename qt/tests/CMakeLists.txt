@@ -133,6 +133,12 @@ add_test(NAME test_js_number COMMAND test_js_number)
 add_executable(registry_dump registry_dump.cpp)
 target_link_libraries(registry_dump PRIVATE noisemaker-qt Qt6::Core)
 
+# Parity-gate helper (NOT a ctest case) -- candidate side of
+# parity/check_func_bodies_differential.mjs (the retained GAP-017 V8
+# differential corpus; see the mjs header for the line protocol).
+add_executable(js_syntax_dump js_syntax_dump.cpp)
+target_link_libraries(js_syntax_dump PRIVATE noisemaker-qt Qt6::Core)
+
 # T10 (expander): same plain-executable convention.
 add_executable(test_expander test_expander.cpp)
 target_link_libraries(test_expander PRIVATE noisemaker-qt Qt6::Core)
