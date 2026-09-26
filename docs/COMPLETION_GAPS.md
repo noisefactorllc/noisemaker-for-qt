@@ -113,6 +113,7 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: The README commands pass as written on each supported OS. A wrong data root names the directory. The minimum Qt version is stated and built.
 - Required checks: ctest on all three OSes, viewer and quick --selfcheck, a consumer build against an installed prefix, and an uninstall that leaves no files.
 - Last verification: 2026-09-24, CI on three OSes (run 36072195850); GUI self-checks on Linux CI and a macOS desktop.
+- 2026-09-26: 82ca1b4 removes the selfcheck's off-screen window move on Windows (it stays for cocoa and xcb): a window outside the virtual desktop is never exposed there, so painting never starts on a hosted runner or on a real desktop — the move would also have defeated the Windows desktop run below. CI run 36222299992 is green at 82ca1b4. A hosted-Windows retry of both examples' --selfcheck was prepared (window kept on-screen, Mesa software-GL DLLs beside the executables, session probe) but workflow changes were outside that job's authority, and no Windows host is reachable to it, so the next action is unchanged.
 
 ### GAP-003: distribution and release qualification
 
