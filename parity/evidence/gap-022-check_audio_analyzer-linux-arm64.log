@@ -1,0 +1,8 @@
+[INFO] oracle: Chromium 153.0.8010.12 on linux-arm64
+[INFO] noisedeck-legacy-stereo: 106 reads, byte diffs 0/13568 (max 0), max dB diff 8.39e-5, time-domain mismatches 0
+[INFO] noisedeck-channel-mono: 85 reads, byte diffs 0/10880 (max 0), max dB diff 1.14e-4, time-domain mismatches 0
+[INFO] reference-demo-mono: 71 reads, byte diffs 0/9088 (max 0), max dB diff 2.29e-5, time-domain mismatches 0
+[INFO] analyser-defaults: 61 reads, byte diffs 0/62464 (max 0), max dB diff 9.92e-5, time-domain mismatches 0
+[INFO] quad-no-smoothing: 141 reads, byte diffs 0/36096 (max 0), max dB diff 1.79e-3, time-domain mismatches 0
+[INFO] surround-5.1: 106 reads, byte diffs 1/54272 (max 1), max dB diff 5.19e-4, time-domain mismatches 0
+AUDIO_ANALYZER: 570/570

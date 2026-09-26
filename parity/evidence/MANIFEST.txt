@@ -36,3 +36,67 @@ Qt build note: Qt 6.11.1 installed via aqtinstall into /state/qt;
 OPENGL_* and an extracted libEGL supplied CMake because the container
 has no libgl/egl development packages. These are container workarounds
 only; no repository file is affected.
+
+------------------------------------------------------------------------
+GAP-022 correction, 2026-09-26: raw check_audio_analyzer output per
+architecture, at source b0dcda4cc6b869bb27063de0b053058c5d0e86e5 plus
+the platform-split down-mix change (fma only on Apple arm64). Tolerances
+and the 570-read corpus unchanged from parity/check_audio_analyzer.mjs.
+
+Reference checkout: noisefactorllc/noisemaker at
+fa83eeabf278f1f4999c1d1fff43e2e5338b72ba (the STATUS.md content pin,
+checked out detached; NM_REFERENCE_ROOT=/state/noisemaker-ref on the
+host and /home/vm/noisemaker-ref in the arm64 VM). Playwright 1.63.0
+from the reference's own node_modules in both runs; Chromium
+153.0.8010.12 (Playwright revision 1243) in both.
+
+Executed commands (verbatim, from the repo root):
+
+  NM_REFERENCE_ROOT=<ref> NM_AUDIO_ANALYZER_DUMP=<dump> \
+    PLAYWRIGHT_BROWSERS_PATH=<browsers> node parity/check_audio_analyzer.mjs
+
+  gap-022-check_audio_analyzer-linux-arm64.log
+    -> AUDIO_ANALYZER: 570/570, 0 time-domain mismatches (byte diffs
+       1/54272 in surround-5.1, within tolerance 1).
+  gap-022-check_audio_analyzer-linux-x86_64.log
+    -> AUDIO_ANALYZER: 570/570, 0 time-domain mismatches, exit 0.
+
+Environment limits, recorded plainly:
+- The arm64 run is NOT native Apple silicon. It is the official
+  Playwright linux-arm64 Chromium build executing real AArch64 code
+  inside a qemu-system-aarch64 (TCG, -M virt, -cpu cortex-a76)
+  emulated Debian 12 ARM64 VM (2 GiB RAM, -smp 4) booted from
+  cloud.debian.org debian-12-generic-arm64.qcow2. Node 20.19.5 (arm64)
+  drove Playwright; the candidate dump was compiled in the VM from the
+  changed source with g++ (Debian 12.2.0) -O3 -DNDEBUG -std=c++17
+  -ffp-contract=off and Debian's Qt 6.4.2 (qt6-base-dev
+  6.4.2+dfsg-10). qemu TCG executes the same IEEE-754 AArch64
+  instructions (including the fused vs separate multiply/add
+  distinction) bit-exactly, so the measured rounding of the arm64
+  Chromium oracle is genuine. The user-mode alternative
+  (qemu-aarch64-static + Playwright on the x86_64 host) was attempted
+  first and abandoned: Chromium's RSS balloons past the container's
+  4 GiB cgroup limit within ~10 s (Private_Dirty ~3.3 GiB in
+  smaps_rollup) and the kernel OOM-kills it, while the same build
+  natively on x86_64 sits at ~120 MB RSS.
+- The pre-fix arm64 measurement that established the platform split
+  (oracle 0.8555886149406433, the unfused value, vs the std::fma
+  candidate 0.8555885553359985 at surround-5.1 quantum 1 time index
+  914; AUDIO_ANALYZER 476/570, 8983 time-domain mismatches) was
+  obtained in the same VM against the same oracle with the b0dcda4
+  source (std::fma on all arm64). Its raw log was overwritten when the
+  corrected candidate replaced the binary; the quoted values above and
+  the two retained post-fix logs are the evidence for the split.
+- The x86_64 run above is the worker container itself (linux-x64
+  oracle in the log), not CI. The exact-source x86_64 CI run of this
+  change is the render-smoke "AnalyserNode gate (Chromium oracle)"
+  step of the published commit and is cited in docs/COMPLETION_GAPS.md
+  after that run completes.
+- The same VM also built the full qt/ tree (Release, Debian g++ 12.2
+  -ffp-contract=off, Qt 6.4.2) and ran ctest: 13/25 passed, and the 12
+  failures are exactly the GL-context tests documented above (e.g.
+  test_device_limits fails at "external OpenGL context is available";
+  the VM has no GL driver), not code failures. The audio-side non-GL
+  tests (test_shader_assembly, test_graph_load, test_output_runtime,
+  test_automation, test_lexer, test_parser, test_validator, ...) all
+  passed on arm64 with the platform-split down-mix source.

@@ -45,15 +45,19 @@ void fft(std::vector<double>& re, std::vector<double>& im) {
 // Web Audio "speakers" down-mix of one interleaved frame to mono, in the
 // operation order of Chromium's AudioBus down-mix: each scaled channel is
 // accumulated in turn (vector_math::Vsma). Chromium's result differs by
-// architecture, and parity/check_audio_analyzer.mjs measured both:
-//   - arm64 Chromium 151: a fused multiply-add per term;
-//   - x86_64 Chromium 153 (GitHub ubuntu runner): a separate multiply and
-//     add per term (CI run 35970287679 matched the unfused sum).
+// platform, and parity/check_audio_analyzer.mjs measured each oracle:
+//   - macOS arm64 Chromium 151 (Apple M4): a fused multiply-add per term;
+//   - Linux Chromium 153, x86_64 (GitHub ubuntu runner, CI run 35970287679)
+//     and arm64 (Debian 12 arm64, parity/evidence/gap-022-*.log): a separate
+//     multiply and add per term.
+// The split therefore follows Apple vs everything else, not the CPU
+// architecture: on Linux both the x86_64 and the arm64 oracle give the
+// unfused sum, so the fused branch is kept only for Apple arm64.
 // Scales of 0.5 and 0.25 are exact, so only the 5.1 sqrt(0.5) terms depend
 // on this. qt/CMakeLists.txt builds the library with -ffp-contract=off so
 // the unfused path is never contracted into an FMA.
 float accumulate(float sum, float sample, float scale) {
-#if defined(__aarch64__) || defined(_M_ARM64)
+#if defined(__APPLE__) && defined(__aarch64__)
     return std::fma(sample, scale, sum);
 #else
     const float scaled = sample * scale;
