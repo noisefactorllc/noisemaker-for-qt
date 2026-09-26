@@ -32,6 +32,18 @@ name: CI
 on:
   push:
     branches: [main]
+    # Inert documentation does not build. STATUS.md stays in: the gates read
+    # the reference content pin from it.
+    paths:
+      - '**'
+      - '!*.md'
+      - '!docs/**'
+      - '!reference/**'
+      - '!.github/ISSUE_TEMPLATE/**'
+      - '!.github/PULL_REQUEST_TEMPLATE*'
+      - '!.github/CODEOWNERS'
+      - '!.editorconfig'
+      - 'STATUS.md'
   workflow_dispatch:
 
 permissions:
