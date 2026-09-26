@@ -318,6 +318,14 @@ const rangeAuditDoc = {
             { coveredBy: 'this candidate (observed forced-range start; subset of the 240740dd..9d3474df delta)' }),
         rangeAudit('9d3474dfdc6cb737ebb7b2f3598b16d940af1544', '2f47612c29045c1b91af94887a8ff20106e980ef',
             { coveredBy: 'published main (sync c6ab84a: GAP-004 texture policies in the converter/runtime) plus this candidate\'s validator policy parity' }),
+        rangeAudit('2f47612c29045c1b91af94887a8ff20106e980ef', 'fa83eeabf278f1f4999c1d1fff43e2e5338b72ba',
+            { coveredBy: 'published main (sync 476261d: GAP-005 pass-field propagation, compiler half; STATUS.md fa83eeabf record)' }),
+        rangeAudit('fa83eeabf278f1f4999c1d1fff43e2e5338b72ba', '8eeb7b5ac14eb37a8d16037f607a88ce63924cd3',
+            { coveredBy: 'audit only: 8eeb7b5a is docs-only, so the declared range 4891b995..8eeb7b5a adds no shaders/ delta beyond fa83eeabf' }),
+        rangeAudit('fa83eeabf278f1f4999c1d1fff43e2e5338b72ba', '6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa',
+            { coveredBy: 'this candidate (audit: the GAP-006 texture-pooling and GAP-007 backend-diagnostic commits touch only the web runtime — pipeline.js, backends/webgl2.js, backends/webgpu.js, backends/diagnostics.js — and their tests; the Qt port runs its own native Desktop-GL pipeline in qt/noisemaker/runtime/ and does not consume these web-runtime modules; no shaders/, effect definition, or DSL-compiler file changes)' }),
+        rangeAudit('95743621696483b91968992ef6ee0d87b2089fa8', '6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa',
+            { coveredBy: 'this candidate (observed forced range; subset of the fa83eeabf..6a0af04d audit above)' }),
     ],
 }
 

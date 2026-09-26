@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "2f47612c29045c1b91af94887a8ff20106e980ef",
+  "referenceCheckout": "6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -200,6 +200,183 @@
     "shaders/src/runtime/effect-validator.js",
     "shaders/src/runtime/pipeline.js",
     "shaders/tests/test_mip_controls.js"
+   ]
+  },
+  {
+   "range": "2f47612c29045c1b91af94887a8ff20106e980ef..fa83eeabf278f1f4999c1d1fff43e2e5338b72ba",
+   "coveredBy": "published main (sync 476261d: GAP-005 pass-field propagation, compiler half; STATUS.md fa83eeabf record)",
+   "commits": [
+    {
+     "sha": "63349a7d6b95da1e97f35b8570872db82c55d7da",
+     "subject": "ci(js): retire the per-push snapshot release",
+     "shadersFiles": []
+    },
+    {
+     "sha": "85ded3a6a5156efc336c140c4d0ce8e75a621118",
+     "subject": "docs: close GAP-004 with verified publication evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c6bc8e17010372dab1e2fbf6d8f06650b31a9452",
+     "subject": "docs: advance Documentation checkpoint through 69d83b80",
+     "shadersFiles": []
+    },
+    {
+     "sha": "5e52a2a2fcaeb3cd540e7bdc0328a2a009116ff5",
+     "subject": "docs: record observed docs-site CI runs and deployment for doc pass",
+     "shadersFiles": []
+    },
+    {
+     "sha": "94fc880bf86a26a4f94871af3984c3d49ac34aa0",
+     "subject": "docs: advance AI development contract checkpoint through 5e52a2a2 / 00340b1",
+     "shadersFiles": []
+    },
+    {
+     "sha": "919f653e2c2d8bc85ddda924cdbb0b504920f768",
+     "subject": "docs(shaders): document texture allocation policies (mipmaps/persistent/3D filter)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "27590caad94da75911e12d580f656af15546a014",
+     "subject": "docs(shaders): correct 3D filter defaults in texture-policy documentation",
+     "shadersFiles": []
+    },
+    {
+     "sha": "fa83eeabf278f1f4999c1d1fff43e2e5338b72ba",
+     "subject": "feat(shaders): copy name/viewport/clear/samplerTypes/type onto expanded passes (GAP-005)",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/src/runtime/expander.js",
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_pass_fields.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/backends/webgpu.js",
+    "shaders/src/runtime/expander.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/tests/test_pass_fields.js"
+   ]
+  },
+  {
+   "range": "fa83eeabf278f1f4999c1d1fff43e2e5338b72ba..8eeb7b5ac14eb37a8d16037f607a88ce63924cd3",
+   "coveredBy": "audit only: 8eeb7b5a is docs-only, so the declared range 4891b995..8eeb7b5a adds no shaders/ delta beyond fa83eeabf",
+   "commits": [
+    {
+     "sha": "8eeb7b5ac14eb37a8d16037f607a88ce63924cd3",
+     "subject": "docs: close GAP-005 with pass-field propagation evidence for fa83eeab",
+     "shadersFiles": []
+    }
+   ],
+   "shadersFilesChanged": []
+  },
+  {
+   "range": "fa83eeabf278f1f4999c1d1fff43e2e5338b72ba..6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+   "coveredBy": "this candidate (audit: the GAP-006 texture-pooling and GAP-007 backend-diagnostic commits touch only the web runtime — pipeline.js, backends/webgl2.js, backends/webgpu.js, backends/diagnostics.js — and their tests; the Qt port runs its own native Desktop-GL pipeline in qt/noisemaker/runtime/ and does not consume these web-runtime modules; no shaders/, effect definition, or DSL-compiler file changes)",
+   "commits": [
+    {
+     "sha": "8eeb7b5ac14eb37a8d16037f607a88ce63924cd3",
+     "subject": "docs: close GAP-005 with pass-field propagation evidence for fa83eeab",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6c3f9a26f336870d4d6033e9bd7f611a716352c7",
+     "subject": "docs: record verified GAP-005 publication evidence for 8eeb7b5",
+     "shadersFiles": []
+    },
+    {
+     "sha": "428ea29bf8fb635fe567a9c5efe221f33478349c",
+     "subject": "docs: advance Documentation checkpoint through 6c3f9a26",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6113da00a87b9ff8c80d3258fcc9874f3b5f5989",
+     "subject": "feat(shaders): consume the resource allocation plan behind texturePooling opt-in with a queryable runtime plan (GAP-006)",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_resource_pooling.js"
+     ]
+    },
+    {
+     "sha": "ad17fd02426cad22662b24c7f80431da1901bc6e",
+     "subject": "docs: close GAP-006 with runtime allocation-plan consumption evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "0b2866dde2e3287152eeec9402d08c4c14589156",
+     "subject": "docs: document viewport-write pooling guard in llms-full.txt",
+     "shadersFiles": []
+    },
+    {
+     "sha": "95743621696483b91968992ef6ee0d87b2089fa8",
+     "subject": "fix(shaders): treat viewport passes without clear as partially written for texture pooling",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js"
+     ]
+    },
+    {
+     "sha": "f83a427e680ad2bb9a5fd67ccd850143bc820f76",
+     "subject": "fix(shaders): normalize backend shader/compiler failures to one structured diagnostic union",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/diagnostics.js",
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/tests/test_backend_diagnostics.js"
+     ]
+    },
+    {
+     "sha": "93608f10ad1bb3169ee0bdd8ca0b37fd44148879",
+     "subject": "docs: close GAP-007 with structured backend diagnostic union evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+     "subject": "docs: narrow GAP-007 register row to state what remains unstructured",
+     "shadersFiles": []
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/backends/diagnostics.js",
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/backends/webgpu.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/tests/test_backend_diagnostics.js",
+    "shaders/tests/test_resource_pooling.js"
+   ]
+  },
+  {
+   "range": "95743621696483b91968992ef6ee0d87b2089fa8..6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+   "coveredBy": "this candidate (observed forced range; subset of the fa83eeabf..6a0af04d audit above)",
+   "commits": [
+    {
+     "sha": "f83a427e680ad2bb9a5fd67ccd850143bc820f76",
+     "subject": "fix(shaders): normalize backend shader/compiler failures to one structured diagnostic union",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/diagnostics.js",
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/tests/test_backend_diagnostics.js"
+     ]
+    },
+    {
+     "sha": "93608f10ad1bb3169ee0bdd8ca0b37fd44148879",
+     "subject": "docs: close GAP-007 with structured backend diagnostic union evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+     "subject": "docs: narrow GAP-007 register row to state what remains unstructured",
+     "shadersFiles": []
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/backends/diagnostics.js",
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/backends/webgpu.js",
+    "shaders/tests/test_backend_diagnostics.js"
    ]
   }
  ]
