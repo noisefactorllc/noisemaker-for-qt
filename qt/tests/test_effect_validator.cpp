@@ -203,8 +203,9 @@ QJsonObject getObject(QJsonObject& host, const QString& key) {
 }
 
 // Merge a key into a nested object, replacing it wholesale.
+template <typename T>
 void nest(QJsonObject& def, const QString& container, const QString& key,
-          const QJsonValue& value) {
+          const T& value) {
     QJsonObject host = def.value(container).toObject();
     host.insert(key, value);
     def.insert(container, host);
