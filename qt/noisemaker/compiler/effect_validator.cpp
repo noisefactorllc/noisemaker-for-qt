@@ -7,8 +7,9 @@
 // Error strings are byte-identical to the reference's template literals.
 // Numbers inside messages format through nm::js::numberToString (ECMAScript
 // Number::toString), matching the reference's `${number}` interpolation.
-// Object key iteration order is the QJsonObject document order (JSON object
-// keys keep their parsed order), matching Object.entries() insertion order.
+// Object key iteration order is QJsonObject's sorted key order (a structural
+// property of Qt's JSON container), NOT the reference's Object.entries()
+// insertion order — a documented deviation, see effect_validator.h.
 //
 // Deterministic and side-effect-free: never throws for malformed/null/array/
 // non-object containers, never mutates the input, never invokes lifecycle
@@ -317,13 +318,15 @@ std::string jsStringOf(const QJsonValue& value) {
 
 // --- std enum resolution (reference resolveStdEnum over std_enums.js) ---
 
-// Injectable std-enum tree. Defaults to the live nm::Enums::std() table on
-// first use (the reference imports std_enums.js directly).
-QJsonObject const* g_stdEnumsOverride = nullptr;
+// Injectable std-enum tree, stored BY VALUE (setEffectValidatorStdEnums
+// copies its argument, so no caller-object lifetime is retained). Defaults
+// to the live nm::Enums::std() table until overridden (the reference
+// imports std_enums.js directly).
+QJsonObject g_stdEnumsOverride;
 
 const QJsonObject& stdEnumTable() {
     static const QJsonObject defaultTable = Enums().std();
-    return g_stdEnumsOverride ? *g_stdEnumsOverride : defaultTable;
+    return g_stdEnumsOverride.isEmpty() ? defaultTable : g_stdEnumsOverride;
 }
 
 struct StdEnumResult {
@@ -1461,7 +1464,7 @@ void validatePass(const QJsonObject& source, const QJsonObject& pass, int index,
 } // namespace
 
 void setEffectValidatorStdEnums(const QJsonObject& stdEnums) {
-    g_stdEnumsOverride = &stdEnums;
+    g_stdEnumsOverride = stdEnums;
 }
 
 std::vector<std::string> validateEffectDefinition(const QJsonValue& def) {

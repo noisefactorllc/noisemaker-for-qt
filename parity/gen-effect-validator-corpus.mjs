@@ -271,7 +271,60 @@ const corpus = {
     probes: probes.map((p) => ({ id: p.id, def: p.def, referenceErrors: validateEffectDefinition(p.def) })),
 }
 
+// Machine-generated audit of the source-range commits: for each declared and
+// observed range, the reference commits and the shaders/ files each touched.
+// The job's declared start 4891b99 is a non-contiguous observed range: the
+// branch's own prior sync (commit 2c33d74, STATUS.md's 240740dd record)
+// already carried 4891b99..240740dd, so the file lists are omitted for that
+// pre-synced span (they are graded by the branch's existing byte gates, not
+// by this candidate). Regenerated from the reference checkout's own git
+// history, so the committed artifact is checkable against upstream without
+// this worker.
+const git = (args) => execSync(`git -C "${refRoot}" ${args}`).toString()
+const rangeAudit = (start, end, { files = true, coveredBy = null } = {}) => {
+    const shas = git(`log --reverse --format=%H ${start}..${end}`).trim().split('\n').filter(Boolean)
+    const commits = shas.map((sha) => {
+        const subject = git(`log -1 --format=%s ${sha}`).trim()
+        const shadersFiles = files
+            ? git(`show --name-only --format= ${sha} -- shaders/`).split('\n').filter(Boolean)
+            : undefined
+        return { sha, subject, ...(shadersFiles ? { shadersFiles } : {}) }
+    })
+    return {
+        range: `${start}..${end}`,
+        ...(coveredBy ? { coveredBy } : {}),
+        commits,
+        shadersFilesChanged: files
+            ? [...new Set(commits.flatMap((c) => c.shadersFiles))].sort()
+            : undefined,
+    }
+}
+const rangeAuditDoc = {
+    provenance: {
+        reference: 'noisefactorllc/noisemaker',
+        referenceCheckout: referenceSha,
+        generator: 'parity/gen-effect-validator-corpus.mjs',
+        note: 'Commits are listed oldest-first with the shaders/ files each touched. ' +
+              'Declared ported range ends at 9d3474df; published main already carries ' +
+              'the 2f47612c sync, whose validator delta (GAP-004 texture policies) is ' +
+              'also ported and graded by the committed corpus.',
+    },
+    ranges: [
+        rangeAudit('4891b9953f9fd8a61cf9ae0dda2fe747a9be82df', '240740dd2d30cbd0984b179834ab24abe71c8fb2',
+            { files: false, coveredBy: 'the branch\'s own prior sync (commit 2c33d74, "vendor: sync upstream noisemaker 4891b995..240740dd"; STATUS.md 240740dd record) — not part of this candidate; graded by the branch\'s byte gates' }),
+        rangeAudit('240740dd2d30cbd0984b179834ab24abe71c8fb2', '9d3474dfdc6cb737ebb7b2f3598b16d940af1544',
+            { coveredBy: 'this candidate (the GAP-003 validator port)' }),
+        rangeAudit('0bd09d00c41c88eb95fa413119ead1344834281c', '9d3474dfdc6cb737ebb7b2f3598b16d940af1544',
+            { coveredBy: 'this candidate (observed forced-range start; subset of the 240740dd..9d3474df delta)' }),
+        rangeAudit('9d3474dfdc6cb737ebb7b2f3598b16d940af1544', '2f47612c29045c1b91af94887a8ff20106e980ef',
+            { coveredBy: 'published main (sync c6ab84a: GAP-004 texture policies in the converter/runtime) plus this candidate\'s validator policy parity' }),
+    ],
+}
+
 const out = new URL('effect-validator-corpus.json', import.meta.url)
 writeFileSync(out, JSON.stringify(corpus, null, 1) + '\n')
+const auditOut = new URL('effect-validator-range-audit.json', import.meta.url)
+writeFileSync(auditOut, JSON.stringify(rangeAuditDoc, null, 1) + '\n')
 const failures = corpus.probes.filter((p) => p.referenceErrors.length > 0).length
 console.log(`CORPUS: ${corpus.probes.length} probes (${failures} with reference errors) -> ${out.pathname}`)
+console.log(`RANGE-AUDIT: ${rangeAuditDoc.ranges.map((r) => r.commits.length).join('/')} commits -> ${auditOut.pathname}`)

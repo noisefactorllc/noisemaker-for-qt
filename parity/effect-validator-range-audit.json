@@ -1,0 +1,206 @@
+{
+ "provenance": {
+  "reference": "noisefactorllc/noisemaker",
+  "referenceCheckout": "2f47612c29045c1b91af94887a8ff20106e980ef",
+  "generator": "parity/gen-effect-validator-corpus.mjs",
+  "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
+ },
+ "ranges": [
+  {
+   "range": "4891b9953f9fd8a61cf9ae0dda2fe747a9be82df..240740dd2d30cbd0984b179834ab24abe71c8fb2",
+   "coveredBy": "the branch's own prior sync (commit 2c33d74, \"vendor: sync upstream noisemaker 4891b995..240740dd\"; STATUS.md 240740dd record) — not part of this candidate; graded by the branch's byte gates",
+   "commits": [
+    {
+     "sha": "c8c11b3df7fb935ce260e77e049615fc5522f361",
+     "subject": "site: rewrite landing page copy in plain technical English"
+    },
+    {
+     "sha": "3923222b9fc99a4314cdee2699370a1a3950ce68",
+     "subject": "site: remove the background section from the landing page"
+    },
+    {
+     "sha": "9fa1a2213141cbec4bca3e5ef2768cd00eae617f",
+     "subject": "fix: derive parser diagnostic coordinates from source positions"
+    },
+    {
+     "sha": "fca611fd8f91424661d4e531d39313d24ea21134",
+     "subject": "fix: derive numeric-coercion diagnostic coordinates from array positions"
+    },
+    {
+     "sha": "8a21c9ca34a7963e4235274cbe680ed0d354142a",
+     "subject": "docs: record GAP-002 closure publication evidence"
+    },
+    {
+     "sha": "bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8",
+     "subject": "docs: cite verified GAP-002 closure provenance"
+    },
+    {
+     "sha": "60b90af373bceaf62060346d873d4f66232c7173",
+     "subject": "docs: advance Documentation checkpoint through bbdeb56c"
+    },
+    {
+     "sha": "3886ecfa41fdebdf2428f07fec05ab46602c07f2",
+     "subject": "docs: advance AI development contract checkpoint through 60b90af3 / 00340b1"
+    },
+    {
+     "sha": "66b2c721840b263a5164cf6b457f1c5ba92572b9",
+     "subject": "feat: subchain-argument validation contract (P008/P009/P010, strict opt-in)"
+    },
+    {
+     "sha": "240740dd2d30cbd0984b179834ab24abe71c8fb2",
+     "subject": "test: register committed subchain differential gate vs recorded baseline"
+    }
+   ]
+  },
+  {
+   "range": "240740dd2d30cbd0984b179834ab24abe71c8fb2..9d3474dfdc6cb737ebb7b2f3598b16d940af1544",
+   "coveredBy": "this candidate (the GAP-003 validator port)",
+   "commits": [
+    {
+     "sha": "5a58a3253dd2a2071cf1f6680306f89e249317eb",
+     "subject": "docs(llms-full): record GAP-027 closure with verified receipt eb8ad577 for 240740dd",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c85db3f037ce21b38cd73e232be016e618f01ba4",
+     "subject": "docs: revert unverified GAP-027 closure claims to published 240740dd state",
+     "shadersFiles": []
+    },
+    {
+     "sha": "5f4b7c43a0201ab197cd1b27a66e6217b776bf57",
+     "subject": "docs: advance Documentation checkpoint through 240740dd",
+     "shadersFiles": []
+    },
+    {
+     "sha": "cfccdf9657ff16eb74871c0c7185a0728421fe3c",
+     "subject": "docs: advance AI development contract checkpoint through 5f4b7c43 / 00340b1",
+     "shadersFiles": []
+    },
+    {
+     "sha": "286ccf68b10e8c142890f4a3ba6d84415e4377ed",
+     "subject": "docs: advance Documentation checkpoint through cfccdf96",
+     "shadersFiles": []
+    },
+    {
+     "sha": "0610e077e294ff19f4c341f3bb2336a97d217bc1",
+     "subject": "docs(llms-full): record GAP-027 implementation and publication evidence for 240740dd",
+     "shadersFiles": []
+    },
+    {
+     "sha": "0bd09d00c41c88eb95fa413119ead1344834281c",
+     "subject": "docs: close GAP-027 with verified publication evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "ba87ffae0dc0e5e3210ac7c59b92e3104f8c63e7",
+     "subject": "feat(shaders): validate effect definitions against spec at runtime (GAP-003)",
+     "shadersFiles": [
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/tests/test_effect_definition_validation.js"
+     ]
+    },
+    {
+     "sha": "9d3474dfdc6cb737ebb7b2f3598b16d940af1544",
+     "subject": "fix(shaders): complete GAP-003 validator contract, corpus gate, and test wiring",
+     "shadersFiles": [
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/tests/test_effect_definition_validation.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/effect-validator.js",
+    "shaders/tests/test_effect_definition_validation.js"
+   ]
+  },
+  {
+   "range": "0bd09d00c41c88eb95fa413119ead1344834281c..9d3474dfdc6cb737ebb7b2f3598b16d940af1544",
+   "coveredBy": "this candidate (observed forced-range start; subset of the 240740dd..9d3474df delta)",
+   "commits": [
+    {
+     "sha": "ba87ffae0dc0e5e3210ac7c59b92e3104f8c63e7",
+     "subject": "feat(shaders): validate effect definitions against spec at runtime (GAP-003)",
+     "shadersFiles": [
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/tests/test_effect_definition_validation.js"
+     ]
+    },
+    {
+     "sha": "9d3474dfdc6cb737ebb7b2f3598b16d940af1544",
+     "subject": "fix(shaders): complete GAP-003 validator contract, corpus gate, and test wiring",
+     "shadersFiles": [
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/tests/test_effect_definition_validation.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/effect-validator.js",
+    "shaders/tests/test_effect_definition_validation.js"
+   ]
+  },
+  {
+   "range": "9d3474dfdc6cb737ebb7b2f3598b16d940af1544..2f47612c29045c1b91af94887a8ff20106e980ef",
+   "coveredBy": "published main (sync c6ab84a: GAP-004 texture policies in the converter/runtime) plus this candidate's validator policy parity",
+   "commits": [
+    {
+     "sha": "7a643033ce240060ae1b926f2a4cb009c8a6854d",
+     "subject": "docs: close GAP-003 with verified publication evidence for 9d3474d",
+     "shadersFiles": []
+    },
+    {
+     "sha": "fa4b2f02a6c8009fb641f9edd245ec3eb682cb80",
+     "subject": "docs: align llms-full.txt validator cross-references with GAP-003 closure",
+     "shadersFiles": []
+    },
+    {
+     "sha": "69d83b80e09227195fa9810e37b96dd594713ac3",
+     "subject": "docs: advance Documentation checkpoint through fa4b2f02",
+     "shadersFiles": []
+    },
+    {
+     "sha": "13a8a0491dcf9aeb8eb2db5518682f58a6a0ec0e",
+     "subject": "docs: advance AI development contract checkpoint through 69d83b80 / 00340b1",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a021a2834008315e34d86f78c430b62d77ec6775",
+     "subject": "feat(shaders): authorable mipmaps/persistent/3D filter texture policies (GAP-004)",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/src/runtime/compiler.js",
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_mip_controls.js"
+     ]
+    },
+    {
+     "sha": "62eb56fa2f1f1f11fefeb184ce665cb186d4b2e8",
+     "subject": "fix(shaders): allocate the WebGL2 mip chain and cache WebGPU mip bind groups",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/tests/test_mip_controls.js"
+     ]
+    },
+    {
+     "sha": "2f47612c29045c1b91af94887a8ff20106e980ef",
+     "subject": "fix(shaders): stop double-creating global surfaces on allocation change",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_mip_controls.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/backends/webgpu.js",
+    "shaders/src/runtime/compiler.js",
+    "shaders/src/runtime/effect-validator.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/tests/test_mip_controls.js"
+   ]
+  }
+ ]
+}

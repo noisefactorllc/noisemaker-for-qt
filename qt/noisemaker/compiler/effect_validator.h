@@ -63,9 +63,11 @@ std::vector<std::string> validateEffectDefinition(const QJsonValue& def);
 // Convenience overload for already-extracted definition objects.
 std::vector<std::string> validateEffectDefinition(const QJsonObject& def);
 
-// The std-enum table the validator resolves `member` defaults and `enum`
-// paths against. Injectable so tests can use the live nm::Enums::std()
-// tree (the reference imports std_enums.js directly).
+// Injectable std-enum table the validator resolves `member` defaults and
+// `enum` paths against (the reference imports std_enums.js directly). The
+// table is COPIED, so callers may pass any object, including temporaries;
+// the validator's live default (nm::Enums::std()) is used until this is
+// called, and the last call's copy is kept.
 void setEffectValidatorStdEnums(const QJsonObject& stdEnums);
 
 } // namespace nm
