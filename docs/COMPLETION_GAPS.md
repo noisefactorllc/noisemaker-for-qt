@@ -11,6 +11,8 @@ Current upstream discovery: `7dc0f5640534855d73f8c812ca071fe6b1e09197`, publishe
 Current served kit: `0.1.50`, source `478beb560ca58b4315cf5aa7f4564cf14756cc0b`. [Served metadata](https://kits.noisedeck.app/qt/0/deployment-meta.json). Artifact identity does not establish host qualification.
 The observations below retain their original source and authority identities. They do not qualify later updates.
 
+Daily review: 2026-09-27. Reviewed source: [`15c6255fec052043ab512cf9d882c90ef0b5003e`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/15c6255fec052043ab512cf9d882c90ef0b5003e). Upstream discovery then: `c2252f0caa66b7c5e133a2aad3328e832564b567`. The three commits above `7dc0f56` touch only tests, ledger docs, and test scripts. The unqualified upstream range for this port is unchanged. Served kit unchanged: `0.1.50` at `478beb5`.
+
 ### Earlier source observations
 
 Daily review: 2026-09-25. Inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5). Upstream discovery then: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published authority then: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`. Served kit then: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`.
@@ -65,12 +67,38 @@ Results: SHADERS 317/317 byte-identical, DEFINITIONS 210/210 byte-identical, EFF
 [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json) records the commands, exit codes, and environment.
 
 Exact-source CI at `478beb560ca58b4315cf5aa7f4564cf14756cc0b`, the last code commit. The commits above it are docs-only and match no workflow filter.
-CI run 36274290703 passed: SHADERS 317/317, DEFINITIONS 210/210, REGISTRY 5/5, LEX, PARSE, VALIDATE, EXPAND and GRAPH 388/388 each, MIDI_STATE 66/66, AUDIO_STATE 93/93, OBJ PARSER 443/443. Build-test passed 26 of 26 on ubuntu-latest and windows-latest, and 25 of 25 plus device-limits on macos-latest. Render-smoke passed AUDIO_ANALYZER 570/570.
+CI run 36274290703 passed: SHADERS 317/317, DEFINITIONS 210/210, EFFECTS_UI 211/211, REGISTRY 5/5, LEX, PARSE, VALIDATE, EXPAND and GRAPH 388/388 each, MIDI_STATE 66/66, AUDIO_STATE 93/93, OBJ PARSER 443/443. Build-test passed 26 of 26 on ubuntu-latest and windows-latest, and 25 of 25 plus device-limits on macos-latest. Render-smoke passed AUDIO_ANALYZER 570/570.
 Full parity run 36274290692 passed: the llvmpipe sweep graded 362 of 362, all strict PASS, 0 skipped, at the default tolerances. It minted goldens from the reference at the STATUS.md pin `fa83eeab` and supplied the reference overlays with NM_REFERENCE_OVERLAYS=1.
 Export kit run 36274290672 passed and published kit `0.1.50`. The served metadata names `478beb5`.
 
 The reference overlays mean the sweep does not grade the port-generated overlay canvas (GAP-025). The macOS native evidence remains the 2026-09-25 ledger.
 The llvmpipe result covers the fixture suite on one rasterizer. It does not cover parameters, define choices, seeds, inputs, sizes, chains, or stateful frames beyond the fixtures.
+
+### Daily review, 2026-09-27
+
+Environment: Linux x86-64, Debian 12, node 26.5.1, Python 3.11.2. This container has no Qt toolkit, GPU, display, or Chromium.
+
+Executed at `15c6255`, reference `6a0af04d`, each exit 0:
+
+```sh
+NM_REFERENCE_ROOT=<reference at 6a0af04d> node parity/check_shaders.mjs
+NM_REFERENCE_ROOT=<reference at 6a0af04d> node parity/check_definitions.mjs
+NM_REFERENCE_ROOT=<reference at 6a0af04d> node parity/check_effects_ui.mjs
+python3 -m unittest parity.test_artistic_matrix parity.test_harness_contract
+```
+
+Results: SHADERS 317/317, DEFINITIONS 210/210, EFFECTS_UI 211/211, 54 tests OK. [Run evidence](/series/review-20260927-051000/result.json).
+
+Remote checks: GitHub main is `15c6255`. The sweep job log at `478beb5` shows pin `fa83eeab`, NM_REFERENCE_OVERLAYS=1, minted=360 failed=0, and renderer ANGLE (Mesa, llvmpipe). Its ledger holds `{'PASS': 362}`. CI runs 36274290703, 36274290692, and 36274290672 passed. No workflow ran at `b0dcda4`, `d54050d`, or `15c6255`. Served metadata returns kit `0.1.50` at `478beb5`.
+
+Closure-claim checks by this review:
+
+- GAP-004 re-verified against the committed raw logs. Embedded ctest 1/1, top-level 25/26, opts 25/26, pixel `ff3d837b`. The single failure is the recorded container font limit.
+- GAP-022 re-verified. Both committed logs show 570/570 with 0 time-domain mismatches. `audio_analyzer.cpp` keeps `std::fma` only under `__APPLE__ && __aarch64__`. CI run 36274290703 passes AUDIO_ANALYZER 570/570.
+- GAP-017 record re-verified. The committed log holds three identical 60,000-verdict pools with 0 Unsupported. The gate is absent from the ci.yml gates loop, and CI node stays 24. Corrected pin count: test_js_syntax pins 202 verdicts.
+- GAP-002: the three cited CI runs pass, and the installed-workflow jobs ran at `478beb5`. The Wine leg is carried evidence. Its raw grabs are not retained, and this review did not re-run it.
+- GAP-044 and GAP-045: run 36147939740 shows check_text_canvas 22/22 on Linux and Windows. Run 36274290703 shows 22/22 on Linux at `478beb5`. The macOS CoreText legs are carried local evidence.
+- GAP-046 confirmed. README line 50 states 353 fixtures. The ledger denominator is 362.
 
 ### Daily review, 2026-09-25
 
@@ -401,7 +429,7 @@ These entries record missing qualification. They do not infer implementation def
 
 - Status: open. Priority: P2. Category: contract.
 - Review correction, 2026-09-25: Current compiler fixtures and test_js_syntax pass. The claimed large V8 differential corpus on both Node majors has no retained raw result in the reviewed records. Preserve the implementation result, but retain that explicit acceptance check as open. The earlier closed status and its reported evidence are preserved below as historical implementation observations. [Independent CI review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317247.log). [rendered review](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
-- Correction completed, 2026-09-26: the bounded differential check was re-run with raw results retained. The corpus runner (parity/check_func_bodies_differential.mjs) generates a deterministic corpus (sha256 262b7e0be314c2c6d3f06c4e1f0c00b657eb2dc1d26a40bb95be3a36d9217ce7 over the encoded bodies) and decides every body three ways: this node's `new Function('state', body)`, the C++ checker via the qt/build/tests/js_syntax_dump batch helper, and (when present) a second node major via NM_EXTRA_NODE. Fresh result on Linux x86-64: 60,000/60,000 bodies agree — node 26.5.1 V8, node 24.10.0 V8, and the C++ checker — with 0 candidate Unsupported verdicts and 0 disagreements; the corpus regenerates identically under both majors (same digest). Raw per-body verdict strings for both majors are committed at parity/evidence/func_bodies_differential_v26.5.1-and-v24.10.0.log and func_bodies_differential_v24.10.0.log. The encoded corpus itself is not committed (it exceeds the review's 2 MiB candidate limit and is redundant: the runner regenerates it deterministically from the seeded generator, stamps the same sha256 into each verdict log, and re-verification is a fresh `node parity/check_func_bodies_differential.mjs` run). test_js_syntax now pins 196 V8 verdicts, including identifier-code-point cases (capital sharp S, ZWNJ/ZWJ as IdentifierPart but not IdentifierStart, astral letters, U+180E). The new pin cases and the two smaller verdict pools were checked directly against node 24.10.0 and 26.5.1 V8 before being written down.
+- Correction completed, 2026-09-26: the bounded differential check was re-run with raw results retained. The corpus runner (parity/check_func_bodies_differential.mjs) generates a deterministic corpus (sha256 262b7e0be314c2c6d3f06c4e1f0c00b657eb2dc1d26a40bb95be3a36d9217ce7 over the encoded bodies) and decides every body three ways: this node's `new Function('state', body)`, the C++ checker via the qt/build/tests/js_syntax_dump batch helper, and (when present) a second node major via NM_EXTRA_NODE. Fresh result on Linux x86-64: 60,000/60,000 bodies agree — node 26.5.1 V8, node 24.10.0 V8, and the C++ checker — with 0 candidate Unsupported verdicts and 0 disagreements; the corpus regenerates identically under both majors (same digest). Raw per-body verdict strings for both majors are committed at parity/evidence/func_bodies_differential_v26.5.1-and-v24.10.0.log and func_bodies_differential_v24.10.0.log. The encoded corpus itself is not committed (it exceeds the review's 2 MiB candidate limit and is redundant: the runner regenerates it deterministically from the seeded generator, stamps the same sha256 into each verdict log, and re-verification is a fresh `node parity/check_func_bodies_differential.mjs` run). test_js_syntax now pins 202 V8 verdicts, including identifier-code-point cases (capital sharp S, ZWNJ/ZWJ as IdentifierPart but not IdentifierStart, astral letters, U+180E). The new pin cases and the two smaller verdict pools were checked directly against node 24.10.0 and 26.5.1 V8 before being written down.
 - Authority limit, 2026-09-26: the differential gate is a plain repo script, not wired into any repository workflow — this job has no workflow authority, so ci.yml was left unchanged. CI's only node major is 24 (setup-node in ci.yml); the corpus shows no disagreement under node 24.10.0 locally, which covers that major's V8, but no exact-source CI run of the gate exists. The acceptance criterion's CI leg stays unmet until the gate runs on CI.
 - Affected scope: qt/noisemaker/compiler/js_syntax.{h,cpp}, js_regexp.{h,cpp}, js_unicode.{h,cpp}; validator.cpp Func branches (numeric and boolean params, if/elif conditions); lexer.cpp FUNC trim; parity/corpus/func_*.dsl; test_js_syntax, test_validator, test_lexer.
 - Expected behavior: A Func value compiles as the reference compiles it: `{min, max}` for a numeric param, or `{}` for a boolean param or condition, when V8's `new Function('state', 'with(state){ return SRC; }')` accepts the body. Otherwise S001 and the default (false for a condition).
@@ -803,6 +831,7 @@ These entries record missing qualification. They do not infer implementation def
 ## 5. Ordered next actions
 
 Current first action: Retain raw acceptance evidence for the reopened closure-verification entries (GAP-017 CI leg, GAP-025, 026, 027, 034, 035, 037, 038, 041). The native mints need a macOS host with Chromium. Keep GAP-040 visible. Sync upstream `7dc0f56` (implementation job). Fix the README count (GAP-046).
+Daily review, 2026-09-27: the GAP-004 and GAP-022 closures are verified. The GAP-002 Wine leg and the GAP-044/045 macOS CoreText legs stay carried evidence.
 Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
 
 1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families; GAP-044 and GAP-045 (ui-* and absent families).
@@ -816,12 +845,15 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 
 ## 6. Pass history
 
+2026-09-27 daily review at `15c6255fec052043ab512cf9d882c90ef0b5003e`: audit audit-20260927-010500 and the range since `1dd0a0b` reviewed. Local byte gates and 54 harness tests re-run at reference `6a0af04d`. Exact-source CI, the sweep ledger, the served kit, GAP-004, GAP-022, the GAP-017 record, and GAP-046 re-verified. The GAP-002 Wine leg and the GAP-044/045 macOS CoreText legs stay carried evidence. EFFECTS_UI 211/211 added to the CI record. The GAP-017 pin count corrected to 202. No closure changed. [Run evidence](/series/review-20260927-051000/result.json).
+
 2026-09-27 audit at `d54050d935a160a0478825573012ec807bcd1688`: first rotation audit of this repository. Exact-source CI at `478beb5` passes all three workflows. The llvmpipe sweep grades 362 of 362 strict. Local byte gates and 54 harness tests pass at reference `6a0af04d`. Added GAP-046. No closure. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
 
 2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-27 | `15c6255fec052043ab512cf9d882c90ef0b5003e` | Daily review. Two evidence corrections, no closure change. | Byte gates 317/317, 210/210, 211/211 and 54 harness tests at reference `6a0af04d`. CI logs checked at `478beb5`; sweep ledger 362 PASS; kit 0.1.50 served. | macOS native evidence for the reopened entries. Upstream `6a0af04d..7dc0f56` unqualified. GAP-002 Wine and GAP-044/045 macOS legs carried. |
 | 2026-09-27 | `d54050d935a160a0478825573012ec807bcd1688` | Audit refresh of both reports. Added GAP-046. No closure. | Local byte gates 317/317, 210/210, 211/211 and 54 harness tests at reference `6a0af04d`. Exact-source CI at `478beb5`: gates, 26/26 Linux and Windows ctest, macOS 25/25 plus device-limits, AUDIO_ANALYZER 570/570, llvmpipe sweep 362/362 strict, kit 0.1.50 published. | macOS native acceptance evidence for the reopened entries. Upstream 1.0.186 to 1.0.189 unqualified. Parameters, inputs, state, and platforms beyond the fixture suite unmeasured. |
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
 | 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012, GAP-013 and GAP-014 and GAP-016 (closed), GAP-015 (blocked), GAP-017 to GAP-020 (open) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |

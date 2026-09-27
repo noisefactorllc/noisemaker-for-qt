@@ -9,6 +9,8 @@ Current upstream discovery: `7dc0f5640534855d73f8c812ca071fe6b1e09197`, publishe
 Current served kit: `0.1.50`, source `478beb560ca58b4315cf5aa7f4564cf14756cc0b`. [Served metadata](https://kits.noisedeck.app/qt/0/deployment-meta.json). Artifact identity does not establish host qualification.
 The observations below retain their original source and authority identities. They do not qualify later updates.
 
+Daily review: 2026-09-27. Reviewed source: `15c6255fec052043ab512cf9d882c90ef0b5003e`. Upstream discovery then: `c2252f0caa66b7c5e133a2aad3328e832564b567`. The three commits above `7dc0f56` touch only tests and docs. The unqualified range is unchanged. Served kit unchanged: `0.1.50` at `478beb5`.
+
 ### Earlier source observations
 
 Daily review: 2026-09-25. Inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5). Upstream discovery then: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published authority then: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`. Served kit then: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`.
@@ -57,6 +59,13 @@ This grades the fixture suite on Linux llvmpipe only. The macOS ledger keeps 45 
 Parameters, define choices, seeds, external inputs, sizes, chains, and stateful frames beyond the fixture set remain unmeasured.
 Local byte gates at reference `6a0af04d`: SHADERS 317/317, DEFINITIONS 210/210, EFFECTS_UI 211/211, each exit 0. Python harness tests pass 54 of 54.
 Upstream `1.0.186` to `1.0.189` (through `7dc0f56`) change `shaders/src/lang` and remain unqualified. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
+
+### Daily review, 2026-09-27
+
+Local byte gates re-run at `15c6255`, reference `6a0af04d`: SHADERS 317/317, DEFINITIONS 210/210, EFFECTS_UI 211/211, each exit 0. Python harness tests pass 54 of 54.
+The sweep job log at `478beb5` records pin `fa83eeab`, NM_REFERENCE_OVERLAYS=1, minted=360 failed=0, renderer ANGLE (Mesa, llvmpipe), and ledger `{'PASS': 362}`. The CI gates there also pass EFFECTS_UI 211/211.
+GAP-004 and GAP-022 closures re-verified against the committed raw logs and CI. The GAP-002 Wine leg and the GAP-044/045 macOS CoreText legs stay carried evidence. GAP-046 stays open.
+Upstream `1.0.186` to `1.0.189` remain unqualified. The three newer upstream commits touch only tests and docs. [Run evidence](/series/review-20260927-051000/result.json).
 
 ### Daily review, 2026-09-25
 
@@ -348,12 +357,15 @@ Implementation corrections remain with the separate job. This report does not ad
 
 ## 6. History
 
+2026-09-27 daily review at `15c6255fec052043ab512cf9d882c90ef0b5003e`: audit audit-20260927-010500 reviewed. Byte gates and harness tests re-run. CI, sweep ledger, and served kit re-verified. GAP-004 and GAP-022 closures verified. Two evidence corrections recorded. [Run evidence](/series/review-20260927-051000/result.json).
+
 2026-09-27 audit at `d54050d935a160a0478825573012ec807bcd1688`: exact-source CI at `478beb5` passes all three workflows. The llvmpipe sweep grades 362 of 362 strict. Local byte gates and 54 harness tests pass at reference `6a0af04d`. Added GAP-046. No closure. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
 
 2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
 
 | Date | Source | Result | Change |
 |---|---|---|---|
+| 2026-09-27 | `15c6255fec052043ab512cf9d882c90ef0b5003e` | Fixture suite verified on llvmpipe, full qualification unverified | Daily review. Evidence re-verified, two corrections, no closure change. |
 | 2026-09-27 | `d54050d935a160a0478825573012ec807bcd1688` | Fixture suite verified on llvmpipe, full qualification unverified | Audit refresh. Upstream 1.0.186 to 1.0.189 recorded unqualified. GAP-046 added. |
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Full qualification unverified | Created the requested maintained compatibility report. Preserved historical evidence and open gaps. |
 
