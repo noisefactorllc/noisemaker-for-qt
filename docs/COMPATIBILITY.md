@@ -2,13 +2,16 @@
 
 ## 1. Source and authority revisions
 
-Daily review: 2026-09-25. Current inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5).
-Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
-Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+Audit: 2026-09-27. Audited source: [`d54050d935a160a0478825573012ec807bcd1688`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/d54050d935a160a0478825573012ec807bcd1688). Local HEAD matched remote main. The checkout was clean.
+Full rendered parity remains **unverified** beyond the fixture suite on Linux llvmpipe. No release approval follows from this audit.
+Graded reference content: `fa83eeabf278f1f4999c1d1fff43e2e5338b72ba`, the pin the CI sweep resolves from STATUS.md. The committed range audit proves the graded files equal `6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa` (`1.0.185`).
+Current upstream discovery: `7dc0f5640534855d73f8c812ca071fe6b1e09197`, published `1.0.189`. Versions `1.0.186` to `1.0.189` change `shaders/src/lang` and remain unqualified for this port.
+Current served kit: `0.1.50`, source `478beb560ca58b4315cf5aa7f4564cf14756cc0b`. [Served metadata](https://kits.noisedeck.app/qt/0/deployment-meta.json). Artifact identity does not establish host qualification.
 The observations below retain their original source and authority identities. They do not qualify later updates.
-Current served kit: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
 
 ### Earlier source observations
+
+Daily review: 2026-09-25. Inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5). Upstream discovery then: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published authority then: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`. Served kit then: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`.
 
 Report date: 2026-09-24. Source inspected: [`8460cfd77798d4e79d37828c16b0b29a09fbdbda`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/8460cfd77798d4e79d37828c16b0b29a09fbdbda).
 Full rendered parity at this SHA: **unverified**. This is not a release approval.
@@ -34,11 +37,11 @@ The matrix below retains the earlier measured scope. A historical verified row i
 
 | Dimension | Status | Measured scope or limit |
 |---|---|---|
-| Source-level checks | verified | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. |
-| Actual host rendering | verified | Only the bounded probes in section 3 executed. This is not full host qualification. |
+| Source-level checks | verified | Byte gates 317/317, 210/210, 211/211 at reference `6a0af04d`, each exit 0. Python harness tests pass 54 of 54. CI gates pass 388/388 per compiler stage at `478beb5`. |
+| Actual host rendering | verified | The exact-source llvmpipe sweep grades the 362-program fixture suite, 362 strict passes, 0 skipped. macOS keeps 45 NEAR rows. This is not full host qualification. |
 | Minimum and current host versions | unverified | Declared requirements are not a tested version matrix. |
-| Supported operating systems and backends | unverified | This pass does not establish Windows, Linux, and macOS coverage. |
-| Installed package and first useful result | unverified | Complete isolated installation was not qualified for this source. |
+| Supported operating systems and backends | unverified | CI ctest passed on ubuntu-latest, windows-latest, and macos-latest at `478beb5`. A full platform matrix remains untested. |
+| Installed package and first useful result | verified | The installed-workflow CI job passed on all three OSes at `478beb5` (GAP-002). This pass adds no new host evidence. |
 | Parameters, external inputs, state, and chains | unverified | Full current-authority combinations remain unmeasured. |
 | Invalid input and recovery | unverified | Unit checks do not establish every installed public entry point. |
 | Upgrade, removal, and resource cleanup | unverified | Prior defects and missing workflows remain in the gap register. |
@@ -46,6 +49,14 @@ The matrix below retains the earlier measured scope. A historical verified row i
 | Release readiness | blocked | Full parity, installation, host, and artifact evidence remain incomplete. |
 
 ## 3. Parity coverage
+
+### Audit, 2026-09-27
+
+The exact-source llvmpipe sweep (CI run 36274290692 at `478beb5`) graded the full fixture suite: 362 executed, 362 strict passes, 0 failures, 0 skips. The sweep minted the goldens from the reference at the STATUS.md pin `fa83eeab`. NM_REFERENCE_OVERLAYS=1 supplied the reference overlays.
+This grades the fixture suite on Linux llvmpipe only. The macOS ledger keeps 45 NEAR rows. The reference overlays mean the port-generated overlay canvas is not graded (GAP-025).
+Parameters, define choices, seeds, external inputs, sizes, chains, and stateful frames beyond the fixture set remain unmeasured.
+Local byte gates at reference `6a0af04d`: SHADERS 317/317, DEFINITIONS 210/210, EFFECTS_UI 211/211, each exit 0. Python harness tests pass 54 of 54.
+Upstream `1.0.186` to `1.0.189` (through `7dc0f56`) change `shaders/src/lang` and remain unqualified. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
 
 ### Daily review, 2026-09-25
 
@@ -62,7 +73,9 @@ Unknown values mean `not measured`, never zero.
 
 | Gate | Expected cases | Executed | Strict passes | Failures | Skips | Status |
 |---|---|---|---|---|---|---|
-| Current full render suite | not measured | not measured | not measured | not measured | not measured | unverified |
+| Fixture suite, Linux llvmpipe CI (`478beb5`) | 362 programs | 362 | 362 | 0 | 0 | verified, llvmpipe scope only |
+| Fixture suite, macOS ledger | 362 programs | 362 | 317 | 0 | 0 | 45 NEAR tolerance rows, historical (`c6ab84a`) |
+| Full current-authority parameter, input, and state coverage | not measured | not measured | not measured | not measured | not measured | unverified |
 
 Earlier served compatibility inventory declares 203 effect IDs. Declaration does not establish execution or parity.
 IDs absent from the served declaration: `filter/text`, `render/meshLoader`, `render/meshRender`, `synth/media`, `synth/roll`, `synth/scope`, `synth/spectrum`.
@@ -320,7 +333,7 @@ A successful dispatch or unit-test summary does not establish a full rendered ga
 
 ## 5. Open compatibility limits
 
-Next bounded check: First retain raw acceptance evidence for the reopened closure-verification entries. Run the existing overlay comparisons with port-generated overlays on each claimed platform. Keep GAP-040 visible. Run the full existing sweep against immutable current authority inputs. Report exact and tolerance results separately. Test installed GUI resize, context recreation, input errors, and recovery on the missing hosts.
+Next bounded check: Retain raw acceptance evidence for the reopened closure-verification entries (GAP-017 CI leg, GAP-025, 026, 027, 034, 035, 037, 038, 041). The native mints need a macOS host with Chromium. Sync upstream `7dc0f56` (implementation job). Fix the README count (GAP-046).
 See the stable entries in [completion gaps](COMPLETION_GAPS.md).
 
 See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
@@ -335,10 +348,13 @@ Implementation corrections remain with the separate job. This report does not ad
 
 ## 6. History
 
+2026-09-27 audit at `d54050d935a160a0478825573012ec807bcd1688`: exact-source CI at `478beb5` passes all three workflows. The llvmpipe sweep grades 362 of 362 strict. Local byte gates and 54 harness tests pass at reference `6a0af04d`. Added GAP-046. No closure. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
+
 2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
 
 | Date | Source | Result | Change |
 |---|---|---|---|
+| 2026-09-27 | `d54050d935a160a0478825573012ec807bcd1688` | Fixture suite verified on llvmpipe, full qualification unverified | Audit refresh. Upstream 1.0.186 to 1.0.189 recorded unqualified. GAP-046 added. |
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Full qualification unverified | Created the requested maintained compatibility report. Preserved historical evidence and open gaps. |
 
 Run: `20260924-remaining-gap-documents`. Later audits and reviews update this report with source-bound results.

@@ -4,13 +4,16 @@ Current compatibility matrix: [compatibility report](COMPATIBILITY.md).
 
 ## 1. Scope and source revisions
 
-Daily review: 2026-09-25. Current inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5).
-Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
-Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+Audit: 2026-09-27. Audited source: [`d54050d935a160a0478825573012ec807bcd1688`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/d54050d935a160a0478825573012ec807bcd1688). Local HEAD matched remote main. The checkout was clean.
+Full rendered parity remains **unverified** beyond the fixture suite on Linux llvmpipe. No release approval or new closure follows from this audit.
+Graded reference content: `fa83eeabf278f1f4999c1d1fff43e2e5338b72ba`, the pin the CI sweep resolves from STATUS.md. The committed range audit proves the graded files equal `6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa` (`1.0.185`). Byte gates at `6a0af04d` pass in section 3.
+Current upstream discovery: `7dc0f5640534855d73f8c812ca071fe6b1e09197`, published `1.0.189`. Versions `1.0.186` to `1.0.189` change `shaders/src/lang` and remain unqualified for this port. The sync belongs to the implementation job.
+Current served kit: `0.1.50`, source `478beb560ca58b4315cf5aa7f4564cf14756cc0b`. [Served metadata](https://kits.noisedeck.app/qt/0/deployment-meta.json). Artifact identity does not establish host qualification.
 The observations below retain their original source and authority identities. They do not qualify later updates.
-Current served kit: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
 
 ### Earlier source observations
+
+Daily review: 2026-09-25. Inspected source: [`1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5). Upstream discovery then: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published authority then: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`. Served kit then: `0.1.42`, source `bd8f4b71f756ddaca9cd04c4159f0e608460517e`.
 
 Date: 2026-09-24. Reviewed SHA: [`8460cfd77798d4e79d37828c16b0b29a09fbdbda`](https://github.com/noisefactorllc/noisemaker-for-qt/commit/8460cfd77798d4e79d37828c16b0b29a09fbdbda).
 Local HEAD matched remote main before checks. The operator requested registers for all remaining eligible ports in this run.
@@ -35,13 +38,39 @@ The containing commit identifies this register's publication revision. The share
 
 | Claim ID | Claim source | Claimed scope | Finding | Evidence |
 |---|---|---|---|---|
-| CLAIM-001 | [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) | Source status reports compiler gates and historical rendered PASS, NEAR, and CHAOS classifications with effect-specific tolerances. | partial | Earlier: 31 Python harness tests passed; a rebuild passed 12 C++ tests and rendered noise. 2026-09-24: the full macOS suite grades 353/353 (309 PASS, 44 NEAR, 0 FAIL); Linux and Windows CI grade 6 smoke fixtures at max 0. NEAR is not full parity. GAP-001. |
-| CLAIM-002 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Human usability: installation, output, errors, and recovery | partial | Earlier: complete installed workflows were not observed. 2026-09-24: the README installed workflow passes on macOS and Linux (Qt 6.9.3); Windows has CI ctest only. GAP-002. |
-| CLAIM-003 | [Ecosystem reference](https://doc.qt.io/qt-6/qopenglwidget.html) | Ecosystem fit and version support | partial | Earlier: source entry points were examined. 2026-09-24: find_package with a version, FetchContent by tag, a Qt Quick item, and Qt 6.9 as the stated minimum are verified on macOS and Linux. GAP-002. |
-| CLAIM-004 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Release readiness | partial | Earlier: metadata and CI do not replace installation. 2026-09-24: kit 0.1.29 reproduces byte for byte; the scaffold release gate builds and renders each Qt kit before publication; the notice and release-note decisions remain. GAP-003. |
-| CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-qt/actions?query=head_sha%3A8460cfd77798d4e79d37828c16b0b29a09fbdbda) | Workflow status only | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-qt/actions/runs/35953721777): `success`. |
+| CLAIM-001 | [Historical source](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/STATUS.md) | Source status reports compiler gates and historical rendered PASS, NEAR, and CHAOS classifications with effect-specific tolerances. | partial | Earlier: 31 Python harness tests passed; a rebuild passed 12 C++ tests and rendered noise. 2026-09-24: the full macOS suite grades 353/353 (309 PASS, 44 NEAR, 0 FAIL); Linux and Windows CI grade 6 smoke fixtures at max 0. NEAR is not full parity. 2026-09-27: the exact-source llvmpipe sweep (run 36274290692) grades 362 of 362 strict, 0 skipped, at `478beb5`. The macOS ledger keeps its 45 NEAR rows. GAP-001. |
+| CLAIM-002 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Human usability: installation, output, errors, and recovery | partial | Earlier: complete installed workflows were not observed. 2026-09-24: the README installed workflow passes on macOS and Linux (Qt 6.9.3); Windows has CI ctest only. 2026-09-26: installed workflow CI passes on all three OSes, with Windows GUI self-checks under Wine. 2026-09-27: no new host evidence this pass. GAP-002. |
+| CLAIM-003 | [Ecosystem reference](https://doc.qt.io/qt-6/qopenglwidget.html) | Ecosystem fit and version support | partial | Earlier: source entry points were examined. 2026-09-24: find_package with a version, FetchContent by tag, a Qt Quick item, and Qt 6.9 as the stated minimum are verified on macOS and Linux. 2026-09-27: no new host evidence this pass. GAP-002. |
+| CLAIM-004 | [README](https://github.com/noisefactorllc/noisemaker-for-qt/blob/8460cfd77798d4e79d37828c16b0b29a09fbdbda/README.md) | Release readiness | partial | Earlier: metadata and CI do not replace installation. 2026-09-24: kit 0.1.29 reproduces byte for byte; the scaffold release gate builds and renders each Qt kit before publication; the notice and release-note decisions remain. 2026-09-27: kit `0.1.50` serves at `478beb5`. Artifact bytes were not re-verified this pass. GAP-003. |
+| CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-qt/actions?query=head_sha%3A478beb560ca58b4315cf5aa7f4564cf14756cc0b) | Workflow status only | supported | At `478beb5`, the last code commit: [CI](https://github.com/noisefactorllc/noisemaker-for-qt/actions/runs/36274290703), [full parity](https://github.com/noisefactorllc/noisemaker-for-qt/actions/runs/36274290692), and [export kit](https://github.com/noisefactorllc/noisemaker-for-qt/actions/runs/36274290672) each passed. The docs-only commits above it match no workflow filter. |
 
 ## 3. Methods and evidence
+
+### Audit, 2026-09-27
+
+Environment: Linux x86-64, Debian 12, node 26.5.1, Python 3.11.2. This container has no Qt toolkit, GPU, display, or Chromium.
+The C++ build, the GL tests, and every browser-dependent gate did not run locally. Exact-source CI supplies them, cited below.
+
+Local reference: a scratch clone of `noisemaker` at `6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa`, checked out by full SHA.
+Executed commands, each exit 0:
+
+```sh
+NM_REFERENCE_ROOT=<scratch clone at 6a0af04d> node parity/check_shaders.mjs
+NM_REFERENCE_ROOT=<scratch clone at 6a0af04d> node parity/check_definitions.mjs
+NM_REFERENCE_ROOT=<scratch clone at 6a0af04d> node parity/check_effects_ui.mjs
+python3 -m unittest parity.test_artistic_matrix parity.test_harness_contract
+```
+
+Results: SHADERS 317/317 byte-identical, DEFINITIONS 210/210 byte-identical, EFFECTS_UI 211/211 byte-identical, and 54 tests OK.
+[Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json) records the commands, exit codes, and environment.
+
+Exact-source CI at `478beb560ca58b4315cf5aa7f4564cf14756cc0b`, the last code commit. The commits above it are docs-only and match no workflow filter.
+CI run 36274290703 passed: SHADERS 317/317, DEFINITIONS 210/210, REGISTRY 5/5, LEX, PARSE, VALIDATE, EXPAND and GRAPH 388/388 each, MIDI_STATE 66/66, AUDIO_STATE 93/93, OBJ PARSER 443/443. Build-test passed 26 of 26 on ubuntu-latest and windows-latest, and 25 of 25 plus device-limits on macos-latest. Render-smoke passed AUDIO_ANALYZER 570/570.
+Full parity run 36274290692 passed: the llvmpipe sweep graded 362 of 362, all strict PASS, 0 skipped, at the default tolerances. It minted goldens from the reference at the STATUS.md pin `fa83eeab` and supplied the reference overlays with NM_REFERENCE_OVERLAYS=1.
+Export kit run 36274290672 passed and published kit `0.1.50`. The served metadata names `478beb5`.
+
+The reference overlays mean the sweep does not grade the port-generated overlay canvas (GAP-025). The macOS native evidence remains the 2026-09-25 ledger.
+The llvmpipe result covers the fixture suite on one rasterizer. It does not cover parameters, define choices, seeds, inputs, sizes, chains, or stateful frames beyond the fixtures.
 
 ### Daily review, 2026-09-25
 
@@ -100,6 +129,7 @@ These entries record missing qualification. They do not infer implementation def
 - Acceptance criteria: Report every applicable case, parameter choice, exclusion, error, and tolerance. Do not reduce the denominator to report success.
 - Required checks: Existing compiler and rendered parity gates, with raw output and exact source hashes.
 - Last verification: 2026-09-25, at sync commit c6ab84a (reference 2f47612c): the llvmpipe sweep (run 36193702132) grades 362 of 362 — 362 PASS, 0 NEAR, 0 FAIL, 0 CHAOS, 0 skipped — and the compiler gates pass with the raw output cited above. c6ab84a adds texture-spec plumbing (mipmaps/persistent/filter fields in qt/noisemaker/runtime/graph.{h,cpp} and dsl_compiler.cpp) plus effect-definition validation in tools/convert-definitions.mjs and a test_graph_load fixture; it changes no shader or definition file, and the 2026-09-24 macOS ledger (below) is not invalidated by it. The ledger was graded at pin c9ee8a04; c9ee8a04..30c47030 changes no shader, definition, or engine file (only parser diagnostics; the compiler gates are 379/379 at 30c47030), so it stands for 30c47030. At pin c9ee8a04 the ledger, regenerated by parity/sweep.sh after GAP-025 (a14a613), grades 353 of 353: 309 PASS, 44 NEAR, 0 FAIL, 0 CHAOS, 0 skipped. fibers, scratches, and strayHair now PASS (max 1, 0, 0), and navierStokes PASS (max 2). The goldens come from a full fresh sweep and are byte-identical to the prior full sweep (360 PNGs). The live-DSL sweep agrees on every row (GAP-035). Earlier: 353 of 353 with 305 PASS, 46 NEAR, 2 FAIL (c6893a9); 347 of 347 with 298 PASS, 47 NEAR, 2 FAIL. See GAP-010, GAP-011, GAP-019, GAP-025, GAP-026, and the sweep evidence below. Only macOS was measured for the full suite; NEAR entries are tolerance-based, not full parity. CI render-smoke grades 6 fixtures on Linux llvmpipe against same-rasterizer goldens at max 0 (GAP-033).
+- 2026-09-27, at `478beb5` via CI run 36274290692: the llvmpipe sweep graded 362 of 362 strict PASS, 0 skipped, at the default tolerances. The CI pin parse resolves `fa83eeab`. The committed range audit proves the graded files equal `6a0af04d`. The macOS ledger is unchanged since `c6ab84a`. Upstream `6a0af04d..7dc0f56` (versions 1.0.186 to 1.0.189) changes `shaders/src/lang` and is unqualified.
 
 ### GAP-002: installed developer workflow qualification
 
@@ -757,15 +787,28 @@ These entries record missing qualification. They do not infer implementation def
 - Required checks: check_text_canvas.mjs; test_text_texture.
 - Last verification: 2026-09-25, reference 240740dd, CI run 36147939740 (Linux, Windows) and macOS CoreText locally.
 
+### GAP-046: README states a stale macOS fixture count
+
+- Status: open. Priority: P3. Category: contract.
+- Affected scope: README.md, line 50.
+- Expected behavior: The README states the current measured fixture denominator.
+- Observed behavior: The README says macOS parity is verified over 353 fixtures. The macOS ledger and the CI sweep denominator are 362 (GAP-001).
+- Evidence: `grep -n "over 353 fixtures" README.md` returns line 50. The ledger at `c6ab84a` grades 362 of 362. CI run 36274290692 sweeps 362 programs.
+- Next action: The implementation job updates the count and the tolerance summary to the current ledger.
+- Dependencies: None.
+- Acceptance criteria: The README count equals the current ledger denominator.
+- Required checks: grep of README.md against the current ledger.
+- Last verification: 2026-09-27.
+
 ## 5. Ordered next actions
 
-Current first action: First retain raw acceptance evidence for the reopened closure-verification entries. Run the existing overlay comparisons with port-generated overlays on each claimed platform. Keep GAP-040 visible. Run the full existing sweep against immutable current authority inputs. Report exact and tolerance results separately. Test installed GUI resize, context recreation, input errors, and recovery on the missing hosts.
+Current first action: Retain raw acceptance evidence for the reopened closure-verification entries (GAP-017 CI leg, GAP-025, 026, 027, 034, 035, 037, 038, 041). The native mints need a macOS host with Chromium. Keep GAP-040 visible. Sync upstream `7dc0f56` (implementation job). Fix the README count (GAP-046).
 Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
 
 1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families; GAP-044 and GAP-045 (ui-* and absent families).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
-3. Retained CI evidence for the reopened entries (017, 022, 025, 026, 027, 034, 035, 037, 038, 041): the qualification workflow in progress. GAP-004 left this list on 2026-09-26: its required embedding workflow was re-run with fresh raw evidence (parity/evidence/gap004-MANIFEST.txt) and the entry is closed.
-4. Blocked or waiting: GAP-030 needs a reference fix (blocked, see the entry); GAP-040 is a reference canvas property; GAP-031 waits for a definition that uses countUniform.
+3. Retained CI evidence for the reopened entries (017, 022, 025, 026, 027, 034, 035, 037, 038, 041): the qualification workflow in progress. GAP-004 left this list on 2026-09-26: its required embedding workflow was re-run with fresh raw evidence (parity/evidence/gap004-MANIFEST.txt) and the entry is closed. GAP-022 left this list on 2026-09-26: the exact-source CI leg passed (run 36274290703) and the entry is closed.
+4. Blocked or waiting: GAP-030 needs a reference fix (blocked, see the entry). GAP-040 is a reference canvas property. GAP-031 waits for a definition that uses countUniform. GAP-046 waits for the implementation job.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 
@@ -773,10 +816,13 @@ Implementation belongs to the separate job. Do not port additional effects or ad
 
 ## 6. Pass history
 
+2026-09-27 audit at `d54050d935a160a0478825573012ec807bcd1688`: first rotation audit of this repository. Exact-source CI at `478beb5` passes all three workflows. The llvmpipe sweep grades 362 of 362 strict. Local byte gates and 54 harness tests pass at reference `6a0af04d`. Added GAP-046. No closure. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
+
 2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-27 | `d54050d935a160a0478825573012ec807bcd1688` | Audit refresh of both reports. Added GAP-046. No closure. | Local byte gates 317/317, 210/210, 211/211 and 54 harness tests at reference `6a0af04d`. Exact-source CI at `478beb5`: gates, 26/26 Linux and Windows ctest, macOS 25/25 plus device-limits, AUDIO_ANALYZER 570/570, llvmpipe sweep 362/362 strict, kit 0.1.50 published. | macOS native acceptance evidence for the reopened entries. Upstream 1.0.186 to 1.0.189 unqualified. Parameters, inputs, state, and platforms beyond the fixture suite unmeasured. |
 | 2026-09-24 | `8460cfd77798d4e79d37828c16b0b29a09fbdbda` | Created six-section register and README link. No closures. | 31 Python harness tests passed. A later rebuild passed 12 C++ tests and rendered noise. Full GPU and installed-viewer qualification remain open. | Full audit, installed workflows, current rendered parity, platforms, and releases remain unqualified. |
 | 2026-09-24 | `5f912154eb1c3015f24d3e3a613d0e52150b89e5` + local commits | Implementation stream: added GAP-004, GAP-007, GAP-008, GAP-009, GAP-012, GAP-013 and GAP-014 and GAP-016 (closed), GAP-015 (blocked), GAP-017 to GAP-020 (open) and GAP-005, GAP-006, GAP-010 and GAP-011 (open). Full sweep: 298 PASS, 47 NEAR, 2 FAIL of 347. | Top-level ctest 12 of 12. Embedded, embedded-with-tests, and installed consumers built and rendered on macOS. | Other platforms unverified. Remote CI not run. |
 | 2026-09-24 | `12c1d1c6f160e5fe30f482e6376f220b3ec982c4` | CI evidence review: GAP-005, GAP-006 and GAP-022 closed; GAP-021 updated (passes on macos-latest, renderer not yet logged). | CI run 35974199816: 8 of 8 jobs passed on macOS, Linux and Windows; ctest 15/15 on each; all gates and the render smoke passed. | GAP-021 needs the renderer in the log. GAP-010, GAP-011, GAP-017 to GAP-020 remain open; GAP-015 blocked. |
