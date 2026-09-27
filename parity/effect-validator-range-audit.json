@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "7c5f17658d8ce420846a5eb7a06bd9d3f7e40f32",
+  "referenceCheckout": "296e0138c4744ed485b2e95de3eeb466c17629ee",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -726,6 +726,193 @@
     "shaders/tests/test_uniform_status.js",
     "shaders/tests/uniform-deltas.js",
     "shaders/tests/uniform-status.js"
+   ]
+  },
+  {
+   "range": "403c2a4bf2cb56307448ea2fc1d6fa3cd74b7d6e..296e0138c4744ed485b2e95de3eeb466c17629ee",
+   "coveredBy": "this candidate (tearoff job 641, force-push flagged — audited rather than assumed; merge-base verified: 403c2a4bf2cb, 7c5f17658d8c and 11d7c69922f3 are each ancestors of 296e0138c474, so both observed windows lie inside this span. Delta beyond the audited 8eeb7b5a..93229933 span: 7c5f17658d8c and 11d7c69922f3 are docs-only (no shaders/ files); a912749fab5c (GAP-019 true input-passthrough probe) and 296e0138c474 (GAP-021 frame-resolution reporting) add shaders/tests harness modules only — `git diff 93229933b102..296e0138c474 -- shaders/src` is empty. The Qt port runs its own native Desktop-GL runtime in qt/noisemaker/ and does not consume web test-harness modules; no effect definitions, shaders, or DSL-compiler files change, so no port code change)",
+   "commits": [
+    {
+     "sha": "0ac5250052e2b2e683f086959451c3bad8369a68",
+     "subject": "docs: advance AI development contract checkpoint through 403c2a4 (GAP-008/009 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "9f85687d1bafc445dcd38e28cf5f0c6dfba562f8",
+     "subject": "feat(tests): truthful uniform-responsiveness aggregation behind --strict-uniforms (GAP-010)",
+     "shadersFiles": [
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_uniform_status.js",
+      "shaders/tests/uniform-status.js"
+     ]
+    },
+    {
+     "sha": "7730ea4aba56ab3101b8eac125a21361c2ff0ce8",
+     "subject": "docs: state the at-least-one-entry requirement in the GAP-010 uniforms guidance prose",
+     "shadersFiles": []
+    },
+    {
+     "sha": "407eb7a73c94c37b79f4648712f15a618da02434",
+     "subject": "docs: advance AI development contract checkpoint through 9f85687 (GAP-010 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "7dc0f5640534855d73f8c812ca071fe6b1e09197",
+     "subject": "feat(tests): auditable measured uniform deltas in the harness uniforms report (GAP-011)",
+     "shadersFiles": [
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_uniform_deltas.js",
+      "shaders/tests/uniform-deltas.js"
+     ]
+    },
+    {
+     "sha": "7443f6e6180300a45c5b97608459e5094504659d",
+     "subject": "test(docs): pin the harness WebGPU render-surface readback and narrow GAP-012",
+     "shadersFiles": [
+      "shaders/tests/frame-readback.js",
+      "shaders/tests/test_frame_readback.js"
+     ]
+    },
+    {
+     "sha": "132d1bf9e3a390336ddd55fc2beb4ba207dcb31c",
+     "subject": "docs: advance AI development contract checkpoint through 7443f6e (GAP-011/012 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c2252f0caa66b7c5e133a2aad3328e832564b567",
+     "subject": "test(metrics): auditable GAP-015 metric interchangeability mirror",
+     "shadersFiles": [
+      "shaders/tests/image-metrics.js",
+      "shaders/tests/test_image_metrics.js"
+     ]
+    },
+    {
+     "sha": "e73a44a37f0c99bd3779c5fb26c7bba65a46a379",
+     "subject": "test(harness): warm up frames before pausing for explicit-time render requests (GAP-014)",
+     "shadersFiles": [
+      "shaders/tests/frame-warmup.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_warmup.js"
+     ]
+    },
+    {
+     "sha": "12b4d74fb4f28d5f00bb1dde107fa8673814d8b9",
+     "subject": "feat(runtime): static effect preflight for per-backend authorability and device-limit format changes (GAP-016)",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js",
+      "shaders/src/runtime/preflight.js",
+      "shaders/tests/test_preflight.js"
+     ]
+    },
+    {
+     "sha": "ec457c2eec695427fdbf026bd5ce5db04456a151",
+     "subject": "docs: advance AI development contract checkpoint through 12b4d74 (GAP-014/015/016 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "8fe3ccaf2cc8f111ba574f4dc356ee68501af971",
+     "subject": "docs: record post-publication deployed-contract evidence and correct the open-gap enumeration",
+     "shadersFiles": []
+    },
+    {
+     "sha": "93229933b102ba82e713402be19db57207698850",
+     "subject": "feat(harness): complete, lossless definition-schema introspection with an upstream-loss audit (GAP-017)",
+     "shadersFiles": [
+      "shaders/tests/definition-schema.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_definition_schema.js"
+     ]
+    },
+    {
+     "sha": "7c5f17658d8ce420846a5eb7a06bd9d3f7e40f32",
+     "subject": "docs: advance AI development contract checkpoint through 9322993 (GAP-017 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a912749fab5c3819e56a8abde664ff30e40870f4",
+     "subject": "feat(harness): true input-passthrough probe with a live write-blit control (GAP-019)",
+     "shadersFiles": [
+      "shaders/tests/passthrough-input.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_passthrough_input.js"
+     ]
+    },
+    {
+     "sha": "11d7c69922f321ef155bb0280f681875a53c98e9",
+     "subject": "docs: narrow GAP-020 — shared MCP domain error envelope lives in the Shade repository, which noisemaker cannot write; nothing of the tool-result wrapper is vendored and no noisemaker module consumes the MCP envelope, so no repository-side surface exists",
+     "shadersFiles": []
+    },
+    {
+     "sha": "296e0138c4744ed485b2e95de3eeb466c17629ee",
+     "subject": "feat(harness): report requested-vs-returned frame resolution on every renderEffectFrame result (GAP-021)",
+     "shadersFiles": [
+      "shaders/tests/frame-resolution.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_resolution.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/pipeline.js",
+    "shaders/src/runtime/preflight.js",
+    "shaders/tests/definition-schema.js",
+    "shaders/tests/frame-readback.js",
+    "shaders/tests/frame-resolution.js",
+    "shaders/tests/frame-warmup.js",
+    "shaders/tests/image-metrics.js",
+    "shaders/tests/passthrough-input.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_definition_schema.js",
+    "shaders/tests/test_frame_readback.js",
+    "shaders/tests/test_frame_resolution.js",
+    "shaders/tests/test_frame_warmup.js",
+    "shaders/tests/test_image_metrics.js",
+    "shaders/tests/test_passthrough_input.js",
+    "shaders/tests/test_preflight.js",
+    "shaders/tests/test_uniform_deltas.js",
+    "shaders/tests/test_uniform_status.js",
+    "shaders/tests/uniform-deltas.js",
+    "shaders/tests/uniform-status.js"
+   ]
+  },
+  {
+   "range": "7c5f17658d8ce420846a5eb7a06bd9d3f7e40f32..a912749fab5c3819e56a8abde664ff30e40870f4",
+   "coveredBy": "this candidate (job 641 observed window; subset of the declared 403c2a4bf2cb..296e0138c474 audit above — 7c5f17658d8c docs-only, a912749fab5c adds shaders/tests/passthrough-input.js, test-harness.js, test_passthrough_input.js only)",
+   "commits": [
+    {
+     "sha": "a912749fab5c3819e56a8abde664ff30e40870f4",
+     "subject": "feat(harness): true input-passthrough probe with a live write-blit control (GAP-019)",
+     "shadersFiles": [
+      "shaders/tests/passthrough-input.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_passthrough_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/tests/passthrough-input.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_passthrough_input.js"
+   ]
+  },
+  {
+   "range": "11d7c69922f321ef155bb0280f681875a53c98e9..296e0138c4744ed485b2e95de3eeb466c17629ee",
+   "coveredBy": "this candidate (job 641 observed window; subset of the declared 403c2a4bf2cb..296e0138c474 audit above — 11d7c69922f3 docs-only, 296e0138c474 adds shaders/tests/frame-resolution.js, test-harness.js, test_frame_resolution.js only)",
+   "commits": [
+    {
+     "sha": "296e0138c4744ed485b2e95de3eeb466c17629ee",
+     "subject": "feat(harness): report requested-vs-returned frame resolution on every renderEffectFrame result (GAP-021)",
+     "shadersFiles": [
+      "shaders/tests/frame-resolution.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_resolution.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/tests/frame-resolution.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_frame_resolution.js"
    ]
   }
  ]
