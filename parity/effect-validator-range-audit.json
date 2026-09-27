@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+  "referenceCheckout": "7c5f17658d8ce420846a5eb7a06bd9d3f7e40f32",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -377,6 +377,355 @@
     "shaders/src/runtime/backends/webgl2.js",
     "shaders/src/runtime/backends/webgpu.js",
     "shaders/tests/test_backend_diagnostics.js"
+   ]
+  },
+  {
+   "range": "8eeb7b5ac14eb37a8d16037f607a88ce63924cd3..403c2a4bf2cb56307448ea2fc1d6fa3cd74b7d6e",
+   "coveredBy": "this candidate (audit: beyond the already-audited fa83eeabf..6a0af04d web-runtime span, this declared range adds GAP-009 harness metrics (shaders/tests only) and GAP-008 replaceEffect preflight in shaders/src/lang/transform.js plus the read-only shaders/src/lang/paramAliases.js helper — host-side graph-mutation APIs the Qt port does not consume; no effect definitions, shaders, or DSL-compiler lexer/parser/validator/expander files change)",
+   "commits": [
+    {
+     "sha": "6c3f9a26f336870d4d6033e9bd7f611a716352c7",
+     "subject": "docs: record verified GAP-005 publication evidence for 8eeb7b5",
+     "shadersFiles": []
+    },
+    {
+     "sha": "428ea29bf8fb635fe567a9c5efe221f33478349c",
+     "subject": "docs: advance Documentation checkpoint through 6c3f9a26",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6113da00a87b9ff8c80d3258fcc9874f3b5f5989",
+     "subject": "feat(shaders): consume the resource allocation plan behind texturePooling opt-in with a queryable runtime plan (GAP-006)",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_resource_pooling.js"
+     ]
+    },
+    {
+     "sha": "ad17fd02426cad22662b24c7f80431da1901bc6e",
+     "subject": "docs: close GAP-006 with runtime allocation-plan consumption evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "0b2866dde2e3287152eeec9402d08c4c14589156",
+     "subject": "docs: document viewport-write pooling guard in llms-full.txt",
+     "shadersFiles": []
+    },
+    {
+     "sha": "95743621696483b91968992ef6ee0d87b2089fa8",
+     "subject": "fix(shaders): treat viewport passes without clear as partially written for texture pooling",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js"
+     ]
+    },
+    {
+     "sha": "f83a427e680ad2bb9a5fd67ccd850143bc820f76",
+     "subject": "fix(shaders): normalize backend shader/compiler failures to one structured diagnostic union",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/diagnostics.js",
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/tests/test_backend_diagnostics.js"
+     ]
+    },
+    {
+     "sha": "93608f10ad1bb3169ee0bdd8ca0b37fd44148879",
+     "subject": "docs: close GAP-007 with structured backend diagnostic union evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+     "subject": "docs: narrow GAP-007 register row to state what remains unstructured",
+     "shadersFiles": []
+    },
+    {
+     "sha": "01e9d620d7ccc700cc8926a91145702dc69a8eeb",
+     "subject": "docs: catch Sphinx docs up to 6a0af04d (texture pooling opt-in, structured shader diagnostics)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "3968f6c43e2ab176ffdf15efc5332198a9c980b1",
+     "subject": "docs: advance Documentation checkpoint to 01e9d62",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a651c075bb2848b584b2bf2484f5f8a0db754b0c",
+     "subject": "docs: record CI and deployment evidence for the 01e9d62 docs pass",
+     "shadersFiles": []
+    },
+    {
+     "sha": "66b8ce7d861010ad31de6fd37bc364d0a72fc897",
+     "subject": "docs: advance AI development contract checkpoint through a651c075 (GAP-005/006/007 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "b35361e08fc17b1d7d6f5127aed0b8bfc2d3989d",
+     "subject": "feat(shaders): temporal no-animation and universal low-variety metrics from renderEffectFrame (GAP-009)",
+     "shadersFiles": [
+      "shaders/tests/frame-metrics.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_metrics.js"
+     ]
+    },
+    {
+     "sha": "19fdcb56e22d4983f729c4cca623e926f28a1fa2",
+     "subject": "docs: close GAP-009 with temporal no-animation and low-variety metric evidence for b35361e0",
+     "shadersFiles": []
+    },
+    {
+     "sha": "403c2a4bf2cb56307448ea2fc1d6fa3cd74b7d6e",
+     "subject": "feat(lang): predict replaceEffect compatibility before mutation (GAP-008)",
+     "shadersFiles": [
+      "shaders/src/index.js",
+      "shaders/src/lang/index.js",
+      "shaders/src/lang/paramAliases.js",
+      "shaders/src/lang/transform.js",
+      "shaders/tests/test_transform.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/index.js",
+    "shaders/src/lang/index.js",
+    "shaders/src/lang/paramAliases.js",
+    "shaders/src/lang/transform.js",
+    "shaders/src/runtime/backends/diagnostics.js",
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/backends/webgpu.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/tests/frame-metrics.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_backend_diagnostics.js",
+    "shaders/tests/test_frame_metrics.js",
+    "shaders/tests/test_resource_pooling.js",
+    "shaders/tests/test_transform.js"
+   ]
+  },
+  {
+   "range": "8eeb7b5ac14eb37a8d16037f607a88ce63924cd3..93229933b102ba82e713402be19db57207698850",
+   "coveredBy": "this candidate (audit: the observed trigger ranges are sub-windows of this span — 0ac52500..9f85687d (GAP-010), 407eb7a7..7dc0f564 (GAP-011), 7dc0f564..7443f6e6 (GAP-012), 132d1bf9..c2252f0c (GAP-015), c2252f0c..e73a44a3 (GAP-014), e73a44a3..12b4d74f (GAP-016), 8fe3ccaf..93229933 (GAP-017); every shaders/ delta is web-runtime (preflight.js, pipeline.js, backends), host-side lang/transform.js + paramAliases.js, or shaders/tests harness modules — none consumed by the Qt port; no effect definitions, shaders, or DSL-compiler files change)",
+   "commits": [
+    {
+     "sha": "6c3f9a26f336870d4d6033e9bd7f611a716352c7",
+     "subject": "docs: record verified GAP-005 publication evidence for 8eeb7b5",
+     "shadersFiles": []
+    },
+    {
+     "sha": "428ea29bf8fb635fe567a9c5efe221f33478349c",
+     "subject": "docs: advance Documentation checkpoint through 6c3f9a26",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6113da00a87b9ff8c80d3258fcc9874f3b5f5989",
+     "subject": "feat(shaders): consume the resource allocation plan behind texturePooling opt-in with a queryable runtime plan (GAP-006)",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_resource_pooling.js"
+     ]
+    },
+    {
+     "sha": "ad17fd02426cad22662b24c7f80431da1901bc6e",
+     "subject": "docs: close GAP-006 with runtime allocation-plan consumption evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "0b2866dde2e3287152eeec9402d08c4c14589156",
+     "subject": "docs: document viewport-write pooling guard in llms-full.txt",
+     "shadersFiles": []
+    },
+    {
+     "sha": "95743621696483b91968992ef6ee0d87b2089fa8",
+     "subject": "fix(shaders): treat viewport passes without clear as partially written for texture pooling",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js"
+     ]
+    },
+    {
+     "sha": "f83a427e680ad2bb9a5fd67ccd850143bc820f76",
+     "subject": "fix(shaders): normalize backend shader/compiler failures to one structured diagnostic union",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/diagnostics.js",
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/src/runtime/backends/webgpu.js",
+      "shaders/tests/test_backend_diagnostics.js"
+     ]
+    },
+    {
+     "sha": "93608f10ad1bb3169ee0bdd8ca0b37fd44148879",
+     "subject": "docs: close GAP-007 with structured backend diagnostic union evidence",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa",
+     "subject": "docs: narrow GAP-007 register row to state what remains unstructured",
+     "shadersFiles": []
+    },
+    {
+     "sha": "01e9d620d7ccc700cc8926a91145702dc69a8eeb",
+     "subject": "docs: catch Sphinx docs up to 6a0af04d (texture pooling opt-in, structured shader diagnostics)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "3968f6c43e2ab176ffdf15efc5332198a9c980b1",
+     "subject": "docs: advance Documentation checkpoint to 01e9d62",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a651c075bb2848b584b2bf2484f5f8a0db754b0c",
+     "subject": "docs: record CI and deployment evidence for the 01e9d62 docs pass",
+     "shadersFiles": []
+    },
+    {
+     "sha": "66b8ce7d861010ad31de6fd37bc364d0a72fc897",
+     "subject": "docs: advance AI development contract checkpoint through a651c075 (GAP-005/006/007 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "b35361e08fc17b1d7d6f5127aed0b8bfc2d3989d",
+     "subject": "feat(shaders): temporal no-animation and universal low-variety metrics from renderEffectFrame (GAP-009)",
+     "shadersFiles": [
+      "shaders/tests/frame-metrics.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_metrics.js"
+     ]
+    },
+    {
+     "sha": "19fdcb56e22d4983f729c4cca623e926f28a1fa2",
+     "subject": "docs: close GAP-009 with temporal no-animation and low-variety metric evidence for b35361e0",
+     "shadersFiles": []
+    },
+    {
+     "sha": "403c2a4bf2cb56307448ea2fc1d6fa3cd74b7d6e",
+     "subject": "feat(lang): predict replaceEffect compatibility before mutation (GAP-008)",
+     "shadersFiles": [
+      "shaders/src/index.js",
+      "shaders/src/lang/index.js",
+      "shaders/src/lang/paramAliases.js",
+      "shaders/src/lang/transform.js",
+      "shaders/tests/test_transform.js"
+     ]
+    },
+    {
+     "sha": "0ac5250052e2b2e683f086959451c3bad8369a68",
+     "subject": "docs: advance AI development contract checkpoint through 403c2a4 (GAP-008/009 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "9f85687d1bafc445dcd38e28cf5f0c6dfba562f8",
+     "subject": "feat(tests): truthful uniform-responsiveness aggregation behind --strict-uniforms (GAP-010)",
+     "shadersFiles": [
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_uniform_status.js",
+      "shaders/tests/uniform-status.js"
+     ]
+    },
+    {
+     "sha": "7730ea4aba56ab3101b8eac125a21361c2ff0ce8",
+     "subject": "docs: state the at-least-one-entry requirement in the GAP-010 uniforms guidance prose",
+     "shadersFiles": []
+    },
+    {
+     "sha": "407eb7a73c94c37b79f4648712f15a618da02434",
+     "subject": "docs: advance AI development contract checkpoint through 9f85687 (GAP-010 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "7dc0f5640534855d73f8c812ca071fe6b1e09197",
+     "subject": "feat(tests): auditable measured uniform deltas in the harness uniforms report (GAP-011)",
+     "shadersFiles": [
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_uniform_deltas.js",
+      "shaders/tests/uniform-deltas.js"
+     ]
+    },
+    {
+     "sha": "7443f6e6180300a45c5b97608459e5094504659d",
+     "subject": "test(docs): pin the harness WebGPU render-surface readback and narrow GAP-012",
+     "shadersFiles": [
+      "shaders/tests/frame-readback.js",
+      "shaders/tests/test_frame_readback.js"
+     ]
+    },
+    {
+     "sha": "132d1bf9e3a390336ddd55fc2beb4ba207dcb31c",
+     "subject": "docs: advance AI development contract checkpoint through 7443f6e (GAP-011/012 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c2252f0caa66b7c5e133a2aad3328e832564b567",
+     "subject": "test(metrics): auditable GAP-015 metric interchangeability mirror",
+     "shadersFiles": [
+      "shaders/tests/image-metrics.js",
+      "shaders/tests/test_image_metrics.js"
+     ]
+    },
+    {
+     "sha": "e73a44a37f0c99bd3779c5fb26c7bba65a46a379",
+     "subject": "test(harness): warm up frames before pausing for explicit-time render requests (GAP-014)",
+     "shadersFiles": [
+      "shaders/tests/frame-warmup.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_warmup.js"
+     ]
+    },
+    {
+     "sha": "12b4d74fb4f28d5f00bb1dde107fa8673814d8b9",
+     "subject": "feat(runtime): static effect preflight for per-backend authorability and device-limit format changes (GAP-016)",
+     "shadersFiles": [
+      "shaders/src/runtime/pipeline.js",
+      "shaders/src/runtime/preflight.js",
+      "shaders/tests/test_preflight.js"
+     ]
+    },
+    {
+     "sha": "ec457c2eec695427fdbf026bd5ce5db04456a151",
+     "subject": "docs: advance AI development contract checkpoint through 12b4d74 (GAP-014/015/016 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "8fe3ccaf2cc8f111ba574f4dc356ee68501af971",
+     "subject": "docs: record post-publication deployed-contract evidence and correct the open-gap enumeration",
+     "shadersFiles": []
+    },
+    {
+     "sha": "93229933b102ba82e713402be19db57207698850",
+     "subject": "feat(harness): complete, lossless definition-schema introspection with an upstream-loss audit (GAP-017)",
+     "shadersFiles": [
+      "shaders/tests/definition-schema.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_definition_schema.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/index.js",
+    "shaders/src/lang/index.js",
+    "shaders/src/lang/paramAliases.js",
+    "shaders/src/lang/transform.js",
+    "shaders/src/runtime/backends/diagnostics.js",
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/backends/webgpu.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/src/runtime/preflight.js",
+    "shaders/tests/definition-schema.js",
+    "shaders/tests/frame-metrics.js",
+    "shaders/tests/frame-readback.js",
+    "shaders/tests/frame-warmup.js",
+    "shaders/tests/image-metrics.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_backend_diagnostics.js",
+    "shaders/tests/test_definition_schema.js",
+    "shaders/tests/test_frame_metrics.js",
+    "shaders/tests/test_frame_readback.js",
+    "shaders/tests/test_frame_warmup.js",
+    "shaders/tests/test_image_metrics.js",
+    "shaders/tests/test_preflight.js",
+    "shaders/tests/test_resource_pooling.js",
+    "shaders/tests/test_transform.js",
+    "shaders/tests/test_uniform_deltas.js",
+    "shaders/tests/test_uniform_status.js",
+    "shaders/tests/uniform-deltas.js",
+    "shaders/tests/uniform-status.js"
    ]
   }
  ]

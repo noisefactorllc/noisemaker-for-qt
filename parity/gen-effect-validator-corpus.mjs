@@ -326,6 +326,10 @@ const rangeAuditDoc = {
             { coveredBy: 'this candidate (audit: the GAP-006 texture-pooling and GAP-007 backend-diagnostic commits touch only the web runtime — pipeline.js, backends/webgl2.js, backends/webgpu.js, backends/diagnostics.js — and their tests; the Qt port runs its own native Desktop-GL pipeline in qt/noisemaker/runtime/ and does not consume these web-runtime modules; no shaders/, effect definition, or DSL-compiler file changes)' }),
         rangeAudit('95743621696483b91968992ef6ee0d87b2089fa8', '6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa',
             { coveredBy: 'this candidate (observed forced range; subset of the fa83eeabf..6a0af04d audit above)' }),
+        rangeAudit('8eeb7b5ac14eb37a8d16037f607a88ce63924cd3', '403c2a4bf2cb56307448ea2fc1d6fa3cd74b7d6e',
+            { coveredBy: 'this candidate (audit: beyond the already-audited fa83eeabf..6a0af04d web-runtime span, this declared range adds GAP-009 harness metrics (shaders/tests only) and GAP-008 replaceEffect preflight in shaders/src/lang/transform.js plus the read-only shaders/src/lang/paramAliases.js helper — host-side graph-mutation APIs the Qt port does not consume; no effect definitions, shaders, or DSL-compiler lexer/parser/validator/expander files change)' }),
+        rangeAudit('8eeb7b5ac14eb37a8d16037f607a88ce63924cd3', '93229933b102ba82e713402be19db57207698850',
+            { coveredBy: 'this candidate (audit: the observed trigger ranges are sub-windows of this span — 0ac52500..9f85687d (GAP-010), 407eb7a7..7dc0f564 (GAP-011), 7dc0f564..7443f6e6 (GAP-012), 132d1bf9..c2252f0c (GAP-015), c2252f0c..e73a44a3 (GAP-014), e73a44a3..12b4d74f (GAP-016), 8fe3ccaf..93229933 (GAP-017); every shaders/ delta is web-runtime (preflight.js, pipeline.js, backends), host-side lang/transform.js + paramAliases.js, or shaders/tests harness modules — none consumed by the Qt port; no effect definitions, shaders, or DSL-compiler files change)' }),
     ],
 }
 
