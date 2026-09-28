@@ -623,11 +623,28 @@ async function main () {
   for (let chunkStart = 0; chunkStart < dslPaths.length; chunkStart += chunkSize) {
     const chunk = dslPaths.slice(chunkStart, chunkStart + chunkSize)
     process.stderr.write(`[batch-golden] --- chunk ${Math.floor(chunkStart / chunkSize) + 1} ` +
-      `(${chunk.length} fixtures, session restart) ---\n`)
-    await withSession(opts, async (session, page, globals) => {
+      `(${chunk.length} fixtures, session restart) ---`)
+    // A chunk can abort before any fixture is reached — a cold runner's first
+    // browser/server session has timed out page.goto / readiness waits at
+    // 120s in CI (run 36384373818: chunks 1 and 2 lost 120 fixtures while
+    // the third session worked at the same pin). If a chunk aborts having
+    // minted nothing, retry it once with a fresh session before counting its
+    // fixtures as failed; if the retry also aborts, the failure is real.
+    let attempt = 0
+    await (async () => {
+      for (;;) {
+        let mintedInChunk = 0
+        try {
+          if (attempt > 0) {
+            process.stderr.write(`[batch-golden] retrying aborted chunk (attempt ${attempt + 1})\n`)
+          } else {
+            process.stderr.write('\n')
+          }
+          await withSession(opts, async (session, page, globals) => {
       for (const dslPath of chunk) {
-        idx++
         const programName = basename(dslPath).replace(/\.dsl$/, '')
+        if (minted.includes(programName)) continue
+        idx++
         const t0 = Date.now()
         try {
           const dsl = readFileSync(dslPath, 'utf8')
@@ -656,6 +673,7 @@ async function main () {
           process.stderr.write(`[batch-golden] (${idx}/${total}) ${programName}: wrote ${pngPath} (${ms}ms)` +
             (consoleErrors.length ? ` [console: ${consoleErrors.join(' | ')}]` : '') + '\n')
           minted.push(programName)
+          mintedInChunk++
         } catch (err) {
           const ms = Date.now() - t0
           const msg = err?.stack || err?.message || String(err)
@@ -670,20 +688,30 @@ async function main () {
           }
         }
       }
-    }).catch((err) => {
-      // Only reached if the inner loop re-threw (fatal target error) or
-      // session setup itself failed. Already logged above; move on to the
-      // next chunk with a fresh session rather than aborting the whole run.
-      process.stderr.write(`[batch-golden] chunk aborted, restarting session: ${err?.message || err}\n`)
-      // Fixtures the aborted chunk never reached count as failed, so the
-      // exit status reports them.
-      for (const dslPath of chunk) {
-        const programName = basename(dslPath).replace(/\.dsl$/, '')
-        if (!minted.includes(programName) && !failed.some(f => f.programName === programName)) {
-          failed.push({ programName, error: `chunk aborted: ${err?.message || err}` })
+          })
+          break
+        } catch (err) {
+          // Reached when the inner loop re-threw (fatal target error) or
+          // session setup itself failed. Move on to the next chunk with a
+          // fresh session rather than aborting the whole run.
+          process.stderr.write(`[batch-golden] chunk aborted, restarting session: ${err?.message || err}\n`)
+          if (mintedInChunk > 0 || attempt >= 1) {
+            // Fixtures the aborted chunk never reached count as failed, so the
+            // exit status reports them. A chunk that never got to mint (a
+            // cold first session timing out) is retried once instead — see
+            // the comment at the top of the retry loop.
+            for (const dslPath of chunk) {
+              const programName = basename(dslPath).replace(/\.dsl$/, '')
+              if (!minted.includes(programName) && !failed.some(f => f.programName === programName)) {
+                failed.push({ programName, error: `chunk aborted: ${err?.message || err}` })
+              }
+            }
+            break
+          }
+          attempt++
         }
       }
-    })
+    })()
   }
 
   const totalMs = Date.now() - startAll
