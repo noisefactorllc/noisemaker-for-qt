@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "296e0138c4744ed485b2e95de3eeb466c17629ee",
+  "referenceCheckout": "73c15be00d6888f4b5d2835d8e242ee9e840df45",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -913,6 +913,132 @@
     "shaders/tests/frame-resolution.js",
     "shaders/tests/test-harness.js",
     "shaders/tests/test_frame_resolution.js"
+   ]
+  },
+  {
+   "range": "a912749fab5c3819e56a8abde664ff30e40870f4..73c15be00d6888f4b5d2835d8e242ee9e840df45",
+   "coveredBy": "this candidate (tearoff job 655, force-push flagged — audited rather than assumed; merge-base verified: a912749fab5c is an ancestor of 73c15be00d68, the delivery is contiguous 11d7c6992 → 296e0138c → 04e8582c1 → c28e8fdb9 → 7aff843a4 → 73c15be00, and each observed window lies inside this span. Delta beyond the audited 403c2a4bf2cb..296e0138c474 span: 04e8582c1 is docs-only (LEDGER.md, llms-full.txt); c28e8fdb9 touches only shaders/src/runtime/backends/webgl2.js (2-line mesh depth-allocation fix, web runtime backend the Qt port does not consume); 7aff843a4 adds shaders/tests harness modules only (session-identity.js, test-harness.js, test_session_identity.js); 73c15be00 (GAP-026 lifecycle hooks) touches only shaders/src/runtime/compiler.js (+3, optional-chained initLifecycleEffects on the stub-pipeline path) and shaders/src/runtime/pipeline.js (web Pipeline onInit/onUpdate/onDestroy) — `git diff 296e0138c474..73c15be00d68 -- shaders/src shaders/effects` contains exactly those three web-runtime files. The Qt port runs its own native Desktop-GL runtime in qt/noisemaker/runtime/ and its converted JSON effect definitions (verified: no onInit/onUpdate/onDestroy keys under qt/noisemaker/effects) carry no lifecycle hooks; no effect definitions, shaders, or DSL-compiler files change, so no port code change)",
+   "commits": [
+    {
+     "sha": "11d7c69922f321ef155bb0280f681875a53c98e9",
+     "subject": "docs: narrow GAP-020 — shared MCP domain error envelope lives in the Shade repository, which noisemaker cannot write; nothing of the tool-result wrapper is vendored and no noisemaker module consumes the MCP envelope, so no repository-side surface exists",
+     "shadersFiles": []
+    },
+    {
+     "sha": "296e0138c4744ed485b2e95de3eeb466c17629ee",
+     "subject": "feat(harness): report requested-vs-returned frame resolution on every renderEffectFrame result (GAP-021)",
+     "shadersFiles": [
+      "shaders/tests/frame-resolution.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_frame_resolution.js"
+     ]
+    },
+    {
+     "sha": "04e8582c1db495f5a140d59a3be78e266775b702",
+     "subject": "docs: advance AI development contract checkpoint through 296e013 (GAP-019/GAP-021 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c28e8fdb9218d220b2d260e747f4123450c6a0e1",
+     "subject": "fix(webgl2): preserve mesh target after depth allocation",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/tests/test_mesh_first_frame.mjs"
+     ]
+    },
+    {
+     "sha": "7aff843a4e33cc600968138199daae4648d0d613",
+     "subject": "feat(harness): bind browser readiness and backend switching to requested effect, compiled graph, and actual backend identity (GAP-024)",
+     "shadersFiles": [
+      "shaders/tests/session-identity.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_session_identity.js"
+     ]
+    },
+    {
+     "sha": "73c15be00d6888f4b5d2835d8e242ee9e840df45",
+     "subject": "feat(runtime): invoke onInit/onUpdate/onDestroy lifecycle hooks in the production renderer (GAP-026)",
+     "shadersFiles": [
+      "shaders/src/runtime/compiler.js",
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_lifecycle_hooks.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/src/runtime/compiler.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/tests/frame-resolution.js",
+    "shaders/tests/session-identity.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_frame_resolution.js",
+    "shaders/tests/test_lifecycle_hooks.js",
+    "shaders/tests/test_mesh_first_frame.mjs",
+    "shaders/tests/test_session_identity.js"
+   ]
+  },
+  {
+   "range": "296e0138c4744ed485b2e95de3eeb466c17629ee..c28e8fdb9218d220b2d260e747f4123450c6a0e1",
+   "coveredBy": "this candidate (job 655 observed window; subset of the declared a912749fab5c..73c15be00d68 audit above — 04e8582c1 docs-only, c28e8fdb9 touches shaders/src/runtime/backends/webgl2.js + shaders/tests/test_mesh_first_frame.mjs only)",
+   "commits": [
+    {
+     "sha": "04e8582c1db495f5a140d59a3be78e266775b702",
+     "subject": "docs: advance AI development contract checkpoint through 296e013 (GAP-019/GAP-021 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c28e8fdb9218d220b2d260e747f4123450c6a0e1",
+     "subject": "fix(webgl2): preserve mesh target after depth allocation",
+     "shadersFiles": [
+      "shaders/src/runtime/backends/webgl2.js",
+      "shaders/tests/test_mesh_first_frame.mjs"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/backends/webgl2.js",
+    "shaders/tests/test_mesh_first_frame.mjs"
+   ]
+  },
+  {
+   "range": "c28e8fdb9218d220b2d260e747f4123450c6a0e1..7aff843a4e33cc600968138199daae4648d0d613",
+   "coveredBy": "this candidate (job 655 observed window; subset of the declared a912749fab5c..73c15be00d68 audit above — 7aff843a4 (GAP-024 session identity) adds shaders/tests/session-identity.js, test-harness.js, test_session_identity.js only)",
+   "commits": [
+    {
+     "sha": "7aff843a4e33cc600968138199daae4648d0d613",
+     "subject": "feat(harness): bind browser readiness and backend switching to requested effect, compiled graph, and actual backend identity (GAP-024)",
+     "shadersFiles": [
+      "shaders/tests/session-identity.js",
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_session_identity.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/tests/session-identity.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_session_identity.js"
+   ]
+  },
+  {
+   "range": "7aff843a4e33cc600968138199daae4648d0d613..73c15be00d6888f4b5d2835d8e242ee9e840df45",
+   "coveredBy": "this candidate (job 655 observed window; subset of the declared a912749fab5c..73c15be00d68 audit above — 73c15be00 (GAP-026) touches shaders/src/runtime/compiler.js and shaders/src/runtime/pipeline.js (web Pipeline lifecycle hooks) plus shaders/tests/test_lifecycle_hooks.js; audited as web-runtime-only)",
+   "commits": [
+    {
+     "sha": "73c15be00d6888f4b5d2835d8e242ee9e840df45",
+     "subject": "feat(runtime): invoke onInit/onUpdate/onDestroy lifecycle hooks in the production renderer (GAP-026)",
+     "shadersFiles": [
+      "shaders/src/runtime/compiler.js",
+      "shaders/src/runtime/pipeline.js",
+      "shaders/tests/test_lifecycle_hooks.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/compiler.js",
+    "shaders/src/runtime/pipeline.js",
+    "shaders/tests/test_lifecycle_hooks.js"
    ]
   }
  ]

@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+// scripts/test — repository test entrypoint for the supervisor's check run.
+//
+// Runs the repository's build-free parity suite in a plain Linux container
+// (node, python3, network; no GPU, no Qt toolchain):
+//   - the three pure-node byte gates against the pinned reference checkout
+//     (SHADERS, DEFINITIONS, EFFECTS_UI — the effect-catalog parity gates)
+//   - the parity unit suites (test_artistic_matrix, test_harness_contract)
+// The C++/ctest layer needs a Qt + GL 4.1 toolchain and is not attempted
+// here; parity/pytest (54 + 10 subtests) covers the same unit cases via
+// python3 -m unittest so no pip install is required.
+// Exits nonzero on any failure.
+
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
+// Content pin from STATUS.md (the last incrementally synced / audited reference).
+const PIN = '73c15be00d6888f4b5d2835d8e242ee9e840df45'
+
+function run(cmd, args, opts = {}) {
+    const r = spawnSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts })
+    if (r.status !== 0) {
+        console.error(`FAIL: ${cmd} ${args.join(' ')} (exit ${r.status ?? r.signal})`)
+        process.exit(1)
+    }
+}
+
+let referenceRoot = process.env.NM_REFERENCE_ROOT
+if (!referenceRoot) {
+    referenceRoot = process.env.NM_TEST_REFERENCE
+        || join(process.env.TMPDIR || '/tmp', `noisemaker-reference-${PIN.slice(0, 12)}`)
+    if (!existsSync(join(referenceRoot, 'shaders', 'src'))) {
+        rmSync(referenceRoot, { recursive: true, force: true })
+        mkdirSync(referenceRoot, { recursive: true })
+        run('git', ['clone', '--quiet', 'https://github.com/noisefactorllc/noisemaker.git', referenceRoot])
+        run('git', ['-C', referenceRoot, 'checkout', '--quiet', PIN])
+    } else {
+        // Reuse an existing checkout only if it is at (or contains) the pin.
+        const have = spawnSync('git', ['-C', referenceRoot, 'cat-file', '-e', `${PIN}^{commit}`], { encoding: 'utf8' })
+        if (have.status !== 0) {
+            console.error(`NM_TEST_REFERENCE checkout at ${referenceRoot} does not contain the pinned commit ${PIN}`)
+            process.exit(1)
+        }
+    }
+}
+console.log(`reference checkout: ${referenceRoot}`)
+
+const env = { ...process.env, NM_REFERENCE_ROOT: referenceRoot }
+for (const gate of [
+    'parity/check_shaders.mjs',
+    'parity/check_definitions.mjs',
+    'parity/check_effects_ui.mjs',
+]) run('node', [gate], { env })
+run('python3', ['-m', 'unittest', '-v', 'parity.test_artistic_matrix', 'parity.test_harness_contract'])
+console.log('scripts/test: all parity checks passed')
