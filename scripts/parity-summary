@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# scripts/parity-summary [case-id ...]
+#
+# Renders the current authority's manifest cases with this port (Qt) and
+# compares each with the authority's golden, then prints one summary line:
+#
+#   PARITY-SUMMARY {"expected":N,"executed":N,"exact":N,"strict":N,"near":N,"defer":N,"skip":N,"fail":N,"missing":N}
+#
+# Case selection:
+#   - With case-id arguments, only those cases are expected and counted.
+#   - Without arguments, every parity/programs/*.dsl case is expected.
+#
+# The rendering and comparison are the repository's own canonical sweep,
+# parity/sweep.sh, run fresh (goldens minted with the reference engine in the
+# same run, candidates rendered with nm-render, every case graded): this
+# script never grades a stale golden or a stale candidate. The sweep's ledger
+# is written to a temporary path; the tracked parity/ledger.json is not
+# touched.
+#
+# Buckets (each case lands in exactly one):
+#   exact   — candidate PNG byte-identical to the golden (cmp).
+#   strict  — comparator metrics within the port's published default numerical
+#             contract (tolerance 2.001, ssim-min 0.98: parity/run.sh defaults,
+#             compare.py's float round-trip allowance) but not byte-identical.
+#   near    — beyond the default contract but within the case's recorded
+#             policy from the sweep's own tolerance table (the ledger row's
+#             policy tolerance and ssim_min), including the two timed-sampling
+#             fixtures' policies.
+#   defer   — classified DEFER by the sweep (structurally unrenderable as a
+#             single frame).
+#   skip    — classified CHAOS by the sweep, or the case cannot execute here
+#             (no nm-render binary).
+#   fail    — rendered and compared, outside every recorded tolerance.
+#   missing — expected but no ledger row, candidate PNG, or report exists.
+#
+# executed = exact + strict + near + fail. Exit 0 iff every expected case was
+# executed and passed within the published contract (exact + strict equals
+# expected and near/defer/skip/fail/missing are all zero); otherwise exit 1.
+# On an infrastructure failure (no reference checkout, no nm-render), prints
+# the summary line with every expected case in skip and exits 2.
+#
+# Environment:
+#   NM_RENDER            candidate binary (default qt/build/nm-render).
+#   NM_REFERENCE_ROOT    reference engine checkout (the goldens' authority);
+#                        pin-cloned from STATUS.md when unset.
+#   SHADE_HEADLESS, NM_GOLDEN_CHROMIUM_ARGS, DISPLAY, LIBGL_ALWAYS_SOFTWARE
+#                        passed through to the sweep's minting and rendering
+#                        (minted goldens need headed Chromium on the same
+#                        llvmpipe the candidate renders on; see GAP-033).
+set -uo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TOL="2.001"          # compare.py float round-trip: accepts true diffs <=2, rejects >=3
+SSIM_MIN="0.98"
+
+zero_line() {
+  echo "PARITY-SUMMARY {\"expected\":$1,\"executed\":0,\"exact\":0,\"strict\":0,\"near\":0,\"defer\":0,\"skip\":$1,\"fail\":0,\"missing\":0}"
+}
+
+fail_infra() {
+  echo "parity-summary: $1" >&2
+  expected=$(find "$ROOT/parity/programs" -name '*.dsl' 2>/dev/null | wc -l)
+  zero_line "${expected:-0}"
+  exit 2
+}
+
+# ---------------------------------------------------------------- candidate
+NM_RENDER="${NM_RENDER:-$ROOT/qt/build/nm-render}"
+if [ ! -x "$NM_RENDER" ]; then
+  fail_infra "nm-render not found at $NM_RENDER (build qt/build first, or set NM_RENDER)"
+fi
+
+# ------------------------------------------------- reference (the authority)
+if [ -z "${NM_REFERENCE_ROOT:-}" ]; then
+  PIN="$(grep -oE 'to reference .[0-9a-f]{7,40}.' "$ROOT/STATUS.md" | tail -1 | grep -oE '[0-9a-f]{7,40}')"
+  [ -n "$PIN" ] || fail_infra "no reference pin found in STATUS.md"
+  CACHE="${PARITY_REFERENCE_CACHE:-${TMPDIR:-/tmp}/noisemaker-reference}"
+  export NM_REFERENCE_ROOT="$CACHE"
+  usable=0
+  if [ -f "$CACHE/.git/HEAD" ] \
+     && [ "$(git -C "$CACHE" rev-parse HEAD 2>/dev/null)" = "$PIN" ] \
+     && [ -z "$(git -C "$CACHE" status --porcelain 2>/dev/null)" ]; then
+    usable=1
+  fi
+  if [ "$usable" -ne 1 ]; then
+    echo "[REFERENCE] pin-cloning noisefactorllc/noisemaker at $PIN into $CACHE" >&2
+    rm -rf "$CACHE.tmp" 2>/dev/null || true
+    mkdir -p "$CACHE.lock" 2>/dev/null || true
+    if ! ( set -o noclobber; : > "$CACHE.lock/lock" ) 2>/dev/null; then
+      fail_infra "another invocation holds the reference cache lock ($CACHE.lock)"
+    fi
+    if ! git clone -q https://github.com/noisefactorllc/noisemaker "$CACHE.tmp" 2>/dev/null; then
+      rm -f "$CACHE.lock/lock"
+      fail_infra "cannot obtain the reference engine (set NM_REFERENCE_ROOT to a local checkout)"
+    fi
+    if ! git -C "$CACHE.tmp" checkout -q "$PIN"; then
+      rm -rf "$CACHE.tmp"; rm -f "$CACHE.lock/lock"
+      fail_infra "pinned revision $PIN not reachable"
+    fi
+    rm -rf "$CACHE"; mv "$CACHE.tmp" "$CACHE"; rm -f "$CACHE.lock/lock"
+  fi
+  echo "[REFERENCE] using $NM_REFERENCE_ROOT" >&2
+fi
+if [ ! -f "$NM_REFERENCE_ROOT/node_modules/playwright/package.json" ]; then
+  echo "[REFERENCE] installing playwright@1.63.0 into the reference clone" >&2
+  ( cd "$NM_REFERENCE_ROOT" && npm install --no-save --no-audit --no-fund "playwright@1.63.0" >/dev/null 2>&1 ) || true
+  [ -f "$NM_REFERENCE_ROOT/node_modules/playwright/package.json" ] \
+    || fail_infra "playwright unavailable for the reference harness (set NM_REFERENCE_ROOT to a prepared checkout)"
+fi
+
+# --------------------------------------------------- python compare venv
+create_venv() {
+  rm -rf "$ROOT/parity/.venv"
+  if python3 -m venv "$ROOT/parity/.venv" 2>/dev/null; then
+    "$ROOT/parity/.venv/bin/pip" install -q numpy pillow && return 0
+  fi
+  # Some images ship python3 without ensurepip (no python3-venv): uv fallback.
+  if command -v uv >/dev/null 2>&1; then
+    rm -rf "$ROOT/parity/.venv"
+    uv venv "$ROOT/parity/.venv" >/dev/null 2>&1 || return 1
+    uv pip install -q --python "$ROOT/parity/.venv/bin/python" numpy pillow && return 0
+  fi
+  return 1
+}
+if [ ! -x "$ROOT/parity/.venv/bin/python" ] && [ ! -e "$ROOT/parity/.venv/Scripts/python.exe" ]; then
+  echo "[VENV] creating parity/.venv (numpy, pillow)" >&2
+  create_venv || fail_infra "cannot create parity/.venv with numpy/pillow"
+fi
+
+# ------------------------------------------------------------------- sweep
+# The canonical mint/render environment (GAP-033, GAP-040): goldens are
+# minted with headed Chromium on the same Mesa llvmpipe the candidate
+# renders on, fibers/scratches/strayHair grade with the reference's saved
+# overlays. A caller may override any of these.
+export SHADE_HEADLESS="${SHADE_HEADLESS:-0}"
+export NM_GOLDEN_CHROMIUM_ARGS="${NM_GOLDEN_CHROMIUM_ARGS:---use-gl=angle --use-angle=gl --ignore-gpu-blocklist}"
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export NM_REFERENCE_OVERLAYS="${NM_REFERENCE_OVERLAYS:-1}"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
+if [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null 2>&1; then
+  echo "[DISPLAY] no DISPLAY; running the sweep under xvfb-run" >&2
+  SWEEP=(xvfb-run -a -s "-screen 0 1280x1024x24")
+else
+  SWEEP=()
+fi
+LEDGER="$(mktemp -t noisemaker-parity-summary-ledger.XXXXXX)"
+trap 'rm -f "$LEDGER"' EXIT
+echo "[SWEEP] running the canonical fresh sweep (mint + render + grade)" >&2
+if ! LEDGER_PATH="$LEDGER" "${SWEEP[@]}" bash "$ROOT/parity/sweep.sh"; then
+  echo "[SWEEP] parity/sweep.sh exited nonzero; classifying whatever was produced" >&2
+  SWEEP_RC=1
+else
+  SWEEP_RC=0
+fi
+[ -f "$LEDGER" ] || fail_infra "the sweep produced no ledger"
+
+# -------------------------------------------------------------- classify
+python3 - "$ROOT" "$LEDGER" "$@" <<'EOF'
+import json, os, subprocess, sys
+
+root, ledger_path = sys.argv[1], sys.argv[2]
+only = set(sys.argv[3:])
+TOL, SSIM = 2.001, 0.98
+
+programs = sorted(
+    os.path.splitext(f)[0]
+    for f in os.listdir(os.path.join(root, 'parity', 'programs'))
+    if f.endswith('.dsl'))
+if only:
+    unknown = only - set(programs)
+    if unknown:
+        print(f"parity-summary: unknown case ids: {', '.join(sorted(unknown))}", file=sys.stderr)
+        sys.exit(2)
+    expected = sorted(only)
+else:
+    expected = programs
+
+rows = {r['program']: r for r in json.load(open(ledger_path))}
+counts = dict(expected=len(expected), executed=0, exact=0, strict=0,
+              near=0, defer=0, skip=0, fail=0, missing=0)
+failures = []
+for name in expected:
+    row = rows.get(name)
+    verdict = (row or {}).get('verdict')
+    out = os.path.join(root, 'parity', 'out')
+    cand = os.path.join(out, f'{name}.candidate.png')
+    gold = os.path.join(out, f'{name}.golden.png')
+    report = os.path.join(out, f'{name}.report.json')
+    if verdict == 'DEFER':
+        counts['defer'] += 1
+        continue
+    if verdict == 'CHAOS':
+        counts['skip'] += 1
+        continue
+    # The timed fixtures are graded as a sample series (no single-frame
+    # candidate); the sweep ledger records their worst-sample metrics.
+    timed = verdict == 'TIMED'
+    if row is None or (not timed and not os.path.exists(cand)):
+        counts['missing'] += 1
+        failures.append(name)
+        continue
+    # Byte identity first; the timed fixtures have no single-frame candidate
+    # and are graded by their recorded sample metrics below.
+    if not timed and os.path.exists(gold) and os.path.getsize(cand) > 0 \
+            and subprocess.run(['cmp', '-s', gold, cand]).returncode == 0:
+        counts['exact'] += 1
+        counts['executed'] += 1
+        continue
+    metrics = None
+    if not timed and os.path.exists(report):
+        r = json.load(open(report))
+        metrics = (r.get('max_abs_diff'), r.get('ssim'))
+    if metrics is None and row.get('max_abs_diff') is not None:
+        metrics = (row['max_abs_diff'], row.get('ssim'))
+    if metrics is None:
+        counts['missing'] += 1
+        failures.append(name)
+        continue
+    max_diff, ssim = metrics
+    counts['executed'] += 1
+    if max_diff <= TOL and ssim >= SSIM:
+        counts['strict'] += 1
+    elif row and max_diff <= row['policy']['tolerance'] and ssim >= row['policy']['ssim_min']:
+        counts['near'] += 1
+        failures.append(name)
+    else:
+        counts['fail'] += 1
+        failures.append(name)
+
+print(f"PARITY-SUMMARY {json.dumps(counts, separators=(',', ':'))}")
+if failures:
+    print(f"parity-summary: cases outside the published contract: {' '.join(failures)}", file=sys.stderr)
+ok = (counts['executed'] == counts['expected']
+      and counts['exact'] + counts['strict'] == counts['expected']
+      and all(counts[k] == 0 for k in ('near', 'defer', 'skip', 'fail', 'missing')))
+sys.exit(0 if ok else 1)
+EOF
+CLASSIFY_RC=$?
+exit $(( CLASSIFY_RC ? CLASSIFY_RC : SWEEP_RC ))
