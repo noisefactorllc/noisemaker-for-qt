@@ -3,6 +3,7 @@ qt/build-compiler/
 examples/*/build*/
 parity/out/
 parity/.venv/
+parity/.cache/
 tools/node_modules/
 __pycache__/
 .DS_Store

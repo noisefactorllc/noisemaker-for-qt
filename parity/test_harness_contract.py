@@ -431,6 +431,66 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(ledger[0]["program"], "missingGolden")
         self.assertEqual(ledger[0]["verdict"], "FAIL")
 
+    def test_sweep_scope_args_limit_the_cases_swept_and_graded(self):
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        for helper in ("sweep.sh", "write-ledger.py", "make-batch-manifest.py"):
+            shutil.copy2(REPO / "parity" / helper, parity / helper)
+        (parity / "programs" / "scopedFailure.dsl").write_text(
+            "noise().chrome().write(o0)\n"
+        )
+        (parity / "programs" / "unscopedOk.dsl").write_text(
+            "noise().chrome().write(o0)\n"
+        )
+        (parity / "out" / "scopedFailure.golden.png").touch()
+        runner = parity / "run.sh"
+        runner.write_text(
+            "#!/usr/bin/env bash\n"
+            "echo '[FAIL] scopedFailure: injected comparator failure'\n"
+            "exit 1\n"
+        )
+        runner.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(parity / "sweep.sh"), "scopedFailure"],
+            env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("FAILED: scopedFailure", result.stdout)
+        self.assertNotIn("unscopedOk", result.stdout)
+        ledger = json.loads((parity / "ledger.json").read_text())
+        self.assertEqual([row["program"] for row in ledger], ["scopedFailure"])
+
+    def test_write_ledger_scope_rejects_ids_with_no_dsl_on_disk(self):
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        shutil.copy2(REPO / "parity" / "write-ledger.py", parity / "write-ledger.py")
+        (parity / "programs" / "realCase.dsl").write_text(
+            "noise().chrome().write(o0)\n"
+        )
+        results = parity / "results.tsv"
+        results.write_text("realCase\tFAIL\t2.001\t0.98\tcomparison failed\n")
+
+        result = subprocess.run(
+            [
+                "python3", str(parity / "write-ledger.py"),
+                "--root", str(self.tmp),
+                "--results", str(results),
+                "--output", str(parity / "ledger.json"),
+                "--scope", "realCase ghostCase",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("ghostCase", result.stdout + result.stderr)
+
     def test_sweep_records_chaos_as_distinct_from_policy_skip(self):
         parity = self.tmp / "parity"
         (parity / "programs").mkdir(parents=True)

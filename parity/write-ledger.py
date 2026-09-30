@@ -99,6 +99,10 @@ def main():
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--results", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--scope", type=str, default="",
+                        help="space-separated case ids the sweep was scoped to; "
+                             "when set, the universe-completeness check covers "
+                             "exactly these ids instead of every .dsl on disk")
     args = parser.parse_args()
     output = args.output if args.output.is_absolute() else args.root / args.output
     rows = []
@@ -223,7 +227,13 @@ def main():
         exit_code = 1
 
     programs_dir = args.root / "parity" / "programs"
-    if programs_dir.is_dir():
+    if args.scope:
+        universe = set(args.scope.split())
+        if not universe <= {path.stem for path in programs_dir.glob("*.dsl")}:
+            print("[write-ledger] UNIVERSE MISMATCH: scoped id(s) with no .dsl on disk: "
+                  f"{' '.join(sorted(universe - {path.stem for path in programs_dir.glob('*.dsl')}))}")
+            raise SystemExit(1)
+    elif programs_dir.is_dir():
         universe = {path.stem for path in programs_dir.glob("*.dsl")}
         row_counts = collections.Counter(row["program"] for row in rows)
         covered = set(row_counts)

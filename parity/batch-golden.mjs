@@ -631,9 +631,11 @@ async function main () {
     // minted nothing, retry it once with a fresh session before counting its
     // fixtures as failed; if the retry also aborts, the failure is real.
     let attempt = 0
+    let shaderFailures = 0
     await (async () => {
       for (;;) {
         let mintedInChunk = 0
+        shaderFailures = 0
         try {
           if (attempt > 0) {
             process.stderr.write(`[batch-golden] retrying aborted chunk (attempt ${attempt + 1})\n`)
@@ -674,6 +676,7 @@ async function main () {
             (consoleErrors.length ? ` [console: ${consoleErrors.join(' | ')}]` : '') + '\n')
           minted.push(programName)
           mintedInChunk++
+          shaderFailures = 0
         } catch (err) {
           const ms = Date.now() - t0
           const msg = err?.stack || err?.message || String(err)
@@ -682,24 +685,34 @@ async function main () {
           // A closed/crashed target can't serve the rest of this chunk;
           // surface it so the chunk loop aborts and the NEXT chunk gets a
           // fresh session rather than cascading failures across every
-          // remaining fixture in this chunk.
+          // remaining fixture in this chunk. A dead GL context surfaces as
+          // the same ERR_SHADER_COMPILE on every following fixture (the
+          // trivial passthrough vertex shader stops compiling), so two
+          // consecutive shader-compile failures also abort the chunk.
           if (/Target (page|closed)|Target crashed|context or browser has been closed/i.test(msg)) {
             throw err
+          }
+          if (/DSL compile failed.*ERR_SHADER_COMPILE/.test(msg)) {
+            // A dead GL context fails this way on every following fixture;
+            // two in a row (no mint between them) aborts the chunk so the
+            // retry loop can start a fresh session.
+            if (++shaderFailures >= 2) throw err
+          } else {
+            shaderFailures = 0
           }
         }
       }
           })
           break
         } catch (err) {
-          // Reached when the inner loop re-threw (fatal target error) or
-          // session setup itself failed. Move on to the next chunk with a
-          // fresh session rather than aborting the whole run.
+          // Reached when the inner loop re-threw (fatal target error or two
+          // consecutive shader-compile failures) or session setup itself
+          // failed. Retry the chunk with a fresh session (already-minted
+          // fixtures are skipped) a bounded number of times rather than
+          // aborting the whole run; when the retries are exhausted, the
+          // fixtures the chunk never minted count as failed.
           process.stderr.write(`[batch-golden] chunk aborted, restarting session: ${err?.message || err}\n`)
-          if (mintedInChunk > 0 || attempt >= 1) {
-            // Fixtures the aborted chunk never reached count as failed, so the
-            // exit status reports them. A chunk that never got to mint (a
-            // cold first session timing out) is retried once instead — see
-            // the comment at the top of the retry loop.
+          if (attempt >= 2) {
             for (const dslPath of chunk) {
               const programName = basename(dslPath).replace(/\.dsl$/, '')
               if (!minted.includes(programName) && !failed.some(f => f.programName === programName)) {

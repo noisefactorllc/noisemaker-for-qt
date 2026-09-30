@@ -67,6 +67,15 @@ LEDGER_PATH="${LEDGER_PATH:-parity/ledger.json}"
 SIZE=256
 TIME=0.25
 FRAMES=8
+
+# --- optional case-id scoping ------------------------------------------------
+# Positional arguments scope the sweep to those case ids (used by
+# scripts/parity-summary, which passes the gap record's "Parity cases:" ids).
+# With no arguments the sweep covers the whole corpus, unchanged.
+CASES=""
+[ -n "$*" ] && CASES=" $* "
+in_cases() { [ -z "$CASES" ] && return 0; case "$CASES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+if [ -n "$*" ]; then echo "[sweep] case scope:$* "; fi
 RESULTS="$(mktemp -t noisemaker-for-qt-ledger.XXXXXX)"
 CANDIDATE_NAMES="$(mktemp -t noisemaker-for-qt-candidates.XXXXXX)"
 GOLDEN_LIST="$(mktemp -t noisemaker-for-qt-goldenlist.XXXXXX)"
@@ -301,6 +310,7 @@ if [ "${SKIP_GOLDEN:-0}" != "1" ]; then
 	: > "$GOLDEN_LIST"
 	for dsl in "$ROOT"/parity/programs/*.dsl; do
 		name=$(basename "$dsl" .dsl)
+		in_cases "$name" || continue
 		is_defer "$name" && continue
 		is_timed "$name" && continue
 		is_chaos "$name" && continue
@@ -314,6 +324,7 @@ if [ "${SKIP_GOLDEN:-0}" != "1" ]; then
 	fi
 	for dsl in "$ROOT"/parity/programs/*.dsl; do
 		name=$(basename "$dsl" .dsl)
+		in_cases "$name" || continue
 		is_timed "$name" || continue
 		read -r _tol _ssim every <<EOF
 $(timed_params "$name")
@@ -330,6 +341,7 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 	: > "$CANDIDATE_NAMES"
 	for dsl in "$ROOT"/parity/programs/*.dsl; do
 		name=$(basename "$dsl" .dsl)
+		in_cases "$name" || continue
 		is_defer "$name" && continue
 		is_timed "$name" && continue
 		is_chaos "$name" && continue
@@ -385,6 +397,7 @@ fi
 pass=0; fail=0; skip=0; failed=""
 for dsl in "$ROOT"/parity/programs/*.dsl; do
 	name=$(basename "$dsl" .dsl)
+	in_cases "$name" || continue
 
 	if is_defer "$name"; then
 		reason="$(defer_reason)"
@@ -455,7 +468,9 @@ if [ "$batch_rc" -ne 0 ] && [ "$fail" -eq 0 ]; then
 	echo "[FAIL] batched candidate render exited $batch_rc"
 	fail=$((fail + 1)); failed="$failed batch-render"
 fi
-if ! python3 "$ROOT/parity/write-ledger.py" --root "$ROOT" --results "$RESULTS" --output "$LEDGER_PATH"; then
+SCOPE_ARGS=""
+if [ -n "$(echo $CASES)" ]; then SCOPE_ARGS="--scope $CASES"; fi
+if ! python3 "$ROOT/parity/write-ledger.py" --root "$ROOT" --results "$RESULTS" --output "$LEDGER_PATH" ${SCOPE_ARGS:+$SCOPE_ARGS}; then
 	echo "[FAIL] sweep ledger contains rejecting or incomplete evidence: $LEDGER_PATH"
 	if [ "$fail" -eq 0 ]; then fail=$((fail + 1)); failed="$failed ledger"; fi
 fi

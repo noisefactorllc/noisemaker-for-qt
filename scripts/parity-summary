@@ -49,6 +49,7 @@
 #                        llvmpipe the candidate renders on; see GAP-033).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CASE_ARGS="$*"
 TOL="2.001"          # compare.py float round-trip: accepts true diffs <=2, rejects >=3
 SSIM_MIN="0.98"
 
@@ -58,27 +59,59 @@ zero_line() {
 
 fail_infra() {
   echo "parity-summary: $1" >&2
-  expected=$(find "$ROOT/parity/programs" -name '*.dsl' 2>/dev/null | wc -l)
+  expected=0
+  if [ -n "$CASE_ARGS" ]; then
+    for id in $CASE_ARGS; do
+      [ -f "$ROOT/parity/programs/$id.dsl" ] && expected=$((expected + 1))
+    done
+  else
+    expected=$(find "$ROOT/parity/programs" -name '*.dsl' 2>/dev/null | wc -l)
+  fi
   zero_line "${expected:-0}"
   exit 2
 }
 
 # ---------------------------------------------------------------- candidate
 NM_RENDER="${NM_RENDER:-$ROOT/qt/build/nm-render}"
-if [ ! -x "$NM_RENDER" ]; then
-  fail_infra "nm-render not found at $NM_RENDER (build qt/build first, or set NM_RENDER)"
+
+# Runtime bundle (untracked, workspace-local, not required): the loader and
+# plugin libraries this container image lacks (Qt runtime, the EGL stack,
+# xcb helpers, Xvfb and its keymap compiler), laid out under
+# parity/.cache/nm-bundle so the sweep runs on a bare container without
+# system-wide installs. paths stay repo-relative; absent bundle = no-op.
+BUNDLE="$ROOT/parity/.cache/nm-bundle"
+if [ -d "$BUNDLE/lib" ]; then
+  export LD_LIBRARY_PATH="$BUNDLE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  export QT_PLUGIN_PATH="$BUNDLE/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+fi
+
+if [ ! -x "$NM_RENDER" ] || ldd "$NM_RENDER" 2>/dev/null | grep -q 'not found'; then
+  if command -v cmake >/dev/null 2>&1 && [ -d "$ROOT/qt" ]; then
+    echo "[RENDER] building $NM_RENDER" >&2
+    QT_PREFIX="$(dirname "$(find /usr /opt /root -maxdepth 6 -name 'Qt6Config.cmake' 2>/dev/null | head -1)" | sed 's#/lib/cmake/Qt6$##')"
+    if [ -n "$QT_PREFIX" ] && [ -d "$QT_PREFIX/lib" ]; then
+      cmake -S "$ROOT/qt" -B "$ROOT/qt/build" -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_PREFIX_PATH="$QT_PREFIX" -DNM_QT_BUILD_TESTS=ON \
+        -DCMAKE_EXE_LINKER_FLAGS="-Wl,--disable-new-dtags" \
+        -DCMAKE_BUILD_RPATH="\$ORIGIN/../../parity/.cache/nm-bundle/lib:$QT_PREFIX/lib" >/dev/null 2>&1 \
+      && cmake --build "$ROOT/qt/build" --parallel --target nm-render >/dev/null 2>&1
+    fi
+  fi
+fi
+if [ ! -x "$NM_RENDER" ] || ldd "$NM_RENDER" 2>/dev/null | grep -q 'not found'; then
+  fail_infra "nm-render not usable at $NM_RENDER (build qt/build first, or set NM_RENDER)"
 fi
 
 # ------------------------------------------------- reference (the authority)
 if [ -z "${NM_REFERENCE_ROOT:-}" ]; then
   PIN="$(grep -oE 'to reference .[0-9a-f]{7,40}.' "$ROOT/STATUS.md" | tail -1 | grep -oE '[0-9a-f]{7,40}')"
   [ -n "$PIN" ] || fail_infra "no reference pin found in STATUS.md"
-  CACHE="${PARITY_REFERENCE_CACHE:-${TMPDIR:-/tmp}/noisemaker-reference}"
+  CACHE="${PARITY_REFERENCE_CACHE:-$ROOT/parity/.cache/noisemaker-reference}"
   export NM_REFERENCE_ROOT="$CACHE"
   usable=0
   if [ -f "$CACHE/.git/HEAD" ] \
      && [ "$(git -C "$CACHE" rev-parse HEAD 2>/dev/null)" = "$PIN" ] \
-     && [ -z "$(git -C "$CACHE" status --porcelain 2>/dev/null)" ]; then
+     && [ -z "$(git -C "$CACHE" status --porcelain 2>/dev/null -- . ':!package.json' ':!package-lock.json')" ]; then
     usable=1
   fi
   if [ "$usable" -ne 1 ]; then
@@ -126,6 +159,18 @@ if [ ! -x "$ROOT/parity/.venv/bin/python" ] && [ ! -e "$ROOT/parity/.venv/Script
   create_venv || fail_infra "cannot create parity/.venv with numpy/pillow"
 fi
 
+# ------------------------------------------------------------- browsers
+# Downloaded browsers execute, so they must live on an exec-allowed
+# filesystem: default to the workspace cache, not $HOME (whose tmpfs may be
+# mounted noexec). A caller-set PLAYWRIGHT_BROWSERS_PATH is respected.
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT/parity/.cache/pw-browsers}"
+CHROME_PATH="$( cd "$NM_REFERENCE_ROOT" && node -e "process.stdout.write(require('playwright').chromium.executablePath())" 2>/dev/null )"
+if [ -n "$CHROME_PATH" ] && [ ! -e "$CHROME_PATH" ]; then
+  echo "[BROWSERS] installing playwright chromium" >&2
+  ( cd "$NM_REFERENCE_ROOT" && npx playwright install chromium >/dev/null 2>&1 ) || true
+  [ -e "$CHROME_PATH" ] || fail_infra "playwright chromium is not installed at $CHROME_PATH (run npx playwright install chromium)"
+fi
+
 # ------------------------------------------------------------------- sweep
 # The canonical mint/render environment (GAP-033, GAP-040): goldens are
 # minted with headed Chromium on the same Mesa llvmpipe the candidate
@@ -136,16 +181,35 @@ export NM_GOLDEN_CHROMIUM_ARGS="${NM_GOLDEN_CHROMIUM_ARGS:---use-gl=angle --use-
 export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
 export NM_REFERENCE_OVERLAYS="${NM_REFERENCE_OVERLAYS:-1}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
-if [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null 2>&1; then
-  echo "[DISPLAY] no DISPLAY; running the sweep under xvfb-run" >&2
-  SWEEP=(xvfb-run -a -s "-screen 0 1280x1024x24")
-else
-  SWEEP=()
+SWEEP=()
+if [ -z "${DISPLAY:-}" ]; then
+  if command -v xvfb-run >/dev/null 2>&1; then
+    echo "[DISPLAY] no DISPLAY; running the sweep under xvfb-run" >&2
+    SWEEP=(xvfb-run -a -s "-screen 0 1280x1024x24")
+  elif [ -x "$BUNDLE/bin/Xvfb" ]; then
+    echo "[DISPLAY] no DISPLAY; starting the bundled Xvfb on :77" >&2
+    XVFB_LOG="$(mktemp -t noisemaker-xvfb.XXXXXX)"
+    XKB_CONFIG_ROOT="$BUNDLE/xkb" \
+      LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$BUNDLE/xkbshim.so" \
+      "$BUNDLE/bin/Xvfb" :77 -screen 0 1280x1024x24 -nolisten tcp \
+      >"$XVFB_LOG" 2>&1 &
+    XVFB_PID=$!
+    X_SOCKET=/tmp/.X11-unix/X77
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      [ -S "$X_SOCKET" ] && break
+      sleep 1
+    done
+    [ -S "$X_SOCKET" ] || fail_infra "the bundled Xvfb failed to start (log: $XVFB_LOG)"
+    trap 'kill "$XVFB_PID" 2>/dev/null; rm -f "$LEDGER" "$XVFB_LOG"' EXIT
+    export DISPLAY=":77"
+  else
+    fail_infra "no DISPLAY and no Xvfb available (headed golden minting needs an X display; see GAP-033)"
+  fi
 fi
 LEDGER="$(mktemp -t noisemaker-parity-summary-ledger.XXXXXX)"
-trap 'rm -f "$LEDGER"' EXIT
+[ -n "${XVFB_PID:-}" ] || trap 'rm -f "$LEDGER"' EXIT
 echo "[SWEEP] running the canonical fresh sweep (mint + render + grade)" >&2
-if ! LEDGER_PATH="$LEDGER" "${SWEEP[@]}" bash "$ROOT/parity/sweep.sh"; then
+if ! LEDGER_PATH="$LEDGER" "${SWEEP[@]}" bash "$ROOT/parity/sweep.sh" "$@"; then
   echo "[SWEEP] parity/sweep.sh exited nonzero; classifying whatever was produced" >&2
   SWEEP_RC=1
 else
