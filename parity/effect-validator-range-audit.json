@@ -1199,7 +1199,7 @@
   },
   {
    "range": "682739066d3b74962febbdcdae85b5aa4d2e19f3..e24c844f8dada85551ab084f41db8944fbc176c8",
-   "coveredBy": "this candidate (tearoff job 696, force-push flagged — audited rather than assumed; merge-base verified: 682739066d3b is an ancestor of e24c844f8dad, the delivery is linear, and every observed window lies inside this span. Delta beyond the already-audited 73c15be00d68..4f5e0d28bdc1 span: c2a19c70, baa0a79b, f24b5254, 1cca6165 and 72b07e3e are docs-only (no shaders/ files); dd4606ea closes GAP-007 by joining the uniform-block throw into the ShaderDiagnostic union and adding structured diagnostics to the silent format/dimension fallbacks (shaders/src/runtime/backends/{diagnostics.js,webgl2.js}, shaders/src/runtime/pipeline.js); a0e9bbff recognizes the validator-accepted input/resolution dimension keywords in resolveDimension (pipeline.js); e24c844f records runtime resource and device-validation failures in backend.diagnostics (backends/{diagnostics.js,webgl2.js,webgpu.js}) — GAP-007 final leg. Every shaders/src delta is the web runtime (pipeline.js, backends/) plus shaders/tests harness modules; the Qt port runs its own native Desktop-GL runtime in qt/noisemaker/runtime/ and does not consume the web backends/pipeline. No effect definitions, GLSL shaders, or DSL-compiler files change, so no port code change)",
+   "coveredBy": "this candidate (tearoff job 696, force-push flagged — audited rather than assumed; merge-base verified: 682739066d3b is an ancestor of e24c844f8dad, the delivery is linear, and every observed window lies inside this span. Delta beyond the already-audited 73c15be00d68..4f5e0d28bdc1 span: c2a19c70, baa0a79b, f24b5254, 1cca6165 and 72b07e3e are docs-only (no shaders/ files); dd4606ea closes GAP-007 by joining the uniform-block throw into the ShaderDiagnostic union and adding structured diagnostics to the silent format/dimension fallbacks (shaders/src/runtime/backends/{diagnostics.js,webgl2.js}, shaders/src/runtime/pipeline.js); a0e9bbff recognizes the validator-accepted input/resolution dimension keywords in resolveDimension (pipeline.js); e24c844f records runtime resource and device-validation failures in backend.diagnostics (backends/{diagnostics.js,webgl2.js,webgpu.js}) — GAP-007 final leg. The GAP-007 fallback-diagnostic contract is PORTED to the Qt-native runtime: qt/noisemaker/runtime/diagnostics.{h,cpp} (DiagnosticCollector/DiagnosticSink) plus resolveDimension/resolveGlFormat in qt/noisemaker/runtime/surface.{h,cpp} record deduplicated ERR_DIMENSION_FALLBACK and ERR_UNKNOWN_FORMAT_FALLBACK entries with the reference record shape and the native backend id qt-gl; the GL-only legs (missing-FBO/MRT warnings, gl.getError draining, WebGPU uncapturederror, ShaderDiagnostic uniform-block throw) have no Qt surface (the port throws on incomplete framebuffers already and has no webgl2/webgpu backend modules). No effect definitions, GLSL shaders, or DSL-compiler files change)",
    "commits": [
     {
      "sha": "bff453e919d5c0947d62db90e4a4a503a2100ebe",
@@ -1303,7 +1303,7 @@
   },
   {
    "range": "c2a19c70eae74f19df1e13f50737295f6bf11993..dd4606eaa034fbfba09cd6b68eadac51036cc9cc",
-   "coveredBy": "this candidate (job 696 observed window; subset of the declared 682739066d3b..e24c844f8dad audit above — c2a19c70 docs-only, dd4606ea touches shaders/src/runtime/backends/{diagnostics.js,webgl2.js}, shaders/src/runtime/pipeline.js + shaders/tests/test_backend_diagnostics.js only)",
+   "coveredBy": "this candidate (job 696 observed window; subset of the declared 682739066d3b..e24c844f8dad audit above — c2a19c70 docs-only, dd4606ea touches shaders/src/runtime/backends/{diagnostics.js,webgl2.js}, shaders/src/runtime/pipeline.js + shaders/tests/test_backend_diagnostics.js only; its format/dimension fallback diagnostics are ported to the Qt-native runtime)",
    "commits": [
     {
      "sha": "dd4606eaa034fbfba09cd6b68eadac51036cc9cc",
@@ -1325,7 +1325,7 @@
   },
   {
    "range": "dd4606eaa034fbfba09cd6b68eadac51036cc9cc..a0e9bbffc0380b4bba046e81cfbff905328af650",
-   "coveredBy": "this candidate (job 696 observed window; subset of the declared 682739066d3b..e24c844f8dad audit above — a0e9bbff touches shaders/src/runtime/pipeline.js + shaders/tests/test_backend_diagnostics.js only)",
+   "coveredBy": "this candidate (job 696 observed window; subset of the declared 682739066d3b..e24c844f8dad audit above — a0e9bbff touches shaders/src/runtime/pipeline.js + shaders/tests/test_backend_diagnostics.js only; the input/resolution recognized-keyword fix is ported to qt/noisemaker/runtime/surface.cpp)",
    "commits": [
     {
      "sha": "a0e9bbffc0380b4bba046e81cfbff905328af650",
@@ -1343,7 +1343,7 @@
   },
   {
    "range": "a0e9bbffc0380b4bba046e81cfbff905328af650..e24c844f8dada85551ab084f41db8944fbc176c8",
-   "coveredBy": "this candidate (job 696 observed window; subset of the declared 682739066d3b..e24c844f8dad audit above — e24c844f (GAP-007 final leg) touches shaders/src/runtime/backends/{diagnostics.js,webgl2.js,webgpu.js} + shaders/tests/test_backend_diagnostics.js only)",
+   "coveredBy": "this candidate (job 696 observed window; subset of the declared 682739066d3b..e24c844f8dad audit above — e24c844f (GAP-007 final leg) touches shaders/src/runtime/backends/{diagnostics.js,webgl2.js,webgpu.js} + shaders/tests/test_backend_diagnostics.js only; its missing-render-target/gl-error/device-validation legs are web-backend-only with no Qt surface, audited as inapplicable)",
    "commits": [
     {
      "sha": "e24c844f8dada85551ab084f41db8944fbc176c8",

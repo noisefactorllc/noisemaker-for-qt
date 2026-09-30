@@ -7,6 +7,8 @@
 set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/graph.h
     ${CMAKE_CURRENT_LIST_DIR}/graph.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/diagnostics.h
+    ${CMAKE_CURRENT_LIST_DIR}/diagnostics.cpp
     ${CMAKE_CURRENT_LIST_DIR}/shader_assembly.h
     ${CMAKE_CURRENT_LIST_DIR}/shader_assembly.cpp
     ${CMAKE_CURRENT_LIST_DIR}/surface.h

@@ -1,5 +1,7 @@
 #include "surface.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QOpenGLFunctions_4_1_Core>
 #include <QVector>
@@ -24,14 +26,52 @@ bool jsonHasLiveValue(const QJsonObject& obj, const QString& key) {
 
 } // namespace
 
-int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& mergedUniforms) {
+namespace {
+
+// The dedup/warning key the reference derives for an unknown dimension
+// spec (pipeline.js GAP-007 guard): non-objects use String(spec); objects
+// AND arrays go through JSON.stringify (typeof [] === 'object'), which
+// the compact QJsonDocument form matches element-for-element. QJsonDocument
+// emits sorted object keys (the reference preserves insertion order), so
+// two object specs differing only in key order share one dedup key — a
+// documented deviation that only coalesces the warning/record for
+// equivalent specs; the resolved value is unaffected.
+QString dimensionFallbackKey(const QJsonValue& spec) {
+    if (spec.isObject()) {
+        return QString::fromUtf8(QJsonDocument(spec.toObject()).toJson(QJsonDocument::Compact));
+    }
+    if (spec.isArray()) {
+        return QString::fromUtf8(
+            QJsonDocument::fromVariant(spec.toArray().toVariantList()).toJson(QJsonDocument::Compact));
+    }
+    return spec.toVariant().toString();
+}
+
+} // namespace
+
+int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& mergedUniforms,
+                     DiagnosticSink* sink) {
+    // An absent/null spec is a default, not an unknown form: the
+    // reference's GAP-007 guard excludes undefined/null and this port's
+    // callers use a null QJsonValue for "no spec" exactly like the
+    // reference's `undefined` (no diagnostic).
+    if (spec.isNull() || spec.isUndefined()) {
+        return screenSize;
+    }
+
     if (spec.isDouble()) {
         return std::max(1, static_cast<int>(std::floor(spec.toDouble())));
     }
 
     if (spec.isString()) {
         const QString s = spec.toString();
-        if (s == QStringLiteral("screen") || s == QStringLiteral("auto")) {
+        // 'input' and 'resolution' are validator-accepted dimension
+        // keywords (DIM_KEYWORDS in the reference effect-validator.js)
+        // whose historical resolution is the screen dimension; they are
+        // recognized forms, not unknown fallbacks, so they add no
+        // diagnostic (upstream a0e9bbff).
+        if (s == QStringLiteral("screen") || s == QStringLiteral("auto")
+            || s == QStringLiteral("input") || s == QStringLiteral("resolution")) {
             return screenSize;
         }
         if (s.endsWith(QLatin1Char('%'))) {
@@ -40,12 +80,20 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             if (ok) {
                 return std::max(1, static_cast<int>(std::floor(screenSize * pct / 100.0)));
             }
+            // A non-numeric percent string does not resolve upstream's
+            // parseFloat path to a usable number; this port keeps the
+            // historical screen-size fallback (reference/04 §9 rule 5)
+            // and now surfaces it like any other unknown form (GAP-007).
+        } else {
+            // Unrecognized string (e.g. a bare "zoom") falls through to
+            // the reference's own fallback (reference/04-resources-pipeline.md
+            // §9 rule 5: "fallback -> screenSize") — recorded as a
+            // structured diagnostic since dd4606ea.
+            if (sink != nullptr) {
+                sink->recordDimensionFallback(s, screenSize);
+            }
+            return screenSize;
         }
-        // Unrecognized string (e.g. a bare "input" some effect texture
-        // specs use) falls through to the reference's own fallback
-        // (reference/04-resources-pipeline.md §9 rule 5: "fallback ->
-        // screenSize").
-        return screenSize;
     }
 
     if (spec.isObject()) {
@@ -110,9 +158,21 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             return std::max(1, static_cast<int>(computed));
         }
 
+        // Unknown object forms (none of param/screenDivide/scale) keep
+        // the historical screen-size fallback but surface a structured
+        // diagnostic (GAP-007) instead of pure silence.
+        if (sink != nullptr) {
+            sink->recordDimensionFallback(dimensionFallbackKey(spec), screenSize);
+        }
         return screenSize;
     }
 
+    // Unknown array/bool forms keep the historical screen-size fallback
+    // (no new rejection of previously accepted input), but surface a
+    // structured diagnostic (GAP-007) instead of pure silence.
+    if (sink != nullptr) {
+        sink->recordDimensionFallback(dimensionFallbackKey(spec), screenSize);
+    }
     return screenSize;
 }
 
@@ -122,7 +182,8 @@ namespace {
 // unrecognized format string is rgba8 (distinct from the *default* used
 // when no format is specified at all -- callers of createSurface() pass
 // "rgba16f" for that case; see SurfaceCache::get()).
-void resolveGlFormat(const QString& format, unsigned int* internalFormat, unsigned int* glFormat, unsigned int* glType) {
+void resolveGlFormat(const QString& format, unsigned int* internalFormat, unsigned int* glFormat, unsigned int* glType,
+                     DiagnosticSink* sink = nullptr) {
     *glFormat = GL_RGBA;
     if (format == QStringLiteral("rgba16f") || format == QStringLiteral("rgba16float")) {
         *internalFormat = GL_RGBA16F;
@@ -136,6 +197,17 @@ void resolveGlFormat(const QString& format, unsigned int* internalFormat, unsign
     } else {
         *internalFormat = GL_RGBA8;
         *glType = GL_UNSIGNED_BYTE;
+        // Unknown formats keep the historical silent rgba8 fallback (no
+        // new rejection of previously accepted input), but surface it as
+        // a structured diagnostic (reference GAP-007 dd4606ea: "Unknown
+        // texture format '<key>'; falling back to rgba8", deduplicated
+        // per format string). A caller passing no format at all is the
+        // default, not a fallback — SurfaceCache::resolveSpec only
+        // forwards non-empty spec formats, so an empty string records
+        // nothing here.
+        if (sink != nullptr && !format.isEmpty()) {
+            sink->recordFormatFallback(format);
+        }
     }
 }
 
@@ -144,8 +216,11 @@ void resolveGlFormat(const QString& format, unsigned int* internalFormat, unsign
 SurfaceCache::SurfaceCache(QOpenGLFunctions_4_1_Core* gl) : m_gl(gl) {}
 
 GpuSurface SurfaceCache::createSurface(int width, int height, const QString& format) {
+    DiagnosticSink sink;
+    sink.collector = &m_diagnostics;
+    sink.seen = &m_warnedFormatFallbacks;
     unsigned int internalFormat = 0, glFormat = 0, glType = 0;
-    resolveGlFormat(format, &internalFormat, &glFormat, &glType);
+    resolveGlFormat(format, &internalFormat, &glFormat, &glType, &sink);
 
     unsigned int texture = 0;
     m_gl->glGenTextures(1, &texture);
@@ -203,13 +278,16 @@ GpuSurface SurfaceCache::createSurface(int width, int height, const QString& for
 }
 
 SurfaceCache::ResolvedSpec SurfaceCache::resolveSpec(const Graph& graph, const QString& specTexId, QSize screenSize,
-                                                       const QJsonObject& mergedUniforms) const {
+                                                     const QJsonObject& mergedUniforms) {
     ResolvedSpec resolved{screenSize.width(), screenSize.height(), QStringLiteral("rgba16f")};
 
     const auto specIt = graph.textures.find(specTexId);
     if (specIt != graph.textures.end()) {
-        resolved.width = resolveDimension(specIt->width, screenSize.width(), mergedUniforms);
-        resolved.height = resolveDimension(specIt->height, screenSize.height(), mergedUniforms);
+        DiagnosticSink sink;
+        sink.collector = &m_diagnostics;
+        sink.seen = &m_warnedDimensionFallbacks;
+        resolved.width = resolveDimension(specIt->width, screenSize.width(), mergedUniforms, &sink);
+        resolved.height = resolveDimension(specIt->height, screenSize.height(), mergedUniforms, &sink);
         if (!specIt->format.isEmpty()) {
             resolved.format = specIt->format;
         }

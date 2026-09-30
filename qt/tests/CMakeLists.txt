@@ -10,6 +10,10 @@ add_executable(test_graph_load test_graph_load.cpp)
 target_link_libraries(test_graph_load PRIVATE noisemaker-qt Qt6::Core)
 add_test(NAME test_graph_load COMMAND test_graph_load)
 
+add_executable(test_surface_diagnostics test_surface_diagnostics.cpp)
+target_link_libraries(test_surface_diagnostics PRIVATE noisemaker-qt Qt6::Core)
+add_test(NAME test_surface_diagnostics COMMAND test_surface_diagnostics)
+
 add_executable(test_device_limits test_device_limits.cpp)
 target_link_libraries(test_device_limits PRIVATE noisemaker-qt Qt6::Core Qt6::Gui Qt6::OpenGL)
 add_test(NAME test_device_limits COMMAND test_device_limits)

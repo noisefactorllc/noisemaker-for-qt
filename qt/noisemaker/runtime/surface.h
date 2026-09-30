@@ -7,6 +7,7 @@
 #include <QString>
 
 #include "graph.h"
+#include "diagnostics.h"
 
 class QOpenGLFunctions_4_1_Core;
 
@@ -40,7 +41,19 @@ struct GpuSurface {
 // matching the reference's own collectDefaultUniforms() input. Defaults to
 // an empty object so call sites that don't have (or don't need) this
 // context still compile and behave as if the named uniform were absent.
-int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& mergedUniforms = QJsonObject());
+//
+// `sink` (optional): when non-null, an unknown dimension form (an
+// unrecognized string, a bool, or an object without a
+// param/screenDivide/scale key) keeps the historical screen-size fallback
+// but additionally records a deduplicated ERR_DIMENSION_FALLBACK
+// diagnostic (reference GAP-007: upstream dd4606ea — "unknown dimension
+// forms keep the historical fallback ... surface it as a structured
+// diagnostic instead of pure silence"; upstream a0e9bbff — the
+// validator-accepted 'input'/'resolution' keywords are recognized forms,
+// resolved like "screen"/"auto" with no diagnostic; an absent/null spec
+// is a default, not an unknown form, and records nothing).
+int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& mergedUniforms = QJsonObject(),
+                     DiagnosticSink* sink = nullptr);
 
 // Owns the live texId -> GpuSurface registry for one Backend. Creates
 // textures lazily on first reference, sized/formatted per
@@ -97,6 +110,18 @@ public:
     // must be current.
     void releaseAll();
 
+    // Structured diagnostics recorded (rather than thrown) by this cache:
+    // deduplicated ERR_DIMENSION_FALLBACK / ERR_UNKNOWN_FORMAT_FALLBACK
+    // records for the historically-silent unknown-dimension and
+    // unknown-format fallbacks (reference GAP-007). The collector is
+    // capped at 64 records like the reference DiagnosticCollector.
+    const DiagnosticCollector& diagnostics() const { return m_diagnostics; }
+    void clearDiagnostics() {
+        m_diagnostics.clear();
+        m_warnedDimensionFallbacks.clear();
+        m_warnedFormatFallbacks.clear();
+    }
+
 private:
     struct ResolvedSpec {
         int width;
@@ -105,13 +130,16 @@ private:
     };
 
     ResolvedSpec resolveSpec(const Graph& graph, const QString& specTexId, QSize screenSize,
-                              const QJsonObject& mergedUniforms) const;
+                              const QJsonObject& mergedUniforms);
     GpuSurface createSurface(int width, int height, const QString& format);
     GpuSurface& getOrCreate(const QString& cacheKey, const ResolvedSpec& spec);
 
     QOpenGLFunctions_4_1_Core* m_gl;
     QHash<QString, GpuSurface> m_surfaces;
     QHash<QString, unsigned int> m_mrtFbos;
+    DiagnosticCollector m_diagnostics;
+    QSet<QString> m_warnedDimensionFallbacks;
+    QSet<QString> m_warnedFormatFallbacks;
     struct DepthBuffer {
         unsigned int renderbuffer = 0;
         int width = 0;

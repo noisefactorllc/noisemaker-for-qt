@@ -219,6 +219,81 @@ int main(int argc, char** argv) {
                 check(aliasInternalFormat == GL_RGBA8,
                       "recreated aliased texture has GL_RGBA8 internal format");
 
+                // GAP-007 structured diagnostics (reference dd4606ea):
+                // an unknown spec format keeps the rgba8 fallback but
+                // records a deduplicated ERR_UNKNOWN_FORMAT_FALLBACK.
+                nm::Graph unknownFormatGraph;
+                unknownFormatGraph.textures.insert(
+                    QStringLiteral("fmt"), textureSpec(QStringLiteral("banana")));
+                const nm::GpuSurface& fmtFirst = cache.get(
+                    unknownFormatGraph, QStringLiteral("fmt"), QSize(2, 2));
+                check(fmtFirst.format == QStringLiteral("banana"),
+                      "unknown spec format is carried verbatim on the surface");
+                gl.glBindTexture(GL_TEXTURE_2D, fmtFirst.texture);
+                int fmtInternalFormat = 0;
+                gl.glGetTexLevelParameteriv(
+                    GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmtInternalFormat);
+                gl.glBindTexture(GL_TEXTURE_2D, 0);
+                check(fmtInternalFormat == GL_RGBA8,
+                      "unknown format still allocates the rgba8 fallback");
+                check(cache.diagnostics().records.size() == 1,
+                      "one unknown format fallback is recorded");
+                check(cache.diagnostics().records.first().code == QStringLiteral("ERR_UNKNOWN_FORMAT_FALLBACK"),
+                      "the format fallback record carries the GAP-007 code");
+                check(cache.diagnostics().records.first().backend == QStringLiteral("qt-gl"),
+                      "the format fallback record names the native backend");
+                check(cache.diagnostics().records.first().stage == QStringLiteral("texture-create"),
+                      "the format fallback record uses the reference stage");
+                check(cache.diagnostics().records.first().format == QStringLiteral("banana"),
+                      "the format fallback record carries the unknown format");
+                check(cache.diagnostics().records.first().fallback == QStringLiteral("rgba8"),
+                      "the format fallback record carries the fallback");
+                (void)cache.get(unknownFormatGraph, QStringLiteral("fmt"), QSize(2, 2));
+                check(cache.diagnostics().records.size() == 1,
+                      "the same format fallback is deduplicated");
+
+                // Unknown dimension forms keep the screen-size fallback but
+                // record a deduplicated ERR_DIMENSION_FALLBACK.
+                nm::Graph unknownDimGraph;
+                nm::TextureSpec unknownDimSpec = textureSpec(QStringLiteral("rgba16f"));
+                unknownDimSpec.width = QJsonValue(QStringLiteral("zoom"));
+                unknownDimGraph.textures.insert(QStringLiteral("dim"), unknownDimSpec);
+                const nm::GpuSurface& dimFirst = cache.get(
+                    unknownDimGraph, QStringLiteral("dim"), QSize(4, 2));
+                check(dimFirst.width == 4 && dimFirst.height == 2,
+                      "unknown dimension form still falls back to screen size");
+                check(cache.diagnostics().records.size() == 2,
+                      "the dimension fallback is recorded after the format one");
+                check(cache.diagnostics().records.last().code == QStringLiteral("ERR_DIMENSION_FALLBACK"),
+                      "the dimension fallback record carries the GAP-007 code");
+                check(cache.diagnostics().records.last().stage == QStringLiteral("dimension"),
+                      "the dimension fallback record uses the reference stage");
+                check(cache.diagnostics().records.last().spec == QStringLiteral("zoom"),
+                      "the dimension fallback record carries the unknown spec");
+                check(cache.diagnostics().records.last().fallback == QStringLiteral("screen"),
+                      "the dimension fallback record carries the fallback");
+                (void)cache.get(unknownDimGraph, QStringLiteral("dim"), QSize(4, 2));
+                check(cache.diagnostics().records.size() == 2,
+                      "the same dimension fallback is deduplicated");
+
+                // Known formats and recognized dimension keywords add
+                // nothing (upstream a0e9bbff: 'input'/'resolution' are
+                // recognized forms, resolved like screen/auto).
+                nm::Graph knownGraph;
+                nm::TextureSpec knownSpec = textureSpec(QStringLiteral("rgba32f"));
+                knownSpec.width = QJsonValue(QStringLiteral("input"));
+                knownGraph.textures.insert(QStringLiteral("known"), knownSpec);
+                const nm::GpuSurface& known = cache.get(
+                    knownGraph, QStringLiteral("known"), QSize(3, 3));
+                check(known.width == 3 && known.height == 3,
+                      "the 'input' dimension keyword resolves to the screen dimension");
+                check(cache.diagnostics().records.size() == 2,
+                      "known formats and recognized dimension keywords add no diagnostic");
+
+                cache.clearDiagnostics();
+                check(cache.diagnostics().records.isEmpty(),
+                      "clearDiagnostics empties the collector");
+
                 cache.releaseAll();
 
                 gl.glDeleteFramebuffers(2, framebuffers);
