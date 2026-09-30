@@ -97,7 +97,7 @@
 
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, appendFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
 
@@ -364,10 +364,20 @@ function printLayoutRuns(layout) {
 }
 
 let failures = 0
+// Per-case measured bounds are retained twice: as ::notice workflow commands
+// in stdout (check-run annotations, publicly retrievable without admin) and
+// in a bounds file next to the gate's outputs (uploaded with the smoke
+// images artifact by CI's existing if: always() step). Both are additive
+// output; criteria, tolerances, cases, and the gate's exit code are
+// unchanged.
+const boundsFile = join(resolve(dirname(fileURLToPath(import.meta.url)), 'out'), 'text-canvas-bounds.txt')
+mkdirSync(dirname(boundsFile), { recursive: true })
+writeFileSync(boundsFile, '')
 for (const c of cases) {
     const ref = oracle.get(c.name)
     const got = candidate.get(c.name)?.rgba
     const problems = []
+    let caseLine = null
     let faces = ''
     if (c.face) {
         const declared = DECLARED_FACES[process.platform]?.[c.name]
@@ -402,13 +412,18 @@ for (const c of cases) {
         if (edges.some(e => Math.abs(e) > BBOX_TOLERANCE)) problems.push('bounding box')
         if (!(ratio >= COVERAGE_RANGE[0] && ratio <= COVERAGE_RANGE[1])) problems.push('coverage')
         if (colourMismatch) problems.push(`${colourMismatch} opaque pixels differ in colour`)
-        console.log(`${problems.length ? 'FAIL' : 'PASS'} ${c.name.padEnd(14)} ${c.width}x${c.height} ` +
+        caseLine = `${problems.length ? 'FAIL' : 'PASS'} ${c.name.padEnd(14)} ${c.width}x${c.height} ` +
             `font "${ref.font}" runs ${layout.runs.length} max |d| ${worstRun.toFixed(3)} across d=${layout.across.toFixed(3)} ` +
             `bbox d=[${edges.join(', ')}] coverage qt/chrome=${ratio.toFixed(3)}${faces}` +
-            (problems.length ? `  <- ${problems.join(', ')}` : ''))
+            (problems.length ? `  <- ${problems.join(', ')}` : '')
+        console.log(caseLine)
         if (problems.length) printLayoutRuns(layout)
     }
     if (problems.length) failures++
+    if (caseLine !== null) {
+        console.log(`::notice title=check_text_canvas bounds::${caseLine}`)
+        appendFileSync(boundsFile, caseLine + '\n')
+    }
 }
 console.log(`\ncheck_text_canvas: ${cases.length - failures}/${cases.length} PASS`)
 process.exit(failures ? 1 : 0)
