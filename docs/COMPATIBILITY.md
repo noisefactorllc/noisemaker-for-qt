@@ -69,7 +69,7 @@ Upstream `1.0.186` to `1.0.189` remain unqualified. The three newer upstream com
 
 ### Daily review, 2026-09-25
 
-Exact-source CI passes 25 C++ tests on Linux and Windows. MacOS runs 24 plus the separate device-limits test. The five compiler stages each pass 388 cases. The llvmpipe suite accepts 362 fixture programs at its existing numerical contracts. Of 360 static records, 359 have maximum difference 0 and bloom has maximum difference 1. Two further programs exercise timed samples. NM_REFERENCE_OVERLAYS=1 supplies the reference overlays for fibers, scratches, and strayHair. Those rows do not qualify the port-generated canvas. Local harness tests pass 54 of 54. Full parameter and platform parity remains unverified. [Raw evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log).
+Exact-source CI passes 25 C++ tests on Linux and Windows. MacOS runs 24 plus the separate device-limits test. The five compiler stages each pass 388 cases. The llvmpipe suite accepts 362 fixture programs at its existing numerical contracts. Of 360 static records, 359 have maximum difference 0 and bloom has maximum difference 1. Two further programs exercise timed samples. NM_REFERENCE_OVERLAYS=1 supplies the reference overlays for fibers, scratches, and strayHair. Those rows do not qualify the port-generated canvas. Local harness tests pass 54 of 54. Full parameter and platform parity remains unverified. Raw evidence (audit evidence `review-20260925-053200/qt-ci-36095317236.log`).
 
 The current full case denominator remains incomplete. Missing parameters, hosts, external inputs, and stateful sequences remain qualification gaps. No skip or tolerated difference counts as exact parity.
 
@@ -95,7 +95,7 @@ They do not qualify the current upstream revision or full catalog. Exact compari
 
 | Probe | Evidence | Exact comparison |
 |---|---|---|
-| `noise` | [Retained-golden measurement](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/qt-noise-comparison.json) | failed |
+| `noise` | Retained-golden measurement (audit evidence `evidence-20260924-remaining-gap-documents/qt-noise-comparison.json`) | failed |
 
 Current served declaration: 210 effect IDs. This inventory is not evidence of execution. The declaration column below reflects kit `0.1.42`.
 
@@ -325,17 +325,17 @@ Existing tolerance-based acceptance remains separate. No tolerance or golden cha
 |---|---|---|---|---|---|---|
 | Tracked program files | 347 | 1 | 0 | 1 | 346 | unverified |
 
-Every unexecuted fixture remains visible in the [fixture inventory](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/qt-fixture-inventory.json).
+Every unexecuted fixture remains visible in the fixture inventory (audit evidence `evidence-20260924-remaining-gap-documents/qt-fixture-inventory.json`).
 Fixture counts do not prove coverage of every current effect, parameter, or stateful workflow.
 
 | Case | Exact result | Measurement | Evidence |
 |---|---|---|---|
-| `noise` | failed | [FAIL] noise: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=0.0, ssim_min=0.98) | [Raw command](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/qt-noise-comparison-command.json) |
+| `noise` | failed | [FAIL] noise: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=0.0, ssim_min=0.98) | Raw command (audit evidence `evidence-20260924-remaining-gap-documents/qt-noise-comparison-command.json`) |
 
 ## 4. Evidence
 
-[Bounded test evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/qt-tests.json). [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-qt/actions?query=head_sha%3A8460cfd77798d4e79d37828c16b0b29a09fbdbda).
-[This run evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents) retains commands, exit codes, source identities, and distribution metadata.
+Bounded test evidence (audit evidence `evidence-20260924-remaining-gap-documents/qt-tests.json`). [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-qt/actions?query=head_sha%3A8460cfd77798d4e79d37828c16b0b29a09fbdbda).
+This run evidence (audit evidence `evidence-20260924-remaining-gap-documents`) retains commands, exit codes, source identities, and distribution metadata.
 Official ecosystem reference: [Qt 6 documentation, accessed 2026-09-24](https://doc.qt.io/qt-6/qopenglwidget.html).
 Source CI, export dispatch, artifact delivery, and rendered parity are separate evidence dimensions.
 A successful dispatch or unit-test summary does not establish a full rendered gate.
@@ -361,7 +361,7 @@ Implementation corrections remain with the separate job. This report does not ad
 
 2026-09-27 audit at `d54050d935a160a0478825573012ec807bcd1688`: exact-source CI at `478beb5` passes all three workflows. The llvmpipe sweep grades 362 of 362 strict. Local byte gates and 54 harness tests pass at reference `6a0af04d`. Added GAP-046. No closure. [Run evidence](/series/evidence-audit-20260927-010500/result-noisemaker-for-qt.json).
 
-2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/qt-ci-36095317236.log). No new closure claimed.
+2026-09-25 daily review at `1dd0a0b49b13a9e84ecc365770a1fb83fd01edd5`: source freshness and bounded evidence reviewed. Open qualification limits retained. Retained review evidence (audit evidence `review-20260925-053200/qt-ci-36095317236.log`). No new closure claimed.
 
 | Date | Source | Result | Change |
 |---|---|---|---|
