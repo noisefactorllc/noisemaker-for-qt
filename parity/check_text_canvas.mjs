@@ -421,9 +421,15 @@ for (const c of cases) {
     }
     if (problems.length) failures++
     if (caseLine !== null) {
-        console.log(`::notice title=check_text_canvas bounds::${caseLine}`)
         appendFileSync(boundsFile, caseLine + '\n')
     }
+}
+// GitHub displays only the last few annotations of a step, so emit the
+// per-case bounds in multi-line batches (one annotation per five cases)
+// rather than one annotation per case.
+const lines = readFileSync(boundsFile, 'utf8').split('\n').filter(Boolean)
+for (let i = 0; i < lines.length; i += 5) {
+    console.log(`::notice title=check_text_canvas bounds::${lines.slice(i, i + 5).join('%0A')}`)
 }
 console.log(`\ncheck_text_canvas: ${cases.length - failures}/${cases.length} PASS`)
 process.exit(failures ? 1 : 0)
