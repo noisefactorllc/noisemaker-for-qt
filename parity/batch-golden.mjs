@@ -620,6 +620,17 @@ async function main () {
   const total = dslPaths.length
   const startAll = Date.now()
 
+  // Two passes over the corpus: the second only runs when the first left
+  // failures. A transient mint failure (a readback FBO-incomplete race, a
+  // session that died mid-fixture) is retried then with fresh sessions —
+  // the chunk loop skips already-minted fixtures, so only the failed ones
+  // re-mint; a failure that repeats on the repair pass is real and stays
+  // failed. Minting stays fresh: every golden is written inside this run.
+  for (let pass = 0; pass < 2 && (pass === 0 || failed.length > 0); pass++) {
+    if (pass > 0) {
+      process.stderr.write(`[batch-golden] --- repair pass: retrying ${failed.length} failed fixture(s) with fresh sessions ---\n`)
+    }
+    failed.length = 0
   for (let chunkStart = 0; chunkStart < dslPaths.length; chunkStart += chunkSize) {
     const chunk = dslPaths.slice(chunkStart, chunkStart + chunkSize)
     process.stderr.write(`[batch-golden] --- chunk ${Math.floor(chunkStart / chunkSize) + 1} ` +
@@ -725,6 +736,7 @@ async function main () {
         }
       }
     })()
+  }
   }
 
   const totalMs = Date.now() - startAll
