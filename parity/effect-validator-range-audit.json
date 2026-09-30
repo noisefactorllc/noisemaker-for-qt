@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "73c15be00d6888f4b5d2835d8e242ee9e840df45",
+  "referenceCheckout": "4f5e0d28bdc155700393c314e9a5aafcc4da91fd",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -1039,6 +1039,162 @@
     "shaders/src/runtime/compiler.js",
     "shaders/src/runtime/pipeline.js",
     "shaders/tests/test_lifecycle_hooks.js"
+   ]
+  },
+  {
+   "range": "73c15be00d6888f4b5d2835d8e242ee9e840df45..682739066d3b74962febbdcdae85b5aa4d2e19f3",
+   "coveredBy": "this candidate (declared source range, audited rather than assumed — merge-base verified: 73c15be00d68 is an ancestor of 682739066d3b and the delivery is linear. Delta: 53398923 and cdb60cfc are docs-only (AI development contract checkpoint); a50c90bc and 6b05a270 are dependency bumps (pyproject ruff, npm eslint); d95d0c8c is docs-only (GAP-029 narrowing in llms-full.txt); 3e21906e is docs-only (GAP-029 register pass); a5059106 and 6827390 (GAP-032) touch only shaders/src/runtime/external-input.js — the web AudioInputManager capture/device-sync path (registerDevice/registerDefaultChannels per-channel analysers, Pipeline.getAudioInputRequirements sync, unmet-binding warnings, per-channel and aggregate rawReady updates) — plus shaders/tests/test_external_input.js. The AudioState and MidiState classes are unchanged across the span (every registerDevice/registerDefaultChannels/getDeviceChannelState/resetAggregate method already exists at 73c15be00d68), so the Qt port’s parity surfaces (qt/noisemaker/runtime/audio_state.*, midi_state.*, graded by parity/check_audio_state.mjs and check_midi_state.mjs against those unchanged classes) have no delta; the Qt port runs its own native Desktop-GL runtime and does not consume the web AudioInputManager. No effect definitions, GLSL shaders, or DSL-compiler files change, so no port code change)",
+   "commits": [
+    {
+     "sha": "533989237f483701f6811afa5c14e89deeb8c242",
+     "subject": "docs: advance AI development contract checkpoint through 73c15be (GAP-024/GAP-026 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "cdb60cfca9e51451809042b9a8edb96c445a026e",
+     "subject": "docs: advance AI development contract checkpoint through 73c15be (GAP-024/GAP-026 verified pair audit)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a50c90bc90585173ab713ccc7489d1a7f5357d64",
+     "subject": "deps(pip): update ruff requirement from >=0.16.8 to >=0.16.9 (#300)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "6b05a27050b8dccd68c6500a8e9d705a5dfd0e70",
+     "subject": "deps(npm): bump eslint from 10.10.0 to 10.11.0 in the npm-minor group (#301)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "d95d0c8cdc88c53b6e8f431e6c65ed8952d54d89",
+     "subject": "docs(gaps): narrow GAP-029 — effect-index invalidation fix lives in shade-mcp, not noisemaker",
+     "shadersFiles": []
+    },
+    {
+     "sha": "3e21906e4f6f86422e72920a990fc8f6cab9c309",
+     "subject": "docs(contract): record the 2026-09-29 GAP-029 register pass and advance the checkpoint",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a5059106ea7510b839e70c5c9c33ba1f5ccbc043",
+     "subject": "fix(audio): populate captured-device and default-channel audio state with raw readiness (GAP-032)",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    },
+    {
+     "sha": "682739066d3b74962febbdcdae85b5aa4d2e19f3",
+     "subject": "fix(audio): capture every selected-device audio binding the graph requires (GAP-032)",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/external-input.js",
+    "shaders/tests/test_external_input.js"
+   ]
+  },
+  {
+   "range": "3e21906e4f6f86422e72920a990fc8f6cab9c309..a5059106ea7510b839e70c5c9c33ba1f5ccbc043",
+   "coveredBy": "this candidate (observed window; subset of the declared 73c15be00d68..682739066d3b audit above — a5059106 (GAP-032) touches shaders/src/runtime/external-input.js + shaders/tests/test_external_input.js only)",
+   "commits": [
+    {
+     "sha": "a5059106ea7510b839e70c5c9c33ba1f5ccbc043",
+     "subject": "fix(audio): populate captured-device and default-channel audio state with raw readiness (GAP-032)",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/external-input.js",
+    "shaders/tests/test_external_input.js"
+   ]
+  },
+  {
+   "range": "a5059106ea7510b839e70c5c9c33ba1f5ccbc043..682739066d3b74962febbdcdae85b5aa4d2e19f3",
+   "coveredBy": "this candidate (observed window; subset of the declared 73c15be00d68..682739066d3b audit above — 6827390 (GAP-032) touches shaders/src/runtime/external-input.js + shaders/tests/test_external_input.js only)",
+   "commits": [
+    {
+     "sha": "682739066d3b74962febbdcdae85b5aa4d2e19f3",
+     "subject": "fix(audio): capture every selected-device audio binding the graph requires (GAP-032)",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/external-input.js",
+    "shaders/tests/test_external_input.js"
+   ]
+  },
+  {
+   "range": "682739066d3b74962febbdcdae85b5aa4d2e19f3..4f5e0d28bdc155700393c314e9a5aafcc4da91fd",
+   "coveredBy": "this candidate (observed window beyond the declared end 682739066d3b, audited so the true upstream tip is accounted for — linear continuation: bff453e9/8fec3d05/42843597 are docs-only (I18n ledger checkpoint), c4606d11 is docs-only (upstream’s own audit record of this pair), 4d47b3fd and 4f5e0d28 (GAP-032 follow-ups) touch only shaders/src/runtime/external-input.js (deviceless-capture and channel-shortfall warnings in the web AudioInputManager) plus shaders/tests/test_external_input.js; no effect definitions, GLSL shaders, or DSL-compiler files change, so no port code change)",
+   "commits": [
+    {
+     "sha": "bff453e919d5c0947d62db90e4a4a503a2100ebe",
+     "subject": "ledger(i18n): advance the I18n strings checkpoint through noisemaker 6827390 / noisedeck 69eadc5",
+     "shadersFiles": []
+    },
+    {
+     "sha": "8fec3d052e0b515f4e87a9e2176bfc1bc95d052f",
+     "subject": "ledger(i18n): cite the archived audit evidence for the 69eadc5 catch-up",
+     "shadersFiles": []
+    },
+    {
+     "sha": "42843597e8ae954c27be60075688d00a4064ad14",
+     "subject": "ledger(i18n): drop the job-local evidence inventory from the 69eadc5 log line",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c4606d1194c5fb0c6a3b27bdd542d54780da3919",
+     "subject": "docs(contract): audit the 73c15be..6827390 / 00340b1..07af4ffa pair",
+     "shadersFiles": []
+    },
+    {
+     "sha": "4d47b3fd826288077a58a95da3597dba59007fd9",
+     "subject": "fix(audio): warn when a captured audio device lacks the requested channel (GAP-032 follow-up)",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    },
+    {
+     "sha": "4f5e0d28bdc155700393c314e9a5aafcc4da91fd",
+     "subject": "fix(audio): warn for deviceless captures too; record 4d47b3f delivery evidence",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/external-input.js",
+    "shaders/tests/test_external_input.js"
+   ]
+  },
+  {
+   "range": "4d47b3fd826288077a58a95da3597dba59007fd9..4f5e0d28bdc155700393c314e9a5aafcc4da91fd",
+   "coveredBy": "this candidate (observed window beyond the declared end; subset of the 682739066d3b..4f5e0d28bdc1 audit above — 4f5e0d28 touches shaders/src/runtime/external-input.js + shaders/tests/test_external_input.js + docs/deps only)",
+   "commits": [
+    {
+     "sha": "4f5e0d28bdc155700393c314e9a5aafcc4da91fd",
+     "subject": "fix(audio): warn for deviceless captures too; record 4d47b3f delivery evidence",
+     "shadersFiles": [
+      "shaders/src/runtime/external-input.js",
+      "shaders/tests/test_external_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/runtime/external-input.js",
+    "shaders/tests/test_external_input.js"
    ]
   }
  ]
