@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "ed478159e5a31870c318be05ff755e533c754126",
+  "referenceCheckout": "cb22a05eff9afed99fcf22a482b944c26f43e814",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -1432,6 +1432,107 @@
    "shadersFilesChanged": [
     "shaders/tests/test_uniform_status.js",
     "shaders/tests/uniform-status.js"
+   ]
+  },
+  {
+   "range": "e24c844f8dada85551ab084f41db8944fbc176c8..cb22a05eff9afed99fcf22a482b944c26f43e814",
+   "coveredBy": "this candidate (tearoff job 718, force-push flagged — audited rather than assumed; merge-base verified: e24c844f8dad is an ancestor of cb22a05eff9a and the observed window lies inside this span. Delta beyond the already-audited e24c844f..ed478159 span: nine commits of which eight are docs-only (LEDGER.md, llms-full.txt, docs/, package.json scripts, scripts/run-js-tests.js); cb22a05e adds CanvasRenderer.registerPortableEffect() in shaders/src/renderer/canvas.js plus shaders/tests/test_portable_registration.js — a runtime, JS-realm host API for registering Portable definitions with pre-loaded glsl/wgsl source strings through the shared web canvas renderer (reserved-key prototype guards, user-namespace enforcement, bare-name preservation via unregisterEffect, starter derivation, enum merge). The Qt port mirrors only the reference load-time registration (EffectRegistry mirrors registerEffectWithRuntime; the lazy-load bare-name bootstrap is a documented non-mirror) and has no runtime user-effect registration surface, no JS realm, and no glsl/wgsl source-string pipeline; no effect definitions, GLSL shaders, or DSL-compiler files change (`git diff ed478159..cb22a05e -- shaders/src shaders/effects` contains exactly shaders/src/renderer/canvas.js), so no port code change)",
+   "commits": [
+    {
+     "sha": "e105344b4a2bf8c81f7c0fadce7447bd3a0d7369",
+     "subject": "docs: align the GAP-007 row's consequence column, pipeline.rst, and the resource-validation note with the recorded non-throwing diagnostics",
+     "shadersFiles": []
+    },
+    {
+     "sha": "16c1997cd5511824117bd98a13af49cafc9dba55",
+     "subject": "feat(tests): pin the harness --strict-uniforms gate through a mirrored resolveUniformGateStatus (GAP-010)",
+     "shadersFiles": [
+      "shaders/tests/test-harness.js",
+      "shaders/tests/test_uniform_status.js",
+      "shaders/tests/uniform-status.js"
+     ]
+    },
+    {
+     "sha": "ed478159e5a31870c318be05ff755e533c754126",
+     "subject": "fix(tests): classify unrecognized testUniformResponsiveness outer statuses as error (GAP-010)",
+     "shadersFiles": [
+      "shaders/tests/test_uniform_status.js",
+      "shaders/tests/uniform-status.js"
+     ]
+    },
+    {
+     "sha": "a02f73e71692f46d64aebda76bc0c699bfcad4fe",
+     "subject": "docs(ledger): advance i18n checkpoints to noisemaker ed47815 / noisedeck c674516",
+     "shadersFiles": []
+    },
+    {
+     "sha": "63cfbb7e5390c4c402dc63a2c73e0080d7db3066",
+     "subject": "docs: catch the Documentation checkpoint up through ed47815 (Tearoff item 698)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "89523ee222219161e93993bcd5d914ba7f7b38b3",
+     "subject": "docs(ledger): advance the Documentation checkpoint through 63cfbb7 (Tearoff item 704)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "58953caa0abb2071f0493d0021bfe2c6b5e029ac",
+     "subject": "docs(contract): audit the 4f5e0d2..ed47815 / 153eebd..79c2e01 pair; record pending DSL-batch delivery (Tearoff item 699)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "a2955ceea31c7e5aa55b76bbc57968a90ecdfe62",
+     "subject": "docs(ledger): cite exact-source CI and deployment evidence for the item 699 pass",
+     "shadersFiles": []
+    },
+    {
+     "sha": "c4b9e11bea27eb503c18f3a67c0eedd2cc2bcd3b",
+     "subject": "docs(ledger): bind the item 699 lint and vendor provenance to receipts and correct workflow attributions",
+     "shadersFiles": []
+    },
+    {
+     "sha": "b30d506f4eba3c7789d7619b57e8c77263c1bd98",
+     "subject": "docs(gap): record the GAP-011 exact-revision deployment blocker in the gap register",
+     "shadersFiles": []
+    },
+    {
+     "sha": "f5ca07cda9e4473485e6a6f6b34e553274e2659b",
+     "subject": "docs(contract): drop closed gaps from llms-full.txt",
+     "shadersFiles": []
+    },
+    {
+     "sha": "cb22a05eff9afed99fcf22a482b944c26f43e814",
+     "subject": "Register Portable effects through the shared canvas renderer",
+     "shadersFiles": [
+      "shaders/src/renderer/canvas.js",
+      "shaders/tests/test_portable_registration.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/renderer/canvas.js",
+    "shaders/tests/test-harness.js",
+    "shaders/tests/test_portable_registration.js",
+    "shaders/tests/test_uniform_status.js",
+    "shaders/tests/uniform-status.js"
+   ]
+  },
+  {
+   "range": "f5ca07cda9e4473485e6a6f6b34e553274e2659b..cb22a05eff9afed99fcf22a482b944c26f43e814",
+   "coveredBy": "this candidate (job 718 observed window; subset of the declared e24c844f..cb22a05e audit above — docs-only commits b30d506f..f5ca07cd plus cb22a05e's canvas.js Portable-registration API and its test)",
+   "commits": [
+    {
+     "sha": "cb22a05eff9afed99fcf22a482b944c26f43e814",
+     "subject": "Register Portable effects through the shared canvas renderer",
+     "shadersFiles": [
+      "shaders/src/renderer/canvas.js",
+      "shaders/tests/test_portable_registration.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/src/renderer/canvas.js",
+    "shaders/tests/test_portable_registration.js"
    ]
   }
  ]
