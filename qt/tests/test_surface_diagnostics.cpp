@@ -111,6 +111,17 @@ int main() {
         sink.seen = &seen;
         capture->messages.clear();
 
+        // A malformed percent string keeps the screen-size fallback and is
+        // surfaced like any other unknown form (GAP-007).
+        check(nm::resolveDimension(QJsonValue(QStringLiteral("bogus%")), 1000, QJsonObject(), &sink) == 1000,
+              "behavior unchanged: a malformed percent form falls back to screen size");
+        check(collector.records.size() == 1
+                  && collector.records.first().code == QStringLiteral("ERR_DIMENSION_FALLBACK")
+                  && collector.records.first().spec == QStringLiteral("bogus%"),
+              "a malformed percent form records a deduplicated ERR_DIMENSION_FALLBACK");
+        (void)nm::resolveDimension(QJsonValue(QStringLiteral("bogus%")), 1000, QJsonObject(), &sink);
+        check(collector.records.size() == 1, "the malformed percent fallback is deduplicated");
+
         QJsonObject paramSpec;
         paramSpec.insert(QStringLiteral("param"), QStringLiteral("x"));
         QJsonObject divideSpec;
@@ -145,8 +156,9 @@ int main() {
             }
         }
         check(allResolved, "recognized forms resolve as before");
-        check(collector.records.isEmpty(), "recognized forms and absent specs add no diagnostic");
-        check(capture->messages.isEmpty(), "recognized forms emit no warning");
+        check(collector.records.size() == 1,
+              "recognized forms and absent specs add no diagnostic beyond the malformed-percent record");
+        check(capture->messages.size() == 1, "recognized forms emit no warning");
 
         // 'input'/'resolution' resolve exactly like screen/auto (a0e9bbff).
         check(nm::resolveDimension(QJsonValue(QStringLiteral("input")), 1000) == 1000

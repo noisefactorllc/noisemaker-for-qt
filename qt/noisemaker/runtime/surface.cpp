@@ -83,7 +83,10 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             // A non-numeric percent string does not resolve upstream's
             // parseFloat path to a usable number; this port keeps the
             // historical screen-size fallback (reference/04 §9 rule 5)
-            // and now surfaces it like any other unknown form (GAP-007).
+            // and surfaces it like any other unknown form (GAP-007).
+            if (sink != nullptr) {
+                sink->recordDimensionFallback(s, screenSize);
+            }
         } else {
             // Unrecognized string (e.g. a bare "zoom") falls through to
             // the reference's own fallback (reference/04-resources-pipeline.md
