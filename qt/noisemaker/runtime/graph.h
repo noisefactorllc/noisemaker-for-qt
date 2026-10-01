@@ -61,6 +61,9 @@ struct Pass {
     QJsonValue repeat;       // int | uniform-name string | undefined
     QJsonValue drawBuffers;  // int | undefined; >1 signals MRT alongside outputs.size()>1
     QJsonValue count;        // int | "input"/"auto"/"screen" string | undefined (agent vertex count)
+    QJsonValue countUniform; // triangles: uniform-name string; the resolved vertex count comes
+                             // from pass.uniforms[name] then the globals (reference webgl2.js
+                             // executePass countUniform branch)
     QJsonValue blend;        // bool | [srcFactor, dstFactor] string pair | undefined
     QJsonValue conditions;   // {runIf?:[{uniform,equals}], skipIf?:[...]} | undefined — evaluated
                               // per frame against the pass's resolved uniforms (reference

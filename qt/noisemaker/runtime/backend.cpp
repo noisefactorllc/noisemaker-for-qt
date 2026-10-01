@@ -2256,6 +2256,28 @@ int Backend::resolveTriangleVertexCount(const Graph& graph, const Pass& pass) {
     // reference webgl2.js executePass triangles branch: `count || 3`, and
     // "auto"/"input" take the size of the mesh position texture
     // (inputs.meshPositions, else inputs.inputTex), falling back to 3.
+    // When countUniform is set, the count comes from pass.uniforms[name]
+    // then the globals, used only if it is a number > 0; the auto/input
+    // derivation is skipped entirely (`else if` in the reference).
+    if (pass.countUniform.isString() && !pass.countUniform.toString().isEmpty()) {
+        const QString name = pass.countUniform.toString();
+        QJsonValue uniformValue = pass.uniforms.value(name);
+        if (uniformValue.isUndefined() || uniformValue.isNull()) {
+            uniformValue = m_globalUniforms.value(name);
+        }
+        if (uniformValue.isDouble()) {
+            const double value = uniformValue.toDouble();
+            if (value > 0.0) {
+                if (value >= static_cast<double>(INT_MAX)) return INT_MAX;
+                return static_cast<int>(value);
+            }
+        }
+        // A non-positive or non-numeric lookup leaves the reference count
+        // untouched. A string count would reach drawArrays as NaN -> 0
+        // vertices there; the auto/input derivation is skipped, so mirror
+        // that as 0 instead of throwing.
+        if (pass.count.isString()) return 0;
+    }
     if (pass.count.isDouble()) {
         const double count = pass.count.toDouble();
         if (count == 0.0) return 3;

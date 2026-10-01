@@ -625,15 +625,15 @@ These entries record missing qualification. They do not infer implementation def
 ### GAP-031: triangle passes ignore countUniform
 
 - Status: open. Priority: P3. Category: contract.
-- Affected scope: nm::Graph (graph.cpp does not parse countUniform); the Backend triangles count.
+- Affected scope: the render fixture for the first definition that uses countUniform. The runtime port is done: qt/noisemaker/runtime/graph.{h,cpp} parse countUniform, and qt/noisemaker/runtime/backend.cpp resolveTriangleVertexCount ports the webgl2.js executePass countUniform branch (pass.uniforms[name], then the globals, used only when it is a number > 0; the auto/input derivation is skipped while countUniform is set, per the reference's else-if).
 - Expected behavior: A triangles pass with countUniform draws that uniform's positive value (webgl2.js executePass).
-- Observed behavior: The expander emits countUniform, but the runtime ignores it and uses count. No definition declares countUniform at c9ee8a04.
-- Evidence: grep -rn countUniform shaders/effects in the reference returns nothing. qt/noisemaker/runtime/graph.cpp has no countUniform field.
-- Next action: None until a definition uses it. Then parse it and port the lookup (pass uniforms, then globals).
-- Dependencies: A reference definition with countUniform.
+- Observed behavior: Fixed in the runtime (see scope above). Unit-tested in test_graph_load (field parses, absent stays undefined) and test_mesh_render (pass-uniform override, non-positive lookup ignored, global-uniform fallback; red before the fix, green after at 0 failures). No definition declares countUniform at reference ed478159.
+- Evidence: No reference definition uses countUniform (grep -rln countUniform shaders/effects at ed478159 exits 1; only runtime, backends, validator, and test files match — /workspace/evidence/gap031-20261001/blocker-recheck.txt). check_graph 388/388 at that revision; ctest 27/27 in the container under the Xvfb llvmpipe session with the extracted font dirs (same recipe as the 2026-09-30 STATUS.md audit).
+- Next action: Mint the render fixture when a definition uses countUniform.
+- Dependencies: A reference definition with countUniform (still unmet at ed478159).
 - Acceptance criteria: A render fixture for the first such definition passes at strict tolerance.
 - Required checks: check_graph and parity/run.sh on that fixture.
-- Last verification: 2026-09-24.
+- Last verification: 2026-10-01, reference ed478159 (runtime port, tests, and blocker re-check; fixture still pending the dependency).
 
 ### GAP-032: a wrong data root reports every effect as unknown
 
@@ -844,7 +844,7 @@ Subsequent historical actions remain dependent on that evidence. No implementati
 1. Done: GAP-001's NEAR triage (all 45 are macOS compiler effects) and the full-suite llvmpipe job; GAP-038's background overlay trace; GAP-039's function values; GAP-041's batch-mint controls; GAP-042 (a macOS compiler effect); GAP-043's NaN binding; GAP-027's generic families; GAP-044 and GAP-045 (ui-* and absent families).
 2. GAP-002: the Windows GUI self-checks on a desktop session (the rest of the installed workflow runs in CI on three OSes).
 3. Retained CI evidence for the reopened entries (017, 022, 025, 026, 027, 034, 035, 037, 038, 041): the qualification workflow in progress. GAP-004 left this list on 2026-09-26: its required embedding workflow was re-run with fresh raw evidence (parity/evidence/gap004-MANIFEST.txt) and the entry is closed. GAP-022 left this list on 2026-09-26: the exact-source CI leg passed (run 36274290703) and the entry is closed.
-4. Waiting: GAP-040 is a reference canvas property. GAP-031 waits for a definition that uses countUniform. GAP-046 waits for the implementation job.
+4. Waiting: GAP-040 is a reference canvas property. GAP-031's runtime lookup is ported and unit-tested; it waits for a definition that uses countUniform to mint its render fixture. GAP-046 waits for the implementation job.
 
 Record measured results. Close entries only when their acceptance criteria pass.
 

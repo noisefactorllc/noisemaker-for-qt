@@ -147,6 +147,41 @@ void testTriangles(nm::EffectRegistry& registry) {
     check(!isBackground(center) && qRed(center) > 170, "releaseGl() + setup(): the loaded OBJ is uploaded again");
 }
 
+// GAP-031: a triangles pass's countUniform overrides count with the
+// resolved uniform (pass uniforms first, then the globals), used only when
+// it is a number > 0 (reference webgl2.js executePass countUniform branch).
+// Geometry: the first triangle is far and lit, the second near and unlit,
+// so drawing both leaves the centre dark and drawing only the first leaves
+// it bright.
+void testCountUniform(nm::EffectRegistry& registry) {
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, QSize(64, 64));
+    nm::Graph graph = nm::compileGraph(
+        QStringLiteral("search synth, render\nnoise(seed: 1).meshRender().write(o0)\nrender(o0)"), registry);
+    nm::Pass* triangles = nullptr;
+    for (nm::Pass& pass : graph.passes) {
+        if (pass.drawMode == QStringLiteral("triangles")) triangles = &pass;
+    }
+    check(triangles != nullptr, "countUniform: the meshRender pass is a triangles pass");
+
+    backend.loadOBJFromString(triangle(1.0, 1, kLit, false) + triangle(-1.0, 4, kUnlit, false));
+    check(qRed(renderCenter(backend, graph)) < 170, "countUniform baseline: both triangles drawn, near unlit wins");
+
+    triangles->countUniform = QStringLiteral("meshCount");
+    triangles->uniforms.insert(QStringLiteral("meshCount"), 3);
+    check(qRed(renderCenter(backend, graph)) > 170,
+          "countUniform: pass uniform 3 draws only the first (far lit) triangle");
+
+    triangles->uniforms.insert(QStringLiteral("meshCount"), 0);
+    check(qRed(renderCenter(backend, graph)) < 170,
+          "countUniform: a non-positive lookup is ignored, the derived count draws both");
+
+    triangles->uniforms.remove(QStringLiteral("meshCount"));
+    backend.setUniform(graph, QStringLiteral("meshCount"), QJsonValue(3));
+    check(qRed(renderCenter(backend, graph)) > 170,
+          "countUniform: the lookup falls back to the global uniform");
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -157,6 +192,7 @@ int main(int argc, char** argv) {
     testBeforeSetup();
     testExternalMeshes(registry);
     testTriangles(registry);
+    testCountUniform(registry);
 
     std::printf("%d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

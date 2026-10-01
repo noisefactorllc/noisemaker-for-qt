@@ -46,6 +46,7 @@ const char* const kMiniGraph = R"JSON(
       "outputs": { "color": "node_0_out" },
       "uniforms": { "color": [0.5, 0.5, 0.5], "alpha": 0.6 },
       "uniformSpecs": { "alpha": { "min": 0, "max": 1 } },
+      "countUniform": "mode",
       "effectKey": "synth.solid",
       "nodeId": "node_0",
       "stepIndex": 0,
@@ -109,6 +110,7 @@ int main() {
               "pass[0].uniforms parsed (scalar)");
         check(effectPass.uniforms.value(QStringLiteral("color")).toArray().size() == 3,
               "pass[0].uniforms parsed (array)");
+        check(effectPass.countUniform.toString() == QStringLiteral("mode"), "pass[0].countUniform parsed");
         check(effectPass.defines.isEmpty(), "pass[0].defines is empty");
 
         const nm::Pass& blitPass = graph.passes.at(1);
@@ -121,6 +123,7 @@ int main() {
               "pass[1].inputs.src parsed");
         check(blitPass.outputs.value(QStringLiteral("color")).toString() == QStringLiteral("global_o0"),
               "pass[1].outputs.color parsed");
+        check(blitPass.countUniform.isUndefined(), "pass[1].countUniform defaults undefined");
 
         check(graph.allocations.value(QStringLiteral("node_0_out")) == QStringLiteral("phys_0"),
               "graph.allocations parsed");
