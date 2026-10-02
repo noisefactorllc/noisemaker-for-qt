@@ -257,7 +257,7 @@ for name in expected:
         continue
     # The timed fixtures are graded as a sample series (no single-frame
     # candidate); the sweep ledger records their worst-sample metrics.
-    timed = verdict == 'TIMED'
+    timed = verdict == 'TIMED' or bool((row or {}).get('samples'))
     if row is None or (not timed and not os.path.exists(cand)):
         counts['missing'] += 1
         failures.append(name)
@@ -269,6 +269,15 @@ for name in expected:
         counts['exact'] += 1
         counts['executed'] += 1
         continue
+    if timed:
+        sample_pairs = [(os.path.join(root, s['golden']), os.path.join(root, s['candidate']))
+                        for s in row['samples']]
+        if all(os.path.getsize(g) > 0 and os.path.getsize(c) > 0
+               and subprocess.run(['cmp', '-s', g, c]).returncode == 0
+               for g, c in sample_pairs):
+            counts['exact'] += 1
+            counts['executed'] += 1
+            continue
     metrics = None
     if not timed and os.path.exists(report):
         r = json.load(open(report))

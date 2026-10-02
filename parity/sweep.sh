@@ -468,9 +468,9 @@ if [ "$batch_rc" -ne 0 ] && [ "$fail" -eq 0 ]; then
 	echo "[FAIL] batched candidate render exited $batch_rc"
 	fail=$((fail + 1)); failed="$failed batch-render"
 fi
-SCOPE_ARGS=""
-if [ -n "$(echo $CASES)" ]; then SCOPE_ARGS="--scope $CASES"; fi
-if ! python3 "$ROOT/parity/write-ledger.py" --root "$ROOT" --results "$RESULTS" --output "$LEDGER_PATH" ${SCOPE_ARGS:+$SCOPE_ARGS}; then
+SCOPE_ARGS=()
+[ -n "$(echo $CASES)" ] && SCOPE_ARGS=(--scope "$CASES")
+if ! python3 "$ROOT/parity/write-ledger.py" --root "$ROOT" --results "$RESULTS" --output "$LEDGER_PATH" "${SCOPE_ARGS[@]}"; then
 	echo "[FAIL] sweep ledger contains rejecting or incomplete evidence: $LEDGER_PATH"
 	if [ "$fail" -eq 0 ]; then fail=$((fail + 1)); failed="$failed ledger"; fi
 fi

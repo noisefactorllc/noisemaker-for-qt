@@ -465,6 +465,53 @@ class HarnessContractTests(unittest.TestCase):
         ledger = json.loads((parity / "ledger.json").read_text())
         self.assertEqual([row["program"] for row in ledger], ["scopedFailure"])
 
+    def test_sweep_scope_args_accept_multiple_case_ids(self):
+        # The gap-record path (scripts/parity-summary) passes several case ids;
+        # write-ledger.py takes them as one --scope value, not as words.
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        for helper in ("sweep.sh", "write-ledger.py", "make-batch-manifest.py"):
+            shutil.copy2(REPO / "parity" / helper, parity / helper)
+        for name in ("scopedOk1", "scopedOk2"):
+            (parity / "programs" / f"{name}.dsl").write_text(
+                "noise().chrome().write(o0)\n"
+            )
+        (parity / "programs" / "unscopedOk.dsl").write_text(
+            "noise().chrome().write(o0)\n"
+        )
+        for name in ("scopedOk1", "scopedOk2"):
+            (parity / "out" / f"{name}.golden.png").touch()
+            (parity / "out" / f"{name}.report.json").write_text(
+                '{"name": "%s", "passed": true, "tolerance": 2.001, '
+                '"ssim_min": 0.98, "max_abs_diff": 0.0, "ssim": 1.0, '
+                '"mean_abs_diff": 0.0}\n' % name
+            )
+        runner = parity / "run.sh"
+        runner.write_text(
+            "#!/usr/bin/env bash\n"
+            "echo '[PASS] scoped case: max 0'\n"
+            "exit 0\n"
+        )
+        runner.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(parity / "sweep.sh"), "scopedOk1", "scopedOk2"],
+            env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("FAILED", result.stdout)
+        self.assertIn("scopedOk1", result.stdout)
+        self.assertIn("scopedOk2", result.stdout)
+        self.assertNotIn("unscopedOk", result.stdout)
+        ledger = json.loads((parity / "ledger.json").read_text())
+        self.assertEqual(
+            [row["program"] for row in ledger], ["scopedOk1", "scopedOk2"]
+        )
+
     def test_write_ledger_scope_rejects_ids_with_no_dsl_on_disk(self):
         parity = self.tmp / "parity"
         (parity / "programs").mkdir(parents=True)
