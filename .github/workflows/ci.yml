@@ -69,7 +69,7 @@ env:
   # pal1000/mesa-dist-win release-msvc archive (llvmpipe opengl32.dll).
   MESA_WIN_URL: https://github.com/pal1000/mesa-dist-win/releases/download/26.2.1/mesa3d-26.2.1-release-msvc.7z
   MESA_WIN_SHA256: 78a0305844074535e73dfb6dcb5eb2a65f1d9dc445102e1f4c3c3e97dace19bf
-  SMOKE_FIXTURES: "adjust blendMode cell feedback meshLoaderDefault meshRenderCustom"
+  SMOKE_FIXTURES: "adjust blendMode cell feedback meshLoaderDefault meshRenderCustom countUniform"
 
 jobs:
   build-test:
@@ -445,8 +445,10 @@ jobs:
           export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
           mkdir -p parity/out
           for name in $SMOKE_FIXTURES; do
+            program="parity/programs/$name.dsl"
+            if [ -f "parity/portable/$name.dsl" ]; then program="parity/portable/$name.dsl"; fi
             xvfb-run -a -s "-screen 0 1280x1024x24" \
-              node parity/export-and-render.mjs "parity/programs/$name.dsl" parity/out --size 256 --time 0.25 --backend webgl2 \
+              node parity/export-and-render.mjs "$program" parity/out --size 256 --time 0.25 --backend webgl2 \
               2>&1 | tee "$RUNNER_TEMP/mint-$name.log"
             grep -q "golden WebGL renderer: ANGLE (Mesa, llvmpipe" "$RUNNER_TEMP/mint-$name.log" \
               || { echo "$name: the golden was not rendered on Mesa llvmpipe"; exit 1; }

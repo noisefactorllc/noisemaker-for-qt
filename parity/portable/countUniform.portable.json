@@ -1,0 +1,26 @@
+{
+  "name": "Count Uniform Probe",
+  "namespace": "user",
+  "func": "countProbe",
+  "globals": {
+    "drawCount": { "type": "int", "default": 3, "uniform": "drawCount" }
+  },
+  "passes": [
+    {
+      "name": "main",
+      "program": "main",
+      "drawMode": "triangles",
+      "count": 6,
+      "countUniform": "drawCount",
+      "uniforms": { "drawCount": "drawCount" },
+      "inputs": {},
+      "outputs": { "fragColor": "outputTex" }
+    }
+  ],
+  "shaders": {
+    "main": {
+      "glsl": "#version 300 es\nprecision highp float;\nout vec4 fragColor;\nvoid main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }",
+      "vertex": "#version 300 es\nprecision highp float;\nconst vec2 p[6] = vec2[6](vec2(-0.9,-0.8),vec2(-0.1,-0.8),vec2(-0.5,0.8),vec2(0.1,-0.8),vec2(0.9,-0.8),vec2(0.5,0.8));\nvoid main() { gl_Position = vec4(p[gl_VertexID], 0.0, 1.0); }"
+    }
+  }
+}

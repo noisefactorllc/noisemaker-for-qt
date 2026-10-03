@@ -443,7 +443,9 @@ async function main () {
 
   // ---- 1. Export the normalized graph JSON (no browser needed) -------------
   const { exportGraph } = await import(pathToFileURL(EXPORT_GRAPH).href)
-  const graph = await exportGraph(dsl)
+  const portablePath = opts.programPath.replace(/\.dsl$/, '.portable.json')
+  const portableDefinition = existsSync(portablePath) ? JSON.parse(readFileSync(portablePath, 'utf8')) : null
+  const graph = await exportGraph(dsl, { portableDefinition })
   const graphPath = join(opts.outDir, `${programName}.graph.json`)
   writeFileSync(graphPath, JSON.stringify(graph, null, 2) + '\n')
   process.stderr.write(`[parity] wrote ${graphPath}\n`)
@@ -490,6 +492,11 @@ async function main () {
     await page.waitForFunction(() => !!window.__noisemakerRenderingPipeline &&
       !!document.getElementById('dsl-editor') && !!document.getElementById('dsl-run-btn'),
     null, { timeout: STATUS_TIMEOUT })
+    if (portableDefinition) {
+      await page.evaluate(async definition => {
+        await window.__noisemakerCanvasRenderer.registerPortableEffect(definition)
+      }, portableDefinition)
+    }
     await logGoldenRenderer(page)
 
     // Pause and size the demo BEFORE loading our DSL (GAP-026). A resize runs

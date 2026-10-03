@@ -168,7 +168,7 @@ async function bootstrapReference () {
   // Register all collected effect choices as enum members (one async merge).
   if (mergeIntoEnums && Object.keys(allChoices).length) await mergeIntoEnums(allChoices)
 
-  return { compileGraph, defineMap }
+  return { compileGraph, defineMap, CanvasRenderer: mod.CanvasRenderer }
 }
 
 // ---------------------------------------------------------------------------
@@ -322,8 +322,9 @@ export function normalizeGraph (graph, defineMap) {
   }
 }
 
-export async function exportGraph (dsl) {
-  const { compileGraph, defineMap } = await bootstrapReference()
+export async function exportGraph (dsl, { portableDefinition } = {}) {
+  const { compileGraph, defineMap, CanvasRenderer } = await bootstrapReference()
+  if (portableDefinition) await new CanvasRenderer().registerPortableEffect(portableDefinition)
   const graph = compileGraph(dsl)
   return normalizeGraph(graph, defineMap)
 }

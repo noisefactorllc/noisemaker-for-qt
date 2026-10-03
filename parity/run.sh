@@ -29,6 +29,30 @@ fi
 GRAPH="$ROOT/parity/out/$NAME.graph.json"
 GOLD="$ROOT/parity/out/$NAME.golden.png"
 CAND="$ROOT/parity/out/$NAME.candidate.png"
+# Portable parity definitions are test fixtures. Give nm-render a private copy
+# of its data root with their shaders, so they are never installed as effects.
+PORTABLE="$ROOT/parity/portable/$NAME.portable.json"
+if [ -f "$PORTABLE" ]; then
+	DATA_ROOT="$(mktemp -d)"
+	trap 'rm -rf "$DATA_ROOT"' EXIT
+	cp -R "$ROOT/qt/noisemaker/." "$DATA_ROOT/"
+	node - "$PORTABLE" "$DATA_ROOT" <<'NODE'
+const fs = require('node:fs')
+const path = require('node:path')
+const definition = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
+const valid = value => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9]*$/.test(value)
+if (!valid(definition.namespace) || !valid(definition.func)) throw Error('invalid portable fixture name')
+for (const [program, shaders] of Object.entries(definition.shaders)) {
+  if (!valid(program)) throw Error('invalid portable program name')
+  const dir = path.join(process.argv[3], 'shaders', 'effects', definition.namespace, definition.func)
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, program + '.frag'), shaders.glsl)
+  if (shaders.vertex) fs.writeFileSync(path.join(dir, program + '.vert'), shaders.vertex)
+}
+NODE
+else
+	DATA_ROOT="${NOISEMAKER_QT_DATA_ROOT:-}"
+fi
 # Optional mesh0 input: the fixture's sidecar OBJ (the golden harness loads
 # the same file; see meshPlan in export-and-render.mjs).
 MESH="$ROOT/parity/programs/$NAME.obj"
@@ -68,7 +92,7 @@ fi
 if [ "${SKIP_RENDER:-0}" != "1" ]; then
 	rm -f "$CAND"
 	set +e
-	render_log=$("$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" ${MESH_ARGS[@]+"${MESH_ARGS[@]}"} ${EXTERNAL_ARGS[@]+"${EXTERNAL_ARGS[@]}"} 2>&1)
+	render_log=$(NOISEMAKER_QT_DATA_ROOT="$DATA_ROOT" "$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" ${MESH_ARGS[@]+"${MESH_ARGS[@]}"} ${EXTERNAL_ARGS[@]+"${EXTERNAL_ARGS[@]}"} 2>&1)
 	render_rc=$?
 	set -e
 	printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
