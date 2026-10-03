@@ -79,7 +79,11 @@ the unmodified reference.
   "nodeId": "node_0",
   "stepIndex": 0,
   "inheritsVolumeSize": false,
-  "scopedParams": null             // { origParam: scopedParam } when present
+  "scopedParams": null,             // { origParam: scopedParam } when present
+  "uniformAliases": null            // { shaderUniform: globalName } when the pass feeds a
+                                    // shader uniform from a differently named global
+                                    // (reference bd773801); Backend::applyStepParameterValues
+                                    // writes a changed parameter to these uniforms too
 }
 ```
 

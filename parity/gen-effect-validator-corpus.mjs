@@ -184,6 +184,10 @@ add('enabledBy has no eq', (d) => setUi(d, 'flag', 'enabledBy', { param: 'mode' 
 add('enabledBy has an unknown container', (d) => setUi(d, 'flag', 'enabledBy', { and: 'x' }))
 add('ui control is unknown', (d) => setUi(d, 'mode', 'control', 'dropdownx'))
 add('ui label is a number', (d) => setUi(d, 'mode', 'label', 7))
+// --- resetOnChange (reference 3c1e47e5: params that only take effect when
+// the effect's state is reseeded) ---
+add('ui resetOnChange is a boolean', (d) => setUi(d, 'mode', 'resetOnChange', true))
+add('ui resetOnChange is a string', (d) => setUi(d, 'mode', 'resetOnChange', 'yes'))
 
 // --- global spec type and primitive constraints ---
 add('float type is vec9', (d) => setGlobal(d, 'amount', 'type', 'vec9'))
@@ -372,6 +376,16 @@ const rangeAuditDoc = {
             { coveredBy: 'this candidate (tearoff job 718, force-push flagged — audited rather than assumed; merge-base verified: e24c844f8dad is an ancestor of cb22a05eff9a and the observed window lies inside this span. Delta beyond the already-audited e24c844f..ed478159 span: nine commits of which eight are docs-only (LEDGER.md, llms-full.txt, docs/, package.json scripts, scripts/run-js-tests.js); cb22a05e adds CanvasRenderer.registerPortableEffect() in shaders/src/renderer/canvas.js plus shaders/tests/test_portable_registration.js — a runtime, JS-realm host API for registering Portable definitions with pre-loaded glsl/wgsl source strings through the shared web canvas renderer (reserved-key prototype guards, user-namespace enforcement, bare-name preservation via unregisterEffect, starter derivation, enum merge). The Qt port mirrors only the reference load-time registration (EffectRegistry mirrors registerEffectWithRuntime; the lazy-load bare-name bootstrap is a documented non-mirror) and has no runtime user-effect registration surface, no JS realm, and no glsl/wgsl source-string pipeline; no effect definitions, GLSL shaders, or DSL-compiler files change (`git diff ed478159..cb22a05e -- shaders/src shaders/effects` contains exactly shaders/src/renderer/canvas.js), so no port code change)' }),
         rangeAudit('f5ca07cda9e4473485e6a6f6b34e553274e2659b', 'cb22a05eff9afed99fcf22a482b944c26f43e814',
             { coveredBy: 'this candidate (job 718 observed window; subset of the declared e24c844f..cb22a05e audit above — docs-only commits b30d506f..f5ca07cd plus cb22a05e\'s canvas.js Portable-registration API and its test)' }),
+        rangeAudit('cb22a05eff9afed99fcf22a482b944c26f43e814', 'e30f09e62704bcce0abaf07a42ab1111ddadbb84',
+            { coveredBy: 'this candidate (tearoff job 750, force-push flagged — audited rather than assumed; merge-base verified: e24c844f8dad is an ancestor of e30f09e62704 and all four observed windows lie inside this span; the published cb22a05e sync already carries everything before cb22a05e. Delta beyond the published cb22a05eff9a audit: 1fd89348 docs-only; 29e76468 (validator.js isOwnChoice) and bd773801 (expander.js uniformAliases + new runtime/uniform-aliases.js) plus 71d805eb/109c00ac (canvas.js alias writes) are PORTED to the Qt compiler/runtime (qt/noisemaker/compiler/validator.cpp, expander.{h,cpp}, dsl_compiler.cpp, tools/export-graph.mjs, runtime/graph.{h,cpp}, backend.cpp); 3c1e47e5 (effect-validator.js/effect.js resetOnChange ui flag) is PORTED to qt/noisemaker/compiler/effect_validator.cpp and the two definition ui flags (pointsEmit layout/seed, cellularAutomata3d density) regenerate through the convert gates; 41d1ead1 and e30f09e6 touch shaders/tests vendor guards only; 058ca32e re-attests three reference parity-attestation.json source hashes (reference-realm attestation records this repo does not carry)' }),
+        rangeAudit('1fd893483c83f7602416cf8e9c48c9605a8f202c', '41d1ead14b0ea58c5737117a6fe5af3646f0ee38',
+            { coveredBy: 'this candidate (job 750 observed window — 41d1ead1 touches shaders/tests/test_passthrough_input.js only)' }),
+        rangeAudit('41d1ead14b0ea58c5737117a6fe5af3646f0ee38', '109c00acb70959a89ef168e370192ee1519d91d7',
+            { coveredBy: 'this candidate (job 750 observed window — the five ported commits: 29e76468, bd773801, 3c1e47e5, 71d805eb, 109c00ac; see the declared cb22a05eff9a..e30f09e62704 audit above)' }),
+        rangeAudit('109c00acb70959a89ef168e370192ee1519d91d7', '058ca32ef7a9692a09a949e0c8535c081e841017',
+            { coveredBy: 'this candidate (job 750 observed window — 058ca32e re-attests the sourceHash of three reference parity-attestation.json records after the pointsEmit definition change; reference-realm attestation records with no Qt equivalent)' }),
+        rangeAudit('058ca32ef7a9692a09a949e0c8535c081e841017', 'e30f09e62704bcce0abaf07a42ab1111ddadbb84',
+            { coveredBy: 'this candidate (job 750 observed window — e30f09e6 touches shaders/tests/test_frame_readback.js only)' }),
     ],
 }
 

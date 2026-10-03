@@ -93,6 +93,7 @@ Pass parsePass(const QJsonValue& value, int index) {
     }
     pass.inheritsVolumeSize = obj.value(QStringLiteral("inheritsVolumeSize")).toBool(false);
     pass.scopedParams = obj.value(QStringLiteral("scopedParams")).toObject();
+    pass.uniformAliases = obj.value(QStringLiteral("uniformAliases")).toObject();
     return pass;
 }
 

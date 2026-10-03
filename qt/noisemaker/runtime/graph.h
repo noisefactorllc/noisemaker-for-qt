@@ -71,6 +71,13 @@ struct Pass {
     int stepIndex = -1;      // DSL step (node) index; -1 when the graph omits it (final-chain blit)
     bool inheritsVolumeSize = false; // consumer pass: volumeSize comes from the upstream emitter
     QJsonObject scopedParams; // uniform -> chain/node-scoped uniform name (e.g. zoom -> zoom_chain_0)
+    // Pass-level uniform aliases (reference bd773801 expander.js uniformAliases,
+    // runtime/uniform-aliases.js): { shaderUniform: globalName } recorded when a
+    // pass definition feeds a shader uniform from a differently named global
+    // (`uniforms: { layoutMode: "layout" }`). applyStepParameterValues writes a
+    // changed parameter to these aliased uniforms too, so a live change reaches
+    // the shader exactly as a recompile would.
+    QJsonObject uniformAliases; // shaderUniform -> globalName
 };
 
 // The compiled render graph consumed by nm::Backend:

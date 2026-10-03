@@ -7,7 +7,7 @@
 //     (SHADERS, DEFINITIONS, EFFECTS_UI — the effect-catalog parity gates)
 //   - the parity unit suites (test_artistic_matrix, test_harness_contract)
 // The C++/ctest layer needs a Qt + GL 4.1 toolchain and is not attempted
-// here; parity/pytest (54 + 10 subtests) covers the same unit cases via
+// here; parity/pytest (57 + 10 subtests) covers the same unit cases via
 // python3 -m unittest so no pip install is required.
 // Exits nonzero on any failure.
 
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 // Content pin from STATUS.md (the last incrementally synced / audited reference).
-const PIN = '73c15be00d6888f4b5d2835d8e242ee9e840df45'
+const PIN = 'e30f09e62704bcce0abaf07a42ab1111ddadbb84'
 
 function run(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts })

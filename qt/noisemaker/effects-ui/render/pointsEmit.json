@@ -16,13 +16,15 @@
     "layout": {
       "ui": {
         "label": "layout",
-        "control": "dropdown"
+        "control": "dropdown",
+        "resetOnChange": true
       }
     },
     "seed": {
       "ui": {
         "label": "seed",
-        "control": "slider"
+        "control": "slider",
+        "resetOnChange": true
       }
     },
     "attrition": {

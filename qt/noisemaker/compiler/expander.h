@@ -133,6 +133,14 @@ struct ExpandedPass {
     bool hasUniformSpecs = false;
 
     QJsonObject scopedParams;  // emitted only if non-empty
+
+    // Pass-level uniform aliases (reference bd773801, runtime/uniform-aliases.js):
+    // `{ shaderUniform: globalName }` recorded when a pass definition feeds a
+    // shader uniform from a differently named global
+    // (`uniforms: { layoutMode: "layout" }`). Emitted only if non-empty; the
+    // runtime writes a changed parameter to these aliased uniforms too
+    // (Backend::applyStepParameterValues).
+    QJsonObject uniformAliases;  // emitted only if non-empty
 };
 
 // Full expand() result (reference/03 §1: `{ passes, errors, programs,

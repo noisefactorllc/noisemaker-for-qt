@@ -427,6 +427,65 @@ int main() {
         }
     }
 
+    // ======================================================================
+    // Pass-level uniform aliases (reference bd773801 expander.js +
+    // runtime/uniform-aliases.js): a pass definition that feeds a shader
+    // uniform from a differently named global (`uniforms: { layoutMode:
+    // "layout" }`) records `{ shaderUniform: globalName }` on the expanded
+    // pass; a pass that maps a global under its own name (attrition) and
+    // blit passes record nothing. The normalized graph JSON carries the
+    // mapping through (null when empty) for the runtime.
+    // ======================================================================
+    {
+        const QString src = QStringLiteral(
+            "search synth, filter, render, points, mixer\n"
+            "perlin().subchain(name: \"emit\", id: \"e1\") {\n"
+            "  .pointsEmit(stateSize: x256)\n"
+            "  .pointsRender()\n"
+            "}\n"
+            ".write(o0)\n"
+            "render(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "pointsEmit subchain: no expand errors");
+        const nm::ExpandedPass* aliasPass = nullptr;
+        const nm::ExpandedPass* selfPass = nullptr;
+        for (const nm::ExpandedPass& p : r.passes) {
+            if (p.isBlit) {
+                check(p.uniformAliases.isEmpty(), "pointsEmit subchain: blit pass records no uniform aliases");
+                continue;
+            }
+            if (p.uniforms.contains(QStringLiteral("layoutMode"))) aliasPass = &p;
+            if (p.uniforms.contains(QStringLiteral("attrition"))) selfPass = &p;
+        }
+        check(aliasPass != nullptr && selfPass != nullptr,
+              "pointsEmit subchain: the init pass (layoutMode) and the step pass (attrition) both exist");
+        if (aliasPass) {
+            check(aliasPass->uniformAliases.value(QStringLiteral("layoutMode")).toString() == QStringLiteral("layout"),
+                  "the renamed init-pass uniform records uniformAliases { layoutMode: layout }");
+            check(!aliasPass->uniformAliases.contains(QStringLiteral("attrition"))
+                      && !aliasPass->uniformAliases.contains(QStringLiteral("resetState")),
+                  "self-mapped pass uniforms record no alias entry");
+        }
+        if (selfPass) {
+            check(selfPass->uniformAliases.isEmpty(),
+                  "a pass whose uniforms all map globals under their own name records no aliases");
+        }
+        const QJsonObject graph = nm::compileGraphJson(src, registry());
+        const QJsonArray graphPasses = graph.value(QStringLiteral("passes")).toArray();
+        bool sawAliasField = false;
+        for (const QJsonValue& pv : graphPasses) {
+            const QJsonObject gp = pv.toObject();
+            const QJsonValue ua = gp.value(QStringLiteral("uniformAliases"));
+            if (gp.value(QStringLiteral("uniforms")).toObject().contains(QStringLiteral("layoutMode"))) {
+                sawAliasField = ua.isObject()
+                    && ua.toObject().value(QStringLiteral("layoutMode")).toString() == QStringLiteral("layout");
+            } else {
+                check(ua.isNull(), "graph JSON: a pass without aliases serializes uniformAliases null");
+            }
+        }
+        check(sawAliasField, "graph JSON: the aliased pass serializes uniformAliases { layoutMode: layout }");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_expander)\n");
         return 0;

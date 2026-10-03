@@ -250,7 +250,10 @@ public:
     // param resolves through its effect globals spec (uniform name,
     // convertParameterForUniform) and overwrites pass.uniforms. It skips
     // automation values, surface params, colorModeUniform-controlled
-    // uniforms, uniforms the pass does not carry, and inherited volumeSize.
+    // uniforms, uniforms the pass does not carry (unless the pass carries the
+    // param under a differently named aliased shader uniform — reference
+    // bd773801 uniform-aliases.js, which gets the write), and inherited
+    // volumeSize.
     // It propagates to scopedParams names across the chain and expands
     // `palette` params. Returns the number of pass uniform writes. Feedback
     // and ping-pong surfaces persist because they are keyed by texture id.

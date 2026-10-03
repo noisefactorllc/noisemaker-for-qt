@@ -288,6 +288,10 @@ function normalizePass (pass, programs, defineMap) {
   if (pass.stepIndex !== undefined) out.stepIndex = pass.stepIndex
   if (pass.inheritsVolumeSize !== undefined) out.inheritsVolumeSize = pass.inheritsVolumeSize
   out.scopedParams = pass.scopedParams || null
+  // Pass-level uniform aliases (reference bd773801 expander.js uniformAliases):
+  // { shaderUniform: globalName } for a pass fed from a differently named
+  // global; the runtime writes a changed parameter to these uniforms too.
+  out.uniformAliases = pass.uniformAliases || null
 
   return out
 }

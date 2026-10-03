@@ -348,6 +348,12 @@ private:
     static QString surfaceName(const QJsonValue& node);
 
     // -------------------------------------------------- argument resolution
+    // Reference 29e76468 validator.js isOwnChoice: a bare name the parameter
+    // defines itself, as an inline choice or a member of its enum, means that
+    // value even where it shadows a state value such as `seed` or `a`. The
+    // unparser writes choices by bare name, so `geometry: seed` and
+    // `channel: a` must read back as written.
+    bool isOwnChoice(const ParamDef& def, const QString& name);
     QJsonValue resolveArgs(QJsonArray& chain, const OpSpec& spec, const QJsonObject& call, const QString& opName,
                             const QJsonObject& original, QJsonObject& args, const QString& writeName);
     void resolveSurfaceArg(QJsonArray& chain, const ParamDef& def, const QJsonValue& node, const QJsonObject& call,
@@ -1619,6 +1625,17 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
 // Falls back to 0 on total failure; NEVER pushes a diagnostic for an
 // unresolved value (verified against the oracle:
 // `filter.channel(channel: bogus)` -> channel=0, diagnostics:[]).
+bool Validator::isOwnChoice(const ParamDef& def, const QString& name) {
+    // Reference 29e76468 validator.js isOwnChoice: an inline choice whose
+    // value is a number, or a member of the param's own enum (enumPath or
+    // enum; ParamDef.enumPath already merges `spec.enum || spec.enumPath`),
+    // resolves as that choice even when the name shadows a state value.
+    if (def.hasChoices() && def.choicesObject().value(name).isDouble()) return true;
+    if (!def.hasEnumPath()) return false;
+    const QJsonValue resolved = resolveEnum(applyEnumPrefix(QStringList{name}, normalizeMemberPath(def.enumPath)));
+    return resolved.isDouble();
+}
+
 void Validator::resolveMemberArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call,
                                   QJsonObject& args, const QString& argKey) {
     if (nodeType(node) == NodeKind::String) {
@@ -1636,7 +1653,8 @@ void Validator::resolveMemberArg(const ParamDef& def, const QJsonValue& node, co
         args.insert(argKey, t == NodeKind::Boolean ? QJsonValue(n.value(QStringLiteral("value")).toBool() ? 1 : 0)
                                                      : n.value(QStringLiteral("value")));
         return;
-    } else if (t == NodeKind::Ident && stateValues().contains(node.toObject().value(QStringLiteral("name")).toString())) {
+    } else if (t == NodeKind::Ident && stateValues().contains(node.toObject().value(QStringLiteral("name")).toString())
+               && !isOwnChoice(def, node.toObject().value(QStringLiteral("name")).toString())) {
         // reference member branch: `{fn: (state) => state[key]}`, which
         // serializes to the empty object (fn is never called).
         args.insert(argKey, QJsonObject());
@@ -1859,7 +1877,7 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
     // A bare state-value ident in numeric position: the reference stores
     // `{fn, min: def.min, max: def.max, _ast: node}`; fn is never called and
     // graph JSON drops it, as it drops an undefined min or max.
-    if (t == NodeKind::Ident && stateValues().contains(identName)) {
+    if (t == NodeKind::Ident && stateValues().contains(identName) && !isOwnChoice(def, identName)) {
         QJsonObject value;
         if (def.hasMin()) value.insert(QStringLiteral("min"), def.minValue);
         if (def.hasMax()) value.insert(QStringLiteral("max"), def.maxValue);

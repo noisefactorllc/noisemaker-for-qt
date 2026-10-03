@@ -302,6 +302,30 @@ int main() {
         mutateFirstPass(def, "progam", "typo");
         checkMessageCount(def, "progam", 1, "unknown pass field diagnosed");
     }
+    // --- ui.resetOnChange is accepted as a boolean and diagnosed otherwise
+    // (reference 3c1e47e5, upstream test_effect_definition_validation.js) ---
+    {
+        QJsonObject def = validDefinition();
+        QJsonObject globals = getObject(def, "globals");
+        QJsonObject mode = getObject(globals, "mode");
+        QJsonObject ui = getObject(mode, "ui");
+        ui.insert("resetOnChange", true);
+        mode.insert("ui", ui);
+        globals.insert("mode", mode);
+        def.insert("globals", globals);
+        checkValid(def, "ui.resetOnChange true accepted");
+    }
+    {
+        QJsonObject def = validDefinition();
+        QJsonObject globals = getObject(def, "globals");
+        QJsonObject mode = getObject(globals, "mode");
+        QJsonObject ui = getObject(mode, "ui");
+        ui.insert("resetOnChange", "yes");
+        mode.insert("ui", ui);
+        globals.insert("mode", mode);
+        def.insert("globals", globals);
+        checkMessageCount(def, "resetOnChange", 1, "non-boolean ui.resetOnChange diagnosed");
+    }
     {
         QJsonObject def = validDefinition();
         QJsonObject textures = getObject(def, "textures");

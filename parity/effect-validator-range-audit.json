@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCheckout": "cb22a05eff9afed99fcf22a482b944c26f43e814",
+  "referenceCheckout": "e30f09e62704bcce0abaf07a42ab1111ddadbb84",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "Commits are listed oldest-first with the shaders/ files each touched. Declared ported range ends at 9d3474df; published main already carries the 2f47612c sync, whose validator delta (GAP-004 texture policies) is also ported and graded by the committed corpus."
  },
@@ -1533,6 +1533,284 @@
    "shadersFilesChanged": [
     "shaders/src/renderer/canvas.js",
     "shaders/tests/test_portable_registration.js"
+   ]
+  },
+  {
+   "range": "cb22a05eff9afed99fcf22a482b944c26f43e814..e30f09e62704bcce0abaf07a42ab1111ddadbb84",
+   "coveredBy": "this candidate (tearoff job 750, force-push flagged — audited rather than assumed; merge-base verified: e24c844f8dad is an ancestor of e30f09e62704 and all four observed windows lie inside this span; the published cb22a05e sync already carries everything before cb22a05e. Delta beyond the published cb22a05eff9a audit: 1fd89348 docs-only; 29e76468 (validator.js isOwnChoice) and bd773801 (expander.js uniformAliases + new runtime/uniform-aliases.js) plus 71d805eb/109c00ac (canvas.js alias writes) are PORTED to the Qt compiler/runtime (qt/noisemaker/compiler/validator.cpp, expander.{h,cpp}, dsl_compiler.cpp, tools/export-graph.mjs, runtime/graph.{h,cpp}, backend.cpp); 3c1e47e5 (effect-validator.js/effect.js resetOnChange ui flag) is PORTED to qt/noisemaker/compiler/effect_validator.cpp and the two definition ui flags (pointsEmit layout/seed, cellularAutomata3d density) regenerate through the convert gates; 41d1ead1 and e30f09e6 touch shaders/tests vendor guards only; 058ca32e re-attests three reference parity-attestation.json source hashes (reference-realm attestation records this repo does not carry)",
+   "commits": [
+    {
+     "sha": "1b088adcea392ecdba1efc3cabcbb9d80a0e6b2b",
+     "subject": "deps(npm): bump brace-expansion from 5.0.9 to 5.0.12 (#302)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "bd6556d679150696292804a2b048079a28b37a21",
+     "subject": "docs(contract): audit the cb22a05 / 687dbbd pair and refresh the pending DSL-batch delivery note (Tearoff item 723)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "deb4b413823d1ba79332337b29d53574f1b62e18",
+     "subject": "pull upstream shade-mcp dist",
+     "shadersFiles": []
+    },
+    {
+     "sha": "df62a43440ddd05faa144bf4ad83c1a80a93edf6",
+     "subject": "Pin Shade MCP 0.3.0 for authored DSL batch rendering",
+     "shadersFiles": []
+    },
+    {
+     "sha": "f76c37284584275fbbe93646910a2c56e5f23ae7",
+     "subject": "Record Shade MCP release and consumer delivery qualification",
+     "shadersFiles": []
+    },
+    {
+     "sha": "e9a357401f281405b5bf46e324238a3e160f1cd9",
+     "subject": "Use lime product favicon",
+     "shadersFiles": []
+    },
+    {
+     "sha": "153a96eb90ed86052ef9181cc24b479ee47eddc2",
+     "subject": "docs(contract): reconcile the contract with the delivered Shade MCP 0.3.0 release and advance both checkpoints (Tearoff item 723)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "00f94392fd663b84f830385f5a054fc33fb60bdd",
+     "subject": "docs(ledger): bind the item 723 delivery-reconciliation battery to source-pinned receipts and the deployment readback",
+     "shadersFiles": []
+    },
+    {
+     "sha": "075d7ff4a9637c343c88a6d7301d3d96664b740e",
+     "subject": "docs(ledger): drop the item 723 receipt-retelling paragraph; run evidence stays in the archive and supervisor receipts",
+     "shadersFiles": []
+    },
+    {
+     "sha": "f8d5940be5d348e60675a3f6a1d3c100dcb20420",
+     "subject": "docs(ledger): move the item-723 delivery-reconciliation entry from the I18n section's Log to the AI development contract's Log and drop the duplicated Log header",
+     "shadersFiles": []
+    },
+    {
+     "sha": "b74984a47577582bdd3cca09b9b2593f254624e0",
+     "subject": "docs(gap): record the GAP-029 exact-revision deployment blocker in the gap register",
+     "shadersFiles": []
+    },
+    {
+     "sha": "37f707a26d0b5b3c1013da52b6236348bbe6ef2b",
+     "subject": "docs(gap): drop the GAP-029 deployment-verification blocker annotation; keep routine publication evidence in receipts",
+     "shadersFiles": []
+    },
+    {
+     "sha": "afe8343347435b270f3a307d3248b9af5976fa6f",
+     "subject": "docs(gap): record the GAP-010 upstream-outer-status remainder as blocked on noisefactorllc/shade-mcp with exact pin evidence (GAP-010)",
+     "shadersFiles": []
+    },
+    {
+     "sha": "1fd893483c83f7602416cf8e9c48c9605a8f202c",
+     "subject": "docs: track the upstream Shade MCP defects in shade-mcp issues",
+     "shadersFiles": []
+    },
+    {
+     "sha": "41d1ead14b0ea58c5737117a6fe5af3646f0ee38",
+     "subject": "test: keep the vendored testNoPassthrough source guard valid across the audited upstream readFrame refactor; record the item-743 compatibility audit in the ledger (Tearoff item 743)",
+     "shadersFiles": [
+      "shaders/tests/test_passthrough_input.js"
+     ]
+    },
+    {
+     "sha": "29e76468168c6b9ae3853823a1c8dec26083a230",
+     "subject": "Resolve a parameter's own choice names before state values",
+     "shadersFiles": [
+      "shaders/src/lang/validator.js",
+      "shaders/tests/test_reserved_choice_names.mjs"
+     ]
+    },
+    {
+     "sha": "bd773801db1f3e5e12833c873e7915ac41ff0780",
+     "subject": "Carry live parameter changes to renamed pass uniforms",
+     "shadersFiles": [
+      "shaders/src/renderer/canvas.js",
+      "shaders/src/runtime/expander.js",
+      "shaders/src/runtime/uniform-aliases.js",
+      "shaders/tests/test_uniform_aliases.mjs"
+     ]
+    },
+    {
+     "sha": "3c1e47e59095a8dce7a6d74a53c42f2de6280521",
+     "subject": "Mark parameters that only take effect when state is reseeded",
+     "shadersFiles": [
+      "shaders/effects/render/pointsEmit/definition.js",
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/src/runtime/effect.js",
+      "shaders/tests/test_effect_definition_validation.js"
+     ]
+    },
+    {
+     "sha": "71d805eb410a6fd712072f8115c128db0b251dea",
+     "subject": "Keep single-effect alias writes on that effect's passes",
+     "shadersFiles": [
+      "shaders/src/renderer/canvas.js",
+      "shaders/tests/test_uniform_aliases.mjs"
+     ]
+    },
+    {
+     "sha": "109c00acb70959a89ef168e370192ee1519d91d7",
+     "subject": "Match single-effect alias writes to the bindings' effect test",
+     "shadersFiles": [
+      "shaders/effects/synth3d/cellularAutomata3d/definition.js",
+      "shaders/src/renderer/canvas.js",
+      "shaders/tests/test_uniform_aliases.mjs"
+     ]
+    },
+    {
+     "sha": "058ca32ef7a9692a09a949e0c8535c081e841017",
+     "subject": "Re-attest particle parity after the pointsEmit definition change",
+     "shadersFiles": [
+      "shaders/effects/points/heightGrid/parity-attestation.json",
+      "shaders/effects/render/pointsBillboardRender/parity-attestation.json",
+      "shaders/effects/render/pointsRender/parity-attestation.json"
+     ]
+    },
+    {
+     "sha": "e30f09e62704bcce0abaf07a42ab1111ddadbb84",
+     "subject": "test: guard the vendored renderEffectFrame's GL-only WebGPU failure path; record the item-743 pin/smoke/release-evidence corrections in the ledger (Tearoff item 743)",
+     "shadersFiles": [
+      "shaders/tests/test_frame_readback.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/effects/points/heightGrid/parity-attestation.json",
+    "shaders/effects/render/pointsBillboardRender/parity-attestation.json",
+    "shaders/effects/render/pointsEmit/definition.js",
+    "shaders/effects/render/pointsRender/parity-attestation.json",
+    "shaders/effects/synth3d/cellularAutomata3d/definition.js",
+    "shaders/src/lang/validator.js",
+    "shaders/src/renderer/canvas.js",
+    "shaders/src/runtime/effect-validator.js",
+    "shaders/src/runtime/effect.js",
+    "shaders/src/runtime/expander.js",
+    "shaders/src/runtime/uniform-aliases.js",
+    "shaders/tests/test_effect_definition_validation.js",
+    "shaders/tests/test_frame_readback.js",
+    "shaders/tests/test_passthrough_input.js",
+    "shaders/tests/test_reserved_choice_names.mjs",
+    "shaders/tests/test_uniform_aliases.mjs"
+   ]
+  },
+  {
+   "range": "1fd893483c83f7602416cf8e9c48c9605a8f202c..41d1ead14b0ea58c5737117a6fe5af3646f0ee38",
+   "coveredBy": "this candidate (job 750 observed window — 41d1ead1 touches shaders/tests/test_passthrough_input.js only)",
+   "commits": [
+    {
+     "sha": "41d1ead14b0ea58c5737117a6fe5af3646f0ee38",
+     "subject": "test: keep the vendored testNoPassthrough source guard valid across the audited upstream readFrame refactor; record the item-743 compatibility audit in the ledger (Tearoff item 743)",
+     "shadersFiles": [
+      "shaders/tests/test_passthrough_input.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/tests/test_passthrough_input.js"
+   ]
+  },
+  {
+   "range": "41d1ead14b0ea58c5737117a6fe5af3646f0ee38..109c00acb70959a89ef168e370192ee1519d91d7",
+   "coveredBy": "this candidate (job 750 observed window — the five ported commits: 29e76468, bd773801, 3c1e47e5, 71d805eb, 109c00ac; see the declared cb22a05eff9a..e30f09e62704 audit above)",
+   "commits": [
+    {
+     "sha": "29e76468168c6b9ae3853823a1c8dec26083a230",
+     "subject": "Resolve a parameter's own choice names before state values",
+     "shadersFiles": [
+      "shaders/src/lang/validator.js",
+      "shaders/tests/test_reserved_choice_names.mjs"
+     ]
+    },
+    {
+     "sha": "bd773801db1f3e5e12833c873e7915ac41ff0780",
+     "subject": "Carry live parameter changes to renamed pass uniforms",
+     "shadersFiles": [
+      "shaders/src/renderer/canvas.js",
+      "shaders/src/runtime/expander.js",
+      "shaders/src/runtime/uniform-aliases.js",
+      "shaders/tests/test_uniform_aliases.mjs"
+     ]
+    },
+    {
+     "sha": "3c1e47e59095a8dce7a6d74a53c42f2de6280521",
+     "subject": "Mark parameters that only take effect when state is reseeded",
+     "shadersFiles": [
+      "shaders/effects/render/pointsEmit/definition.js",
+      "shaders/src/runtime/effect-validator.js",
+      "shaders/src/runtime/effect.js",
+      "shaders/tests/test_effect_definition_validation.js"
+     ]
+    },
+    {
+     "sha": "71d805eb410a6fd712072f8115c128db0b251dea",
+     "subject": "Keep single-effect alias writes on that effect's passes",
+     "shadersFiles": [
+      "shaders/src/renderer/canvas.js",
+      "shaders/tests/test_uniform_aliases.mjs"
+     ]
+    },
+    {
+     "sha": "109c00acb70959a89ef168e370192ee1519d91d7",
+     "subject": "Match single-effect alias writes to the bindings' effect test",
+     "shadersFiles": [
+      "shaders/effects/synth3d/cellularAutomata3d/definition.js",
+      "shaders/src/renderer/canvas.js",
+      "shaders/tests/test_uniform_aliases.mjs"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/effects/render/pointsEmit/definition.js",
+    "shaders/effects/synth3d/cellularAutomata3d/definition.js",
+    "shaders/src/lang/validator.js",
+    "shaders/src/renderer/canvas.js",
+    "shaders/src/runtime/effect-validator.js",
+    "shaders/src/runtime/effect.js",
+    "shaders/src/runtime/expander.js",
+    "shaders/src/runtime/uniform-aliases.js",
+    "shaders/tests/test_effect_definition_validation.js",
+    "shaders/tests/test_reserved_choice_names.mjs",
+    "shaders/tests/test_uniform_aliases.mjs"
+   ]
+  },
+  {
+   "range": "109c00acb70959a89ef168e370192ee1519d91d7..058ca32ef7a9692a09a949e0c8535c081e841017",
+   "coveredBy": "this candidate (job 750 observed window — 058ca32e re-attests the sourceHash of three reference parity-attestation.json records after the pointsEmit definition change; reference-realm attestation records with no Qt equivalent)",
+   "commits": [
+    {
+     "sha": "058ca32ef7a9692a09a949e0c8535c081e841017",
+     "subject": "Re-attest particle parity after the pointsEmit definition change",
+     "shadersFiles": [
+      "shaders/effects/points/heightGrid/parity-attestation.json",
+      "shaders/effects/render/pointsBillboardRender/parity-attestation.json",
+      "shaders/effects/render/pointsRender/parity-attestation.json"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/effects/points/heightGrid/parity-attestation.json",
+    "shaders/effects/render/pointsBillboardRender/parity-attestation.json",
+    "shaders/effects/render/pointsRender/parity-attestation.json"
+   ]
+  },
+  {
+   "range": "058ca32ef7a9692a09a949e0c8535c081e841017..e30f09e62704bcce0abaf07a42ab1111ddadbb84",
+   "coveredBy": "this candidate (job 750 observed window — e30f09e6 touches shaders/tests/test_frame_readback.js only)",
+   "commits": [
+    {
+     "sha": "e30f09e62704bcce0abaf07a42ab1111ddadbb84",
+     "subject": "test: guard the vendored renderEffectFrame's GL-only WebGPU failure path; record the item-743 pin/smoke/release-evidence corrections in the ledger (Tearoff item 743)",
+     "shadersFiles": [
+      "shaders/tests/test_frame_readback.js"
+     ]
+    }
+   ],
+   "shadersFilesChanged": [
+    "shaders/tests/test_frame_readback.js"
    ]
   }
  ]

@@ -147,6 +147,35 @@ int main() {
     }
 
     // ==================================================================
+    // A bare name the parameter defines itself, as an inline choice or a
+    // member of its enum, wins over the DSL's state values (reference
+    // 29e76468 validator.js isOwnChoice, upstream
+    // shaders/tests/test_reserved_choice_names.mjs): the unparser writes
+    // choices by bare name, so `geometry: seed` and `channel: a` have to
+    // compile back to the choice, not to the `seed` or `a` state value.
+    // ==================================================================
+    {
+        const QJsonObject out = validateSrc(
+            QStringLiteral("search synth\nsacredGeometry(geometry: seed).write(o0)\nrender(o0)\n"));
+        check(args(out, 0, 0).value(QStringLiteral("geometry")).toDouble() == 4.0,
+              "an inline choice named `seed` selects the choice (sacredGeometry geometry: seed == 4)");
+        check(diags(out).isEmpty(), "no diagnostics when the bare name is the param's own choice");
+
+        const QJsonObject member = validateSrc(
+            QStringLiteral("search synth, filter\nsacredGeometry().channel(channel: a).write(o0)\nrender(o0)\n"));
+        check(args(member, 0, 1).value(QStringLiteral("channel")).toDouble() == 3.0,
+              "an enum member named `a` selects the member (filter.channel channel: a == 3)");
+        check(diags(member).isEmpty(), "no diagnostics when the bare member name shadows a state value");
+
+        const QJsonObject state = validateSrc(
+            QStringLiteral("search synth\nsacredGeometry(scale: seed).write(o0)\nrender(o0)\n"));
+        const QJsonObject scale = args(state, 0, 0).value(QStringLiteral("scale")).toObject();
+        check(scale.value(QStringLiteral("min")).toDouble() == 1.0 && scale.value(QStringLiteral("max")).toDouble() == 20.0
+                  && scale.value(QStringLiteral("_ast")).toObject().value(QStringLiteral("name")).toString() == QStringLiteral("seed"),
+              "a state value still binds a parameter that has no such choice (sacredGeometry scale: seed)");
+    }
+
+    // ==================================================================
     // vec3 arg resolution (+ default passthrough)
     // ==================================================================
     {

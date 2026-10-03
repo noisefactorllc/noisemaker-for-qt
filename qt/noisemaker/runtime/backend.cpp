@@ -1062,6 +1062,24 @@ QVector<ExternalMeshInput> Backend::externalMeshes(const Graph& graph) const {
 
 int Backend::applyStepParameterValues(Graph& graph, const EffectRegistry& registry,
                                       const QJsonObject& stepParameterValues) const {
+    // Reference bd773801 (runtime/uniform-aliases.js writeUniformAliases): a
+    // pass definition can feed a shader uniform from a differently named
+    // global (`uniforms: { layoutMode: "layout" }`); the expander records the
+    // mapping on the pass as `uniformAliases` ({ shaderUniform: globalName }).
+    // The parameter paths write the aliased shader uniforms whenever they
+    // write the parameter, so a live change reaches the shader exactly as a
+    // recompile would. Returns true if any aliased uniform was written.
+    auto writeUniformAliases = [](Pass& pass, const QString& paramName, const QString& uniformName,
+                                  const QJsonValue& value) {
+        bool wrote = false;
+        for (auto it = pass.uniformAliases.begin(); it != pass.uniformAliases.end(); ++it) {
+            const QString globalName = it.value().toString();
+            if (globalName != paramName && globalName != uniformName) continue;
+            pass.uniforms.insert(it.key(), value);
+            wrote = true;
+        }
+        return wrote;
+    };
     int writes = 0;
     for (int passIndex = 0; passIndex < graph.passes.size(); ++passIndex) {
         Pass& pass = graph.passes[passIndex];
@@ -1092,12 +1110,25 @@ int Backend::applyStepParameterValues(Graph& graph, const EffectRegistry& regist
             const QString specUniform = spec.value(QStringLiteral("uniform")).toString();
             const QString uniformName = specUniform.isEmpty() ? paramName : specUniform;
             if (colorModeControlled.contains(uniformName)) continue;
-            if (!pass.uniforms.contains(uniformName)) continue;
+            if (!pass.uniforms.contains(uniformName)) {
+                // The pass does not carry the param under its own name; a
+                // differently named shader uniform fed from this global still
+                // gets the write (reference canvas.js applyStepParameterValues:
+                // `if (!(uniformName in pass.uniforms)) { writeUniformAliases(
+                // pass, paramName, uniformName, this.convertParameterForUniform(
+                // value, spec)); continue; }`).
+                if (writeUniformAliases(pass, paramName, uniformName,
+                                        convertParameterForUniform(it.value(), spec, &registry.enums()))) {
+                    ++writes;
+                }
+                continue;
+            }
             if (uniformName == QStringLiteral("volumeSize") && pass.inheritsVolumeSize) continue;
 
             const QJsonValue converted = convertParameterForUniform(it.value(), spec, &registry.enums());
             pass.uniforms.insert(uniformName, converted);
             ++writes;
+            if (writeUniformAliases(pass, paramName, uniformName, converted)) ++writes;
 
             const QString scopedName = pass.scopedParams.value(uniformName).toString();
             if (!scopedName.isEmpty()) {

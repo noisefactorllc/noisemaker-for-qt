@@ -1027,6 +1027,13 @@ private:
                     continue;
                 }
                 const QString globalRef = it.value().toString();
+                // Record a renamed mapping so runtime parameter updates reach
+                // this shader uniform too (reference bd773801, expander.js:
+                // `if (globalRef !== uniformName) { ... pass.uniformAliases }`,
+                // consumed by runtime/uniform-aliases.js).
+                if (!globalRef.isEmpty() && globalRef != uniformName) {
+                    pass.uniformAliases.insert(uniformName, globalRef);
+                }
                 if (pipelineUniforms_.contains(uniformName)) {
                     pass.uniforms.insert(uniformName, pipelineUniforms_.value(uniformName));
                 } else if (!globalRef.isEmpty() && pipelineUniforms_.contains(globalRef)) {
@@ -1424,6 +1431,7 @@ QJsonObject toRawPassJson(const ExpandedPass& pass) {
     for (const auto& kv : pass.outputs) outputs.insert(kv.first, kv.second);
     out.insert(QStringLiteral("outputs"), outputs);
     out.insert(QStringLiteral("uniforms"), pass.uniforms);
+    if (!pass.uniformAliases.isEmpty()) out.insert(QStringLiteral("uniformAliases"), pass.uniformAliases);
 
     if (pass.isBlit) {
         if (!pass.nodeId.isUndefined()) out.insert(QStringLiteral("nodeId"), pass.nodeId);

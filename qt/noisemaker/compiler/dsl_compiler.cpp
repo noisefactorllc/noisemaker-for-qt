@@ -224,6 +224,10 @@ QJsonObject normalizePass(const ExpandedPass& pass, const QJsonObject& defineMap
     if (!pass.stepIndex.isUndefined()) out.insert(QStringLiteral("stepIndex"), pass.stepIndex);
     if (pass.inheritsVolumeSize) out.insert(QStringLiteral("inheritsVolumeSize"), true);
     out.insert(QStringLiteral("scopedParams"), pass.scopedParams.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(pass.scopedParams));
+    // Pass-level uniform aliases (reference bd773801 expander.js uniformAliases):
+    // { shaderUniform: globalName } for a pass fed from a differently named
+    // global; the runtime writes a changed parameter to these uniforms too.
+    out.insert(QStringLiteral("uniformAliases"), pass.uniformAliases.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(pass.uniformAliases));
 
     return out;
 }

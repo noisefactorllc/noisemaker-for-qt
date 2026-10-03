@@ -42,7 +42,8 @@
     "density": {
       "ui": {
         "label": "density",
-        "control": "slider"
+        "control": "slider",
+        "resetOnChange": true
       }
     },
     "colorMode": {

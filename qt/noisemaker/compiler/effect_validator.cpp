@@ -78,6 +78,7 @@ const QStringList& uiKeys() {
         QStringLiteral("label"), QStringLiteral("control"),   QStringLiteral("category"),
         QStringLiteral("hidden"), QStringLiteral("hint"),    QStringLiteral("format"),
         QStringLiteral("buttonLabel"), QStringLiteral("enabledBy"), QStringLiteral("multiline"),
+        QStringLiteral("resetOnChange"),
     };
     return keys;
 }
@@ -786,6 +787,10 @@ void validateUi(const QJsonValue& uiValue, Errors& errors, const std::string& la
     const QJsonValue multiline = ui.value(QStringLiteral("multiline"));
     if (!multiline.isUndefined() && !multiline.isBool()) {
         errors.push_back(label + ": \"multiline\" must be a boolean");
+    }
+    const QJsonValue resetOnChange = ui.value(QStringLiteral("resetOnChange"));
+    if (!resetOnChange.isUndefined() && !resetOnChange.isBool()) {
+        errors.push_back(label + ": \"resetOnChange\" must be a boolean");
     }
     for (const char* key : {"hint", "format", "buttonLabel"}) {
         const QJsonValue v = ui.value(QLatin1String(key));
