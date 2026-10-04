@@ -232,7 +232,7 @@ for (let i = 0; i < bodies.length; ++i) {
 }
 
 mkdirSync(EVIDENCE, { recursive: true })
-const tag = `${process.version.replace(/v/, 'v')}${extraVersion ? `-and-${extraVersion}` : ''}`
+const tag = `${process.version}${extraVersion ? `-and-${extraVersion}` : ''}`
 const stamp = new Date().toISOString()
 const header = [
     `# GAP-017 differential corpus raw result`,
