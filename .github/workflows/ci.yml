@@ -364,11 +364,21 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           export NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker"
-          for gate in shaders definitions effects_ui registry lex parse validate expand graph midi_state audio_state obj_parser; do
+          for gate in shaders definitions effects_ui registry lex parse validate expand graph func_bodies_differential midi_state audio_state obj_parser; do
             echo "::group::check_$gate"
             node "parity/check_$gate.mjs"
             echo "::endgroup::"
           done
+
+      - name: Upload function-body differential evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: func-bodies-differential
+          path: |
+            parity/evidence/func_bodies_differential_*.log
+            parity/evidence/func_bodies_differential_corpus.txt
+          if-no-files-found: warn
 
   render-smoke:
     runs-on: ubuntu-latest
