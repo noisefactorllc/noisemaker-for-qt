@@ -205,7 +205,7 @@ inputs. DSL control flow fails at expansion, as it does in the reference. 3D vol
 
 ```
 noisemaker-for-qt/
-├── ARCHITECTURE.md PORTING-GUIDE.md README.md STATUS.md LICENSE TRADEMARK.md CODE_OF_CONDUCT.md
+├── ARCHITECTURE.md PORTING-GUIDE.md README.md STATUS.md LICENSE TRADEMARK.md
 ├── docs/            GRAPH-JSON-SCHEMA.md · IMPLEMENTATION-PLAN.md · QT-PLATFORM-NOTES.md · CHAOS-GATE.md
 ├── reference/       01–10 engine-agnostic re-implementer specs (shared, byte-identical family copies)
 ├── tools/           export-graph.mjs · convert-definitions.mjs · convert-shaders-qt.mjs · dump-*.mjs
