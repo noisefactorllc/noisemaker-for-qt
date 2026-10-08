@@ -21,7 +21,8 @@ name: CI
 #                 llvmpipe, the candidate's rasterizer), renders
 #                 candidates with nm-render on llvmpipe, and grades them with
 #                 parity/run.sh at the strict default tolerance. It also runs
-#                 the AnalyserNode gate against the same Chromium.
+#                 the AnalyserNode and asyncInit overlay gates against the
+#                 same Chromium.
 #   render-smoke-windows
 #                 Renders the same fixtures with nm-render on the pinned Mesa
 #                 llvmpipe opengl32sw.dll and grades them against the goldens
@@ -67,7 +68,7 @@ env:
   # pal1000/mesa-dist-win release-msvc archive (llvmpipe opengl32.dll).
   MESA_WIN_URL: https://github.com/pal1000/mesa-dist-win/releases/download/26.2.1/mesa3d-26.2.1-release-msvc.7z
   MESA_WIN_SHA256: 78a0305844074535e73dfb6dcb5eb2a65f1d9dc445102e1f4c3c3e97dace19bf
-  SMOKE_FIXTURES: "adjust blendMode cell feedback meshLoaderDefault meshRenderCustom countUniform"
+  SMOKE_FIXTURES: "adjust blendMode cell feedback meshLoaderDefault meshRenderCustom countUniform fibers scratches strayHair"
 
 jobs:
   build-test:
@@ -422,10 +423,13 @@ jobs:
       - name: Build nm-render
         run: |
           cmake -S qt -B qt/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build qt/build --parallel --target nm-render audio_analyzer_dump text_texture_dump
+          cmake --build qt/build --parallel --target nm-render audio_analyzer_dump text_texture_dump async_overlay_dump
 
       - name: AnalyserNode gate (Chromium oracle)
         run: NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" node parity/check_audio_analyzer.mjs
+
+      - name: asyncInit overlay gate (Chromium software canvas oracle)
+        run: NM_REFERENCE_ROOT="$RUNNER_TEMP/noisemaker" node parity/check_async_overlay.mjs
 
       - name: filter/text gate (Chromium oracle, FreeType)
         env:

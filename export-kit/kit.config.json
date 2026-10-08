@@ -23,7 +23,8 @@
   "licenses": [
     { "from": "LICENSE", "to": "LICENSES/noisemaker-for-qt-LICENSE.txt" },
     { "from": "qt/noisemaker/fonts/Nunito/OFL.txt", "to": "LICENSES/Nunito-OFL.txt" },
-    { "from": "qt/noisemaker/compiler/acorn-LICENSE.txt", "to": "LICENSES/acorn-MIT.txt" }
+    { "from": "qt/noisemaker/compiler/acorn-LICENSE.txt", "to": "LICENSES/acorn-MIT.txt" },
+    { "from": "qt/noisemaker/runtime/skia-LICENSE.txt", "to": "LICENSES/skia-BSD.txt" }
   ],
   "requireFiles": [
     "src/main.cpp",
@@ -32,6 +33,7 @@
     "fonts/Nunito/OFL.txt",
     "LICENSES/Nunito-OFL.txt",
     "LICENSES/acorn-MIT.txt",
+    "LICENSES/skia-BSD.txt",
     "share/meshes/sphere.obj"
   ],
   "shaderLayout": {

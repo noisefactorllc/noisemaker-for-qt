@@ -53,8 +53,7 @@
 #   NM_REFERENCE_OVERLAYS=1  every candidate render also receives the
 #                  asyncInit overlays the golden minter saved
 #                  (<name>.node_<N>_<texture>.png) as host textures, which
-#                  replace the overlays the port traces (run.sh explains when
-#                  to use it; the parity-llvmpipe job does).
+#                  replace the overlays the port traces (run.sh).
 #   NM_EXTRA_CHAOS / NM_EXTRA_DEFER   space-separated program names UNIONED
 #                  into the CHAOS/DEFER case arms below. Test-injection seam
 #                  (test_harness_contract.py) so the classification MACHINERY

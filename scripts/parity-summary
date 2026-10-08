@@ -173,14 +173,14 @@ if [ -n "$CHROME_PATH" ] && [ ! -e "$CHROME_PATH" ]; then
 fi
 
 # ------------------------------------------------------------------- sweep
-# The canonical mint/render environment (GAP-040): goldens are
-# minted with headed Chromium on the same Mesa llvmpipe the candidate
-# renders on, fibers/scratches/strayHair grade with the reference's saved
-# overlays. A caller may override any of these.
+# The canonical mint/render environment: goldens are minted with headed
+# Chromium on the same Mesa llvmpipe the candidate renders on, and
+# fibers/scratches/strayHair grade the port's own overlays. A caller may
+# override any of these.
 export SHADE_HEADLESS="${SHADE_HEADLESS:-0}"
 export NM_GOLDEN_CHROMIUM_ARGS="${NM_GOLDEN_CHROMIUM_ARGS:---use-gl=angle --use-angle=gl --ignore-gpu-blocklist}"
 export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
-export NM_REFERENCE_OVERLAYS="${NM_REFERENCE_OVERLAYS:-1}"
+export NM_REFERENCE_OVERLAYS="${NM_REFERENCE_OVERLAYS:-0}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
 SWEEP=()
 if [ -z "${DISPLAY:-}" ]; then

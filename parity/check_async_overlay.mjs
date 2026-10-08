@@ -3,36 +3,25 @@
 // Oracle: the reference asyncInit of filter/fibers, filter/scratches and
 // filter/strayHair (the unchanged definition.js modules and
 // shaders/src/cpu/wormTracer.js) run in headless Chromium, launched the way
-// the golden minter launches it (vendor/shade-mcp BrowserSession: headless,
-// --disable-gpu-sandbox, --use-angle=metal on macOS). The canvas is read
-// back through WebGL texImage2D: with UNPACK_PREMULTIPLY_ALPHA_WEBGL true
-// for the premultiplied backing store, and false for the bytes the
-// reference pipeline uploads as overlayTex.
+// the golden minter launches it (vendor/shade-mcp BrowserSession). The
+// effects create their canvases with willReadFrequently, which pins them to
+// Skia's CPU raster back end, so the oracle is the same on every host and
+// GPU; the gate's own stroke scenes draw on canvases created the same way.
+// The canvas is read back through WebGL texImage2D: with
+// UNPACK_PREMULTIPLY_ALPHA_WEBGL true for the premultiplied backing store,
+// and false for the bytes the reference pipeline uploads as overlayTex.
 // Candidate: qt/build/tests/async_overlay_dump (runtime/async_overlay.h,
 // stroke_canvas.h, worm_tracer.h).
 //
-// Sections and acceptance:
+// Sections and acceptance, every one exact:
 //   math       Math.sin, Math.cos, Math.log on 300000 random arguments:
 //              every result bit-identical.
 //   upload     every premultiplied (c, a) pair, c <= a, a > 0: the upload
 //              conversion bit-identical.
-//   strokes    seeded stroke lists drawn on both canvases, and
-//   overlay    the asyncInit overlays: premultiplied canvas bytes differ by
-//              at most 1, in at most 1 of 5000 channel values; the uploaded
-//              bytes differ only at pixels whose canvas bytes differ.
-// The residual is GPU arithmetic: at a pixel whose blended value lies
-// within a few float ulps of a rounding midpoint, the Metal shader's
-// rsqrt, division and fused operations can round the other way. Measured
-// on macOS arm64 (Apple M4), Chromium 153, 2026-09-24: fibers 256x256
-// 14 of 262144 canvas channel values differ by 1; scratches and strayHair
-// at 256x256 are identical.
-//
-// The oracle is Chromium's GPU canvas (Skia Graphite on Metal); another GPU
-// backend rasterizes strokes differently, so the gate refuses to run on a
-// renderer other than ANGLE Metal (exit 3). Measured on Linux arm64, Chromium
-// 153 with --use-gl=angle --use-angle=gl over Mesa llvmpipe: Skia Ganesh on
-// GL, the same 51872 traced strokes bit for bit, and a different canvas
-// (fibers 90246, scratches 16492, strayHair 134 of 262144 values differ).
+//   strokes    seeded stroke lists drawn on both canvases: premultiplied
+//              canvas bytes identical.
+//   overlay    the asyncInit overlays: premultiplied canvas bytes and
+//              uploaded bytes identical.
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker node parity/check_async_overlay.mjs
 // Env: NM_ASYNC_OVERLAY_DUMP  candidate binary (default qt/build/tests/async_overlay_dump)
@@ -46,8 +35,6 @@ import { execFileSync } from 'node:child_process'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..')
 const DUMP = process.env.NM_ASYNC_OVERLAY_DUMP || join(REPO, 'qt', 'build', 'tests', 'async_overlay_dump')
-const MAX_DIFF = 1
-const MAX_DIFF_FRACTION = 1 / 5000
 
 if (!process.env.NM_REFERENCE_ROOT) { console.error('NM_REFERENCE_ROOT is not set'); process.exit(3) }
 if (!existsSync(DUMP)) { console.error(`async_overlay_dump not found at ${DUMP} (build qt/build first)`); process.exit(3) }
@@ -86,7 +73,9 @@ const restated = {
     ],
     'shaders/src/runtime/pipeline.js': [
         "this.backend.updateTextureFromSource(texId, canvas, { flipY: true })",
-        'params: params ? { ...params } : { ...this.globalUniforms },',
+        'const drawParams = params ? { ...params } : { ...this.globalUniforms }',
+        'if (isAutomationValue(drawParams[paramName])) drawParams[paramName] = spec.default',
+        'params: drawParams,',
     ],
 }
 for (const [file, statements] of Object.entries(restated)) {
@@ -177,6 +166,21 @@ const strokeScenes = [
             add(x0, y0, x0 + Math.sin(angle) * len, y0 + Math.cos(angle) * len, [0.5, 1, 1.5, 5][i % 4], 0.25 + 0.75 * r(), 255, 128, 64)
         }
     }),
+    // Wide and long strokes: outlines past the 32 px coverage mask take the
+    // run-length fill, and black and opaque strokes their own blitters.
+    strokeScene('wide', 256, 256, 9, (r, add) => {
+        const widths = [0.3, 1.28, 7, 12.5, 33, 48]
+        const colors = [[255, 255, 255], [0, 0, 0], [200, 40, 90]]
+        for (let i = 0; i < 120; i++) {
+            const x0 = r() * 300 - 22
+            const y0 = r() * 300 - 22
+            const len = r() * 80
+            const angle = r() * Math.PI * 2
+            const c = colors[i % 3]
+            const alpha = i % 2 === 0 ? 1 : 0.1 + 0.8 * r()
+            add(x0, y0, x0 + Math.sin(angle) * len, y0 + Math.cos(angle) * len, widths[i % 6], alpha, c[0], c[1], c[2])
+        }
+    }),
 ]
 
 const overlayCases = [
@@ -192,9 +196,7 @@ const overlayCases = [
 // ---------------------------------------------------------------- oracle
 
 const baseUrl = await harness.acquireServer(0, REF, join(REF, 'shaders', 'effects'))
-const launchArgs = ['--disable-gpu-sandbox']
-if (process.platform === 'darwin') launchArgs.push('--use-angle=metal')
-const browser = await chromium.launch({ headless: true, args: launchArgs })
+const browser = await chromium.launch({ headless: true, args: ['--disable-gpu-sandbox'] })
 let oracle
 try {
     const page = await browser.newPage()
@@ -256,7 +258,7 @@ try {
         const up = document.createElement('canvas')
         up.width = 256
         up.height = Math.ceil(pairs.length / 256)
-        const uctx = up.getContext('2d')
+        const uctx = up.getContext('2d', { willReadFrequently: true })
         pairs.forEach(([R, a], i) => {
             uctx.fillStyle = `rgba(${R}, 0, 0, ${a / 255})`
             uctx.fillRect(i % 256, Math.floor(i / 256), 1, 1)
@@ -269,7 +271,7 @@ try {
             const canvas = document.createElement('canvas')
             canvas.width = scene.width
             canvas.height = scene.height
-            const ctx = canvas.getContext('2d')
+            const ctx = canvas.getContext('2d', { willReadFrequently: true })
             ctx.lineCap = 'round'
             ctx.lineJoin = 'round'
             const f = scene.records
@@ -303,10 +305,6 @@ try {
     harness.releaseServer()
 }
 console.log(`[INFO] oracle: Chromium ${oracle.version} on ${process.platform}-${process.arch}, renderer "${oracle.renderer}"`)
-if (!/ANGLE Metal/.test(oracle.renderer)) {
-    console.error('The oracle is defined for Chromium with ANGLE Metal (the golden-minting configuration).')
-    process.exit(3)
-}
 
 // ---------------------------------------------------------------- candidate + compare
 
@@ -326,7 +324,7 @@ function compareCanvas (ref, got) {
         const d = Math.abs(ref[i] - got[i])
         if (d) { differing++; if (d > max) max = d }
     }
-    return { differing, max, ok: ref.length === got.length && max <= MAX_DIFF && differing <= ref.length * MAX_DIFF_FRACTION }
+    return { differing, max, ok: ref.length === got.length && differing === 0 }
 }
 
 // Uploaded bytes may differ only where the premultiplied canvas differs.
@@ -399,9 +397,9 @@ try {
         const upload = uploadFollowsCanvas(refPremul, gotPremul, fromB64(ref.straight), readFileSync(join(dir, `${c.name}.straight`)))
         let inked = 0
         for (let i = 3; i < refPremul.length; i += 4) if (refPremul[i]) inked++
-        report(canvas.ok && upload.extra === 0, `overlay ${c.name}`,
+        report(canvas.ok && upload.differing === 0, `overlay ${c.name}`,
             `${inked} inked px; canvas ${canvas.differing}/${refPremul.length} channel values differ, max ${canvas.max}; ` +
-            `upload ${upload.differing} differ, max ${upload.max}, ${upload.extra} outside canvas differences`)
+            `upload ${upload.differing} differ, max ${upload.max}`)
     }
 } finally {
     rmSync(dir, { recursive: true, force: true })

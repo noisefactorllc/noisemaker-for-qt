@@ -28,7 +28,6 @@
 //
 // Prereqs: Node, Playwright + a system Chrome (the harness launches chromium),
 // and the reference repo at $NM_REFERENCE_ROOT (its shaders/ and demo/ trees).
-// See parity/README.md.
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'

@@ -228,6 +228,8 @@ Code is MIT-licensed. See [LICENSE](LICENSE). The shaders and built-in meshes un
 
 The compiler's JavaScript syntax check (`qt/noisemaker/compiler/js_syntax.cpp` and `js_regexp.cpp`) is a C++ port of acorn 8.16, MIT-licensed, Copyright (C) 2012-2022 by various contributors. Its notice is in those files and in [acorn-LICENSE.txt](qt/noisemaker/compiler/acorn-LICENSE.txt), which the install and the export kit also carry.
 
+The overlay canvas of filter/fibers, filter/scratches and filter/strayHair (`qt/noisemaker/runtime/stroke_canvas.cpp` and `stroke_fill.cpp`) ports parts of Skia at commit `9d07e5ba`, BSD 3-clause licensed, copyright Google Inc., Google LLC and The Android Open Source Project. Its notice is in those files and in [skia-LICENSE.txt](qt/noisemaker/runtime/skia-LICENSE.txt), which the install and the export kit also carry.
+
 The MIT license does not cover the bundled font:
 
 - `qt/noisemaker/fonts/Nunito/Nunito-VariableFont_wght.ttf` is Nunito Version 3.602, Copyright 2014 The Nunito Project Authors ([googlefonts/nunito](https://github.com/googlefonts/nunito)), licensed under the SIL Open Font License 1.1 ([OFL.txt](qt/noisemaker/fonts/Nunito/OFL.txt)). It is an unmodified copy of the reference's `demo/font/Nunito/Nunito-VariableFont_wght.ttf` (added in `noisefactorllc/noisemaker` commit `9f23756d`, identical at `c9ee8a04`). SHA-256: `707f6b338cfd21e95f05a88169ef7647d01ad8da76623846c092f3118f762a08`.

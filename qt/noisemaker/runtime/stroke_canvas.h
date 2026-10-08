@@ -3,38 +3,32 @@
 // stroke_canvas.h -- CPU model of the browser 2D canvas that the reference
 // asyncInit effects (filter/fibers, filter/scratches, filter/strayHair) draw
 // on. The reference traces worms on the CPU and strokes each step as a
-// round-capped line segment on an HTMLCanvasElement 2D context
-// (shaders/src/cpu/wormTracer.js), then uploads the canvas as the overlay
-// texture. This class reproduces that canvas pixel for pixel:
+// round-capped line segment on a 2D context it creates with
+// willReadFrequently (shaders/src/cpu/wormTracer.js and each effect's
+// definition.js), which pins the canvas to Skia's CPU raster back end, then
+// uploads the canvas as the overlay texture. This class reproduces that
+// canvas pixel for pixel, as Chromium 153 (Skia 9d07e5ba) draws it:
 //
 //   - Blink culls a stroke whose bounding box, outset by lineWidth / 2,
-//     does not intersect the canvas (BaseRenderingContext2D dirty rect).
-//   - "rgba(r, g, b, a)" is parsed to an 8-bit colour: alpha becomes
-//     floor(a * 255 + 0.5). Skia converts it to float as c * (1 / 255.0f)
-//     and premultiplies in float.
-//   - The canvas is GPU accelerated. Skia Graphite draws a stroked line
-//     with AnalyticRRectRenderStep: a 36-vertex instance (four corners of
-//     nine vertices, a 69-index triangle strip) whose fragment shader
-//     computes analytic coverage from interpolated edge distances
-//     (src/sksl/sksl_graphite_vert.sksl analytic_rrect_vertex_fn,
-//     sksl_graphite_frag.sksl analytic_rrect_coverage_fn). This model runs
-//     the same vertex and fragment arithmetic in float, snaps vertex
-//     positions to the rasterizer's 1/256 pixel grid, rasterizes with the
-//     top-left fill rule, and shades each pixel at most once per stroke
-//     (Graphite's depth test rejects a second triangle of the same draw).
-//   - Source-over blending in float: dst' = src * coverage +
-//     dst * (1 - srcAlpha * coverage), stored as floor(v * 255 + 0.5).
-//   - The WebGL upload with UNPACK_PREMULTIPLY_ALPHA_WEBGL false divides
-//     by alpha as c / 255.0f * (1.0f / (a / 255.0f)) in float and rounds
-//     the exact product with 255 to the nearest integer.
+//     does not intersect the canvas, and prunes a path whose points
+//     coincide (Canvas2DRecorderContext::DrawPathInternal).
+//   - "rgba(r, g, b, a)" is parsed to an 8-bit colour: channels clamp and
+//     round, alpha becomes floor(a * 255 + 0.5).
+//   - A stroke at most 1 px wide is a hairline (modifyPaintForHairlines: a
+//     thinner width w scales alpha by (int)(w * 256) >> 8), drawn by
+//     SkScan::AntiHairRoundPath in 26.6 and 16.16 fixed point. A wider
+//     stroke becomes a fill path (SkStroke) filled by SkScan::AntiFillPath
+//     with analytic anti-aliasing (stroke_fill.cpp).
+//   - Pixels: the legacy N32 blitters (SkARGB32_Blitter and its opaque and
+//     black variants) in their integer arithmetic.
+//   - The upload (texImage2D with UNPACK_PREMULTIPLY_ALPHA_WEBGL false, and
+//     the getImageData the reference's WebGPU path reads) divides out alpha
+//     as Skia's raster pipeline does: c * (1 / 255.0f) times the float
+//     reciprocal of a * (1 / 255.0f), times 255, rounded to nearest even.
 //
-// Measured against Chromium 153 (headless shell, --use-angle=metal, Skia
-// Graphite on Metal, Apple M4) by parity/check_async_overlay.mjs. Other
-// browsers and GPU backends rasterize strokes differently. On Linux with
-// ANGLE on OpenGL (the parity-llvmpipe job) Chromium 153 draws the canvas
-// with Skia Ganesh on GL: the traced strokes are bit-identical, the pixels
-// are not, so that job passes the reference's own overlays to the candidate
-// (parity/run.sh, NM_REFERENCE_OVERLAYS).
+// The rasterizer follows noisemaker-for-rust-gpu's crates/noisemaker-host
+// raster.rs, which ports the same Skia code. Graded by
+// parity/check_async_overlay.mjs against Chromium's canvas on any host.
 
 #include <cstdint>
 #include <vector>
@@ -67,7 +61,7 @@ public:
     void strokeLine(double x0, double y0, double x1, double y1);
 
     // Premultiplied RGBA8, row 0 at the top (the canvas backing store).
-    const std::vector<std::uint8_t>& premultiplied() const { return m_pixels; }
+    std::vector<std::uint8_t> premultiplied() const;
 
     // Straight-alpha RGBA8, row 0 at the top: the bytes WebGL receives from
     // texImage2D(canvas) with UNPACK_PREMULTIPLY_ALPHA_WEBGL false.
@@ -77,9 +71,8 @@ private:
     int m_width = 0;
     int m_height = 0;
     float m_lineWidth = 1.0f;
-    float m_color[4] = {0.0f, 0.0f, 0.0f, 1.0f}; // premultiplied
-    std::vector<std::uint8_t> m_pixels;
-    std::vector<std::uint8_t> m_shaded; // per-stroke "pixel already shaded" mask
+    std::uint8_t m_color[4] = {0, 0, 0, 255}; // straight RGBA8, as Blink stores the style
+    std::vector<std::uint32_t> m_pixels;     // SkPMColor: premultiplied, alpha in bits 24..31
 };
 
 // The WebGL upload conversion of premultiplied canvas pixels (RGBA8) to

@@ -3,7 +3,7 @@
 #
 # Render the Qt candidate for a Tier-1 program and compare it against the
 # existing golden. Goldens + graph JSON are produced by the reference harness
-# (parity/export-and-render.mjs) into parity/out/ — see parity/README.md.
+# (parity/export-and-render.mjs) into parity/out/.
 #
 # nm-render owns its own offscreen GL context (QOffscreenSurface), unlike the
 # Godot lineage's --headless RenderingDevice restriction, so no window
@@ -71,10 +71,10 @@ for texture in "$ROOT/parity/out/$NAME".*_step_*.png; do
 done
 # NM_REFERENCE_OVERLAYS=1 also passes each asyncInit overlay the reference
 # uploaded (<name>.node_<N>_<texture>.png), which replaces the overlay the port
-# would trace, so only the shader passes are graded. The parity-llvmpipe job
-# sets it: Chromium's canvas there is Skia Ganesh on GL, not the Graphite on
-# Metal canvas the port reproduces (parity/check_async_overlay.mjs). Other
-# sweeps grade the port's own trace.
+# would trace, so only the shader passes are graded. By default the port's own
+# trace is graded: the reference draws its overlays on Chromium's software
+# canvas on every host, which the port reproduces byte for byte
+# (parity/check_async_overlay.mjs).
 if [ "${NM_REFERENCE_OVERLAYS:-0}" = "1" ]; then
 	for texture in "$ROOT/parity/out/$NAME".node_*.png; do
 		[ -f "$texture" ] || continue

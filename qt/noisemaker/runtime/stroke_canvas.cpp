@@ -1,317 +1,772 @@
 #include "stroke_canvas.h"
 
+#include "stroke_raster.h"
+
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <cstddef>
 #include <stdexcept>
+#include <utility>
+
+// This file and stroke_fill.cpp port parts of Skia (https://skia.org) at
+// commit 9d07e5bad9e3e21da2426946e589daa647218271: src/core/SkDraw.cpp,
+// SkScan_Hairline.cpp, SkScan_Antihair.cpp, SkScan_AntiPath.cpp,
+// SkScan_AAAPath.cpp, SkAnalyticEdge.cpp, SkEdgeBuilder.cpp,
+// SkEdgeClipper.cpp, SkLineClipper.cpp, SkStroke.cpp, SkStrokerPriv.cpp,
+// SkGeometry.cpp, SkPathPriv.cpp, SkPoint.cpp, SkBlitter.cpp,
+// SkBlitter_ARGB32.cpp, SkTSort.h, SkColorData.h, SkColorPriv.h and
+// src/opts/SkBlitRow_opts.h and SkBlitMask_opts.h, copyright Google Inc.,
+// Google LLC and The Android Open Source Project. Skia's license:
+//
+// Copyright (c) 2011 Google Inc. All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//   * Redistributions of source code must retain the above copyright
+//     notice, this list of conditions and the following disclaimer.
+//
+//   * Redistributions in binary form must reproduce the above copyright
+//     notice, this list of conditions and the following disclaimer in
+//     the documentation and/or other materials provided with the
+//     distribution.
+//
+//   * Neither the name of the copyright holder nor the names of its
+//     contributors may be used to endorse or promote products derived
+//     from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace nm {
 
+using namespace raster;
+
 namespace {
 
-// ---------------------------------------------------------------- instance
-// Skia Graphite AnalyticRRectRenderStep, restricted to the geometry the
-// reference tracer draws: a stroked line with round caps, identity
-// transform. The instance attributes for that case are
-//   xRadiiOrFlags = (-2, 1, strokeRadius, -1)   stroked line, round cap
-//   radiiOrQuadXs = (0, 0, 0, 0)
-//   ltrbOrQuadYs  = (x0, y0, x1, y1)
-//   center        = (bounds center, kSolidInterior = 1, kComplexAAInsets = -1)
-// (AnalyticRRectRenderStep::writeVertices: a line always takes the
-// kComplexAAInsets path because strokeInset = -strokeRadius <= aaRadius).
+// ---------------------------------------------------------------- pixel math
 
-struct TemplateVertex {
-    int corner;
-    float posX, posY;
-    float normalX, normalY;
-    float normalScale;  // +1 device outset, 0 outer anchor, -1 inset
-    float centerWeight; // 1 for the center-fill vertex
-};
+// An SkPMColor: premultiplied, alpha in bits 24..31 and red, green, blue in
+// bits 16, 8 and 0. The blend arithmetic treats every channel alike, so the
+// order only matters for alpha.
+using PmColor = std::uint32_t;
 
-constexpr int kCornerVertexCount = 9;
-constexpr int kVertexCount = 4 * kCornerVertexCount;
-constexpr int kIndexCount = 69;
+constexpr std::uint32_t kAShift = 24;
 
-// get_per_corner_vertex_attrs<kCornerID>() repeated for TL, TR, BR, BL.
-std::array<TemplateVertex, kVertexCount> makeTemplate() {
-    const float hr2 = 0.5f * 1.41421356f; // SK_FloatSqrt2
-    std::array<TemplateVertex, kVertexCount> out{};
-    for (int c = 0; c < 4; ++c) {
-        const TemplateVertex corner[kCornerVertexCount] = {
-            {c, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
-            {c, 1.0f, 0.0f, hr2, hr2, 1.0f, 0.0f},
-            {c, 0.0f, 1.0f, hr2, hr2, 1.0f, 0.0f},
-            {c, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-            {c, 1.0f, 0.0f, hr2, hr2, 0.0f, 0.0f},
-            {c, 0.0f, 1.0f, hr2, hr2, 0.0f, 0.0f},
-            {c, 1.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f},
-            {c, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 0.0f},
-            {c, 1.0f, 0.0f, 1.0f, 0.0f, -1.0f, 1.0f},
-        };
-        for (int i = 0; i < kCornerVertexCount; ++i) out[static_cast<size_t>(c * kCornerVertexCount + i)] = corner[i];
-    }
-    return out;
+std::uint32_t packedA(PmColor c) { return c >> kAShift; }
+
+PmColor packArgb(std::uint32_t a, std::uint32_t r, std::uint32_t g, std::uint32_t b) {
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-// write_index_buffer(): a triangle strip over the 36 vertices.
-constexpr int kIndices[kIndexCount] = {
-    0, 4, 1, 5, 2, 3, 5,  9, 13, 10, 14, 11, 12, 14,  18, 22, 19, 23, 20, 21, 23,
-    27, 31, 28, 32, 29, 30, 32,  0, 4,
-    4, 6, 5, 7,  13, 15, 14, 16,  22, 24, 23, 25,  31, 33, 32, 34,  4, 6,
-    6, 8, 7,  7, 17,  15, 17, 16,  16, 26,  24, 26, 25,  25, 35,  33, 35, 34,  34, 8,  6};
+// SkAlpha255To256.
+std::uint32_t alpha255To256(std::uint32_t alpha) { return alpha + 1; }
 
-struct Varyings {
-    float jacobian[4];
-    float edgeDistances[4];
-    float strokeRadius;
-    float joinStyle;
-    float perPixelX;
-    float perPixelY;
-};
+// SkMulDiv255Round.
+std::uint32_t mulDiv255Round(std::uint32_t a, std::uint32_t b) {
+    const std::uint32_t prod = a * b + 128;
+    return (prod + (prod >> 8)) >> 8;
+}
 
-struct DeviceVertex {
-    float x = 0.0f;
-    float y = 0.0f;
-    Varyings v{};
-};
+// SkPreMultiplyColor of a straight 8-bit colour.
+PmColor premultiply(const std::uint8_t color[4]) {
+    const std::uint32_t r = color[0], g = color[1], b = color[2], a = color[3];
+    if (a == 255) return packArgb(a, r, g, b);
+    return packArgb(a, mulDiv255Round(r, a), mulDiv255Round(g, a), mulDiv255Round(b, a));
+}
 
-// The per-instance part of analytic_rrect_vertex_fn: identical for all 36
-// vertices of a stroke, so it is evaluated once.
-struct LineInstance {
-    float xs[4];      // ltrb.LLRR, corners ordered TL, TR, BR, BL
-    float ys[4];      // ltrb.TTBB
-    float dx[4];      // normalized edge vectors, ordered L, T, R, B
-    float dy[4];
-    float edgeAA[4];
-    float strokeRadius;
-    float centerX;
-    float centerY;
-};
+// SkAlphaMulQ: every channel times `scale` (0..256), shifted down 8.
+PmColor alphaMulQ(PmColor c, std::uint32_t scale) {
+    constexpr std::uint32_t kMask = 0x00FF00FFu;
+    const std::uint32_t rb = ((c & kMask) * scale) >> 8;
+    const std::uint32_t ag = ((c >> 8) & kMask) * scale;
+    return (rb & kMask) | (ag & ~kMask);
+}
 
-LineInstance makeLineInstance(float x0, float y0, float x1, float y1, float strokeRadius) {
-    LineInstance line{};
-    const float xs[4] = {x0, x0, x1, x1};
-    const float ys[4] = {y0, y0, y1, y1};
-    float edgeSquaredLen[4];
-    float edgeMask[4];
-    for (int i = 0; i < 4; ++i) {
-        line.xs[i] = xs[i];
-        line.ys[i] = ys[i];
-        line.edgeAA[i] = 1.0f;
-        const int w = (i + 3) % 4; // .wxyz
-        float dx = xs[i] - xs[w];
-        float dy = ys[i] - ys[w];
-        const float invMag = 1.0f / std::max(std::fabs(dx), std::max(std::fabs(dy), 1.0f));
-        dx *= invMag;
-        dy *= invMag;
-        line.dx[i] = dx;
-        line.dy[i] = dy;
-        edgeSquaredLen[i] = dx * dx + dy * dy;
-        edgeMask[i] = edgeSquaredLen[i] > 0.0f ? 1.0f : 0.0f; // sign() of a non-negative value
+// SkAlphaMulInv256.
+std::uint32_t alphaMulInv256(std::uint32_t value, std::uint32_t alpha256) {
+    const std::uint32_t prod = 0xFFFFu - value * alpha256;
+    return (prod + (prod >> 8)) >> 8;
+}
+
+// SkBlendARGB32(src, dst, aa).
+PmColor blendArgb32(PmColor src, PmColor dst, std::uint32_t aa) {
+    constexpr std::uint32_t kMask = 0x00FF00FFu;
+    const std::uint32_t srcScale = alpha255To256(aa);
+    const std::uint32_t dstScale = alphaMulInv256(packedA(src), srcScale);
+    const std::uint32_t srcRb = (src & kMask) * srcScale;
+    const std::uint32_t srcAg = ((src >> 8) & kMask) * srcScale;
+    const std::uint32_t dstRb = (dst & kMask) * dstScale;
+    const std::uint32_t dstAg = ((dst >> 8) & kMask) * dstScale;
+    return (((srcRb + dstRb) >> 8) & kMask) | ((srcAg + dstAg) & ~kMask);
+}
+
+// SkFastFourByteInterp(src, dst, srcWeight) (the 64-bit form).
+PmColor fastFourByteInterp(PmColor src, PmColor dst, std::uint32_t weight) {
+    const std::uint64_t scale = weight + (weight >> 7);
+    auto splay = [](std::uint32_t c) {
+        return (static_cast<std::uint64_t>((c >> 8) & 0x00FF00FFu) << 32) | (c & 0x00FF00FFu);
+    };
+    const std::uint64_t agrb = splay(src) * scale + (256 - scale) * splay(dst);
+    constexpr std::uint64_t kMask = 0xFF00FF00ull;
+    return static_cast<PmColor>(((agrb & kMask) >> 8) | ((agrb >> 32) & kMask));
+}
+
+// SkBlitRow::Color32 on one pixel: memset for an opaque colour, nothing for
+// a transparent one, else blit_row_color32's (d * (256 - a)) >> 8 + c per
+// channel.
+void color32(PmColor& dst, PmColor color) {
+    const std::uint32_t a = packedA(color);
+    if (a == 0) return;
+    if (a == 255) {
+        dst = color;
+        return;
     }
-    {
-        // A line has two empty edges (the caps); each takes the left-hand
-        // normal of the adjacent edge. mix(a, b, t) = a + (b - a) * t. A
-        // zero-length line (all four edges empty) never gets here: the
-        // canvas draws nothing for it (strokeLine).
-        float nx[4];
-        float ny[4];
-        float nl[4];
-        float naa[4];
-        for (int i = 0; i < 4; ++i) {
-            const int j = (i + 1) % 4; // .yzwx
-            const float edgeX = line.dy[j];
-            const float edgeY = -line.dx[j];
-            nx[i] = edgeX + (line.dx[i] - edgeX) * edgeMask[i];
-            ny[i] = edgeY + (line.dy[i] - edgeY) * edgeMask[i];
-            nl[i] = edgeSquaredLen[j] + (edgeSquaredLen[i] - edgeSquaredLen[j]) * edgeMask[i];
-            naa[i] = line.edgeAA[j] + (line.edgeAA[i] - line.edgeAA[j]) * edgeMask[i];
-        }
-        for (int i = 0; i < 4; ++i) {
-            line.dx[i] = nx[i];
-            line.dy[i] = ny[i];
-            edgeSquaredLen[i] = nl[i];
-            line.edgeAA[i] = naa[i];
+    const std::uint32_t inv = 256 - a;
+    std::uint32_t out = 0;
+    for (std::uint32_t shift : {0u, 8u, 16u, 24u}) {
+        const std::uint32_t d = (dst >> shift) & 0xFFu;
+        const std::uint32_t c = (color >> shift) & 0xFFu;
+        out |= ((((d * inv) >> 8) + c) & 0xFFu) << shift;
+    }
+    dst = out;
+}
+
+// ---------------------------------------------------------------- blitters
+
+// Which legacy N32 blitter SkBlitter::Choose returns for the paint.
+enum class BlitterKind {
+    Translucent, // SkARGB32_Blitter: alpha below 255
+    Opaque,      // SkARGB32_Opaque_Blitter
+    Black,       // SkARGB32_Black_Blitter: opaque black
+};
+
+// The device blitter: a solid colour over the canvas pixels.
+class ArgbBlitter final : public Blitter {
+public:
+    ArgbBlitter(std::vector<PmColor>& pixels, std::size_t width, const std::uint8_t color[4])
+        : m_pixels(pixels), m_width(width), m_pm(premultiply(color)), m_srcA(color[3]) {
+        if (color[0] == 0 && color[1] == 0 && color[2] == 0 && color[3] == 255) {
+            m_kind = BlitterKind::Black;
+        } else if (color[3] == 255) {
+            m_kind = BlitterKind::Opaque;
+        } else {
+            m_kind = BlitterKind::Translucent;
         }
     }
-    for (int i = 0; i < 4; ++i) {
-        const float inverseEdgeLen = 1.0f / std::sqrt(edgeSquaredLen[i]);
-        line.dx[i] *= inverseEdgeLen;
-        line.dy[i] *= inverseEdgeLen;
-    }
-    line.strokeRadius = strokeRadius;
-    // bounds.center() of the line's bounding box.
-    line.centerX = (std::min(x0, x1) + std::max(x0, x1)) * 0.5f;
-    line.centerY = (std::min(y0, y1) + std::max(y0, y1)) * 0.5f;
-    return line;
-}
 
-// The per-vertex part of analytic_rrect_vertex_fn.
-DeviceVertex lineVertex(const TemplateVertex& t, const LineInstance& line) {
-    const float kRoundScale = 0.41421356237f;
-    const int cornerID = t.corner;
-    const int nextID = (cornerID + 1) % 4;
-    const float joinScale = kRoundScale; // round cap == round join
+    BlitterKind kind() const { return m_kind; }
+    std::uint32_t srcA() const { return m_srcA; }
 
-    const float xAxisX = -line.dx[nextID];
-    const float xAxisY = -line.dy[nextID];
-    const float yAxisX = line.dx[cornerID];
-    const float yAxisY = line.dy[cornerID];
-
-    float localX;
-    float localY;
-    if (t.normalScale < 0.0f) {
-        // Inset vertices snap to the center (center.w < 0).
-        localX = line.centerX;
-        localY = line.centerY;
-    } else {
-        // (cornerRadii + strokeRadius) * (position + joinScale * position.yx),
-        // then from the corner basis to local coordinates.
-        const float px = line.strokeRadius * (t.posX + joinScale * t.posY);
-        const float py = line.strokeRadius * (t.posY + joinScale * t.posX);
-        localX = line.xs[cornerID] + xAxisX * px + yAxisX * py;
-        localY = line.ys[cornerID] + xAxisY * px + yAxisY * py;
+    void blitH(std::int32_t x, std::int32_t y, std::int32_t width) override {
+        for (std::int32_t i = 0; i < width; ++i) color32(px(x + i, y), m_pm);
     }
 
-    DeviceVertex out;
-    for (int i = 0; i < 4; ++i) {
-        out.v.edgeDistances[i] = line.dy[i] * (line.xs[i] - localX) - line.dx[i] * (line.ys[i] - localY);
-    }
-    out.x = localX;
-    out.y = localY;
-    if (t.normalScale > 0.0f) {
-        // Device-space AA outset by one pixel along the corner normal.
-        const float normalX = line.edgeAA[cornerID] * t.normalX;
-        const float normalY = line.edgeAA[nextID] * t.normalY;
-        // perp(-yAxis) and perp(xAxis), perp(v) = (-v.y, v.x).
-        const float sumX = normalX * yAxisY + normalY * -xAxisY;
-        const float sumY = normalX * -yAxisX + normalY * xAxisX;
-        const float inverseLength = 1.0f / std::sqrt(sumX * sumX + sumY * sumY);
-        out.x += sumX * inverseLength;
-        out.y += sumY * inverseLength;
-        out.v.perPixelY = -1.0f;
-    } else {
-        out.v.perPixelY = 0.0f;
-    }
-    out.v.perPixelX = t.centerWeight != 0.0f ? 1.0f : 0.0f;
-    // The fragment shader works in the line's own basis.
-    out.v.jacobian[0] = line.dy[0];
-    out.v.jacobian[1] = -line.dy[1];
-    out.v.jacobian[2] = -line.dx[0];
-    out.v.jacobian[3] = line.dx[1];
-    out.v.strokeRadius = line.strokeRadius;
-    out.v.joinStyle = -1.0f;
-    return out;
-}
-
-// $inverse_grad_len(localGrad, J) with J's columns (J0, J1) and (J2, J3).
-float inverseGradLength(float gx, float gy, const float jacobian[4]) {
-    const float a = gx * jacobian[0] + gy * jacobian[1];
-    const float b = gx * jacobian[2] + gy * jacobian[3];
-    return 1.0f / std::sqrt(a * a + b * b);
-}
-
-// analytic_rrect_coverage_fn for a stroked line (solid interior, round
-// corners of radius 0 with a stroke radius).
-float lineCoverage(const Varyings& v) {
-    if (v.perPixelX > 0.0f) return 1.0f;
-    const float* J = v.jacobian;
-    const float invGradX = inverseGradLength(1.0f, 0.0f, J);
-    const float invGradY = inverseGradLength(0.0f, 1.0f, J);
-    const float s = v.strokeRadius;
-    const float* e = v.edgeDistances;
-    const float outerX = invGradX * (s + std::min(e[0], e[2]));
-    const float outerY = invGradY * (s + std::min(e[1], e[3]));
-    float distOuter = std::min(outerX, outerY);
-    float distInner = -1.0f;
-
-    const float dimX = invGradX * (e[0] + e[2] + 2.0f * s);
-    const float dimY = invGradY * (e[1] + e[3] + 2.0f * s);
-    const float scale = std::min(std::min(dimX, dimY), 1.0f);
-    const float bias = 1.0f - 0.5f * scale;
-
-    // $corner_distances: TL (L,T), TR (R,T), BR (R,B), BL (L,B).
-    const int cornerEdges[4][2] = {{0, 1}, {2, 1}, {2, 3}, {0, 3}};
-    const float flips[4][2] = {{-1.0f, -1.0f}, {1.0f, -1.0f}, {1.0f, 1.0f}, {-1.0f, 1.0f}};
-    for (int k = 0; k < 4; ++k) {
-        const float u = 0.0f - e[cornerEdges[k][0]];
-        const float w = 0.0f - e[cornerEdges[k][1]];
-        if (!(u > 0.0f && w > 0.0f)) continue;
-        if (!(s > 0.0f && v.joinStyle < 0.0f)) continue;
-        // $elliptical_distance(uv * xyFlip, radii = 0, strokeRadius, J)
-        const float uu = u * flips[k][0];
-        const float ww = w * flips[k][1];
-        const float invR2 = 1.0f / (0.0f * 0.0f + s * s);
-        const float nu = invR2 * uu;
-        const float nw = invR2 * ww;
-        const float invGrad = inverseGradLength(nu, nw, J);
-        const float f = 0.5f * invGrad * ((uu * nu + ww * nw) - 1.0f);
-        const float width = 0.0f * s * invR2 * invGrad;
-        distOuter = std::min(distOuter, width - f);
-        // radii.x - strokeRadius <= 0: the inner curve collapsed.
-        distInner = std::min(distInner, 1.0f);
+    void blitAntiH(std::int32_t x, std::int32_t y, const std::uint8_t* aa, std::int32_t count) override {
+        if (m_kind == BlitterKind::Translucent && m_srcA == 0) return;
+        for (std::int32_t i = 0; i < count; ++i) {
+            const std::uint32_t a = aa[i];
+            if (a == 0) continue;
+            PmColor& p = px(x + i, y);
+            if (m_kind == BlitterKind::Black) {
+                if (a == 255) {
+                    p = 0xFF000000u;
+                } else {
+                    p = (a << kAShift) + alphaMulQ(p, alpha255To256(255 - a));
+                }
+            } else if (m_kind == BlitterKind::Opaque && a == 255) {
+                p = m_pm;
+            } else {
+                color32(p, alphaMulQ(m_pm, alpha255To256(a)));
+            }
+        }
     }
 
-    const float outset = std::min(v.perPixelY, 0.0f);
-    const float coverage = scale * (std::min(distOuter + outset, -distInner) + bias);
-    return std::clamp(coverage, 0.0f, 1.0f);
-}
-
-// A texel of an RGBA8 render target read as float: c / 255.
-struct Unorm8Table {
-    float values[256];
-    Unorm8Table() {
-        for (int c = 0; c < 256; ++c) values[c] = static_cast<float>(c) / 255.0f;
+    void blitV(std::int32_t x, std::int32_t y, std::int32_t height, std::uint8_t alpha) override {
+        if (alpha == 0 || m_srcA == 0) return;
+        PmColor color = m_pm;
+        if (alpha != 255) color = alphaMulQ(color, alpha255To256(alpha));
+        const std::uint32_t dstScale = alpha255To256(255 - packedA(color));
+        for (std::int32_t row = 0; row < height; ++row) {
+            PmColor& p = px(x, y + row);
+            p = color + alphaMulQ(p, dstScale);
+        }
     }
-    float operator[](std::uint8_t c) const { return values[c]; }
+
+    void blitRect(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height) override {
+        if (m_srcA == 0) return;
+        for (std::int32_t row = 0; row < height; ++row) blitH(x, y + row, width);
+    }
+
+    void blitAntiH2(std::int32_t x, std::int32_t y, std::uint8_t a0, std::uint8_t a1) override {
+        blendPixel(x, y, a0);
+        blendPixel(x + 1, y, a1);
+    }
+
+    void blitAntiV2(std::int32_t x, std::int32_t y, std::uint8_t a0, std::uint8_t a1) override {
+        blendPixel(x, y, a0);
+        blendPixel(x, y + 1, a1);
+    }
+
+    void blitMask(const Mask& mask, const IRect& clip) override {
+        // SkARGB32_Blitter::blitMask returns for a transparent colour; every
+        // variant then blits through blit_color -> SkOpts::blit_mask_d32_a8.
+        if (m_kind == BlitterKind::Translucent && m_srcA == 0) return;
+        const std::uint32_t colorAlpha = packedA(m_pm);
+        for (std::int32_t y = clip.top; y < clip.bottom; ++y) {
+            for (std::int32_t x = clip.left; x < clip.right; ++x) {
+                const std::uint32_t m = mask.get(x, y);
+                PmColor& p = px(x, y);
+                if (m_kind == BlitterKind::Black) {
+                    p = alphaMulQ(p, 256 - m) + (m << kAShift);
+                    continue;
+                }
+                const std::uint32_t m256 = alpha255To256(m);
+                const std::uint32_t scale =
+                    m_kind == BlitterKind::Translucent ? 256 - ((colorAlpha * m256) >> 8) : 256 - m;
+                // Per channel in the NEON form: two u8 products, added with
+                // u8 wrap-around.
+                std::uint32_t out = 0;
+                for (std::uint32_t shift : {0u, 8u, 16u, 24u}) {
+                    const std::uint32_t c = (m_pm >> shift) & 0xFFu;
+                    const std::uint32_t d = (p >> shift) & 0xFFu;
+                    out |= ((((c * m256) >> 8) + ((d * scale) >> 8)) & 0xFFu) << shift;
+                }
+                p = out;
+            }
+        }
+    }
+
+private:
+    PmColor& px(std::int32_t x, std::int32_t y) {
+        return m_pixels[static_cast<std::size_t>(y) * m_width + static_cast<std::size_t>(x)];
+    }
+
+    // One pixel of blitAntiH2 / blitAntiV2.
+    void blendPixel(std::int32_t x, std::int32_t y, std::uint32_t a) {
+        PmColor& p = px(x, y);
+        switch (m_kind) {
+        case BlitterKind::Translucent: p = blendArgb32(m_pm, p, a); break;
+        case BlitterKind::Opaque: p = fastFourByteInterp(m_pm, p, a); break;
+        case BlitterKind::Black: p = (a << kAShift) + alphaMulQ(p, 256 - a); break;
+        }
+    }
+
+    std::vector<PmColor>& m_pixels;
+    std::size_t m_width;
+    BlitterKind m_kind = BlitterKind::Translucent;
+    PmColor m_pm;    // fPMColor
+    std::uint32_t m_srcA; // fSrcA
 };
-const Unorm8Table kUnorm8ToFloat;
 
-std::uint8_t toUnorm8(float value) {
-    const double clamped = std::clamp(static_cast<double>(value), 0.0, 1.0);
-    return static_cast<std::uint8_t>(std::floor(clamped * 255.0 + 0.5));
+// ------------------------------------------------- anti-aliased hairlines
+
+using FDot6 = std::int32_t; // 26.6 fixed point (SkFDot6)
+using Fixed = std::int32_t; // 16.16 fixed point (SkFixed)
+
+constexpr std::int32_t kFDot6One = 64;
+constexpr std::int32_t kFDot6Half = 32;
+constexpr std::int32_t kFixedHalf = 1 << 15;
+
+std::int32_t fdot6Floor(FDot6 x) { return x >> 6; }
+std::int32_t fdot6Ceil(FDot6 x) { return wadd(x, 63) >> 6; }
+Fixed fdot6ToFixed(FDot6 x) { return shl(x, 10); }
+std::int32_t fixedFloor(Fixed x) { return x >> 16; }
+std::int32_t fixedCeil(Fixed x) { return wadd(x, 0xFFFF) >> 16; }
+
+// fastfixdiv: (a << 16) / b.
+Fixed fastFixDiv(FDot6 a, FDot6 b) { return shl(a, 16) / b; }
+
+std::int32_t fd6Frac(FDot6 x) { return x & (kFDot6One - 1); }
+
+// partial_pixel_coverage.
+std::int32_t partialPixelCoverage(FDot6 pos) { return fd6Frac(pos - 1) + 1; }
+
+// scale_alpha_by_coverage.
+std::uint8_t scaleAlpha(std::uint32_t value, std::int32_t coverage) {
+    return static_cast<std::uint8_t>((value * static_cast<std::uint32_t>(coverage)) >> 6);
 }
 
-// Rasterizer fixed point: 8 bits of subpixel precision.
-constexpr double kSubpixel = 256.0;
+// fixed_to_alpha.
+std::uint32_t fixedToAlpha(Fixed f) { return static_cast<std::uint32_t>((f >> 8) & 0xFF); }
 
-// Device coordinate -> NDC (Graphite's rtAdjust, fused) -> viewport ->
-// the 1/256 pixel grid, rounding half up.
-long long snapX(float x, float dimension) {
-    const float scale = 2.0f / dimension;
-    const float half = dimension * 0.5f;
-    const float ndc = std::fma(x, scale, -1.0f);
-    const float back = std::fma(ndc, half, half);
-    return static_cast<long long>(std::floor(static_cast<double>(back) * kSubpixel + 0.5));
+// call_hline_blitter: `count` pixels of one coverage.
+void hline(Blitter& blitter, std::int32_t x, std::int32_t y, std::int32_t count, std::uint8_t alpha) {
+    const std::vector<std::uint8_t> aa(static_cast<std::size_t>(std::max(count, 0)), alpha);
+    blitter.blitAntiH(x, y, aa.data(), count);
 }
 
-long long snapY(float y, float dimension) {
-    const float scale = 2.0f / dimension;
-    const float half = dimension * 0.5f;
-    const float ndc = std::fma(y, -scale, 1.0f);
-    const float back = std::fma(-ndc, half, half);
-    return static_cast<long long>(std::floor(static_cast<double>(back) * kSubpixel + 0.5));
+// The four SkAntiHairBlitter strategies by slope.
+enum class HairKind { HLine, Horish, VLine, Vertish };
+
+// drawCap(x, fy, slope, coverage).
+Fixed drawCap(HairKind kind, Blitter& blitter, std::int32_t x, Fixed f, Fixed slope, std::int32_t coverage) {
+    f = wadd(f, kFixedHalf);
+    const std::int32_t i = fixedFloor(f);
+    const std::uint32_t a = fixedToAlpha(f);
+    switch (kind) {
+    case HairKind::HLine: {
+        std::uint8_t ma = scaleAlpha(a, coverage);
+        if (ma != 0) hline(blitter, x, i, 1, ma);
+        ma = scaleAlpha(255 - a, coverage);
+        if (ma != 0) hline(blitter, x, i - 1, 1, ma);
+        return wsub(f, kFixedHalf);
+    }
+    case HairKind::Horish:
+        blitter.blitAntiV2(x, i - 1, scaleAlpha(255 - a, coverage), scaleAlpha(a, coverage));
+        return wsub(wadd(f, slope), kFixedHalf);
+    case HairKind::VLine: {
+        std::uint8_t ma = scaleAlpha(a, coverage);
+        if (ma != 0) blitter.blitV(i, x, 1, ma);
+        ma = scaleAlpha(255 - a, coverage);
+        if (ma != 0) blitter.blitV(i - 1, x, 1, ma);
+        return wsub(f, kFixedHalf);
+    }
+    case HairKind::Vertish:
+        blitter.blitAntiH2(i - 1, x, scaleAlpha(255 - a, coverage), scaleAlpha(a, coverage));
+        return wsub(wadd(f, slope), kFixedHalf);
+    }
+    return f;
 }
 
-// A top or left edge of a triangle with its interior on the right (y down).
-bool isTopLeft(long long dx, long long dy) {
-    return dy < 0 || (dy == 0 && dx > 0);
+// drawLine(x, stopx, fy, slope).
+Fixed drawLine(HairKind kind, Blitter& blitter, std::int32_t start, std::int32_t stop, Fixed f, Fixed slope) {
+    f = wadd(f, kFixedHalf);
+    switch (kind) {
+    case HairKind::HLine: {
+        const std::int32_t y = fixedFloor(f);
+        std::uint32_t a = fixedToAlpha(f);
+        if (a != 0) hline(blitter, start, y, stop - start, static_cast<std::uint8_t>(a));
+        a = 255 - a;
+        if (a != 0) hline(blitter, start, y - 1, stop - start, static_cast<std::uint8_t>(a));
+        break;
+    }
+    case HairKind::Horish:
+        for (std::int32_t x = start; x < stop; ++x) {
+            const std::int32_t lower = fixedFloor(f);
+            const std::uint32_t a = fixedToAlpha(f);
+            blitter.blitAntiV2(x, lower - 1, static_cast<std::uint8_t>(255 - a), static_cast<std::uint8_t>(a));
+            f = wadd(f, slope);
+        }
+        break;
+    case HairKind::VLine: {
+        const std::int32_t x = fixedFloor(f);
+        std::uint32_t a = fixedToAlpha(f);
+        if (a != 0) blitter.blitV(x, start, stop - start, static_cast<std::uint8_t>(a));
+        a = 255 - a;
+        if (a != 0) blitter.blitV(x - 1, start, stop - start, static_cast<std::uint8_t>(a));
+        break;
+    }
+    case HairKind::Vertish:
+        for (std::int32_t y = start; y < stop; ++y) {
+            const std::int32_t x = fixedFloor(f);
+            const std::uint32_t a = fixedToAlpha(f);
+            blitter.blitAntiH2(x - 1, y, static_cast<std::uint8_t>(255 - a), static_cast<std::uint8_t>(a));
+            f = wadd(f, slope);
+        }
+        break;
+    }
+    return wsub(f, kFixedHalf);
+}
+
+// The tail of do_anti_hairline: the start cap, the full spans and the stop
+// cap.
+void drawHair(HairKind kind, Blitter& blitter, std::int32_t istart, std::int32_t istop, Fixed fstart, Fixed slope,
+              std::int32_t startCoverage, std::int32_t stopCoverage) {
+    Fixed f = drawCap(kind, blitter, istart, fstart, slope, startCoverage);
+    istart += 1;
+    const std::int32_t fullSpans = istop - istart - (stopCoverage > 0 ? 1 : 0);
+    if (fullSpans > 0) f = drawLine(kind, blitter, istart, istart + fullSpans, f, slope);
+    if (stopCoverage > 0) drawCap(kind, blitter, istop - 1, f, slope, stopCoverage);
+}
+
+// do_anti_hairline(x0, y0, x1, y1, clip, blitter); `clip` null for none.
+void doAntiHairline(FDot6 x0, FDot6 y0, FDot6 x1, FDot6 y1, const IRect* clipIn, Blitter& blitter) {
+    // Integer NaN (0x80000000): a huge or non-finite coordinate.
+    constexpr std::int32_t kNaN = std::numeric_limits<std::int32_t>::min();
+    if (x0 == kNaN || y0 == kNaN || x1 == kNaN || y1 == kNaN) return;
+    if (wabs(wsub(x1, x0)) > 511 * kFDot6One || wabs(wsub(y1, y0)) > 511 * kFDot6One) {
+        const FDot6 hx = (x0 >> 1) + (x1 >> 1);
+        const FDot6 hy = (y0 >> 1) + (y1 >> 1);
+        doAntiHairline(x0, y0, hx, hy, clipIn, blitter);
+        doAntiHairline(hx, hy, x1, y1, clipIn, blitter);
+        return;
+    }
+
+    bool clipped = clipIn != nullptr;
+    const IRect clip = clipped ? *clipIn : IRect{};
+    std::int32_t istart = 0;
+    std::int32_t istop = 0;
+    Fixed fstart = 0;
+    Fixed slope = 0;
+    HairKind kind = HairKind::HLine;
+    std::int32_t startCoverage = 0;
+    std::int32_t stopCoverage = 0;
+
+    if (std::abs(x1 - x0) > std::abs(y1 - y0)) {
+        // Mostly horizontal: left to right.
+        if (x0 > x1) {
+            std::swap(x0, x1);
+            std::swap(y0, y1);
+        }
+        istart = fdot6Floor(x0);
+        istop = fdot6Ceil(x1);
+        if (y0 == y1) {
+            slope = 0;
+            kind = HairKind::HLine;
+            fstart = fdot6ToFixed(y0);
+        } else {
+            slope = fastFixDiv(y1 - y0, x1 - x0);
+            const std::int32_t dxToCenter = kFDot6Half - fd6Frac(x0);
+            fstart = wadd(fdot6ToFixed(y0), wadd(wmul(slope, dxToCenter), kFDot6Half) >> 6);
+            kind = HairKind::Horish;
+        }
+        if (istop - istart == 1) {
+            startCoverage = x1 - x0;
+            stopCoverage = 0;
+        } else {
+            startCoverage = kFDot6One - fd6Frac(x0);
+            stopCoverage = fd6Frac(x1);
+        }
+        if (clipped) {
+            if (istart >= clip.right || istop <= clip.left) return;
+            if (istart < clip.left) {
+                fstart = wadd(fstart, wmul(slope, clip.left - istart));
+                istart = clip.left;
+                startCoverage = kFDot6One;
+                if (istop - istart == 1) {
+                    startCoverage = partialPixelCoverage(x1);
+                    stopCoverage = 0;
+                }
+            }
+            if (istop > clip.right) {
+                istop = clip.right;
+                stopCoverage = 0;
+            }
+            if (istart == istop) return;
+            const Fixed span = wmul(slope, istop - istart - 1);
+            std::int32_t top = 0;
+            std::int32_t bottom = 0;
+            if (slope >= 0) {
+                top = fixedFloor(wsub(fstart, kFixedHalf));
+                bottom = fixedCeil(wadd(wadd(fstart, span), kFixedHalf));
+            } else {
+                bottom = fixedCeil(wadd(fstart, kFixedHalf));
+                top = fixedFloor(wsub(wadd(fstart, span), kFixedHalf));
+            }
+            top -= 1;
+            bottom += 1;
+            if (top >= clip.bottom || bottom <= clip.top) return;
+            if (clip.top <= top && clip.bottom >= bottom) clipped = false;
+        }
+    } else {
+        // Mostly vertical: top to bottom.
+        if (y0 > y1) {
+            std::swap(x0, x1);
+            std::swap(y0, y1);
+        }
+        istart = fdot6Floor(y0);
+        istop = fdot6Ceil(y1);
+        if (x0 == x1) {
+            if (y0 == y1) return;
+            slope = 0;
+            kind = HairKind::VLine;
+            fstart = fdot6ToFixed(x0);
+        } else {
+            slope = fastFixDiv(x1 - x0, y1 - y0);
+            const std::int32_t dyToCenter = kFDot6Half - fd6Frac(y0);
+            fstart = wadd(fdot6ToFixed(x0), wadd(wmul(slope, dyToCenter), kFDot6Half) >> 6);
+            kind = HairKind::Vertish;
+        }
+        if (istop - istart == 1) {
+            startCoverage = y1 - y0;
+            stopCoverage = 0;
+        } else {
+            startCoverage = kFDot6One - fd6Frac(y0);
+            stopCoverage = fd6Frac(y1);
+        }
+        if (clipped) {
+            if (istart >= clip.bottom || istop <= clip.top) return;
+            if (istart < clip.top) {
+                fstart = wadd(fstart, wmul(slope, clip.top - istart));
+                istart = clip.top;
+                startCoverage = kFDot6One;
+                if (istop - istart == 1) {
+                    startCoverage = partialPixelCoverage(y1);
+                    stopCoverage = 0;
+                }
+            }
+            if (istop > clip.bottom) {
+                istop = clip.bottom;
+                stopCoverage = 0;
+            }
+            if (istart == istop) return;
+            const Fixed span = wmul(slope, istop - istart - 1);
+            std::int32_t left = 0;
+            std::int32_t right = 0;
+            if (slope >= 0) {
+                left = fixedFloor(wsub(fstart, kFixedHalf));
+                right = fixedCeil(wadd(wadd(fstart, span), kFixedHalf));
+            } else {
+                right = fixedCeil(wadd(fstart, kFixedHalf));
+                left = fixedFloor(wsub(wadd(fstart, span), kFixedHalf));
+            }
+            left -= 1;
+            right += 1;
+            if (left >= clip.right || right <= clip.left) return;
+            if (clip.left <= left && clip.right >= right) clipped = false;
+        }
+    }
+
+    if (clipped) {
+        RectClipBlitter clippedBlitter(blitter, clip);
+        drawHair(kind, clippedBlitter, istart, istop, fstart, slope, startCoverage, stopCoverage);
+    } else {
+        drawHair(kind, blitter, istart, istop, fstart, slope, startCoverage, stopCoverage);
+    }
+}
+
+// ------------------------------------------------------------ line clipper
+
+constexpr float kScalarNearlyZero = 1.0f / 4096.0f;
+
+// sk_float_midpoint.
+float midpoint(float a, float b) {
+    return static_cast<float>((static_cast<double>(a) + static_cast<double>(b)) * 0.5);
+}
+
+bool nestedLt(float a, float b, float dim) { return a <= b && (a < b || dim > 0.0f); }
+
+// SkLineClipper::IntersectLine(src, clip, dst).
+bool intersectLine(const Pt src[2], const Rect& clip, Pt dst[2]) {
+    const Rect bounds{std::fmin(src[0].x, src[1].x), std::fmin(src[0].y, src[1].y), std::fmax(src[0].x, src[1].x),
+                      std::fmax(src[0].y, src[1].y)};
+    if (clip.left <= bounds.left && clip.top <= bounds.top && clip.right >= bounds.right
+        && clip.bottom >= bounds.bottom) {
+        dst[0] = src[0];
+        dst[1] = src[1];
+        return true;
+    }
+    const float bw = bounds.right - bounds.left;
+    const float bh = bounds.bottom - bounds.top;
+    if (nestedLt(bounds.right, clip.left, bw) || nestedLt(clip.right, bounds.left, bw)
+        || nestedLt(bounds.bottom, clip.top, bh) || nestedLt(clip.bottom, bounds.top, bh)) {
+        return false;
+    }
+    int i0 = src[0].y < src[1].y ? 0 : 1;
+    int i1 = 1 - i0;
+    Pt tmp[2] = {src[0], src[1]};
+    if (tmp[i0].y < clip.top) tmp[i0] = {sectWithHorizontal(src, clip.top), clip.top};
+    if (tmp[i1].y > clip.bottom) tmp[i1] = {sectWithHorizontal(src, clip.bottom), clip.bottom};
+    i0 = tmp[0].x < tmp[1].x ? 0 : 1;
+    i1 = 1 - i0;
+    if ((tmp[i1].x <= clip.left || tmp[i0].x >= clip.right)
+        && (tmp[0].x != tmp[1].x || tmp[0].x < clip.left || tmp[0].x > clip.right)) {
+        return false;
+    }
+    if (tmp[i0].x < clip.left) tmp[i0] = {clip.left, sectWithVertical(tmp, clip.left)};
+    if (tmp[i1].x > clip.right) tmp[i1] = {clip.right, sectWithVertical(tmp, clip.right)};
+    dst[0] = tmp[0];
+    dst[1] = tmp[1];
+    return true;
+}
+
+// SkScan::AntiHairLineRgn for one segment, `clip` the device clip (the
+// canvas) or null when the segment's bounds lie inside it.
+void antiHairLine(Pt pts[2], const IRect* clip, Blitter& blitter) {
+    constexpr float kMax = 32767.0f;
+    const Rect fixedBounds{-kMax, -kMax, kMax, kMax};
+    Pt clippedPts[2];
+    if (!intersectLine(pts, fixedBounds, clippedPts)) return;
+    if (clip) {
+        const Rect clipBounds{static_cast<float>(clip->left) - 1.0f, static_cast<float>(clip->top) - 1.0f,
+                              static_cast<float>(clip->right) + 1.0f, static_cast<float>(clip->bottom) + 1.0f};
+        Pt next[2];
+        if (!intersectLine(clippedPts, clipBounds, next)) return;
+        clippedPts[0] = next[0];
+        clippedPts[1] = next[1];
+    }
+    const FDot6 x0 = toFDot6(clippedPts[0].x);
+    const FDot6 y0 = toFDot6(clippedPts[0].y);
+    const FDot6 x1 = toFDot6(clippedPts[1].x);
+    const FDot6 y1 = toFDot6(clippedPts[1].y);
+    if (clip) {
+        const IRect ir{fdot6Floor(std::min(x0, x1)) - 1, fdot6Floor(std::min(y0, y1)) - 1,
+                       fdot6Ceil(std::max(x0, x1)) + 1, fdot6Ceil(std::max(y0, y1)) + 1};
+        if (!clip->intersects(ir)) return;
+        if (!clip->contains(ir)) {
+            // SkRegion::Cliperator over a rectangular region: the clip
+            // intersected with the segment's bounds.
+            IRect r;
+            if (clip->intersect(ir, r)) doAntiHairline(x0, y0, x1, y1, &r, blitter);
+            return;
+        }
+    }
+    doAntiHairline(x0, y0, x1, y1, nullptr, blitter);
+}
+
+// SkScan::AntiHairRoundPath of a moveTo/lineTo path: hair_path with
+// extend_pts<kRound_Cap> at both ends.
+void antiHairRoundLine(Pt p0, Pt p1, const IRect& canvas, Blitter& blitter) {
+    // The path's bounds, rounded out and outset by 2 for the caps.
+    const IRect ibounds{wsub(toI32(std::floor(std::fmin(p0.x, p1.x))), 2),
+                        wsub(toI32(std::floor(std::fmin(p0.y, p1.y))), 2),
+                        wadd(toI32(std::ceil(std::fmax(p0.x, p1.x))), 2),
+                        wadd(toI32(std::ceil(std::fmax(p0.y, p1.y))), 2)};
+    if (!canvas.intersects(ibounds)) return;
+    const IRect* clip = canvas.contains(ibounds) ? nullptr : &canvas;
+
+    // extend_pts: each end moves out along its tangent by the area of a half
+    // disc of radius 1/2 (pi/8). The end is extended after the start has
+    // moved, from the moved start.
+    const float capOutset = static_cast<float>(3.14159265358979323846) / 8.0f;
+    Pt pts[2] = {p0, p1};
+    Pt firstTangent;
+    if (!normalize(pts[0].x - pts[1].x, pts[0].y - pts[1].y, firstTangent)) firstTangent = {1.0f, 0.0f};
+    pts[0].x += firstTangent.x * capOutset;
+    pts[0].y += firstTangent.y * capOutset;
+    Pt lastTangent;
+    if (!normalize(pts[1].x - pts[0].x, pts[1].y - pts[0].y, lastTangent)) lastTangent = {-1.0f, 0.0f};
+    pts[1].x += lastTangent.x * capOutset;
+    pts[1].y += lastTangent.y * capOutset;
+
+    antiHairLine(pts, clip, blitter);
+}
+
+// One texel of the WebGL upload of a canvas created with willReadFrequently,
+// which Chromium unpremultiplies as getImageData does (Skia's raster
+// pipeline): each channel read as c * (1 / 255.0f), multiplied by the float
+// reciprocal of a * (1 / 255.0f) (0 where that reciprocal is infinite),
+// clamped to [0, 1], and stored as the product with 255 rounded to nearest,
+// ties to even.
+void readBackTexel(const std::uint8_t* in, std::uint8_t* out) {
+    const auto fromByte = [](std::uint8_t b) { return static_cast<float>(b) * (1.0f / 255.0f); };
+    const float reciprocal = 1.0f / fromByte(in[3]);
+    const float scale = reciprocal < std::numeric_limits<float>::infinity() ? reciprocal : 0.0f;
+    const auto unorm = [](float v) {
+        const float clamped = std::min(std::max(v, 0.0f), 1.0f);
+        return static_cast<std::uint8_t>(std::nearbyint(clamped * 255.0f));
+    };
+    out[0] = unorm(fromByte(in[0]) * scale);
+    out[1] = unorm(fromByte(in[1]) * scale);
+    out[2] = unorm(fromByte(in[2]) * scale);
+    out[3] = unorm(fromByte(in[3]));
 }
 
 } // namespace
+
+// ------------------------------------------------------- shared helpers
+
+namespace raster {
+
+float sectWithHorizontal(const Pt src[2], float y) {
+    const float dy = src[1].y - src[0].y;
+    if (std::fabs(dy) <= kScalarNearlyZero) return midpoint(src[0].x, src[1].x);
+    const double x0 = src[0].x, y0 = src[0].y, x1 = src[1].x, y1 = src[1].y;
+    const double result = x0 + (static_cast<double>(y) - y0) * (x1 - x0) / (y1 - y0);
+    return static_cast<float>(pinUnsorted(result, x0, x1));
+}
+
+float sectWithVertical(const Pt src[2], float x) {
+    const float dx = src[1].x - src[0].x;
+    if (std::fabs(dx) <= kScalarNearlyZero) return midpoint(src[0].y, src[1].y);
+    const double x0 = src[0].x, y0 = src[0].y, x1 = src[1].x, y1 = src[1].y;
+    return static_cast<float>(y0 + (static_cast<double>(x) - x0) * (y1 - y0) / (x1 - x0));
+}
+
+double pinUnsorted(double value, double lo, double hi) {
+    if (hi < lo) std::swap(lo, hi);
+    if (value < lo) return lo;
+    if (value > hi) return hi;
+    return value;
+}
+
+bool normalize(float x, float y, Pt& out) {
+    const double xx = x, yy = y;
+    const double dmag = std::sqrt(xx * xx + yy * yy);
+    const double dscale = 1.0 / dmag;
+    const float nx = static_cast<float>(static_cast<double>(x) * dscale);
+    const float ny = static_cast<float>(static_cast<double>(y) * dscale);
+    if (!std::isfinite(nx) || !std::isfinite(ny) || (nx == 0.0f && ny == 0.0f)) return false;
+    out = {nx, ny};
+    return true;
+}
+
+void RectClipBlitter::blitH(std::int32_t x, std::int32_t y, std::int32_t width) {
+    if (y < m_clip.top || y >= m_clip.bottom) return;
+    const std::int32_t left = std::max(x, m_clip.left);
+    const std::int32_t right = std::min(x + width, m_clip.right);
+    if (right > left) m_inner.blitH(left, y, right - left);
+}
+
+void RectClipBlitter::blitAntiH(std::int32_t x, std::int32_t y, const std::uint8_t* aa, std::int32_t count) {
+    if (y < m_clip.top || y >= m_clip.bottom || x >= m_clip.right) return;
+    const std::int32_t x1 = x + count;
+    if (x1 <= m_clip.left) return;
+    const std::int32_t x0 = std::max(x, m_clip.left);
+    const std::int32_t end = std::min(x1, m_clip.right);
+    m_inner.blitAntiH(x0, y, aa + (x0 - x), end - x0);
+}
+
+void RectClipBlitter::blitV(std::int32_t x, std::int32_t y, std::int32_t height, std::uint8_t alpha) {
+    if (x < m_clip.left || x >= m_clip.right) return;
+    const std::int32_t y0 = std::max(y, m_clip.top);
+    const std::int32_t y1 = std::min(y + height, m_clip.bottom);
+    if (y0 < y1) m_inner.blitV(x, y0, y1 - y0, alpha);
+}
+
+void RectClipBlitter::blitRect(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height) {
+    IRect r;
+    if (IRect{x, y, x + width, y + height}.intersect(m_clip, r)) {
+        m_inner.blitRect(r.left, r.top, r.right - r.left, r.bottom - r.top);
+    }
+}
+
+void RectClipBlitter::blitAntiRect(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height,
+                                   std::uint8_t left, std::uint8_t right) {
+    // The true width of the rectangle is width + 2.
+    IRect r;
+    if (!IRect{x, y, x + width + 2, y + height}.intersect(m_clip, r)) return;
+    if (r.left != x) left = 255;
+    if (r.right != x + width + 2) right = 255;
+    const std::int32_t rw = r.right - r.left;
+    const std::int32_t rh = r.bottom - r.top;
+    if (left == 255 && right == 255) {
+        m_inner.blitRect(r.left, r.top, rw, rh);
+    } else if (rw == 1) {
+        m_inner.blitV(r.left, r.top, rh, r.left == x ? left : right);
+    } else {
+        m_inner.blitAntiRect(r.left, r.top, rw - 2, rh, left, right);
+    }
+}
+
+void RectClipBlitter::blitMask(const Mask& mask, const IRect& clip) {
+    IRect r;
+    if (clip.intersect(m_clip, r)) m_inner.blitMask(mask, r);
+}
+
+} // namespace raster
+
+// ---------------------------------------------------------------- canvas
 
 StrokeCanvas::StrokeCanvas(int width, int height) : m_width(width), m_height(height) {
     if (width <= 0 || height <= 0) {
         throw std::invalid_argument("nm::StrokeCanvas: width and height must be positive");
     }
-    const size_t count = static_cast<size_t>(width) * static_cast<size_t>(height);
-    m_pixels.assign(count * 4, 0);
-    m_shaded.assign(count, 0);
+    m_pixels.assign(static_cast<std::size_t>(width) * static_cast<std::size_t>(height), 0u);
 }
 
 void StrokeCanvas::clear() {
-    std::fill(m_pixels.begin(), m_pixels.end(), std::uint8_t{0});
+    std::fill(m_pixels.begin(), m_pixels.end(), 0u);
 }
 
 void StrokeCanvas::setLineWidth(double width) {
@@ -321,181 +776,75 @@ void StrokeCanvas::setLineWidth(double width) {
 
 void StrokeCanvas::setStrokeColor(double r, double g, double b, double alpha) {
     if (!std::isfinite(r) || !std::isfinite(g) || !std::isfinite(b) || !std::isfinite(alpha)) return;
-    auto channel = [](double value) {
-        return std::floor(std::clamp(value, 0.0, 255.0) + 0.5);
-    };
-    const double alpha8 = std::floor(std::clamp(alpha, 0.0, 1.0) * 255.0 + 0.5);
-    // SkColor4f::FromColor: c * (1 / 255.0f); SkColor4f::premul().
-    const float inv255 = 1.0f / 255.0f;
-    const float a = static_cast<float>(alpha8) * inv255;
-    m_color[0] = static_cast<float>(channel(r)) * inv255 * a;
-    m_color[1] = static_cast<float>(channel(g)) * inv255 * a;
-    m_color[2] = static_cast<float>(channel(b)) * inv255 * a;
-    m_color[3] = a;
+    auto channel = [](double value) { return toU8(std::floor(std::clamp(value, 0.0, 255.0) + 0.5)); };
+    m_color[0] = channel(r);
+    m_color[1] = channel(g);
+    m_color[2] = channel(b);
+    m_color[3] = toU8(std::floor(std::clamp(alpha, 0.0, 1.0) * 255.0 + 0.5));
 }
 
 void StrokeCanvas::strokeLine(double x0d, double y0d, double x1d, double y1d) {
     if (!std::isfinite(x0d) || !std::isfinite(y0d) || !std::isfinite(x1d) || !std::isfinite(y1d)) return;
-    // Nothing to draw with a transparent source-over paint.
-    if (m_color[3] == 0.0f) return;
+    // Blink keeps path points as floats.
     const float x0 = static_cast<float>(x0d);
     const float y0 = static_cast<float>(y0d);
     const float x1 = static_cast<float>(x1d);
     const float y1 = static_cast<float>(y1d);
-    // The canvas draws nothing for a segment whose end points are equal
-    // once converted to the path's float coordinates (measured at widths 1
-    // and 3), while a segment one float ulp long draws a round dot. A length
-    // whose square underflows would give the GPU NaN vertices, which
-    // rasterize nothing.
-    if (!((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1) > 0.0f)) return;
-    const float strokeRadius = 0.5f * m_lineWidth;
-
-    // Blink InflateStrokeRect + ComputeDirtyRect: the path bounds outset by
+    // A path whose points coincide is pruned before stroking.
+    if (x0 == x1 && y0 == y1) return;
+    // InflateStrokeRect + ComputeDirtyRect: the bounds outset by
     // lineWidth / 2, rounded out, must intersect the canvas.
+    const float strokeRadius = 0.5f * m_lineWidth;
     {
-        const float left = std::min(x0, x1) - strokeRadius;
-        const float top = std::min(y0, y1) - strokeRadius;
-        const float width = (std::max(x0, x1) - std::min(x0, x1)) + 2.0f * strokeRadius;
-        const float height = (std::max(y0, y1) - std::min(y0, y1)) + 2.0f * strokeRadius;
+        const float left = std::fmin(x0, x1) - strokeRadius;
+        const float top = std::fmin(y0, y1) - strokeRadius;
+        const float width = (std::fmax(x0, x1) - std::fmin(x0, x1)) + 2.0f * strokeRadius;
+        const float height = (std::fmax(y0, y1) - std::fmin(y0, y1)) + 2.0f * strokeRadius;
         const double l = std::floor(static_cast<double>(left));
         const double t = std::floor(static_cast<double>(top));
         const double r = std::ceil(static_cast<double>(left + width));
         const double b = std::ceil(static_cast<double>(top + height));
         if (r <= 0.0 || b <= 0.0 || l >= static_cast<double>(m_width) || t >= static_cast<double>(m_height)) return;
     }
-
-    static const std::array<TemplateVertex, kVertexCount> kTemplate = makeTemplate();
-    const LineInstance line = makeLineInstance(x0, y0, x1, y1, strokeRadius);
-
-    DeviceVertex vertices[kVertexCount];
-    long long fixedX[kVertexCount];
-    long long fixedY[kVertexCount];
-    const float widthF = static_cast<float>(m_width);
-    const float heightF = static_cast<float>(m_height);
-    long long minX = 0;
-    long long maxX = 0;
-    long long minY = 0;
-    long long maxY = 0;
-    for (int i = 0; i < kVertexCount; ++i) {
-        vertices[i] = lineVertex(kTemplate[static_cast<size_t>(i)], line);
-        fixedX[i] = snapX(vertices[i].x, widthF);
-        fixedY[i] = snapY(vertices[i].y, heightF);
-        if (i == 0 || fixedX[i] < minX) minX = fixedX[i];
-        if (i == 0 || fixedX[i] > maxX) maxX = fixedX[i];
-        if (i == 0 || fixedY[i] < minY) minY = fixedY[i];
-        if (i == 0 || fixedY[i] > maxY) maxY = fixedY[i];
-    }
-    // Pixels whose centers can lie inside the instance, clipped to the canvas.
-    auto firstPixel = [](long long fixedMin) {
-        return static_cast<long long>(std::ceil((static_cast<double>(fixedMin) - 128.0) / kSubpixel));
-    };
-    auto lastPixel = [](long long fixedMax) {
-        return static_cast<long long>(std::floor((static_cast<double>(fixedMax) - 128.0) / kSubpixel));
-    };
-    const int boxX0 = static_cast<int>(std::max<long long>(0, firstPixel(minX)));
-    const int boxY0 = static_cast<int>(std::max<long long>(0, firstPixel(minY)));
-    const int boxX1 = static_cast<int>(std::min<long long>(m_width - 1, lastPixel(maxX)));
-    const int boxY1 = static_cast<int>(std::min<long long>(m_height - 1, lastPixel(maxY)));
-    if (boxX0 > boxX1 || boxY0 > boxY1) return;
-
-    for (int t = 0; t + 2 < kIndexCount; ++t) {
-        int ia = kIndices[t];
-        int ib = kIndices[t + 1];
-        int ic = kIndices[t + 2];
-        long long ax = fixedX[ia], ay = fixedY[ia];
-        long long bx = fixedX[ib], by = fixedY[ib];
-        long long cx = fixedX[ic], cy = fixedY[ic];
-        long long area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
-        if (area == 0) continue;
-        if (area < 0) {
-            std::swap(ib, ic);
-            std::swap(bx, cx);
-            std::swap(by, cy);
-            area = -area;
+    if (m_color[3] == 0) return;
+    const IRect canvas{0, 0, m_width, m_height};
+    const std::size_t stride = static_cast<std::size_t>(m_width);
+    // modifyPaintForHairlines: fast_len of (w, 0) is w.
+    const float w = m_lineWidth;
+    if (w <= 1.0f) {
+        std::uint8_t color[4] = {m_color[0], m_color[1], m_color[2], m_color[3]};
+        if (w != 1.0f) {
+            const std::uint32_t scale = toU32(static_cast<double>(w * 256.0f));
+            color[3] = static_cast<std::uint8_t>((static_cast<std::uint32_t>(color[3]) * scale) >> 8);
         }
-        const Varyings& va = vertices[ia].v;
-        const Varyings& vb = vertices[ib].v;
-        const Varyings& vc = vertices[ic].v;
-        const bool topLeftAB = isTopLeft(bx - ax, by - ay);
-        const bool topLeftBC = isTopLeft(cx - bx, cy - by);
-        const bool topLeftCA = isTopLeft(ax - cx, ay - cy);
-        const int px0 = static_cast<int>(std::max<long long>(boxX0, firstPixel(std::min({ax, bx, cx}))));
-        const int px1 = static_cast<int>(std::min<long long>(boxX1, lastPixel(std::max({ax, bx, cx}))));
-        const int py0 = static_cast<int>(std::max<long long>(boxY0, firstPixel(std::min({ay, by, cy}))));
-        const int py1 = static_cast<int>(std::min<long long>(boxY1, lastPixel(std::max({ay, by, cy}))));
-        const float areaF = static_cast<float>(area);
-        // Edge functions at the first pixel center of the box, and their
-        // steps per pixel (256 fixed-point units).
-        const long long startX = static_cast<long long>(px0) * 256 + 128;
-        const long long startY = static_cast<long long>(py0) * 256 + 128;
-        long long rowC = (bx - ax) * (startY - ay) - (by - ay) * (startX - ax);
-        long long rowA = (cx - bx) * (startY - by) - (cy - by) * (startX - bx);
-        long long rowB = (ax - cx) * (startY - cy) - (ay - cy) * (startX - cx);
-        const long long stepXC = -(by - ay) * 256, stepYC = (bx - ax) * 256;
-        const long long stepXA = -(cy - by) * 256, stepYA = (cx - bx) * 256;
-        const long long stepXB = -(ay - cy) * 256, stepYB = (ax - cx) * 256;
-        for (int y = py0; y <= py1; ++y, rowC += stepYC, rowA += stepYA, rowB += stepYB) {
-            long long wC = rowC;
-            long long wA = rowA;
-            long long wB = rowB;
-            for (int x = px0; x <= px1; ++x, wC += stepXC, wA += stepXA, wB += stepXB) {
-                if (wC < 0 || (wC == 0 && !topLeftAB)) continue;
-                if (wA < 0 || (wA == 0 && !topLeftBC)) continue;
-                if (wB < 0 || (wB == 0 && !topLeftCA)) continue;
-                const size_t index = static_cast<size_t>(y) * static_cast<size_t>(m_width) + static_cast<size_t>(x);
-                if (m_shaded[index]) continue;
-                m_shaded[index] = 1;
-
-                const float b0 = static_cast<float>(wA) / areaF;
-                const float b1 = static_cast<float>(wB) / areaF;
-                const float b2 = static_cast<float>(wC) / areaF;
-                Varyings v;
-                for (int i = 0; i < 4; ++i) {
-                    v.jacobian[i] = b0 * va.jacobian[i] + b1 * vb.jacobian[i] + b2 * vc.jacobian[i];
-                    v.edgeDistances[i] = b0 * va.edgeDistances[i] + b1 * vb.edgeDistances[i]
-                        + b2 * vc.edgeDistances[i];
-                }
-                v.strokeRadius = b0 * va.strokeRadius + b1 * vb.strokeRadius + b2 * vc.strokeRadius;
-                v.joinStyle = b0 * va.joinStyle + b1 * vb.joinStyle + b2 * vc.joinStyle;
-                v.perPixelX = b0 * va.perPixelX + b1 * vb.perPixelX + b2 * vc.perPixelX;
-                v.perPixelY = b0 * va.perPixelY + b1 * vb.perPixelY + b2 * vc.perPixelY;
-                const float coverage = lineCoverage(v);
-
-                std::uint8_t* pixel = &m_pixels[index * 4];
-                float source[4];
-                for (int i = 0; i < 4; ++i) source[i] = m_color[i] * coverage;
-                const float inverseAlpha = 1.0f - source[3];
-                for (int i = 0; i < 4; ++i) {
-                    pixel[i] = toUnorm8(source[i] + kUnorm8ToFloat[pixel[i]] * inverseAlpha);
-                }
-            }
-        }
-    }
-    for (int y = boxY0; y <= boxY1; ++y) {
-        std::fill_n(m_shaded.begin() + static_cast<std::ptrdiff_t>(static_cast<size_t>(y) * static_cast<size_t>(m_width) + static_cast<size_t>(boxX0)),
-                    boxX1 - boxX0 + 1, std::uint8_t{0});
+        ArgbBlitter blitter(m_pixels, stride, color);
+        if (blitter.kind() == BlitterKind::Translucent && blitter.srcA() == 0) return;
+        antiHairRoundLine({x0, y0}, {x1, y1}, canvas, blitter);
+    } else {
+        ArgbBlitter blitter(m_pixels, stride, m_color);
+        fillStroke({x0, y0}, {x1, y1}, w, canvas, blitter);
     }
 }
 
+std::vector<std::uint8_t> StrokeCanvas::premultiplied() const {
+    std::vector<std::uint8_t> out(m_pixels.size() * 4);
+    for (std::size_t i = 0; i < m_pixels.size(); ++i) {
+        const std::uint32_t p = m_pixels[i];
+        out[i * 4 + 0] = static_cast<std::uint8_t>(p >> 16);
+        out[i * 4 + 1] = static_cast<std::uint8_t>(p >> 8);
+        out[i * 4 + 2] = static_cast<std::uint8_t>(p);
+        out[i * 4 + 3] = static_cast<std::uint8_t>(p >> 24);
+    }
+    return out;
+}
+
 std::vector<std::uint8_t> StrokeCanvas::unpremultipliedRgba8() const {
-    return unpremultiplyForUpload(m_pixels);
+    return unpremultiplyForUpload(premultiplied());
 }
 
 std::vector<std::uint8_t> unpremultiplyForUpload(const std::vector<std::uint8_t>& premultiplied) {
     std::vector<std::uint8_t> out(premultiplied.size());
-    for (size_t i = 0; i + 3 < premultiplied.size(); i += 4) {
-        const std::uint8_t alpha = premultiplied[i + 3];
-        out[i + 3] = alpha;
-        if (alpha == 0) {
-            out[i] = out[i + 1] = out[i + 2] = 0;
-            continue;
-        }
-        const float reciprocal = 1.0f / (static_cast<float>(alpha) / 255.0f);
-        for (size_t c = 0; c < 3; ++c) {
-            const float value = (static_cast<float>(premultiplied[i + c]) / 255.0f) * reciprocal;
-            out[i + c] = static_cast<std::uint8_t>(std::min(255.0, std::floor(static_cast<double>(value) * 255.0 + 0.5)));
-        }
-    }
+    for (std::size_t i = 0; i + 3 < premultiplied.size(); i += 4) readBackTexel(&premultiplied[i], &out[i]);
     return out;
 }
 

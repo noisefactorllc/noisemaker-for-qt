@@ -41,6 +41,8 @@ set(NM_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/text_texture.cpp
     ${CMAKE_CURRENT_LIST_DIR}/stroke_canvas.h
     ${CMAKE_CURRENT_LIST_DIR}/stroke_canvas.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/stroke_raster.h
+    ${CMAKE_CURRENT_LIST_DIR}/stroke_fill.cpp
     ${CMAKE_CURRENT_LIST_DIR}/worm_tracer.h
     ${CMAKE_CURRENT_LIST_DIR}/worm_tracer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/async_overlay.h

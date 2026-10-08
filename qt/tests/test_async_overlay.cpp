@@ -4,9 +4,10 @@
 // overlay as nm::Backend renders it. Plain executable, run from the repo
 // root (WORKING_DIRECTORY in CMakeLists.txt).
 //
-// Expected values marked "Chromium" were captured from Chromium 153
-// (headless, --use-angle=metal, Apple M4) running the reference modules;
-// parity/check_async_overlay.mjs re-measures them against a live browser.
+// Expected values marked "Chromium" were captured from Chromium 153's
+// software canvas (headless, Windows x64) running the reference modules;
+// the canvas is the same on every host, and parity/check_async_overlay.mjs
+// re-measures it against a live browser.
 
 #include "../noisemaker/compiler/dsl_compiler.h"
 #include "../noisemaker/compiler/effect_registry.h"
@@ -126,8 +127,9 @@ void testMath() {
           "special values: sin(-0) = -0, cos(0) = 1, sin(inf) = NaN, log(1) = 0, log(0) = -inf, log(-1) = NaN");
 }
 
-// Chromium: four opaque white round-capped strokes on a 32x32 canvas; the
-// premultiplied alpha of every inked pixel.
+// Chromium 153's software canvas (willReadFrequently, as the overlays
+// create theirs): four opaque white round-capped strokes on a 32x32 canvas;
+// the premultiplied alpha of every inked pixel.
 void testCanvasStrokes() {
     nm::StrokeCanvas canvas(32, 32);
     const double strokes[4][5] = {
@@ -145,20 +147,21 @@ void testCanvasStrokes() {
         int x, y, alpha;
     };
     const Ink expected[] = {
-        {26, 8, 42}, {27, 8, 5}, {10, 9, 6}, {24, 9, 38}, {25, 9, 96}, {26, 9, 100}, {27, 9, 21},
-        {9, 10, 108}, {10, 10, 246}, {11, 10, 39}, {22, 10, 33}, {23, 10, 92}, {24, 10, 104}, {25, 10, 45},
-        {9, 11, 30}, {10, 11, 170}, {11, 11, 18}, {20, 11, 29}, {21, 11, 88}, {22, 11, 108}, {23, 11, 50},
-        {19, 12, 27}, {20, 12, 113}, {21, 12, 54}, {23, 23, 31}, {24, 23, 47}, {5, 24, 77}, {23, 24, 237},
-        {24, 24, 255}, {25, 24, 95}, {5, 25, 255}, {23, 25, 211}, {24, 25, 255}, {25, 25, 106}, {5, 26, 255},
-        {24, 26, 48}, {5, 27, 255}, {5, 28, 255}, {5, 29, 102},
+        {26, 8, 33}, {27, 8, 13}, {24, 9, 28}, {25, 9, 94}, {26, 9, 94}, {27, 9, 3}, {9, 10, 79},
+        {10, 10, 223}, {11, 10, 36}, {22, 10, 23}, {23, 10, 89}, {24, 10, 99}, {25, 10, 33}, {9, 11, 30},
+        {10, 11, 176}, {11, 11, 14}, {20, 11, 18}, {21, 11, 84}, {22, 11, 104}, {23, 11, 38}, {19, 12, 8},
+        {20, 12, 108}, {21, 12, 43}, {19, 13, 5}, {23, 23, 14}, {24, 23, 23}, {5, 24, 51}, {23, 24, 227},
+        {24, 24, 255}, {25, 24, 74}, {5, 25, 255}, {22, 25, 4}, {23, 25, 218}, {24, 25, 255}, {25, 25, 90},
+        {5, 26, 255}, {23, 26, 4}, {24, 26, 64}, {25, 26, 2}, {5, 27, 255}, {5, 28, 255}, {5, 29, 71},
     };
     std::vector<int> want(32 * 32, 0);
     for (const Ink& ink : expected) want[static_cast<size_t>(ink.y * 32 + ink.x)] = ink.alpha;
+    const std::vector<std::uint8_t> drawn = canvas.premultiplied();
     int mismatches = 0;
     for (size_t i = 0; i < want.size(); ++i) {
-        if (canvas.premultiplied()[i * 4 + 3] != want[i]) ++mismatches;
+        if (drawn[i * 4 + 3] != want[i]) ++mismatches;
     }
-    check(mismatches == 0, "stroke coverage equals the Chromium canvas at every pixel (4 strokes, 39 inked pixels)");
+    check(mismatches == 0, "stroke coverage equals the Chromium canvas at every pixel (4 strokes, 42 inked pixels)");
 
     const std::vector<std::uint8_t> before = canvas.premultiplied();
     canvas.setLineWidth(3.0);
@@ -178,61 +181,59 @@ void testCanvasStrokes() {
     dot.setLineWidth(-1.0);
     dot.setLineWidth(std::numeric_limits<double>::infinity());
     dot.setStrokeColor(255, 255, 255, 1.0);
-    dot.strokeLine(8.3, 8.4, static_cast<double>(std::nextafter(8.3f, 100.0f)), 8.4);
+    dot.strokeLine(8.3, 8.4, 8.31, 8.4);
+    const std::vector<std::uint8_t> dotPixels = dot.premultiplied();
     int sum = 0;
-    for (size_t i = 3; i < dot.premultiplied().size(); i += 4) sum += dot.premultiplied()[i];
-    check(sum == 1870,
-          "a segment one float ulp long draws a round dot of width 3; width -1 and infinity are ignored (alpha sum 1870, Chromium)");
+    for (size_t i = 3; i < dotPixels.size(); i += 4) sum += dotPixels[i];
+    check(sum == 1768,
+          "a 0.01 px segment draws a round dot of width 3; width -1 and infinity are ignored (alpha sum 1768, Chromium)");
 
     canvas.clear();
     check(allZero(canvas.premultiplied()), "clear() makes the canvas transparent");
 }
 
-// Measured on Chromium's WebGL upload with UNPACK_PREMULTIPLY_ALPHA_WEBGL
-// false: every c * 255 / a below is a midpoint, rounded up or down by the
-// float quotient.
+// Measured on Chromium 153's WebGL upload of a software canvas with
+// UNPACK_PREMULTIPLY_ALPHA_WEBGL false: every c * 255 / a below is a
+// midpoint, which the float product rounds up or down, ties to even.
 void testUploadConversion() {
     const std::vector<std::uint8_t> premultiplied = {
-        7, 3, 1, 10,        // 178.5 -> 178, 76.5 -> 77, 25.5 -> 26
-        1, 7, 21, 34,       // 7.5 -> 8, 52.5 -> 52, 157.5 -> 157
+        7, 3, 1, 10,        // 178.5 -> 179, 76.5 -> 77, 25.5 -> 26
+        1, 7, 21, 34,       // 7.5 -> 8, 52.5 -> 52, 157.5 -> 158
         1, 0, 2, 2,         // 127.5 -> 128, 0 -> 0, 255 -> 255
-        5, 1, 6, 6,         // 212.5 -> 213, 42.5 -> 43, 255 -> 255
+        5, 1, 6, 6,         // 212.5 -> 212, 42.5 -> 42, 255 -> 255
         100, 33, 3, 200,    // 127.5 -> 128, 42.075 -> 42, 3.825 -> 4
         200, 100, 3, 255,   // alpha 255 keeps the channels
         9, 9, 9, 0,         // alpha 0 -> 0
     };
     const std::vector<std::uint8_t> expected = {
-        178, 77, 26, 10,
-        8, 52, 157, 34,
+        179, 77, 26, 10,
+        8, 52, 158, 34,
         128, 0, 255, 2,
-        213, 43, 255, 6,
+        212, 42, 255, 6,
         128, 42, 4, 200,
         200, 100, 3, 255,
         0, 0, 0, 0,
     };
     check(nm::unpremultiplyForUpload(premultiplied) == expected,
-          "upload conversion rounds the float quotient like Chromium, including its midpoints");
+          "upload conversion rounds the float product like Chromium, including its midpoints");
 }
 
-// Chromium: SHA-256 of the uploaded overlay bytes (straight RGBA8, row 0 at
-// the top) after the reference asyncInit completed at 256x256.
+// Chromium 153: SHA-256 of the uploaded overlay bytes (straight RGBA8, row 0
+// at the top) after the reference asyncInit completed at 256x256.
 void testOverlays() {
     const QSize size(256, 256);
     const QJsonObject scratchParams{{QStringLiteral("density"), 0.3}, {QStringLiteral("seed"), 1}};
     const QJsonObject hairParams{{QStringLiteral("density"), 0.5}, {QStringLiteral("seed"), 1}};
     check(sha256(nm::generateAsyncOverlay(QStringLiteral("filter.scratches"), size, scratchParams))
-              == QByteArrayLiteral("0f65532476d88b85354ebceeb568b7f92bcf27a62f3a31671cdf8e5cbabfc112"),
+              == QByteArrayLiteral("3fbc037f11404b1b06afabdd1b5bd4fcb73dc92541f325b96b0ec46254f17f14"),
           "filter/scratches 256x256 overlay is byte-identical to Chromium");
     check(sha256(nm::generateAsyncOverlay(QStringLiteral("filter.strayHair"), size, hairParams))
-              == QByteArrayLiteral("729fad21ed78abad5e9368bcd2f83c6859badf527be714715c8e97715ca4a8e7"),
+              == QByteArrayLiteral("651f767359ebb52192327d0d04cbea4a183ac65700b67f7a67d4e558ec9bd012"),
           "filter/strayHair 256x256 overlay is byte-identical to Chromium");
-    // Chromium's fibers overlay differs from this one in 25 channel values
-    // at 14 pixels (GPU rounding at midpoints; check_async_overlay.mjs).
-    // This hash guards the port's own output.
     const QJsonObject fiberParams{{QStringLiteral("density"), 1}, {QStringLiteral("seed"), 1}};
-    const QByteArray fibers = sha256(nm::generateAsyncOverlay(QStringLiteral("filter.fibers"), size, fiberParams));
-    check(fibers == QByteArrayLiteral("de08f4663feebfb5d38b0edc0d67706035a67bba16fd11e9ab9baa7018af2bfd"),
-          "filter/fibers 256x256 overlay matches the recorded port output");
+    check(sha256(nm::generateAsyncOverlay(QStringLiteral("filter.fibers"), size, fiberParams))
+              == QByteArrayLiteral("3772c34c45a0905ea94d1a3097838486c26dd4b40316492dd94a1d2c9e9d4eb5"),
+          "filter/fibers 256x256 overlay is byte-identical to Chromium");
 
     // updateTexture calls: the initial clear, after worms 0, 3, 6, ... and at
     // the end of each layer. Chromium counted 861 for fibers at 256x256.
