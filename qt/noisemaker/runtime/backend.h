@@ -280,7 +280,7 @@ public:
     // volumeSize takes the emitter's value. A param without a host control
     // (ui.control false or ui.hidden true) keeps the object, which binds as
     // WebGL2 binds it: 0 for an int or bool uniform, NaN for a float or
-    // float vector (GAP-043). render() changes only its per-frame copy of the
+    // float vector. render() changes only its per-frame copy of the
     // graph and reads each effect definition once per Backend.
     // applyStepParameterValues and setUniform replace a function value.
 

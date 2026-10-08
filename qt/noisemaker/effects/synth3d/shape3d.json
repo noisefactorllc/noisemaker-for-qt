@@ -24,10 +24,12 @@
     "colorMode": {
       "type": "int",
       "default": 0,
-      "uniform": "colorMode",
       "choices": {
         "mono": 0,
         "rgb": 1
+      },
+      "ui": {
+        "control": false
       }
     },
     "loopAOffset": {

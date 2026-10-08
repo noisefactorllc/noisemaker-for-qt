@@ -5,10 +5,6 @@
 
 # Noisemaker for Qt
 
-Current measured support: [compatibility report](docs/COMPATIBILITY.md).
-
-Current qualification limits: [completion gaps](docs/COMPLETION_GAPS.md).
-
 > This package supports the "Export Shader Pipeline" feature in Noisedeck.app. The feature runs shader compositions on other platforms. Noise Factor derives this package from the upstream Noisemaker Engine project and tests it for pixel-level parity.
 
 **Noisemaker** is a procedural visual engine. Small text programs combine effects into chains, compile to a render graph, and run live as animated GPU textures. **Noisemaker for Qt** brings the same DSL compiler and effects library to Qt 6. It includes a C++17 library (`noisemaker-qt`, namespace `nm::`), an offscreen render CLI (`nm-render`), and a live `QOpenGLWidget` example. These use classic `QOpenGL*` with pixel-level parity against the reference engine.
@@ -47,7 +43,7 @@ Unlike the HLSL/GDShader ports, this port shares the reference's shader *languag
 
 ## Requirements
 
-The runtime needs an OpenGL 4.1 core profile context; shaders compile as GLSL 330 core. Qt 6.9 or later (Core, Gui and OpenGL; Quick for the optional item) is required, with CMake 3.21 or later and a C++17 compiler. Rendered parity is verified on macOS (Apple Silicon) over 353 fixtures. CI builds and runs the unit tests on Linux, Windows and macOS, and grades a smoke set of rendered fixtures on Linux and Windows with Mesa llvmpipe. Open platform limits are in [completion gaps](docs/COMPLETION_GAPS.md).
+The runtime needs an OpenGL 4.1 core profile context; shaders compile as GLSL 330 core. Qt 6.9 or later (Core, Gui and OpenGL; Quick for the optional item) is required, with CMake 3.21 or later and a C++17 compiler. CI builds and runs the unit tests on Linux, Windows and macOS on every push, and grades a smoke set of rendered fixtures on Linux and Windows with Mesa llvmpipe. A weekly workflow grades the full fixture corpus on llvmpipe. Open platform limits are tracked as [issues](https://github.com/noisefactorllc/noisemaker-for-qt/issues).
 
 Qt 6.9 is the first version that can set a variable font's weight axis, which `text()` needs for the bundled Nunito. Measured on 2026-09-24: Qt 6.9.3 on Linux arm64 (gcc 13.3, Mesa llvmpipe) passes all 22 tests. Qt 6.4.2, the Ubuntu 24.04 package, builds and passes all tests except the text weight checks: it draws Nunito at its default ExtraLight weight for every program. CMake warns when it finds a Qt older than 6.9.
 
@@ -189,17 +185,16 @@ target_compile_definitions(my_host PRIVATE NM_DATA_ROOT="${NOISEMAKER_QT_DATA_RO
 - CPU overlays: `filter/fibers`, `filter/scratches` and `filter/strayHair` draw an overlay on the CPU when their seed, density or the render size changes. A 1920x1080 trace takes seconds. By default `render()` waits for it, so every frame shows the completed overlay; `nm-render`, the export kit and the goldens use this mode. A live host calls `setOverlayTraceMode(nm::OverlayTraceMode::Background)` after `setup()`. Then the trace runs on a worker thread and `render()` does not wait. The node keeps its previous overlay until the next `render()` after the trace completes; before the first trace at the current size completes, the overlay is transparent. The completed overlay is byte-identical to the synchronous one, and a newer change replaces a running trace. A host that renders only on demand renders again while `overlayTracesPending()` is true. `waitForOverlayTraces()` blocks until the traces finish, for a settled still. The viewer example and `nm::NoisemakerItem` select Background mode.
 - Time: `render(graph, t)` takes normalized loop time. `Backend::normalizedLoopTime(elapsedSeconds, 10.0)` derives it. The Backend supplies `deltaTime` and `frame` like the reference, and `syncTime(t)` pauses without a time step.
 
-## Status, parity, and coverage
+## Parity
 
-Results measured on macOS (Apple Silicon) on 2026-09-24:
+The port is synced to the reference commit pinned in `scripts/test` (`const PIN`); CI and `scripts/parity-summary` check the reference out at that commit. Against it:
 
-- **210 effect definitions.**
-- **317/317 shaders byte-identical.**
-- **Compiler oracle gates at 357/357** (lex, parse, validate, expand, graph), registry 5/5.
-- **MIDI and audio state gates:** MIDI_STATE 66/66 and AUDIO_STATE 93/93 exact against the reference classes. AUDIO_ANALYZER 570/570 against Chromium's AnalyserNode.
-- **Corpus-wide pixel sweep (2026-09-24): 298 PASS / 47 NEAR / 0 CHAOS / 2 FAIL of 347.** The failures are open gaps GAP-010 and GAP-011.
+- **210 effect definitions** and their **effect UI files**, generated from the reference and byte-identical (`parity/check_definitions.mjs`, `check_effects_ui.mjs`).
+- **317/317 shaders byte-identical** (`check_shaders.mjs`).
+- **Compiler gates at 388/388** for lex, parse, validate, expand and graph over the fixture corpus; registry 5/5.
+- **State and parser gates:** MIDI_STATE 66/66 and AUDIO_STATE 93/93 exact against the reference classes; OBJ parser 443/443 inputs identical, the seven built-in meshes byte-identical; the reference's JavaScript function bodies classified as V8 classifies them (`check_func_bodies_differential.mjs`).
 
-**[STATUS.md](STATUS.md)** is the single source of truth. It includes coverage by namespace, every NEAR mechanism with its evidence, and the CHAOS entry's isolation evidence. It also includes timed and live-DSL results and known limits. This README does not duplicate it further.
+CI's `gates` job runs every one of these after building `nm-render` and the dump helpers. `node scripts/test` runs the three byte gates and the parity unit suites with no Qt toolchain. `scripts/parity-summary` mints goldens with the reference engine, renders each fixture with `nm-render`, and grades the pair (`parity/sweep.sh`); a fixture's tolerance and every loosening's mechanism live in `tol_for()` in that script.
 
 ## Architecture
 

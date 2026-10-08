@@ -5,16 +5,16 @@
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker node tools/dump-graph.mjs <effectsDir> <file...>
 import { resolve, join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFileSync, readdirSync } from 'node:fs'
 
 if (!process.env.NM_REFERENCE_ROOT) { console.error('NM_REFERENCE_ROOT is not set'); process.exit(3) }
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REF = resolve(process.env.NM_REFERENCE_ROOT)
-const idx = await import(resolve(REF, 'shaders/src/index.js'))
+const idx = await import(pathToFileURL(resolve(REF, 'shaders/src/index.js')).href)
 const { compileGraph, registerEffect, registerOp, registerStarterOps, mergeIntoEnums, stdEnums, sanitizeEnumName } = idx
 // normalizeGraph (reference-graph -> backend schema) is defined in this repo's export-graph.mjs.
-const { normalizeGraph } = await import(join(HERE, 'export-graph.mjs'))
+const { normalizeGraph } = await import(pathToFileURL(join(HERE, 'export-graph.mjs')).href)
 
 if (mergeIntoEnums && stdEnums) await mergeIntoEnums(stdEnums)
 if (registerStarterOps) registerStarterOps()

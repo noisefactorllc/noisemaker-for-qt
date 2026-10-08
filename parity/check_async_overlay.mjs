@@ -1,4 +1,4 @@
-// check_async_overlay.mjs -- asyncInit overlay parity gate (GAP-025).
+// check_async_overlay.mjs -- asyncInit overlay parity gate.
 //
 // Oracle: the reference asyncInit of filter/fibers, filter/scratches and
 // filter/strayHair (the unchanged definition.js modules and

@@ -41,7 +41,7 @@ namespace {
 //     serialization (undefined-valued keys are dropped).
 //   - `location` in a diagnostic is `{line, column}` when loc is present:
 //     the reference reads `node.loc.column ?? node.loc.col` (upstream
-//     e5bd2013 / GAP-002), preserving column coordinates with precedence.
+//     e5bd2013), preserving column coordinates with precedence.
 //   - ALLOWED_STRING_PARAMS includes the four text fields plus the
 //     name/id identity fields accepted by midi() and audio().
 //   - "member"-typed params (`def.type === 'member'`, e.g. filter.channel,
@@ -436,7 +436,7 @@ void Validator::pushDiag(const QString& code, const QJsonValue& nodeVal, const Q
     if (node.contains(QStringLiteral("id"))) {
         diag.insert(QStringLiteral("nodeId"), node.value(QStringLiteral("id")));
     }
-    // location: {line, column} if loc is present (upstream e5bd2013 / GAP-002).
+    // location: {line, column} if loc is present (upstream e5bd2013).
     const QJsonValue locVal = node.value(QStringLiteral("loc"));
     if (locVal.isObject()) {
         const QJsonObject loc = locVal.toObject();
@@ -1133,7 +1133,7 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
         // "iterations" field anywhere (see file header).
         if (ot == NodeKind::Subchain) {
             // Surface parser-attached subchain-argument reports
-            // (GAP-027) once per subchain node, in source order.
+            // once per subchain node, in source order.
             const QJsonValue argDiagsVal = original.value(QStringLiteral("subchainArgumentDiagnostics"));
             if (argDiagsVal.isArray()) {
                 const QJsonArray argDiags = argDiagsVal.toArray();
@@ -2064,7 +2064,7 @@ QJsonValue Validator::compileAutomationDescriptor(const QJsonObject& node, int d
         value.insert(QStringLiteral("type"), NodeKind::Oscillator);
         value.insert(QStringLiteral("oscType"), resolveAutomationEnum(
             node.value(QStringLiteral("oscType")), QStringLiteral("oscKind"), 0.0,
-            {0, 1, 2, 3, 4, 5}, QStringLiteral("osc"), QStringLiteral("type")));
+            {0, 1, 2, 3, 4, 5, 6}, QStringLiteral("osc"), QStringLiteral("type")));
         value.insert(QStringLiteral("min"), resolveAutomationNumber(
             node.value(QStringLiteral("min")), QStringLiteral("osc"), QStringLiteral("min"), 0.0, nestedUnit, depth));
         value.insert(QStringLiteral("max"), resolveAutomationNumber(

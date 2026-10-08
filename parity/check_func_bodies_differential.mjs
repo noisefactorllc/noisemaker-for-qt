@@ -1,4 +1,4 @@
-// check_func_bodies_differential.mjs — GAP-017 differential-corpus gate.
+// check_func_bodies_differential.mjs — differential-corpus gate.
 // Generates a deterministic corpus of arrow-function bodies, decides each
 // body three ways, and fails on any disagreement:
 //   1. REFERENCE (this node's V8): `new Function('state', body)` throws.
@@ -206,7 +206,7 @@ function decode(line) {
         console.error(`extra node failed: ${run.stderr}`)
         process.exit(2)
     }
-    extraVerdict = run.stdout.split('\n').filter(l => l.length)
+    extraVerdict = run.stdout.split(/\r?\n/).filter(l => l.length)
 }
 
 // Candidate verdicts (C++ checker).
@@ -215,7 +215,7 @@ if (candRun.status !== 0 || candRun.stderr) {
     console.error(`js_syntax_dump failed (exit ${candRun.status}): ${candRun.stderr}`)
     process.exit(2)
 }
-const candVerdict = candRun.stdout.split('\n').filter(l => l.length)
+const candVerdict = candRun.stdout.split(/\r?\n/).filter(l => l.length)
 if (candVerdict.length !== bodies.length || refVerdict.length !== bodies.length ||
     (extraVerdict && extraVerdict.length !== bodies.length)) {
     console.error('verdict line count mismatch -- aborting (no evidence written)')
@@ -235,7 +235,7 @@ mkdirSync(EVIDENCE, { recursive: true })
 const tag = `${process.version}${extraVersion ? `-and-${extraVersion}` : ''}`
 const stamp = new Date().toISOString()
 const header = [
-    `# GAP-017 differential corpus raw result`,
+    `# differential corpus raw result`,
     `# stamp: ${stamp}`,
     `# this node: ${process.version}`,
     `# extra node: ${extraVersion || '(none)'}`,

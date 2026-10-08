@@ -23,13 +23,21 @@
     "xChonk": {
       "ui": {
         "label": "width",
-        "control": "slider"
+        "control": "slider",
+        "enabledBy": {
+          "param": "glitchiness",
+          "gt": 0
+        }
       }
     },
     "yChonk": {
       "ui": {
         "label": "height",
-        "control": "slider"
+        "control": "slider",
+        "enabledBy": {
+          "param": "glitchiness",
+          "gt": 0
+        }
       }
     },
     "seed": {

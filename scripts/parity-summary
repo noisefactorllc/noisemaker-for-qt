@@ -42,11 +42,12 @@
 # Environment:
 #   NM_RENDER            candidate binary (default qt/build/nm-render).
 #   NM_REFERENCE_ROOT    reference engine checkout (the goldens' authority);
-#                        pin-cloned from STATUS.md when unset.
+#                        pin-cloned at scripts/test's PIN when unset.
 #   SHADE_HEADLESS, NM_GOLDEN_CHROMIUM_ARGS, DISPLAY, LIBGL_ALWAYS_SOFTWARE
 #                        passed through to the sweep's minting and rendering
 #                        (minted goldens need headed Chromium on the same
-#                        llvmpipe the candidate renders on; see GAP-033).
+#                        llvmpipe the candidate renders on; see "Golden browser
+#                        switches" in parity/export-and-render.mjs).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CASE_ARGS="$*"
@@ -104,8 +105,8 @@ fi
 
 # ------------------------------------------------- reference (the authority)
 if [ -z "${NM_REFERENCE_ROOT:-}" ]; then
-  PIN="$(grep -oE 'to reference .[0-9a-f]{7,40}.' "$ROOT/STATUS.md" | tail -1 | grep -oE '[0-9a-f]{7,40}')"
-  [ -n "$PIN" ] || fail_infra "no reference pin found in STATUS.md"
+  PIN="$(grep -oE "^const PIN = '[0-9a-f]{40}'" "$ROOT/scripts/test" | grep -oE '[0-9a-f]{40}')"
+  [ -n "$PIN" ] || fail_infra "no reference pin found in scripts/test"
   CACHE="${PARITY_REFERENCE_CACHE:-$ROOT/parity/.cache/noisemaker-reference}"
   export NM_REFERENCE_ROOT="$CACHE"
   usable=0
@@ -172,7 +173,7 @@ if [ -n "$CHROME_PATH" ] && [ ! -e "$CHROME_PATH" ]; then
 fi
 
 # ------------------------------------------------------------------- sweep
-# The canonical mint/render environment (GAP-033, GAP-040): goldens are
+# The canonical mint/render environment (GAP-040): goldens are
 # minted with headed Chromium on the same Mesa llvmpipe the candidate
 # renders on, fibers/scratches/strayHair grade with the reference's saved
 # overlays. A caller may override any of these.
@@ -203,7 +204,7 @@ if [ -z "${DISPLAY:-}" ]; then
     trap 'kill "$XVFB_PID" 2>/dev/null; rm -f "$LEDGER" "$XVFB_LOG"' EXIT
     export DISPLAY=":77"
   else
-    fail_infra "no DISPLAY and no Xvfb available (headed golden minting needs an X display; see GAP-033)"
+    fail_infra "no DISPLAY and no Xvfb available (headed golden minting needs an X display)"
   fi
 fi
 LEDGER="$(mktemp -t noisemaker-parity-summary-ledger.XXXXXX)"

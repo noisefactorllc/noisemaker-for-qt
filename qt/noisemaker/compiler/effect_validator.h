@@ -3,7 +3,7 @@
 // effect_validator.h -- structural validation of an effect definition against
 // the grammar the runtime consumes. Port of the REFERENCE
 // shaders/src/runtime/effect-validator.js validateEffectDefinition()
-// (upstream GAP-003, commits ba87ffae + 9d3474df: full definition-grammar
+// (upstream commits ba87ffae + 9d3474df: full definition-grammar
 // validation contract -- metadata, globals, passes, textures, dimension
 // expressions, uniform layouts, enabledBy conditions, ui controls, and
 // top-level unknown-field diagnosis, with byte-identical error strings).

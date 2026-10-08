@@ -8,7 +8,7 @@
 // port-authored data forward, so an empty-dir regeneration is the complete expected tree, and a
 // reference-side deletion or rename shows up as a STALE committed file without a second pass.
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
@@ -24,7 +24,7 @@ const walk = (d, base, out = []) => {
   for (const e of readdirSync(d)) {
     const p = join(d, e)
     if (statSync(p).isDirectory()) walk(p, base, out)
-    else if (e.endsWith('.json')) out.push(relative(base, p))
+    else if (e.endsWith('.json')) out.push(relative(base, p).split(sep).join('/'))
   }
   return out
 }

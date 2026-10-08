@@ -346,7 +346,7 @@ int main() {
     }
 
     // ==================================================================
-    // column coordinate precedence and fallback (upstream e5bd2013 / GAP-002)
+    // column coordinate precedence and fallback (upstream e5bd2013)
     // ==================================================================
     {
         auto makeAstWithLoc = [](const QJsonObject& loc, bool includeLoc) {
@@ -756,7 +756,7 @@ int main() {
               "an array has no own `size`: S001, as before");
     }
 
-    // GAP-027 subchain argument reports surfaced by validate()
+    // Subchain argument reports surfaced by validate()
     {
         const QJsonObject out = validateSrc(QStringLiteral(
             "search synth\nnoise().subchain(nme: \"typo\", name: \"ok\") {\n.bloom()\n}.write(o0)\nrender(o0)\n"));

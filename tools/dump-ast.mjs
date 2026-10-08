@@ -4,6 +4,7 @@
 // Reference-based: imports the upstream lexer + parser via NM_REFERENCE_ROOT (this repo is a PORT;
 // the reference stays external). The GDScript candidate (_parse_dump.gd) emits the same AST shape.
 import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { readFileSync } from 'node:fs'
 
 if (!process.env.NM_REFERENCE_ROOT) {
@@ -11,8 +12,8 @@ if (!process.env.NM_REFERENCE_ROOT) {
     process.exit(3)
 }
 const REF = resolve(process.env.NM_REFERENCE_ROOT)
-const { lex } = await import(resolve(REF, 'shaders/src/lang/lexer.js'))
-const { parse } = await import(resolve(REF, 'shaders/src/lang/parser.js'))
+const { lex } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/lexer.js')).href)
+const { parse } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/parser.js')).href)
 
 const files = process.argv.slice(2)
 const out = {}

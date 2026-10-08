@@ -5,6 +5,7 @@
 // assumption — this repo is a PORT, the reference stays external). The token shape is exactly the
 // reference's {type, lexeme, line, col}; the GDScript candidate (_lex_dump.gd) emits the same.
 import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { readFileSync } from 'node:fs'
 
 if (!process.env.NM_REFERENCE_ROOT) {
@@ -12,7 +13,7 @@ if (!process.env.NM_REFERENCE_ROOT) {
     process.exit(3)
 }
 const REFERENCE_ROOT = resolve(process.env.NM_REFERENCE_ROOT)
-const { lex } = await import(resolve(REFERENCE_ROOT, 'shaders/src/lang/lexer.js'))
+const { lex } = await import(pathToFileURL(resolve(REFERENCE_ROOT, 'shaders/src/lang/lexer.js')).href)
 
 const files = process.argv.slice(2)
 const out = {}

@@ -48,7 +48,7 @@ void fft(std::vector<double>& re, std::vector<double>& im) {
 // platform, and parity/check_audio_analyzer.mjs measured each oracle:
 //   - macOS arm64 Chromium 151 (Apple M4): a fused multiply-add per term;
 //   - Linux Chromium 153, x86_64 (GitHub ubuntu runner, CI run 35970287679)
-//     and arm64 (Debian 12 arm64, parity/evidence/gap-022-*.log): a separate
+//     and arm64 (Debian 12 arm64): a separate
 //     multiply and add per term.
 // The split therefore follows Apple vs everything else, not the CPU
 // architecture: on Linux both the x86_64 and the arm64 oracle give the

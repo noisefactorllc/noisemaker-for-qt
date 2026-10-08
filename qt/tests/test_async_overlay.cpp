@@ -387,25 +387,28 @@ void testRender(nm::EffectRegistry& registry) {
                                         fibersOverlay(resized, 1), resizedInked);
     check(resizedInked > 200 && resizedWorst <= 1, "Backend::resize re-traces the overlay at the new size");
 
-    nm::Graph blank = graph;
-    for (nm::Pass& pass : blank.passes) {
+    // reference 3bae8ea0: an automation descriptor is drawn from the param's definition
+    // default, so an automated density renders as the default density (0.5) does.
+    nm::Graph automated = graph;
+    nm::Graph defaulted = graph;
+    for (nm::Pass& pass : automated.passes) {
         if (pass.effectKey == QStringLiteral("filter.fibers")) {
             pass.uniforms.insert(QStringLiteral("density"), QJsonObject{{QStringLiteral("type"), QStringLiteral("Oscillator")}});
         }
     }
-    backend.render(blank, 0.25);
-    const QImage cleared = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
-    bool black = !cleared.isNull();
-    for (int y = 0; y < cleared.height() && black; ++y) {
-        const uchar* row = cleared.constScanLine(y);
-        for (int x = 0; x < cleared.width(); ++x) {
-            if (row[x * 4] || row[x * 4 + 1] || row[x * 4 + 2]) {
-                black = false;
-                break;
-            }
+    for (nm::Pass& pass : defaulted.passes) {
+        if (pass.effectKey == QStringLiteral("filter.fibers")) {
+            pass.uniforms.insert(QStringLiteral("density"), 0.5);
         }
     }
-    check(black, "an automated density uploads the cleared canvas, so the input passes through");
+    backend.render(graph, 0.25);
+    const QImage fromDensityOne = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
+    backend.render(automated, 0.25);
+    const QImage fromAutomation = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
+    backend.render(defaulted, 0.25);
+    const QImage fromDefault = backend.readSurface().convertToFormat(QImage::Format_RGBA8888);
+    check(!fromAutomation.isNull() && fromAutomation == fromDefault && fromAutomation != fromDensityOne,
+          "an automated density draws the overlay at the definition default, as the reference does");
 }
 
 // A host texture under an asyncInit overlay id takes precedence over the

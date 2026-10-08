@@ -46,7 +46,7 @@ struct GpuSurface {
 // unrecognized string, a bool, or an object without a
 // param/screenDivide/scale key) keeps the historical screen-size fallback
 // but additionally records a deduplicated ERR_DIMENSION_FALLBACK
-// diagnostic (reference GAP-007: upstream dd4606ea — "unknown dimension
+// diagnostic (upstream dd4606ea — "unknown dimension
 // forms keep the historical fallback ... surface it as a structured
 // diagnostic instead of pure silence"; upstream a0e9bbff — the
 // validator-accepted 'input'/'resolution' keywords are recognized forms,
@@ -113,7 +113,7 @@ public:
     // Structured diagnostics recorded (rather than thrown) by this cache:
     // deduplicated ERR_DIMENSION_FALLBACK / ERR_UNKNOWN_FORMAT_FALLBACK
     // records for the historically-silent unknown-dimension and
-    // unknown-format fallbacks (reference GAP-007). The collector is
+    // unknown-format fallbacks, as the reference does. The collector is
     // capped at 64 records like the reference DiagnosticCollector.
     const DiagnosticCollector& diagnostics() const { return m_diagnostics; }
     void clearDiagnostics() {

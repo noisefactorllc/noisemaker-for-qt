@@ -28,7 +28,7 @@ Two producers, one consumer:
 - **Consumer:** `nm::Backend` (`qt/noisemaker/runtime/`), a QOpenGL executor of graph JSON.
 
 The renderer is validated first, against golden graphs, before the live compiler exists — the
-build order every sibling port converged on (see `docs/IMPLEMENTATION-PLAN.md`).
+build order every sibling port converged on.
 
 ## Why classic OpenGL (QOpenGL*), not RHI/qsb or ShaderEffect
 
@@ -141,8 +141,9 @@ Namespaces: `synth` 29 · `filter` 116 · `mixer` 15 · `classicNoisedeck` 20 ·
 ## Parity
 
 The harness (`parity/`) is the sibling design, adopted whole: golden PNGs minted from the
-reference engine's own demo page in headless Chromium (Playwright, pinned ANGLE backend, fixed
-normalized time, 8-frame protocol; `parity/export-and-render.mjs`), candidates rendered by
+reference engine's own demo page in Chromium (Playwright, fixed normalized time, 8-frame
+protocol; `parity/export-and-render.mjs`), headed and on the same rasterizer as the candidate
+(`scripts/parity-summary` uses ANGLE's GL backend over Mesa llvmpipe), candidates rendered by
 `nm-render --batch-manifest` (one process, many fixtures), graded by `parity/compare.py`
 (max-abs-diff in 8-bit units + dependency-free global SSIM), ledgered by `parity/write-ledger.py`
 into `parity/ledger.json`.
@@ -165,7 +166,8 @@ missing evidence, stale reports all fail).
 ## Reference pin
 
 The reference (`NM_REFERENCE_ROOT`, default sibling checkout `../noisemaker`) is READ/EXECUTE-ONLY
-and never vendored. The pin is a content snapshot recorded in `STATUS.md` prose; verification is
+and never vendored. The pin is the full commit in `scripts/test` (`const PIN`), which CI and
+`scripts/parity-summary` check out; moving it is a sync, and the gates prove it. Verification is
 by tree content, never `git log A..B` (upstream amends/rebases in place). Golden artifacts depend
 only on the reference plus capture parameters and are reusable across sibling ports.
 
@@ -205,8 +207,9 @@ inputs. DSL control flow fails at expansion, as it does in the reference. 3D vol
 
 ```
 noisemaker-for-qt/
-├── ARCHITECTURE.md PORTING-GUIDE.md README.md STATUS.md LICENSE TRADEMARK.md
-├── docs/            GRAPH-JSON-SCHEMA.md · IMPLEMENTATION-PLAN.md · QT-PLATFORM-NOTES.md · CHAOS-GATE.md
+├── ARCHITECTURE.md PORTING-GUIDE.md README.md AGENTS.md LICENSE TRADEMARK.md
+├── docs/            GRAPH-JSON-SCHEMA.md · QT-PLATFORM-NOTES.md · CHAOS-GATE.md
+├── scripts/         test (reference pin, byte gates) · parity-summary (full sweep)
 ├── reference/       01–10 engine-agnostic re-implementer specs (shared, byte-identical family copies)
 ├── tools/           export-graph.mjs · convert-definitions.mjs · convert-shaders-qt.mjs · dump-*.mjs
 ├── qt/

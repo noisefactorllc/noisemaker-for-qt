@@ -1,2 +1,0 @@
-[INFO] oracle: Chromium 153.0.8010.12 on linux-x64, renderer "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
-The oracle is defined for Chromium with ANGLE Metal (the golden-minting configuration).

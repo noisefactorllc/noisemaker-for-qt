@@ -143,7 +143,7 @@ add_executable(registry_dump registry_dump.cpp)
 target_link_libraries(registry_dump PRIVATE noisemaker-qt Qt6::Core)
 
 # Parity-gate helper (NOT a ctest case) -- candidate side of
-# parity/check_func_bodies_differential.mjs (the retained GAP-017 V8
+# parity/check_func_bodies_differential.mjs (the retained V8
 # differential corpus; see the mjs header for the line protocol).
 add_executable(js_syntax_dump js_syntax_dump.cpp)
 target_link_libraries(js_syntax_dump PRIVATE noisemaker-qt Qt6::Core)

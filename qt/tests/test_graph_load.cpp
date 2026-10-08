@@ -147,7 +147,7 @@ int main() {
               "global_o0 is correctly absent from graph.textures (created on demand)");
     }
 
-    // Texture policies (GAP-004: mipmaps, persistent, 3D filter)
+    // Texture policies (mipmaps, persistent, 3D filter)
     {
         const char* const kPolicyGraph = R"JSON(
 {

@@ -172,7 +172,7 @@ async function capture (page, globals, textureId = null) {
   return encodePng(width, height, topDown)
 }
 
-// ---- Golden browser switches (GAP-033) -------------------------------------
+// ---- Golden browser switches -------------------------------------
 // NM_GOLDEN_CHROMIUM_ARGS: whitespace-separated Chromium switches appended to
 // the switches the vendored harness launches the golden browser with. The
 // harness has no launch-argument option, so this wraps launch() on the
@@ -499,7 +499,7 @@ async function main () {
     }
     await logGoldenRenderer(page)
 
-    // Pause and size the demo BEFORE loading our DSL (GAP-026). A resize runs
+    // Pause and size the demo BEFORE loading our DSL. A resize runs
     // pipeline.initAsyncEffects(), which cancels in-flight asyncInit overlays
     // and drops the host's pending parameter regeneration, and the demo host
     // draws text canvases at the renderer size. Sizing first lets the load
@@ -576,7 +576,7 @@ async function main () {
     }, opts.size, { timeout: STATUS_TIMEOUT })
 
     // Track every asyncInit overlay the pipeline starts from here on
-    // (GAP-026). Pipeline._startAsyncInit calls effectDef.asyncInit(context)
+    //. Pipeline._startAsyncInit calls effectDef.asyncInit(context)
     // without keeping the promise, so the wrapper counts each call until its
     // promise settles. Installed on the prototype, it also covers a pipeline
     // the demo rebuilds when a recompile fails.
@@ -621,7 +621,7 @@ async function main () {
     // compiles `editor.value.trim()`, so graph.source must equal the trimmed
     // DSL. This wait once passed its options object in the page-argument
     // slot, so it returned true on its first poll; a slow compile was then
-    // captured from the demo's default filter/adjust program (GAP-010).
+    // captured from the demo's default filter/adjust program.
     // Polling only the status text races the default-effect "compiled"
     // message and reads the wrong surface (the bug that produced identical
     // default goldens).
@@ -675,7 +675,7 @@ async function main () {
       throw new Error(`render surface is ${JSON.stringify(loadedSize)} after the DSL load, expected ${opts.size}x${opts.size}`)
     }
 
-    // Wait until the host has settled every asynchronous input (GAP-026):
+    // Wait until the host has settled every asynchronous input:
     // no pending asyncInit regeneration (ProgramState.checkAsyncRegen
     // debounces it by 300 ms), no asyncInit overlay still tracing, and every
     // external texture the graph samples (the demo draws filter/text's
@@ -698,7 +698,7 @@ async function main () {
       writeFileSync(texturePath, await capture(page, globals, id))
       process.stderr.write(`[parity] wrote ${texturePath}\n`)
     }
-    // Save each asyncInit overlay the golden samples the same way (GAP-025):
+    // Save each asyncInit overlay the golden samples the same way:
     // a graph input that no pass writes, uploaded by a node whose asyncInit
     // ran. nm-render takes it under the same id when the grader asks for the
     // reference's overlays (NM_REFERENCE_OVERLAYS=1).
@@ -858,7 +858,7 @@ async function main () {
       // EVOLVES), capturing every sample_every seconds to <name>.golden.t<sec>.png.
       //
       // Start the series from zeroed state, as nm-render --samples starts from
-      // a fresh Backend (GAP-034). After the load, the paused demo renders the
+      // a fresh Backend. After the load, the paused demo renders the
       // graph about 22 times through renderSingleFrameIfPaused, at the
       // wall-clock time where it paused, so the state (for example
       // navierStokes' velocity field, fed by an animated noise input) would

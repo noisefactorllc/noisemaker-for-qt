@@ -56,10 +56,16 @@ for (const ns of readdirSync(join(QT_DATA, 'effects'))) {
     for (const entry of def.builtinMeshes || []) namedMeshes.add(entry.path)
   }
 }
+// The reference resolves mesh paths against shaders/, whose share/ is a git symlink to
+// ../share; a checkout without symlink support leaves it as a plain file.
+function refMeshPath (rel) {
+  const linked = join(REF, 'shaders', rel)
+  return existsSync(linked) ? linked : join(REF, rel)
+}
 let meshBytesOk = 0
 for (const rel of [...namedMeshes].sort()) {
   const qtPath = join(QT_DATA, rel)
-  const refPath = join(REF, 'shaders', rel) // reference basePath is shaders/
+  const refPath = refMeshPath(rel)
   if (!existsSync(qtPath)) { fail(`built-in mesh missing from the port: ${rel}`); continue }
   if (!readFileSync(qtPath).equals(readFileSync(refPath))) { fail(`built-in mesh differs from the reference: ${rel}`); continue }
   meshBytesOk++
@@ -88,7 +94,7 @@ const text = (name, s, mode = 'string') => cases.push({ name, mode, bytes: Buffe
 const raw = (name, bytes) => cases.push({ name, mode: 'file', bytes: Buffer.from(bytes) })
 
 for (const rel of [...namedMeshes].sort()) {
-  const bytes = readFileSync(join(REF, 'shaders', rel))
+  const bytes = readFileSync(refMeshPath(rel))
   cases.push({ name: `builtin ${rel}`, mode: 'string', bytes })
   cases.push({ name: `builtin ${rel}`, mode: 'file', bytes })
 }

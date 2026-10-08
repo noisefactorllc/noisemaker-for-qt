@@ -50,9 +50,9 @@
 // Former KNOWN FLAKE (task-T6-report.md): a batch-minted `scratches`
 // golden once differed from its single-fixture mint by 24/65536 px. Its
 // overlayTex is not written by a pass: it is the effect's asyncInit
-// overlay, traced on the CPU and uploaded progressively (GAP-025), so each
+// overlay, traced on the CPU and uploaded progressively, so each
 // capture landed at a different point of the trace. The minters now wait
-// for every asyncInit trace to finish (GAP-026); fibers and strayHair
+// for every asyncInit trace to finish; fibers and strayHair
 // behave the same way.
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
@@ -188,7 +188,7 @@ async function capture (page, globals, textureId = null) {
   return encodePng(width, height, topDown)
 }
 
-// ---- Golden browser switches (GAP-033) -------------------------------------
+// ---- Golden browser switches -------------------------------------
 // NM_GOLDEN_CHROMIUM_ARGS: whitespace-separated Chromium switches appended to
 // the switches the vendored harness launches the golden browser with. The
 // harness has no launch-argument option, so this wraps launch() on the
@@ -306,12 +306,12 @@ async function applyMeshPlan (page, plan) {
 // the id nor the pass-count test ran. A fixture whose compile outlasted the
 // following round trips was captured from the previous program: in a cold
 // page, the demo's default filter/adjust program (heightGrid_billboard_alpha,
-// GAP-010: that golden was byte-identical to a mint of the default program).
+// That golden was byte-identical to a mint of the default program).
 // The wait now requires graph.source === the trimmed DSL (the demo compiles
 // `editor.value.trim()`) and !isCompiling, with the arguments in order.
 async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
   const expectedPassCount = graph.passes?.length
-  // Pause and size the demo BEFORE loading the DSL (GAP-026), as
+  // Pause and size the demo BEFORE loading the DSL, as
   // export-and-render.mjs does: a resize restarts asyncInit overlays with the
   // pipeline's global uniforms and drops the host's pending regeneration, and
   // the demo host draws text canvases at the renderer size. After the first
@@ -359,7 +359,7 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
     return true
   }, opts.size, { timeout: STATUS_TIMEOUT })
 
-  // Verbatim copy of export-and-render.mjs's asyncInit tracker (GAP-026).
+  // Verbatim copy of export-and-render.mjs's asyncInit tracker.
   await page.evaluate(() => {
     const proto = Object.getPrototypeOf(window.__noisemakerRenderingPipeline)
     if (proto.__nmTracksAsyncInit) return
@@ -450,7 +450,7 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
   if (meshes) await applyMeshPlan(page, meshes)
 
   // Verbatim copy of export-and-render.mjs's post-load size check, host
-  // quiescence wait and external texture export (GAP-026).
+  // quiescence wait and external texture export.
   const loadedSize = await page.evaluate(() => {
     const p = window.__noisemakerRenderingPipeline
     const surf = p.surfaces && p.surfaces.get(p.graph?.renderSurface || 'o0')

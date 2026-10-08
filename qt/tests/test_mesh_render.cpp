@@ -147,7 +147,7 @@ void testTriangles(nm::EffectRegistry& registry) {
     check(!isBackground(center) && qRed(center) > 170, "releaseGl() + setup(): the loaded OBJ is uploaded again");
 }
 
-// GAP-031: a triangles pass's countUniform overrides count with the
+// A triangles pass's countUniform overrides count with the
 // resolved uniform (pass uniforms first, then the globals), used only when
 // it is a number > 0 (reference webgl2.js executePass countUniform branch).
 // Geometry: the first triangle is far and lit, the second near and unlit,

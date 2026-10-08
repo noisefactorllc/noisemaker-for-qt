@@ -1,5 +1,7 @@
 #include "resources.h"
 
+#include <QSet>
+
 namespace nm {
 
 namespace {
@@ -59,8 +61,13 @@ QMap<QString, QString> allocateResources(const QVector<PassIO>& passes) {
             }
         }
 
-        // 2. Release inputs (last uses), in declaration order.
+        // 2. Release inputs (last uses), in declaration order. A pass may read one texture
+        // under several names (lighting's inputTex and heightMap); release it once, or its
+        // slot is handed to two textures that are live together.
+        QSet<QString> released;
         for (const QString& texId : pass.inputs) {
+            if (released.contains(texId)) continue;
+            released.insert(texId);
             if (isGlobal(texId)) continue;
             const auto it = lifetime.constFind(texId);
             if (it != lifetime.constEnd() && it->end == i) {

@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
         expandOut.insert(QStringLiteral("errors"), expanded.errors);
         expandOut.insert(QStringLiteral("programs"), expanded.programs);
         expandOut.insert(QStringLiteral("textureSpecs"), expanded.textureSpecs);
+        expandOut.insert(QStringLiteral("mediaSteps"), expanded.mediaSteps);
         expandOut.insert(QStringLiteral("renderSurface"),
                           expanded.renderSurface.isUndefined() ? QJsonValue(QJsonValue::Null) : expanded.renderSurface);
 

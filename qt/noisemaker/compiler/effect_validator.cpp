@@ -1,6 +1,6 @@
 // effect_validator.cpp -- port of the REFERENCE
 // shaders/src/runtime/effect-validator.js validateEffectDefinition()
-// (upstream GAP-003, commits ba87ffae + 9d3474df, byte-for-byte in behavior
+// (upstream commits ba87ffae + 9d3474df, byte-for-byte in behavior
 // for every shape representable in the port's JSON definition grammar; see
 // effect_validator.h for the documented deviations).
 //
@@ -114,15 +114,25 @@ const QStringList& passKeys() {
         QStringLiteral("viewport"), QStringLiteral("conditions"),
         QStringLiteral("defines"), QStringLiteral("uniforms"),
         QStringLiteral("inputs"), QStringLiteral("outputs"),
+        QStringLiteral("clear"), QStringLiteral("samplerTypes"),
     };
     return keys;
+}
+
+// Sampler names the WebGPU backend creates; pass.samplerTypes picks one per sampler.
+const QStringList& samplerTypes() {
+    static const QStringList types = {
+        QStringLiteral("default"), QStringLiteral("nearest"), QStringLiteral("repeat"),
+        QStringLiteral("mipmap"),
+    };
+    return types;
 }
 
 const QStringList& textureSpecKeys() {
     static const QStringList keys = {
         QStringLiteral("width"), QStringLiteral("height"), QStringLiteral("depth"),
         QStringLiteral("format"), QStringLiteral("is3D"),
-        // GAP-004 authorable texture policies (reference 2f47612c).
+        // Authorable texture policies (reference 2f47612c).
         QStringLiteral("filter"), QStringLiteral("mipmaps"), QStringLiteral("persistent"),
     };
     return keys;
@@ -150,6 +160,8 @@ const QStringList& formats() {
     static const QStringList formats = {
         QStringLiteral("rgba16f"), QStringLiteral("rgba16float"), QStringLiteral("rgba8"),
         QStringLiteral("rgba8unorm"), QStringLiteral("rgba32f"), QStringLiteral("rgba32float"),
+        QStringLiteral("r8"), QStringLiteral("r8unorm"), QStringLiteral("r16f"),
+        QStringLiteral("r16float"), QStringLiteral("r32f"), QStringLiteral("r32float"),
     };
     return formats;
 }
@@ -703,6 +715,15 @@ void validateEnabledBy(const QJsonValue& cond, Errors& errors, const std::string
         return;
     }
     const QJsonObject obj = cond.toObject();
+    if (!obj.value(QStringLiteral("not")).isUndefined()) {
+        for (const QString& key : obj.keys()) {
+            if (key != QLatin1String("not")) {
+                errors.push_back(label + ": unknown enabledBy field '" + toStd(key) + "'");
+            }
+        }
+        validateEnabledBy(obj.value(QStringLiteral("not")), errors, label, context);
+        return;
+    }
     if (!obj.value(QStringLiteral("and")).isUndefined() ||
         !obj.value(QStringLiteral("or")).isUndefined()) {
         for (const QString& key : obj.keys()) {
@@ -1168,7 +1189,7 @@ void validateTextureMap(const QJsonValue& textures, Errors& errors, const std::s
         if (!is3D.isUndefined() && !is3D.isBool()) {
             errors.push_back(label + ": \"is3D\" must be a boolean");
         }
-        // GAP-004 authorable texture policies (reference 2f47612c):
+        // Authorable texture policies (reference 2f47612c):
         // filtering policies are authorable on 3D textures only; mipmap and
         // persistence policies are authorable on 2D textures only.
         const QJsonValue filter = spec.value(QStringLiteral("filter"));
@@ -1276,6 +1297,24 @@ void validatePass(const QJsonObject& source, const QJsonObject& pass, int index,
         }
         if (!ok) {
             errors.push_back(label + ": \"blend\" must be a boolean or [src, dst] factor strings");
+        }
+    }
+    const QJsonValue clear = pass.value(QStringLiteral("clear"));
+    if (!clear.isUndefined() && !clear.isBool()) {
+        errors.push_back(label + ": \"clear\" must be a boolean");
+    }
+    const QJsonValue samplerTypeMap = pass.value(QStringLiteral("samplerTypes"));
+    if (!samplerTypeMap.isUndefined()) {
+        if (!samplerTypeMap.isObject()) {
+            errors.push_back(label + ": \"samplerTypes\" must be an object mapping sampler names to sampler types");
+        } else {
+            const QJsonObject types = samplerTypeMap.toObject();
+            for (auto it = types.constBegin(); it != types.constEnd(); ++it) {
+                if (!samplerTypes().contains(it.value().toString()) || !it.value().isString()) {
+                    errors.push_back(label + ": samplerTypes '" + toStd(it.key()) +
+                                     "' must be one of " + toStd(samplerTypes().join(QStringLiteral(", "))));
+                }
+            }
         }
     }
     const QJsonValue workgroups = pass.value(QStringLiteral("workgroups"));

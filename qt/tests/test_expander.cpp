@@ -297,7 +297,7 @@ int main() {
     // reference, so this synthetic definition stands in. Expected passes
     // were minted by the reference expander over the equivalent
     // definition.js (expand(validate(parse(lex(src)))), node 26.5.1,
-    // reference fa83eeabf — re-minted when GAP-005 added pass-name
+    // reference fa83eeabf — re-minted when the reference added pass-name
     // propagation, which now carries `name` onto the expanded passes).
     // ======================================================================
     {
@@ -337,7 +337,7 @@ int main() {
     }
 
     // ======================================================================
-    // GAP-005 pass-field propagation (reference fa83eeabf): the reference
+    // Pass-field propagation (reference fa83eeabf): the reference
     // expander copies name/type/clear/viewport/samplerTypes onto each
     // expanded pass verbatim and omits them when unauthored. No catalog
     // definition declares them at the pinned reference, so this synthetic

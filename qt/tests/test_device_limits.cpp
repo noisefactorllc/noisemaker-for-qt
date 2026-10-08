@@ -219,7 +219,7 @@ int main(int argc, char** argv) {
                 check(aliasInternalFormat == GL_RGBA8,
                       "recreated aliased texture has GL_RGBA8 internal format");
 
-                // GAP-007 structured diagnostics (reference dd4606ea):
+                // Structured diagnostics (reference dd4606ea):
                 // an unknown spec format keeps the rgba8 fallback but
                 // records a deduplicated ERR_UNKNOWN_FORMAT_FALLBACK.
                 nm::Graph unknownFormatGraph;
@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
                 check(cache.diagnostics().records.size() == 1,
                       "one unknown format fallback is recorded");
                 check(cache.diagnostics().records.first().code == QStringLiteral("ERR_UNKNOWN_FORMAT_FALLBACK"),
-                      "the format fallback record carries the GAP-007 code");
+                      "the format fallback record carries the diagnostic code");
                 check(cache.diagnostics().records.first().backend == QStringLiteral("qt-gl"),
                       "the format fallback record names the native backend");
                 check(cache.diagnostics().records.first().stage == QStringLiteral("texture-create"),
@@ -265,7 +265,7 @@ int main(int argc, char** argv) {
                 check(cache.diagnostics().records.size() == 2,
                       "the dimension fallback is recorded after the format one");
                 check(cache.diagnostics().records.last().code == QStringLiteral("ERR_DIMENSION_FALLBACK"),
-                      "the dimension fallback record carries the GAP-007 code");
+                      "the dimension fallback record carries the diagnostic code");
                 check(cache.diagnostics().records.last().stage == QStringLiteral("dimension"),
                       "the dimension fallback record uses the reference stage");
                 check(cache.diagnostics().records.last().spec == QStringLiteral("zoom"),

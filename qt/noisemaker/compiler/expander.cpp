@@ -283,6 +283,7 @@ public:
         for (int planIndex = 0; planIndex < plans.size(); ++planIndex) {
             expandPlan(plans.at(planIndex).toObject(), planIndex);
         }
+        resolveVolumeHandoffs();
         ExpandResult result;
         if (!isMissing(renderDirective) && renderDirective.isString() && !renderDirective.toString().isEmpty()) {
             result.renderSurface = renderDirective;
@@ -299,6 +300,7 @@ public:
         result.errors = errors_;
         result.programs = programs_;
         result.textureSpecs = textureSpecs_;
+        result.mediaSteps = mediaSteps_;
         return result;
     }
 
@@ -310,6 +312,15 @@ private:
     QJsonObject textureSpecs_;
     QMap<QString, QString> textureMap_;
     QString lastWrittenSurface_;
+    QJsonArray mediaSteps_;
+    QSet<QString> mediaStepIds_;
+    // Volume handoffs (reference expander): exported volume -> {param, value} of its
+    // producer's sizing uniform; reader sizing scope -> {surface[, writer]}; exported
+    // atlas -> source texture.
+    QMap<QString, QJsonObject> writtenVolumes_;
+    QMap<QString, QJsonObject> readVolumes_;
+    QMap<QString, QString> exportedTextures_;
+    QString volumeSizeParam_;
 
     // per-plan state (reset in expandPlan)
     QString currentInput_;
@@ -324,6 +335,69 @@ private:
     QString chainScopeId_;
 
     static QString nodeIdOf(int temp) { return QStringLiteral("node_%1").arg(temp); }
+
+    QJsonObject resolveVolume(const QString& param, QSet<QString>& visited) const {
+        if (visited.contains(param)) return {};
+        visited.insert(param);
+        QJsonObject writer;
+        if (readVolumes_.contains(param)) {
+            const QJsonObject read = readVolumes_.value(param);
+            writer = read.value(QStringLiteral("writer")).toObject();
+            if (writer.isEmpty()) writer = writtenVolumes_.value(read.value(QStringLiteral("surface")).toString());
+        }
+        if (writer.isEmpty() || writer.value(QStringLiteral("param")).toString() == param) return {};
+        const QJsonObject deeper = resolveVolume(writer.value(QStringLiteral("param")).toString(), visited);
+        return deeper.isEmpty() ? writer : deeper;
+    }
+
+    void resolveExport(const QString& id, QSet<QString>& visited) {
+        if (visited.contains(id)) return;
+        visited.insert(id);
+        const QString source = exportedTextures_.value(id);
+        if (source.isEmpty() || source == id) return;
+        resolveExport(source, visited);
+        if (textureSpecs_.contains(source)) textureSpecs_.insert(id, textureSpecs_.value(source));
+    }
+
+    // Follow volume handoffs after expansion so ordering and re-export do not change atlas
+    // dimensions. Cycles without a producer retain their defaults.
+    void resolveVolumeHandoffs() {
+        QMap<QString, QJsonObject> resolved;
+        for (auto it = readVolumes_.cbegin(); it != readVolumes_.cend(); ++it) {
+            QSet<QString> visited;
+            const QJsonObject source = resolveVolume(it.key(), visited);
+            if (!source.isEmpty()) resolved.insert(it.key(), source);
+        }
+        for (const QString& id : exportedTextures_.keys()) {
+            QSet<QString> visited;
+            resolveExport(id, visited);
+        }
+        for (const QString& key : textureSpecs_.keys()) {
+            QJsonObject spec = textureSpecs_.value(key).toObject();
+            bool changed = false;
+            for (const QString& axis : {QStringLiteral("width"), QStringLiteral("height"), QStringLiteral("depth")}) {
+                QJsonObject dim = spec.value(axis).toObject();
+                const QString param = dim.value(QStringLiteral("param")).toString();
+                if (dim.isEmpty() || !resolved.contains(param)) continue;
+                dim.insert(QStringLiteral("param"), resolved.value(param).value(QStringLiteral("param")));
+                spec.insert(axis, dim);
+                changed = true;
+            }
+            if (changed) textureSpecs_.insert(key, spec);
+        }
+        for (ExpandedPass& pass : passes_) {
+            for (auto it = resolved.cbegin(); it != resolved.cend(); ++it) {
+                if (!pass.uniforms.contains(it.key())) continue;
+                const QJsonObject& source = it.value();
+                pass.uniforms.remove(it.key());
+                pass.uniforms.insert(source.value(QStringLiteral("param")).toString(), source.value(QStringLiteral("value")));
+                pass.uniforms.insert(QStringLiteral("volumeSize"), source.value(QStringLiteral("value")));
+                if (pass.scopedParams.value(QStringLiteral("volumeSize")).toString() == it.key()) {
+                    pass.scopedParams.insert(QStringLiteral("volumeSize"), source.value(QStringLiteral("param")));
+                }
+            }
+        }
+    }
 
     void ensureBlitProgram() {
         if (programs_.contains(QStringLiteral("blit"))) return;
@@ -398,6 +472,7 @@ private:
         currentParticlePipelineId_.clear();
         pipelineUniforms_ = QJsonObject();
         chainScopeId_ = QStringLiteral("chain_%1").arg(planIndex);
+        volumeSizeParam_ = QStringLiteral("volumeSize_") + chainScopeId_;
 
         const QJsonArray chain = plan.value(QStringLiteral("chain")).toArray();
         for (int stepPos = 0; stepPos < chain.size(); ++stepPos) {
@@ -441,6 +516,22 @@ private:
                         currentInputGeo_ = nameVal.isString() ? nameVal.toString() : QString();
                     }
                 }
+                // Resolve the producer scope after all plans have been expanded: readers may
+                // precede writers to consume the previous frame. Preserve the writer visible
+                // at this read; a later filter may rewrite the surface without owning its size.
+                if (!currentInput3d_.isEmpty()) {
+                    QJsonObject read;
+                    read.insert(QStringLiteral("surface"), currentInput3d_);
+                    QJsonValue size = 64;
+                    if (writtenVolumes_.contains(currentInput3d_)) {
+                        const QJsonObject writer = writtenVolumes_.value(currentInput3d_);
+                        read.insert(QStringLiteral("writer"), writer);
+                        size = writer.value(QStringLiteral("value"));
+                    }
+                    readVolumes_.insert(volumeSizeParam_, read);
+                    pipelineUniforms_.insert(QStringLiteral("volumeSize"), size);
+                    pipelineUniforms_.insert(volumeSizeParam_, size);
+                }
                 if (!currentInput3d_.isEmpty()) textureMap_.insert(nodeId + QStringLiteral("_out3d"), currentInput3d_);
                 if (!currentInputGeo_.isEmpty()) textureMap_.insert(nodeId + QStringLiteral("_outGeo"), currentInputGeo_);
                 continue;
@@ -473,6 +564,16 @@ private:
                     const QString name = tex3d.toObject().value(QStringLiteral("name")).toString();
                     if (name != QStringLiteral("none") && !currentInput3d_.isEmpty()) {
                         const QString targetVol = QStringLiteral("global_") + name;
+                        exportedTextures_.insert(targetVol, currentInput3d_);
+                        if (textureSpecs_.contains(currentInput3d_)) {
+                            textureSpecs_.insert(targetVol, textureSpecs_.value(currentInput3d_));
+                        }
+                        if (pipelineUniforms_.contains(QStringLiteral("volumeSize"))) {
+                            QJsonObject writer;
+                            writer.insert(QStringLiteral("param"), volumeSizeParam_);
+                            writer.insert(QStringLiteral("value"), pipelineUniforms_.value(QStringLiteral("volumeSize")));
+                            writtenVolumes_.insert(targetVol, writer);
+                        }
                         if (currentInput3d_ != targetVol) {
                             passes_.append(makeBlit(nodeId + QStringLiteral("_write3d_vol_blit"), currentInput3d_, targetVol, nodeId, temp, true));
                             ensureBlitProgram();
@@ -483,6 +584,10 @@ private:
                     const QString name = geo.toObject().value(QStringLiteral("name")).toString();
                     if (name != QStringLiteral("none") && !currentInputGeo_.isEmpty()) {
                         const QString targetGeo = QStringLiteral("global_") + name;
+                        exportedTextures_.insert(targetGeo, currentInputGeo_);
+                        if (textureSpecs_.contains(currentInputGeo_)) {
+                            textureSpecs_.insert(targetGeo, textureSpecs_.value(currentInputGeo_));
+                        }
                         if (currentInputGeo_ != targetGeo) {
                             passes_.append(makeBlit(nodeId + QStringLiteral("_write3d_geo_blit"), currentInputGeo_, targetGeo, nodeId, temp, true));
                         }
@@ -892,7 +997,7 @@ private:
             pass.workgroups = passDef.value(QStringLiteral("workgroups"));
             pass.storageBuffers = passDef.value(QStringLiteral("storageBuffers"));
             pass.storageTextures = passDef.value(QStringLiteral("storageTextures"));
-            // GAP-005 pass-field propagation (reference fa83eeabf): copied verbatim.
+            // Pass-field propagation (reference fa83eeabf): copied verbatim.
             pass.passName = passDef.value(QStringLiteral("name"));
             pass.passType = passDef.value(QStringLiteral("type"));
             pass.clear = passDef.value(QStringLiteral("clear"));
@@ -1151,6 +1256,15 @@ private:
             } else if (effectDef.value(QStringLiteral("externalTexture")).isString()
                        && texRef == effectDef.value(QStringLiteral("externalTexture")).toString()) {
                 resolved = texRef + QStringLiteral("_step_") + QString::number(step.value(QStringLiteral("temp")).toInt());
+                if (!mediaStepIds_.contains(resolved)) {
+                    mediaStepIds_.insert(resolved);
+                    QJsonObject media;
+                    media.insert(QStringLiteral("textureId"), resolved);
+                    media.insert(QStringLiteral("uniform"), uniformName);
+                    media.insert(QStringLiteral("stepIndex"), step.value(QStringLiteral("temp")));
+                    media.insert(QStringLiteral("effect"), step.value(QStringLiteral("op")));
+                    mediaSteps_.append(media);
+                }
             } else if (stepArgs.contains(texRef)) {
                 const QJsonValue arg = stepArgs.value(texRef);
                 if (arg.isNull() || arg.isUndefined()) {
@@ -1415,7 +1529,7 @@ QJsonObject toRawPassJson(const ExpandedPass& pass) {
         if (!pass.workgroups.isUndefined()) out.insert(QStringLiteral("workgroups"), pass.workgroups);
         if (!pass.storageBuffers.isUndefined()) out.insert(QStringLiteral("storageBuffers"), pass.storageBuffers);
         if (!pass.storageTextures.isUndefined()) out.insert(QStringLiteral("storageTextures"), pass.storageTextures);
-        // GAP-005 pass-field propagation (reference fa83eeabf): the same five
+        // Pass-field propagation (reference fa83eeabf): the same five
         // fields the reference copies, serialized only when authored.
         if (!pass.passName.isUndefined()) out.insert(QStringLiteral("name"), pass.passName);
         if (!pass.passType.isUndefined()) out.insert(QStringLiteral("type"), pass.passType);

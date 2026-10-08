@@ -250,7 +250,7 @@ tol_for() {
 		# >=100 diff), consistent with the boundary-flip signature, not
 		# a broken image.
 		synth3dFlythrough3d) echo "138.001 0.999" ;; # 1.05% px, ssim=0.99985
-		# --- Isometric voxel-DDA axis-crossing tie (GAP-011). The
+		# --- Isometric voxel-DDA axis-crossing tie. The
 		# renderLandscape3d voxel path (FILTERING 1, VIEW_MODE 1) steps a
 		# fixed (-1,-1,-1) ray and crosses every axis whose nextT equals
 		# the minimum. At 2 px, origin.y-origin.z (x=53) and
@@ -278,7 +278,7 @@ tol_for() {
 		# surface), this is an ordinary sparse boundary tie like the classes
 		# above, not a whole-image divergence.
 		convolutionFeedback) echo "9.001 0.999" ;; # 0.35% px, ssim=1.00000
-		# --- Chaotic agent flow at stateSize x256 (GAP-042). One or two of
+		# --- Chaotic agent flow at stateSize x256. One or two of
 		# the 65536 agents of `flow(behavior: chaotic)` land a pixel apart
 		# after 8 frames; x512 and x1024 are bit-exact. Bit-exact on llvmpipe
 		# (parity-llvmpipe.yml, CI run 36077644490), so a macOS compiler effect.

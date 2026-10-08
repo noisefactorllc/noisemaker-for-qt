@@ -40,7 +40,14 @@
     "rotation": {
       "ui": {
         "label": "rotation",
-        "control": "slider"
+        "control": "slider",
+        "enabledBy": {
+          "param": "shape",
+          "notIn": [
+            0,
+            6
+          ]
+        }
       }
     },
     "posX": {

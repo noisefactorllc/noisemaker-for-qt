@@ -15,25 +15,24 @@ name: CI
 #                 library under those flags.
 #   gates         Compiler, byte, MIDI-state and audio-state gates
 #                 (parity/check_*.mjs) against the reference checkout at the
-#                 content pin in STATUS.md.
+#                 commit pinned in scripts/test.
 #   render-smoke  Mints goldens for a few fixtures with the reference engine
 #                 (Chromium, WebGL2 on ANGLE's GL backend over the job's Mesa
-#                 llvmpipe, the candidate's rasterizer: GAP-033), renders
+#                 llvmpipe, the candidate's rasterizer), renders
 #                 candidates with nm-render on llvmpipe, and grades them with
 #                 parity/run.sh at the strict default tolerance. It also runs
 #                 the AnalyserNode gate against the same Chromium.
 #   render-smoke-windows
 #                 Renders the same fixtures with nm-render on the pinned Mesa
 #                 llvmpipe opengl32sw.dll and grades them against the goldens
-#                 render-smoke minted (GL on llvmpipe on both sides: GAP-033),
+#                 render-smoke minted (GL on llvmpipe on both sides),
 #                 and runs the filter/text gate against Qt's DirectWrite font
 #                 engine.
 
 on:
   push:
     branches: [main]
-    # Inert documentation does not build. STATUS.md stays in: the gates read
-    # the reference content pin from it.
+    # Inert documentation does not build.
     paths:
       - '**'
       - '!*.md'
@@ -43,7 +42,6 @@ on:
       - '!.github/PULL_REQUEST_TEMPLATE*'
       - '!.github/CODEOWNERS'
       - '!.editorconfig'
-      - 'STATUS.md'
   workflow_dispatch:
 
 permissions:
@@ -96,8 +94,8 @@ jobs:
           # Runner images carry third-party apt sources whose stale indexes
           # can fail apt-get update; only Ubuntu archives are needed here.
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+          for attempt in 1 2 3; do timeout 180 sudo apt-get update && break; [ "$attempt" = 3 ] && exit 1; sleep 10; done
+          timeout 600 sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
             libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
             libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
 
@@ -113,7 +111,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
+          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z -TimeoutSec 300 -MaximumRetryCount 3
           $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
           if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
           7z x mesa.7z -omesa | Out-Null
@@ -151,7 +149,7 @@ jobs:
       - name: ctest (macOS)
         if: runner.os == 'macOS'
         # test_device_limits runs with -V so a passing run still logs
-        # GL_RENDERER and the RGBA16F probe and recreated formats (GAP-021).
+        # GL_RENDERER and the RGBA16F probe and recreated formats.
         run: |
           ctest --test-dir build --output-on-failure -E '^test_device_limits$'
           ctest --test-dir build --output-on-failure -V -R '^test_device_limits$'
@@ -196,7 +194,7 @@ jobs:
         run: cmake --build build --config Release --parallel
 
   install-workflow:
-    # GAP-002: the README's installed workflow on each OS: build and install
+    # The README's installed workflow on each OS: build and install
     # the library, build the viewer and the Qt Quick example against the
     # install (the configure log must say it used the installed package, not
     # the qt/ tree), run their --selfcheck where the runner has a display
@@ -229,8 +227,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+          for attempt in 1 2 3; do timeout 180 sudo apt-get update && break; [ "$attempt" = 3 ] && exit 1; sleep 10; done
+          timeout 600 sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
             libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
             libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
 
@@ -238,7 +236,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
+          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z -TimeoutSec 300 -MaximumRetryCount 3
           $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
           if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
           7z x mesa.7z "-o$env:RUNNER_TEMP/mesa" | Out-Null
@@ -283,7 +281,7 @@ jobs:
         # Windows runners create the window and its GL context but never
         # paint it (CI run 36070432259: "SELFCHECK FAIL: no frames within
         # 20000 ms"); Xvfb gives Linux a real display. The macOS self-checks
-        # pass on a desktop session (GAP-002).
+        # pass on a desktop session.
         if: runner.os == 'Linux'
         env:
           QT_QPA_PLATFORM: xcb
@@ -335,10 +333,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check out the reference at the STATUS.md content pin
+      - name: Check out the reference at the pinned commit
         run: |
-          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
-          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          pin=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/test | grep -oE "[0-9a-f]{40}")
+          test -n "$pin" || { echo "no reference pin found in scripts/test"; exit 1; }
           echo "reference pin: $pin"
           git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
           git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
@@ -386,10 +384,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check out the reference at the STATUS.md content pin
+      - name: Check out the reference at the pinned commit
         run: |
-          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
-          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          pin=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/test | grep -oE "[0-9a-f]{40}")
+          test -n "$pin" || { echo "no reference pin found in scripts/test"; exit 1; }
           git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
           git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
           git -C "$RUNNER_TEMP/noisemaker" rev-parse HEAD
@@ -411,7 +409,7 @@ jobs:
 
       - name: Install Linux GL and X11 runtime
         run: |
-          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+          timeout 600 sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
             libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
             libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
 
@@ -443,7 +441,7 @@ jobs:
 
       - name: Mint goldens with the reference engine (ANGLE GL on llvmpipe)
         env:
-          # GAP-033: goldens come from the candidate's rasterizer. Headless
+          # Goldens come from the candidate's rasterizer. Headless
           # Chromium ignores --use-angle=gl and draws on SwiftShader, whose
           # edge coverage differs from llvmpipe (meshRenderCustom: 16
           # silhouette pixels). Headed Chromium under Xvfb runs WebGL on
@@ -496,7 +494,7 @@ jobs:
           if-no-files-found: warn
 
   render-smoke-windows:
-    # GAP-033: goldens must come from the candidate's rasterizer. Chromium on
+    # Goldens must come from the candidate's rasterizer. Chromium on
     # the Windows runner cannot draw WebGL on Mesa (run 36038944290: with
     # Mesa registered as the MSOGL ICD, ANGLE's GL backend got a context
     # that failed the ES 3.0 vertex shader), so this job grades against
@@ -518,10 +516,10 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check out the reference at the STATUS.md content pin
+      - name: Check out the reference at the pinned commit
         run: |
-          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
-          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          pin=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/test | grep -oE "[0-9a-f]{40}")
+          test -n "$pin" || { echo "no reference pin found in scripts/test"; exit 1; }
           echo "reference pin: $pin"
           # The text gate needs the reference's Playwright, its demo font
           # and demo-ui.js; nothing here serves the reference to a browser.
@@ -559,7 +557,7 @@ jobs:
       - name: Install Mesa llvmpipe opengl32sw.dll
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z
+          Invoke-WebRequest -Uri $env:MESA_WIN_URL -OutFile mesa.7z -TimeoutSec 300 -MaximumRetryCount 3
           $hash = (Get-FileHash mesa.7z -Algorithm SHA256).Hash.ToLower()
           if ($hash -ne $env:MESA_WIN_SHA256) { throw "Mesa archive SHA-256 mismatch: $hash" }
           7z x mesa.7z -omesa | Out-Null

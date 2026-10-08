@@ -208,6 +208,19 @@ double oscNoise(double time, double seed) {
         * 0.5;
 }
 
+// Two-stage periodic noise (oscKind.noise2d, kind 6), mirroring the osc2d effect: speed is
+// applied once, after the first periodic wrap. osc() has no spatial position, so both stages
+// sample a fixed seed-derived position.
+double oscNoise2d(double time, double speed, double seed) {
+    const auto periodicValue = [](double x, double v) { return (std::sin((x - v) * kTau) + 1.0) * 0.5; };
+    const double px = (std::abs(std::fmod(seed, 16.0)) + 0.5) / 16.0;
+    const double py = (std::abs(std::fmod(std::floor(seed / 16.0), 16.0)) + 0.5) / 16.0;
+    const double timeNoise = noise2d(px, py, seed + 12345.0);
+    const double valueNoise = noise2d(px, py, seed);
+    const double scaledTime = periodicValue(time, timeNoise) * speed;
+    return periodicValue(scaledTime, valueNoise);
+}
+
 struct IntegrationRule {
     const double* nodes;
     const double* weights;
@@ -429,6 +442,12 @@ private:
             case 3: raw = oscSawInverse(time); break;
             case 4: raw = oscSquare(time); break;
             case 5: raw = oscNoise(time, seed); break;
+            case 6: {
+                const double rate = resolveField(speed, normalizedTime, kOscillatorSpeedRange,
+                                                 depth, 1.0);
+                raw = oscNoise2d(normalizedTime + offset, std::isfinite(rate) ? rate : 1.0, seed);
+                break;
+            }
             default: break;
         }
         return minimum + raw * (maximum - minimum);
@@ -1166,13 +1185,13 @@ void Backend::setUniform(Graph& graph, const QString& name, const QJsonValue& in
 
     m_globalUniforms.insert(name, value);
 
+    // Legacy classicNoisedeck palette expansion: an integer palette expands into the
+    // dependent uniforms, and the palette uniform itself is written too, as the parameter
+    // paths write it (filter/dither reads only `palette`).
     if (name == QStringLiteral("palette") && value.isDouble()) {
         const QJsonObject expanded = expandPalette(value.toDouble());
-        if (!expanded.isEmpty()) {
-            for (auto it = expanded.begin(); it != expanded.end(); ++it) {
-                setUniform(graph, it.key(), it.value());
-            }
-            return;
+        for (auto it = expanded.begin(); it != expanded.end(); ++it) {
+            setUniform(graph, it.key(), it.value());
         }
     }
 
@@ -1182,6 +1201,12 @@ void Backend::setUniform(Graph& graph, const QString& name, const QJsonValue& in
     for (Pass& pass : graph.passes) {
         if (pass.uniforms.contains(name) && !isAutomationValue(pass.uniforms.value(name))) {
             pass.uniforms.insert(name, value);
+        }
+        // Shader uniforms the pass feeds from this parameter under another name
+        // (uniforms: { mixAmt: "mix" }), as the parameter paths do.
+        for (auto it = pass.uniformAliases.constBegin(); it != pass.uniformAliases.constEnd(); ++it) {
+            if (it.value().toString() != name || isAutomationValue(pass.uniforms.value(it.key()))) continue;
+            pass.uniforms.insert(it.key(), value);
         }
         if (scoped) continue;
         const QStringList keys = pass.uniforms.keys();
@@ -1809,7 +1834,7 @@ QJsonObject Backend::engineUniforms() const {
 void Backend::setUniformValue(int location, unsigned int glType, const QJsonValue& value) {
     // WebGL2 converts an object argument with ToNumber: gl.uniform1f and the
     // float-vector uniform*fv calls bind NaN, gl.uniform1i binds 0. The only
-    // objects left here are function values without a host control (GAP-043).
+    // objects left here are function values without a host control.
     const float objectFloat = std::numeric_limits<float>::quiet_NaN();
     switch (glType) {
     case GL_FLOAT: {

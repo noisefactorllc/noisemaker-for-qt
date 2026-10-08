@@ -76,6 +76,28 @@ int main() {
     }
 
     {
+        // oscKind.noise2d: expected values are the reference pipeline.js oscNoise2d(time, speed,
+        // seed) at the same arguments. time is normalized time plus offset; speed is not
+        // integrated into the phase.
+        check(approx(backend.resolveUniformValue(oscillator(6), 0.25).toDouble(),
+                     0.49981482401673011, 1e-12),
+              "noise2d oscillator matches the reference at speed 1, seed 1");
+
+        QJsonObject offsetNoise = oscillator(6, 2.0);
+        offsetNoise.insert(QStringLiteral("seed"), 7.0);
+        offsetNoise.insert(QStringLiteral("offset"), 0.12);
+        check(approx(backend.resolveUniformValue(offsetNoise, 0.25).toDouble(),
+                     0.0030136521896270141, 1e-12),
+              "noise2d oscillator applies offset to time and speed after the first wrap");
+
+        QJsonObject fastNoise = oscillator(6, 3.0);
+        fastNoise.insert(QStringLiteral("seed"), 37.0);
+        check(approx(backend.resolveUniformValue(fastNoise, 0.83).toDouble(),
+                     0.81596597893920308, 1e-12),
+              "noise2d oscillator matches the reference at speed 3, seed 37");
+    }
+
+    {
         QJsonObject channel;
         channel.insert(QStringLiteral("key"), 64.0);
         channel.insert(QStringLiteral("velocity"), 127.0);

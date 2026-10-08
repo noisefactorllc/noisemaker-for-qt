@@ -1,4 +1,4 @@
-// Unit tests for the GAP-007 runtime diagnostic port: the
+// Unit tests for the runtime diagnostic port: the
 // DiagnosticCollector / DiagnosticSink pair and resolveDimension's
 // unknown-form fallback recording. Mirrors the reference's
 // shaders/tests/test_backend_diagnostics.js format/dimension fallback
@@ -69,7 +69,7 @@ int main() {
         if (collector.records.size() == 1) {
             const nm::SurfaceDiagnostic& record = collector.records.first();
             check(record.code == QStringLiteral("ERR_DIMENSION_FALLBACK"),
-                  "the dimension record carries the GAP-007 code");
+                  "the dimension record carries the diagnostic code");
             check(record.backend == QStringLiteral("qt-gl"),
                   "the dimension record names the native backend");
             check(record.stage == QStringLiteral("dimension"),
@@ -112,7 +112,7 @@ int main() {
         capture->messages.clear();
 
         // A malformed percent string keeps the screen-size fallback and is
-        // surfaced like any other unknown form (GAP-007).
+        // surfaced like any other unknown form.
         check(nm::resolveDimension(QJsonValue(QStringLiteral("bogus%")), 1000, QJsonObject(), &sink) == 1000,
               "behavior unchanged: a malformed percent form falls back to screen size");
         check(collector.records.size() == 1

@@ -21,7 +21,7 @@
 // in either image, so both images are cut at the same places. For one line
 // of text a run is usually one glyph. A run with ink in only one image fails.
 //
-// Why per glyph (GAP-027). An ink centroid over a whole line mixes layout
+// Why per glyph. An ink centroid over a whole line mixes layout
 // with rasterization. With w the share of an image's ink in run i and c the
 // run's centroid along the text,
 //   d = sum_i w_qt,i (c_qt,i - c_chrome,i) + sum_i (w_qt,i - w_chrome,i) c_chrome,i:
@@ -49,7 +49,7 @@
 // subpixel rendering but not positioning (ui/gfx/font_render_params_linux.cc,
 // ui/gfx/linux/fontconfig_util.cc).
 //
-// Font families (GAP-027, GAP-044, GAP-045). Twelve cases draw with other
+// Font families. Twelve cases draw with other
 // families than Nunito: the six CSS generic families; ui-serif,
 // ui-sans-serif, ui-monospace and ui-rounded, which Chromium 153 looks up
 // as ordinary names; a family no platform has (Nmqt Absent Family); and a

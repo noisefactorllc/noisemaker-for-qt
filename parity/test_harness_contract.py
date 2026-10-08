@@ -32,22 +32,22 @@ beyond a literal port:
   - test_single_golden_mint_captures_the_loaded_program_after_a_slow_compile
     and test_batch_golden_mint_captures_each_loaded_program_after_a_slow_compile
     (the golden minters wait for the loaded DSL, not the demo's previous
-    program; GAP-010)
+    program)
   - test_single_golden_mint_waits_for_the_host_overlay_regeneration,
     test_single_golden_mint_exports_the_host_texture_it_sampled,
     test_batch_golden_mint_settles_host_inputs_and_drops_stale_textures and
     test_runner_passes_saved_host_textures_to_the_renderer (asyncInit
     overlays settle before capture and the reference's host textures reach
-    the candidate; GAP-026)
+    the candidate)
   - test_timed_golden_mint_starts_from_cleared_graph_state (a timed series
-    starts from zeroed graph state; GAP-034) and
+    starts from zeroed graph state) and
     test_live_dsl_sweep_passes_saved_host_textures_to_the_renderer (GAP-035)
   - test_golden_mints_export_the_asyncinit_overlay_they_sampled,
     test_runner_passes_reference_overlays_only_when_asked,
     test_batch_manifest_passes_reference_overlays_only_when_asked and
     test_live_dsl_sweep_passes_reference_overlays_only_when_asked (the
     reference's asyncInit overlays reach the candidate only under
-    NM_REFERENCE_OVERLAYS=1; GAP-025)
+    NM_REFERENCE_OVERLAYS=1)
   - test_batch_golden_mint_rebuilds_controls_for_a_same_structure_fixture
     and test_golden_mints_fail_without_the_demo_program_state (a batch mint
     equals the single mint of a fixture whose effect structure matches the

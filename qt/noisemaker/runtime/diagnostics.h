@@ -7,7 +7,7 @@
 namespace nm {
 
 // A single structured runtime diagnostic that is recorded rather than
-// thrown — the Qt-native counterpart of the reference's GAP-007 records
+// thrown — the Qt-native counterpart of the reference's diagnostic records
 // (shaders/src/runtime/backends/diagnostics.js DiagnosticCollector +
 // webgl2.js/pipeline.js record sites). Record shape and codes mirror the
 // reference: ERR_DIMENSION_FALLBACK (pipeline.diagnostics, stage
@@ -25,7 +25,7 @@ struct SurfaceDiagnostic {
 };
 
 // A capped, queryable collector for structured diagnostics that are
-// recorded rather than thrown (GAP-007): the historically-silent format
+// recorded rather than thrown: the historically-silent format
 // and dimension fallbacks keep their behavior (no new rejection of
 // previously accepted input) but surface structured records instead of
 // pure silence. add() shifts records out beyond the cap (default 64),

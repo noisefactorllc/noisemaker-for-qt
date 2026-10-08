@@ -1,6 +1,6 @@
 // Unit tests for nm::validateEffectDefinition (qt/noisemaker/compiler/
 // effect_validator.{h,cpp}): the port of shaders/src/runtime/effect-validator.js
-// validateEffectDefinition() (upstream GAP-003, commits ba87ffae + 9d3474df).
+// validateEffectDefinition() (upstream commits ba87ffae + 9d3474df).
 // Plain assert-style checks, no test framework dependency.
 //
 // Cases mirror shaders/tests/test_effect_definition_validation.js, minus the

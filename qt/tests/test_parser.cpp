@@ -1079,7 +1079,7 @@ int main() {
         check(caught, "throws P001 for array coerced to number");
     }
 
-    // GAP-027 subchain argument validation test suite
+    // Subchain argument validation test suite
     {
         // 1. Default parse accepts unknown subchain key without altering AST and attaches P008 report
         {

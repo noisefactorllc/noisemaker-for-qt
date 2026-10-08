@@ -231,10 +231,18 @@ QJsonObject asyncInitParams(const QString& effectKey, const QJsonObject& uniform
         if (isScalar(uniforms.value(name))) stepValues = true;
     }
     const QJsonObject& source = stepValues ? uniforms : globalUniforms;
+    // reference asyncInit draw params (3bae8ea0): an automation descriptor is drawn from
+    // the param's definition default, not from the descriptor.
+    const double densityDefault = effectKey == QStringLiteral("filter.scratches") ? 0.3 : 0.5;
     QJsonObject params;
     for (const QString& name : read) {
         const auto it = source.constFind(name);
-        if (it != source.constEnd()) params.insert(name, it.value());
+        if (it == source.constEnd()) continue;
+        if (it.value().isObject()) {
+            params.insert(name, name == QStringLiteral("seed") ? 1.0 : densityDefault);
+        } else {
+            params.insert(name, it.value());
+        }
     }
     return params;
 }

@@ -77,13 +77,16 @@ Each of these diverges from a desktop-GL default and silently breaks parity if m
   reintroduce this bug class is in the expander: port its define-collection logic exactly,
   including the sorted-by-define-name ordering.
 
-## Per-effect verification checklist
+## Sync checklist
 
-For any effect touched by an upstream sync:
+For an upstream sync, with `NM_REFERENCE_ROOT` at the new reference commit:
 
-1. Regenerate: `node tools/convert-definitions.mjs && node tools/convert-shaders-qt.mjs`
-2. Gates: `node parity/check_definitions.mjs && node parity/check_shaders.mjs`
-3. Rebuild goldens + candidates together for the affected fixtures, then grade:
-   `bash parity/run.sh <fixture>` → expect `[PASS]` (or its documented NEAR entry)
-4. If a mode axis changed, confirm `parity/test_artistic_matrix.py` still covers it
-5. Never commit a ledger the sweep didn't write
+1. Regenerate: `node tools/convert-definitions.mjs && node tools/convert-effects-ui.mjs && node tools/convert-shaders-qt.mjs`
+2. Port the compiler and runtime changes the reference made, then build and run `ctest`.
+3. Run every gate CI's `gates` job runs (the `for gate in ...` loop in `.github/workflows/ci.yml`)
+   with `nm-render` and the dump helpers built; all must be exact.
+4. Rebuild goldens + candidates together for the affected fixtures, then grade:
+   `bash parity/run.sh <fixture>` → expect `[PASS]` (or the tolerance its `tol_for()` entry documents)
+5. If a mode axis changed, confirm `parity/test_artistic_matrix.py` still covers it
+6. Move `const PIN` in `scripts/test` to the new commit in the same change
+7. Never commit a ledger the sweep didn't write

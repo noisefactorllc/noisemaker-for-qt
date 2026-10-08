@@ -32,7 +32,7 @@
 // committed relpath outside it. (Not reusing convert-definitions.mjs's own enumeration — an
 // independent census also catches a bug in that enumeration itself, not just reference deletions.)
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { basename, dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
@@ -77,7 +77,7 @@ try {
     for (const e of readdirSync(d)) {
       const p = join(d, e)
       if (statSync(p).isDirectory()) walk(p, base, out)
-      else if (e.endsWith('.json')) out.push(relative(base, p))
+      else if (e.endsWith('.json')) out.push(relative(base, p).split(sep).join('/'))
     }
     return out
   }

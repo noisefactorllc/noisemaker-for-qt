@@ -21,7 +21,7 @@
 //   - A render stays a pure function of the graph, its parameters and the
 //     time. Offline hosts (nm-render, the export kit, the tests) get the
 //     completed overlay on the first frame. The parity goldens capture the
-//     same state once the minter waits for the trace (GAP-026).
+//     same state once the minter waits for the trace.
 //   - The trace costs, on an Apple M4 (shared, load average 13 to 33),
 //     0.1 s for fibers at 256x256 and 2.8 s at 1920x1080, 0.5 s for
 //     scratches and 0.04 s for strayHair at 1920x1080. The reference in
@@ -38,15 +38,13 @@
 // Parameters. The reference passes `params` as a plain object and reads it
 // with JavaScript semantics: `params.seed || 1` and
 // `params.density !== undefined ? params.density : <default>`. The port
-// reads the node's pass uniforms the same way (asyncInitParams()). A
-// non-numeric value (an automation descriptor) becomes NaN, which draws
-// nothing, as in the reference. When neither seed nor density holds a
+// reads the node's pass uniforms the same way (asyncInitParams()). An
+// automation descriptor is drawn from the param's definition default, as in
+// the reference. When neither seed nor density holds a
 // scalar, the reference never re-traces with the step values and keeps the
 // initAsyncEffects trace, which reads the pipeline's global uniforms; the
-// port does the same. The port re-traces whenever those values change,
-// whichever route changed them (applyStepParameterValues, setUniform, a new
-// graph); the reference re-traces from applyStepParameterValues and the
-// demo's program state, and keeps a stale overlay after setUniform.
+// port does the same. Both re-trace whenever those values change, whichever
+// route changed them (applyStepParameterValues, setUniform, a new graph).
 
 #include <QJsonObject>
 #include <QSize>

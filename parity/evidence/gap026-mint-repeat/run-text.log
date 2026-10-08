@@ -1,5 +1,0 @@
-Failed to create /home/node/.cache for shader cache (Read-only file system)---disabling.
-RENDERED /workspace/repos/noisemaker-for-qt/parity/out/text.candidate.png
-[PASS] text: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
-wrote report /workspace/repos/noisemaker-for-qt/parity/out/text.report.json
-RC=0

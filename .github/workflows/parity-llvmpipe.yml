@@ -3,20 +3,16 @@ name: Full parity (llvmpipe)
 # The whole parity corpus (parity/sweep.sh: every program, goldens minted
 # fresh in the same run, the per-fixture tolerance table) on Linux Mesa
 # llvmpipe. Chromium draws the goldens through ANGLE's GL backend over the
-# same llvmpipe the port renders with (GAP-033), so the reference and the
+# same llvmpipe the port renders with, so the reference and the
 # port share one GLSL compiler and one rasterizer. The macOS sweep compares
 # two shader compilers on one GPU; a fixture that still differs here points
 # at the port rather than at compiler rounding (GAP-001).
 
+# Software rendering of the whole corpus is too slow for the push gate, which runs
+# the render smoke in ci.yml. This sweep runs weekly and on demand.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "qt/**"
-      - "parity/**"
-      - "tools/**"
-      - "STATUS.md"
-      - ".github/workflows/parity-llvmpipe.yml"
+  schedule:
+    - cron: "17 6 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -36,10 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check out the reference at the STATUS.md content pin
+      - name: Check out the reference at the pinned commit
         run: |
-          pin=$(grep -oE "to reference .[0-9a-f]{7,40}." STATUS.md | tail -1 | grep -oE "[0-9a-f]{7,40}")
-          test -n "$pin" || { echo "no reference pin found in STATUS.md"; exit 1; }
+          pin=$(grep -oE "^const PIN = '[0-9a-f]{40}'" scripts/test | grep -oE "[0-9a-f]{40}")
+          test -n "$pin" || { echo "no reference pin found in scripts/test"; exit 1; }
           git clone --filter=blob:none https://github.com/noisefactorllc/noisemaker.git "$RUNNER_TEMP/noisemaker"
           git -C "$RUNNER_TEMP/noisemaker" checkout --detach "$pin"
           git -C "$RUNNER_TEMP/noisemaker" rev-parse HEAD
@@ -61,7 +57,7 @@ jobs:
 
       - name: Install Linux GL and X11 runtime
         run: |
-          sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
+          timeout 600 sudo apt-get install -y --no-install-recommends xvfb mesa-utils libgl1-mesa-dri libegl1 \
             libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
             libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-image0
 

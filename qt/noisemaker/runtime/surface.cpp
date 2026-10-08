@@ -29,7 +29,7 @@ bool jsonHasLiveValue(const QJsonObject& obj, const QString& key) {
 namespace {
 
 // The dedup/warning key the reference derives for an unknown dimension
-// spec (pipeline.js GAP-007 guard): non-objects use String(spec); objects
+// spec (pipeline.js guard): non-objects use String(spec); objects
 // AND arrays go through JSON.stringify (typeof [] === 'object'), which
 // the compact QJsonDocument form matches element-for-element. QJsonDocument
 // emits sorted object keys (the reference preserves insertion order), so
@@ -52,7 +52,7 @@ QString dimensionFallbackKey(const QJsonValue& spec) {
 int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& mergedUniforms,
                      DiagnosticSink* sink) {
     // An absent/null spec is a default, not an unknown form: the
-    // reference's GAP-007 guard excludes undefined/null and this port's
+    // reference's guard excludes undefined/null and this port's
     // callers use a null QJsonValue for "no spec" exactly like the
     // reference's `undefined` (no diagnostic).
     if (spec.isNull() || spec.isUndefined()) {
@@ -83,7 +83,7 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             // A non-numeric percent string does not resolve upstream's
             // parseFloat path to a usable number; this port keeps the
             // historical screen-size fallback (reference/04 §9 rule 5)
-            // and surfaces it like any other unknown form (GAP-007).
+            // and surfaces it like any other unknown form.
             if (sink != nullptr) {
                 sink->recordDimensionFallback(s, screenSize);
             }
@@ -163,7 +163,7 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
 
         // Unknown object forms (none of param/screenDivide/scale) keep
         // the historical screen-size fallback but surface a structured
-        // diagnostic (GAP-007) instead of pure silence.
+        // diagnostic instead of pure silence.
         if (sink != nullptr) {
             sink->recordDimensionFallback(dimensionFallbackKey(spec), screenSize);
         }
@@ -172,7 +172,7 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
 
     // Unknown array/bool forms keep the historical screen-size fallback
     // (no new rejection of previously accepted input), but surface a
-    // structured diagnostic (GAP-007) instead of pure silence.
+    // structured diagnostic instead of pure silence.
     if (sink != nullptr) {
         sink->recordDimensionFallback(dimensionFallbackKey(spec), screenSize);
     }
@@ -202,7 +202,7 @@ void resolveGlFormat(const QString& format, unsigned int* internalFormat, unsign
         *glType = GL_UNSIGNED_BYTE;
         // Unknown formats keep the historical silent rgba8 fallback (no
         // new rejection of previously accepted input), but surface it as
-        // a structured diagnostic (reference GAP-007 dd4606ea: "Unknown
+        // a structured diagnostic (reference dd4606ea: "Unknown
         // texture format '<key>'; falling back to rgba8", deduplicated
         // per format string). A caller passing no format at all is the
         // default, not a fallback — SurfaceCache::resolveSpec only
@@ -283,6 +283,14 @@ GpuSurface SurfaceCache::createSurface(int width, int height, const QString& for
 SurfaceCache::ResolvedSpec SurfaceCache::resolveSpec(const Graph& graph, const QString& specTexId, QSize screenSize,
                                                      const QJsonObject& mergedUniforms) {
     ResolvedSpec resolved{screenSize.width(), screenSize.height(), QStringLiteral("rgba16f")};
+    // An undeclared volume surface (vol0..vol7) keeps the reference's native 64x4096 atlas
+    // (Pipeline.createSurfaces); write3d declares the written ones.
+    const QString surfaceName = specTexId.startsWith(QStringLiteral("global_")) ? specTexId.mid(7) : QString();
+    if (surfaceName.size() == 4 && surfaceName.startsWith(QStringLiteral("vol"))
+        && surfaceName.at(3) >= QLatin1Char('0') && surfaceName.at(3) <= QLatin1Char('7')) {
+        resolved.width = 64;
+        resolved.height = 4096;
+    }
 
     const auto specIt = graph.textures.find(specTexId);
     if (specIt != graph.textures.end()) {

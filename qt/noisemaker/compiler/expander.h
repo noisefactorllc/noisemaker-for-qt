@@ -95,7 +95,7 @@ struct ExpandedPass {
     QJsonValue workgroups = QJsonValue(QJsonValue::Undefined);
     QJsonValue storageBuffers = QJsonValue(QJsonValue::Undefined);
     QJsonValue storageTextures = QJsonValue(QJsonValue::Undefined);
-    // GAP-005 pass-field propagation (reference fa83eeabf): pass labels and
+    // Pass-field propagation (reference fa83eeabf): pass labels and
     // per-pass execution controls copied verbatim. `name`/`type` stay
     // queryable metadata (backend shader-kind dispatch remains
     // source-derived); `viewport` is the authored spec, resolved to backend
@@ -151,6 +151,9 @@ struct ExpandResult {
     QJsonObject programs;      // uniqueProgName -> {...shaders, uniformLayout, defines} (RAW shape)
     QJsonObject textureSpecs;  // virtualTexId -> spec (RAW; width/height may carry scoped {param} refs)
     QJsonValue renderSurface = QJsonValue(QJsonValue::Undefined);  // string, or JSON null if unresolved
+    // Per-step external texture bindings ({textureId, uniform, stepIndex, effect}), one per
+    // texture id, so hosts can enumerate media texture ids (reference expander mediaSteps).
+    QJsonArray mediaSteps;
 };
 
 // Expands `validated` (nm::validate()'s output: {plans, diagnostics,

@@ -11,6 +11,7 @@
 // against the real stores; sanitizeEnumName (4 lines, never fires on the catalog) is copied verbatim
 // from canvas.js. Feeding both oracle and candidate the same JSONs isolates the registration LOGIC.
 import { resolve, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { readFileSync, readdirSync } from 'node:fs'
 
 if (!process.env.NM_REFERENCE_ROOT) {
@@ -18,11 +19,11 @@ if (!process.env.NM_REFERENCE_ROOT) {
     process.exit(3)
 }
 const REF = resolve(process.env.NM_REFERENCE_ROOT)
-const { registerEffect, getAllEffects } = await import(resolve(REF, 'shaders/src/runtime/registry.js'))
-const { ops, registerOp } = await import(resolve(REF, 'shaders/src/lang/ops.js'))
-const { mergeIntoEnums } = await import(resolve(REF, 'shaders/src/lang/enums.js'))
-const { registerParamAliases } = await import(resolve(REF, 'shaders/src/lang/paramAliases.js'))
-const { registerEffectAlias } = await import(resolve(REF, 'shaders/src/lang/effectAliases.js'))
+const { registerEffect, getAllEffects } = await import(pathToFileURL(resolve(REF, 'shaders/src/runtime/registry.js')).href)
+const { ops, registerOp } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/ops.js')).href)
+const { mergeIntoEnums } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/enums.js')).href)
+const { registerParamAliases } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/paramAliases.js')).href)
+const { registerEffectAlias } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/effectAliases.js')).href)
 
 // verbatim from renderer/canvas.js
 function isValidIdentifier(name) { return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) }
