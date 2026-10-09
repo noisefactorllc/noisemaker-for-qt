@@ -87,6 +87,34 @@ QSet<QString> computeHazardSurfaces(const Graph& graph) {
     return hazardBareNames;
 }
 
+QSet<QString> computeFeedbackSurfaces(const Graph& graph) {
+    // reference Pipeline.createSurfaces' scan (upstream 00fb941c): pass order,
+    // a pass's inputs before its outputs; a surface read while still unwritten
+    // is read-before-write, and the feedback set is read-before-write AND
+    // written. Mesh data textures (mesh<N>_(positions|normals|uvs)) are
+    // static uploads, never surfaces -- reference meshTexturePattern.
+    static const QRegularExpression meshTextureRe(QStringLiteral("^mesh\\d+_(positions|normals|uvs)$"));
+    QSet<QString> readBeforeWrite;
+    QSet<QString> written;
+    for (const Pass& pass : graph.passes) {
+        for (auto it = pass.inputs.begin(); it != pass.inputs.end(); ++it) {
+            const QString bare = stripGlobalPrefix(it.value().toString());
+            if (!bare.isEmpty() && !meshTextureRe.match(bare).hasMatch() && !written.contains(bare)) {
+                readBeforeWrite.insert(bare);
+            }
+        }
+        for (auto it = pass.outputs.begin(); it != pass.outputs.end(); ++it) {
+            const QString bare = stripGlobalPrefix(it.value().toString());
+            if (!bare.isEmpty() && !meshTextureRe.match(bare).hasMatch()) {
+                written.insert(bare);
+            }
+        }
+    }
+    QSet<QString> feedback = readBeforeWrite;
+    feedback.intersect(written);
+    return feedback;
+}
+
 bool isStateSurface(const QString& name) {
     if (name.isEmpty()) {
         return false;
@@ -118,6 +146,21 @@ QJsonObject mergeAllPassUniforms(const Graph& graph) {
 
 void PingPongState::syncGraph(const Graph& graph) {
     m_hazardBareNames = computeHazardSurfaces(graph);
+    // End-of-frame persist-vs-swap classification (reference swapBuffers,
+    // upstream 00fb941c): graph feedback surfaces persist, and so do
+    // surfaces whose texture spec is explicitly `persistent`
+    // (`graph.textures.get('global_' + name).persistent === true`).
+    m_feedbackBareNames = computeFeedbackSurfaces(graph);
+    m_persistentBareNames.clear();
+    for (auto it = graph.textures.begin(); it != graph.textures.end(); ++it) {
+        if (!it->persistent || !it.key().startsWith(kGlobalPrefix)) {
+            continue;
+        }
+        const QString bare = it.key().mid(kGlobalPrefix.size());
+        if (!bare.isEmpty()) {
+            m_persistentBareNames.insert(bare);
+        }
+    }
 }
 
 bool PingPongState::isHazard(const QString& bareName) const {
@@ -191,7 +234,13 @@ void PingPongState::endFrame() {
         if (persistentIt == m_persistent.end()) {
             continue;
         }
-        if (isStateSurface(bare)) {
+        // reference swapBuffers (upstream 00fb941c): state surfaces, graph
+        // feedback surfaces and explicitly-persistent textures all PERSIST
+        // the frame's final bindings -- the next frame reads the latest
+        // write even when an intervening update pass was skipped. Only the
+        // remaining display surfaces swap.
+        if (isStateSurface(bare) || m_feedbackBareNames.contains(bare)
+            || m_persistentBareNames.contains(bare)) {
             const auto readIt = m_frameRead.constFind(bare);
             const auto writeIt = m_frameWrite.constFind(bare);
             if (readIt != m_frameRead.constEnd() && writeIt != m_frameWrite.constEnd()) {

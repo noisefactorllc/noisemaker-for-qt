@@ -1804,8 +1804,8 @@ QJsonObject Backend::engineUniforms() const {
     // before/after verification.
     //
     // Engine uniform set: time, deltaTime, frame, resolution, tileOffset,
-    // fullResolution, aspect, aspectRatio, renderScale (reference
-    // updateGlobalUniforms). deltaTime and frame are read by
+    // fullResolution, aspect, aspectRatio, aspectInv, invFullResolution,
+    // renderScale (reference updateGlobalUniforms). deltaTime and frame are read by
     // synth/cellularAutomata, synth/mnca, synth/roll and points/dla. Host
     // globals from setUniform() come first; engine values overwrite them,
     // as the reference rewrites them every frame.
@@ -1827,6 +1827,15 @@ QJsonObject Backend::engineUniforms() const {
     const double aspect = m_size.height() != 0 ? double(m_size.width()) / double(m_size.height()) : 1.0;
     globals.insert(QStringLiteral("aspect"), aspect);
     globals.insert(QStringLiteral("aspectRatio"), aspect);
+    // reference updateGlobalUniforms (pipeline.js, upstream 00fb941c): the
+    // correctly-rounded reciprocals the classicNoisedeck shaders multiply by
+    // instead of dividing. This port's scope always takes the reference's
+    // else branch (`_tileOffset`/`_fullResolution` are null), so
+    // `aspectInv = 1.0 / aspectValue` and `invFullResolution` comes off
+    // width/height exactly as the reference computes them there.
+    globals.insert(QStringLiteral("aspectInv"), 1.0 / aspect);
+    globals.insert(QStringLiteral("invFullResolution"),
+        QJsonArray{1.0 / double(m_size.width()), 1.0 / double(m_size.height())});
     globals.insert(QStringLiteral("renderScale"), 1.0);
     return globals;
 }

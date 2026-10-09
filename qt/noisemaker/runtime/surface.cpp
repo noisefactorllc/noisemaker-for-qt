@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace nm {
@@ -45,6 +46,35 @@ QString dimensionFallbackKey(const QJsonValue& spec) {
             QJsonDocument::fromVariant(spec.toArray().toVariantList()).toJson(QJsonDocument::Compact));
     }
     return spec.toVariant().toString();
+}
+
+// JS `Number(value)` for the JSON shapes a merged-uniform lookup can return:
+// numbers pass through, booleans map to 0/1, numeric strings parse as decimals
+// (JS trims surrounding whitespace and maps the empty string to 0), null maps
+// to 0 and undefined/objects/arrays/non-numeric strings to NaN -- a function
+// wrapper or any other nonnumeric authored uniform value lands in NaN, which
+// is exactly the input the reference's `!Number.isFinite(Number(value))`
+// dimension guards (upstream 00fb941c) exist for.
+double jsNumber(const QJsonValue& value) {
+    if (value.isDouble()) {
+        return value.toDouble();
+    }
+    if (value.isBool()) {
+        return value.toBool() ? 1.0 : 0.0;
+    }
+    if (value.isString()) {
+        const QString trimmed = value.toString().trimmed();
+        if (trimmed.isEmpty()) {
+            return 0.0;
+        }
+        bool ok = false;
+        const double parsed = trimmed.toDouble(&ok);
+        return ok ? parsed : std::numeric_limits<double>::quiet_NaN();
+    }
+    if (value.isNull()) {
+        return 0.0;
+    }
+    return std::numeric_limits<double>::quiet_NaN();
 }
 
 } // namespace
@@ -110,7 +140,7 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             // reference pipeline.js:1211 `uniforms[spec.param] ?? paramDefault`.
             const bool paramPresent = jsonHasLiveValue(mergedUniforms, paramKey);
             double value = paramPresent
-                ? mergedUniforms.value(paramKey).toDouble()
+                ? jsNumber(mergedUniforms.value(paramKey))
                 : (obj.contains(QStringLiteral("paramDefault"))
                        ? obj.value(QStringLiteral("paramDefault")).toDouble()
                        : 64.0);
@@ -127,6 +157,32 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             if (hasTransform && !paramPresent && obj.contains(QStringLiteral("default"))) {
                 value = obj.value(QStringLiteral("default")).toDouble();
             }
+            // reference pipeline.js (upstream 00fb941c): func wrappers and
+            // other nonnumeric authored values are not evaluated by the
+            // runtime -- fall back to the texture spec's existing numeric
+            // default (or the param default with its transforms reapplied)
+            // so no backend ever sees a NaN size.
+            if (!std::isfinite(value)) {
+                if (obj.contains(QStringLiteral("default"))) {
+                    value = obj.value(QStringLiteral("default")).toDouble();
+                } else {
+                    value = obj.contains(QStringLiteral("paramDefault"))
+                        ? obj.value(QStringLiteral("paramDefault")).toDouble()
+                        : 64.0;
+                    if (hasMultiply) {
+                        value *= obj.value(QStringLiteral("multiply")).toDouble();
+                    }
+                    if (hasPower) {
+                        value = std::pow(value, obj.value(QStringLiteral("power")).toDouble());
+                    }
+                }
+            }
+            // Defensive (beyond the reference, same rationale as the
+            // screenDivide safeDivisor below): a still-non-finite value here
+            // (an authored nonnumeric `default`) cannot reproduce the
+            // reference's NaN propagation without undefined behavior in the
+            // double->int cast, so it clamps to the Math.max(1, ...) floor.
+            value = std::isfinite(value) ? value : 1.0;
             return std::max(1, static_cast<int>(std::floor(value)));
         }
 
@@ -135,15 +191,24 @@ int resolveDimension(const QJsonValue& spec, int screenSize, const QJsonObject& 
             // `divisor = uniforms[spec.screenDivide] ?? spec.default ?? 1`.
             const QString divideKey = obj.value(QStringLiteral("screenDivide")).toString();
             const bool divideKeyPresent = jsonHasLiveValue(mergedUniforms, divideKey);
-            const double divisor = divideKeyPresent
-                ? mergedUniforms.value(divideKey).toDouble()
+            double divisor = divideKeyPresent
+                ? jsNumber(mergedUniforms.value(divideKey))
+                : (obj.contains(QStringLiteral("default")) ? obj.value(QStringLiteral("default")).toDouble() : 1.0);
+            // reference pipeline.js (upstream 00fb941c): a nonnumeric uniform
+            // value (function wrapper, malformed string) falls back to the
+            // spec default -- or 1 when there is none -- rather than dividing
+            // by NaN.
+            divisor = std::isfinite(divisor) ? divisor
                 : (obj.contains(QStringLiteral("default")) ? obj.value(QStringLiteral("default")).toDouble() : 1.0);
             // `safeDivisor` is a defensive addition beyond the reference:
             // JS division by 0 yields Infinity (safely Math.round/Math.max'd
             // to Infinity), but casting an infinite double to `int` in C++
             // is undefined behavior, so a divisor of exactly 0 is treated
-            // as 1 instead of reproducing that UB.
-            const double safeDivisor = (divisor != 0.0) ? divisor : 1.0;
+            // as 1 instead of reproducing that UB (and a still-non-finite
+            // divisor after the fallback above -- an authored nonnumeric
+            // default -- gets the same treatment; the reference's own
+            // Math.max(1, Math.round(...)) would propagate NaN there).
+            const double safeDivisor = (std::isfinite(divisor) && divisor != 0.0) ? divisor : 1.0;
             return std::max(1, static_cast<int>(std::round(screenSize / safeDivisor)));
         }
 

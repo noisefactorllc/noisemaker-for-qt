@@ -36,6 +36,17 @@ QSet<QString> computeHazardSurfaces(const Graph& graph);
 // (display surfaces, e.g. o0-o7) TOGGLES read<->write at end of frame.
 bool isStateSurface(const QString& bareName);
 
+// reference Pipeline.createSurfaces()'s feedback scan (upstream 00fb941c): a
+// bare `global_` surface name is CROSS-FRAME FEEDBACK iff some pass reads it
+// before any pass has written it (the scan processes a pass's inputs before
+// its outputs, so a same-pass read+write counts as read-before-write) AND
+// some pass writes it at all -- "a surface first written and then read is
+// frame-local scratch (such as Lenia's clear/deposit density target), not
+// cross-frame feedback". Mesh data textures (mesh<N>_(positions|normals|uvs))
+// are static uploads, never surfaces, and are excluded like the reference's
+// meshTexturePattern. Returns the set of BARE names.
+QSet<QString> computeFeedbackSurfaces(const Graph& graph);
+
 // reference Pipeline.collectDefaultUniforms() / godot `_merge_uniforms`:
 // merges every pass's `uniforms` object across the whole graph, in pass
 // order, last-write-wins on key collision. This is the "live uniform"
@@ -106,9 +117,12 @@ public:
     // not only the last.
     void adoptIterationBindings(const Pass& pass);
 
-    // reference §10.7 swapBuffers / godot `_end_frame`: state surfaces
-    // persist their final frame bindings (no swap); display surfaces
-    // toggle read<->write. Does NOT clear the frame-local maps (see
+    // reference §10.7 swapBuffers / godot `_end_frame`: state surfaces,
+    // graph feedback surfaces (computeFeedbackSurfaces) and surfaces whose
+    // texture spec is explicitly `persistent` keep their final frame
+    // bindings (no swap -- the next frame reads the latest write even when
+    // an intervening update pass was skipped, upstream 00fb941c); display
+    // surfaces toggle read<->write. Does NOT clear the frame-local maps (see
     // physicalRead/physicalWrite doc) -- the next beginFrame() overwrites
     // every hazard bare name's entry before anything reads it again.
     void endFrame();
@@ -120,6 +134,8 @@ private:
     };
 
     QSet<QString> m_hazardBareNames;
+    QSet<QString> m_feedbackBareNames;
+    QSet<QString> m_persistentBareNames;
     QHash<QString, Binding> m_persistent;
     QHash<QString, QString> m_frameRead;
     QHash<QString, QString> m_frameWrite;
