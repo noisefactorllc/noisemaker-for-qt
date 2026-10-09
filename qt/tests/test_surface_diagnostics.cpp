@@ -10,6 +10,7 @@
 #include "../noisemaker/runtime/diagnostics.h"
 #include "../noisemaker/runtime/surface.h"
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 
@@ -164,6 +165,55 @@ int main() {
         check(nm::resolveDimension(QJsonValue(QStringLiteral("input")), 1000) == 1000
                   && nm::resolveDimension(QJsonValue(QStringLiteral("resolution")), 1000) == 1000,
               "the validator-accepted input/resolution keywords resolve to the screen dimension");
+
+        // Array-valued dimension uniforms coerce like JavaScript's Number()
+        // (the same contract jsNumberOfArray in surface.cpp implements):
+        // Number([32]) is 32 -- including values whose shortest decimal
+        // spelling differs from a fixed-precision rendering, e.g.
+        // Number([31.9999999]) is 31.9999999 and floors to 31, not 32 --
+        // Number([]) is 0 (so Math.max(1, floor(0)) is 1), Number([null])
+        // is 0, a single nested array flattens, and any array with more
+        // than one element joins to a comma-containing string, which
+        // Number() rejects, so the spec's default (64 here) applies.
+        {
+            QJsonObject params;
+            QJsonArray single;
+            single.append(32);
+            params.insert(QStringLiteral("x"), single);
+            QJsonObject spec;
+            spec.insert(QStringLiteral("param"), QStringLiteral("x"));
+            check(nm::resolveDimension(spec, 1000, params, &sink) == 32,
+                  "a single-element numeric array uniform resolves to its value");
+            QJsonArray precise;
+            precise.append(31.9999999);
+            params.insert(QStringLiteral("x"), precise);
+            check(nm::resolveDimension(spec, 1000, params, &sink) == 31,
+                  "a single-element array uniform keeps full double precision (31.9999999 -> 31, not 32)");
+            params.insert(QStringLiteral("x"), QJsonArray());
+            check(nm::resolveDimension(spec, 1000, params, &sink) == 1,
+                  "an empty array uniform coerces to 0 and floors to the Math.max(1, ...) floor");
+            QJsonArray nullElement;
+            nullElement.append(QJsonValue(QJsonValue::Null));
+            params.insert(QStringLiteral("x"), nullElement);
+            check(nm::resolveDimension(spec, 1000, params, &sink) == 1,
+                  "a single null array element contributes the empty string and floors to 1");
+            QJsonArray nested;
+            nested.append(QJsonValue(4.0));
+            QJsonArray outer;
+            outer.append(QJsonValue(nested));
+            params.insert(QStringLiteral("x"), outer);
+            check(nm::resolveDimension(spec, 1000, params, &sink) == 4,
+                  "a single nested array element flattens like String([4])");
+            QJsonArray multi;
+            multi.append(1);
+            multi.append(2);
+            params.insert(QStringLiteral("x"), multi);
+            check(nm::resolveDimension(spec, 1000, params, &sink) == 64,
+                  "a multi-element array uniform is NaN in Number() and falls back to the param default");
+            check(collector.records.size() == 1
+                      && collector.records.first().spec == QStringLiteral("bogus%"),
+                  "array-valued recognized forms add no diagnostic beyond the malformed-percent record");
+        }
     }
 
     // -- the collector caps at 64 and can be cleared; the sink is inert
