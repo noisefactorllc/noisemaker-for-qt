@@ -4,6 +4,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QOpenGLFunctions_4_1_Core>
+#include <QStringList>
 #include <QVector>
 
 #include <algorithm>
@@ -48,19 +49,54 @@ QString dimensionFallbackKey(const QJsonValue& spec) {
     return spec.toVariant().toString();
 }
 
+// JS `String(value)` for an element of an array: numbers format as their
+// shortest round-trip decimal (QString::number's double conversion), booleans
+// as true/false, null/undefined contribute the EMPTY string (Array.prototype
+// .toString joins via String(), which maps null/undefined to ""), plain
+// objects as "[object Object]", and nested arrays flatten the same way.
+QString jsArrayElementString(const QJsonValue& value) {
+    if (value.isDouble()) {
+        return QString::number(value.toDouble());
+    }
+    if (value.isBool()) {
+        return value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
+    }
+    if (value.isString()) {
+        return value.toString();
+    }
+    if (value.isNull() || value.isUndefined()) {
+        return QString();
+    }
+    if (value.isArray()) {
+        QStringList parts;
+        const QJsonArray array = value.toArray();
+        parts.reserve(array.size());
+        for (const QJsonValue& element : array) {
+            parts.append(jsArrayElementString(element));
+        }
+        return parts.join(QLatin1Char(','));
+    }
+    return QStringLiteral("[object Object]");
+}
+
 // JS `Number(value)` for the JSON shapes a merged-uniform lookup can return:
 // numbers pass through, booleans map to 0/1, numeric strings parse as decimals
 // (JS trims surrounding whitespace and maps the empty string to 0), null maps
-// to 0 and undefined/objects/arrays/non-numeric strings to NaN -- a function
-// wrapper or any other nonnumeric authored uniform value lands in NaN, which
-// is exactly the input the reference's `!Number.isFinite(Number(value))`
-// dimension guards (upstream 00fb941c) exist for.
+// to 0, and arrays coerce through their comma-joined String() form exactly as
+// JS Number does -- so [32] is 32, [] is 0, and ["a","b"] is NaN. Objects and
+// non-numeric strings map to NaN -- a function wrapper or any other nonnumeric
+// authored uniform value lands in NaN, which is exactly the input the
+// reference's `!Number.isFinite(Number(value))` dimension guards
+// (upstream 00fb941c) exist for.
 double jsNumber(const QJsonValue& value) {
     if (value.isDouble()) {
         return value.toDouble();
     }
     if (value.isBool()) {
         return value.toBool() ? 1.0 : 0.0;
+    }
+    if (value.isArray()) {
+        return jsNumber(QJsonValue(jsArrayElementString(value)));
     }
     if (value.isString()) {
         const QString trimmed = value.toString().trimmed();
