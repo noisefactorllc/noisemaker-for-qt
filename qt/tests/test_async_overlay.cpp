@@ -528,21 +528,45 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
 
     // A frame with nothing to trace sets the host's frame time on this machine.
     double steady = 0.0;
-    for (int i = 0; i < 3; ++i) {
+    double maxSteadyMs = 0.0;
+    std::vector<double> steadyMs;
+    steadyMs.reserve(30);
+    for (int i = 0; i < 30; ++i) {
         start = std::chrono::steady_clock::now();
         background.render(graph, 0.25);
-        steady = std::max(steady, secondsSince(start));
+        steadyMs.push_back(secondsSince(start) * 1000.0);
+        if (i < 3) steady = std::max(steady, steadyMs.back() / 1000.0);
+        maxSteadyMs = std::max(maxSteadyMs, steadyMs.back());
     }
+    std::printf("  steady render samples ms:");
+    for (double sample : steadyMs) std::printf(" %.3f", sample);
+    std::printf("; max %.3f ms\n", maxSteadyMs);
     setSeed(background, graph, registry, 2);
+    std::vector<double> retraceMs;
+    retraceMs.reserve(30);
     start = std::chrono::steady_clock::now();
     background.render(graph, 0.25);
     const double retraceRender = secondsSince(start);
     const bool pendingAfterRetrace = background.overlayTracesPending();
     const QImage duringRetrace = background.readSurface();
+    retraceMs.push_back(retraceRender * 1000.0);
+    for (int i = 1; i < 30 && background.overlayTracesPending(); ++i) {
+        start = std::chrono::steady_clock::now();
+        background.render(graph, 0.25);
+        const double sampleMs = secondsSince(start) * 1000.0;
+        if (!background.overlayTracesPending()) break; // this frame uploaded the completed trace
+        retraceMs.push_back(sampleMs);
+    }
+    const double maxRetraceMs = *std::max_element(retraceMs.begin(), retraceMs.end());
     std::printf("  background: first render %.3f s, steady frame %.3f s, render during re-trace %.3f s\n",
                 firstRender, steady, retraceRender);
+    std::printf("  re-trace render samples ms:");
+    for (double sample : retraceMs) std::printf(" %.3f", sample);
+    std::printf("; count %zu, max %.3f ms\n", retraceMs.size(), maxRetraceMs);
     check(pendingAfterRetrace && retraceRender <= 4.0 * steady + 0.05 && retraceRender < 0.5 * syncRetrace,
           "during a 1920x1080 re-trace render() takes a frame's time, not the trace's");
+    // The printed 30-frame maximum is diagnostic on shared CI hosts: their
+    // steady frames can also be descheduled past 16.67 ms.
     check(duringRetrace == syncSeed1, "the previous overlay keeps rendering until the new trace completes");
     background.waitForOverlayTraces();
     background.render(graph, 0.25);
