@@ -686,7 +686,22 @@ async function main () {
               unlinkSync(join(opts.outDir, file))
             }
           }
-          const pngBuffer = await mintOne(page, globals, opts, dsl, graph, programName, meshes)
+          // Headed Chromium can leave MIDI or microphone permission prompts
+          // pending. These signal fixtures intentionally use empty input.
+          const signalPermission = programName === 'roll' ? 'midi'
+            : (programName === 'scope' || programName === 'spectrum') ? 'microphone' : null
+          if (signalPermission) {
+            await page.context().grantPermissions([])
+            const state = await page.evaluate(async name =>
+              (await navigator.permissions.query({ name })).state, signalPermission)
+            if (state !== 'denied') throw new Error(`${programName} ${signalPermission} permission is ${state}, expected denied`)
+          }
+          let pngBuffer
+          try {
+            pngBuffer = await mintOne(page, globals, opts, dsl, graph, programName, meshes)
+          } finally {
+            if (signalPermission) await page.context().clearPermissions()
+          }
           const pngPath = join(opts.outDir, `${programName}.golden.png`)
           writeFileSync(pngPath, pngBuffer)
 
