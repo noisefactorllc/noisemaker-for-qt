@@ -16,9 +16,10 @@ Godot:
   - The fake batch-manifest renderer parses nm-render's own manifest shape
     (a flat JSON ARRAY of {graph,out,size,time,frames}), not Godot's
     {"entries": [...]} object.
-  - Every test that drives sweep.sh sets SKIP_GOLDEN=1: this repo's sweep.sh
-    has a golden-MINTING phase godot's does not (task-T6-brief.md), and no
-    unit test may launch a real browser / need NM_REFERENCE_ROOT.
+  - Tests that drive sweep.sh normally set SKIP_GOLDEN=1: this repo's sweep.sh
+    has a golden-MINTING phase godot's does not (task-T6-brief.md). The mint
+    failure test runs that phase with a fake node; no unit test launches a
+    real browser or needs NM_REFERENCE_ROOT.
 
 Plus tests with no Godot-sibling equivalent, for behavior this repo adds
 beyond a literal port:
@@ -373,6 +374,85 @@ class HarnessContractTests(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
+
+    def test_summary_accepts_documented_near_but_rejects_fail_and_skip(self):
+        root = self.tmp
+        parity = root / "parity"
+        (root / "scripts").mkdir()
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        (parity / ".venv" / "bin").mkdir(parents=True)
+        reference = root / "reference"
+        (reference / "node_modules" / "playwright").mkdir(parents=True)
+        (reference / "node_modules" / "playwright" / "package.json").write_text("{}")
+        (parity / ".venv" / "bin" / "python").write_text("#!/bin/sh\n")
+        (parity / ".venv" / "bin" / "python").chmod(0o755)
+        shutil.copy2(REPO / "scripts" / "parity-summary", root / "scripts" / "parity-summary")
+        (parity / "programs" / "case.dsl").write_text("noise().write(o0)\n")
+        (parity / "out" / "case.golden.png").write_bytes(b"golden")
+        (parity / "out" / "case.candidate.png").write_bytes(b"candidate")
+        (parity / "sweep.sh").write_text(
+            "#!/bin/sh\ncp \"$(dirname \"$0\")/fake-ledger.json\" \"$LEDGER_PATH\"\n"
+        )
+
+        def run_summary(verdict, max_diff):
+            row = {
+                "program": "case", "effect": "synth/noise", "mode": "default",
+                "golden": "parity/out/case.golden.png",
+                "candidate": "parity/out/case.candidate.png",
+                "verdict": verdict, "max_abs_diff": max_diff,
+                "mean_abs_diff": 0.001, "ssim": 0.999,
+                "passed": verdict == "NEAR", "skipped": verdict == "CHAOS",
+                "policy": {"tolerance": 10.001, "ssim_min": 0.99,
+                           "strict_tolerance": 2.001, "strict_ssim_min": 0.98,
+                           "reason": "documented cross-backend rounding"},
+            }
+            (parity / "fake-ledger.json").write_text(json.dumps([row]))
+            return subprocess.run(
+                ["bash", str(root / "scripts" / "parity-summary"), "case"],
+                env={**os.environ, "NM_RENDER": shutil.which("true"),
+                     "NM_REFERENCE_ROOT": str(reference), "DISPLAY": ":99"},
+                capture_output=True, text=True,
+            )
+
+        near = run_summary("NEAR", 9.0)
+        self.assertEqual(near.returncode, 0, near.stdout + near.stderr)
+        self.assertIn('"near":1', near.stdout)
+        failed = run_summary("NEAR", 11.0)
+        self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
+        self.assertIn('"fail":1', failed.stdout)
+        skipped = run_summary("CHAOS", 9.0)
+        self.assertNotEqual(skipped.returncode, 0, skipped.stdout + skipped.stderr)
+        self.assertIn('"skip":1', skipped.stdout)
+
+    def test_sweep_rejects_failed_golden_mint_even_with_stale_passing_images(self):
+        for name in ("chrome", "navierStokes"):
+            with self.subTest(name=name):
+                root = self.tmp / name
+                parity = root / "parity"
+                (parity / "programs").mkdir(parents=True)
+                (parity / "out").mkdir()
+                (root / "bin").mkdir()
+                shutil.copy2(REPO / "parity" / "sweep.sh", parity / "sweep.sh")
+                (parity / "programs" / f"{name}.dsl").write_text("noise().write(o0)\n")
+                (parity / "out" / f"{name}.golden.png").write_bytes(b"stale golden")
+                (parity / "out" / f"{name}.candidate.png").write_bytes(b"stale candidate")
+                node = root / "bin" / "node"
+                node.write_text("#!/bin/sh\nexit 17\n")
+                node.chmod(0o755)
+                (parity / "run.sh").write_text("#!/bin/sh\necho '[PASS] chrome: stale comparison'\n")
+                (parity / "run_samples.sh").write_text(
+                    "#!/bin/sh\necho '=== SAMPLES: navierStokes 6/6 pass (stale) ==='\n"
+                )
+                (parity / "write-ledger.py").write_text("raise SystemExit(0)\n")
+                result = subprocess.run(
+                    ["bash", str(parity / "sweep.sh"), name],
+                    env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}",
+                         "NM_RENDER": shutil.which("true"), "SKIP_RENDER": "1"},
+                    capture_output=True, text=True,
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("golden mint", result.stdout + result.stderr)
 
     def test_sweep_exits_nonzero_when_a_case_fails(self):
         parity = self.tmp / "parity"

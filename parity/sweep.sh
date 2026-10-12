@@ -305,6 +305,7 @@ reason_for() {
 }
 
 # --- PHASE 1: mint goldens (+ export graphs) fresh, in one browser session -
+mint_failed=0
 if [ "${SKIP_GOLDEN:-0}" != "1" ]; then
 	: > "$GOLDEN_LIST"
 	for dsl in "$ROOT"/parity/programs/*.dsl; do
@@ -319,7 +320,10 @@ if [ "${SKIP_GOLDEN:-0}" != "1" ]; then
 		node "$ROOT/parity/batch-golden.mjs" "$ROOT/parity/out" --list "$GOLDEN_LIST" \
 			--size "$SIZE" --time "$TIME" --backend webgl2 --chunk-size 60
 		batch_golden_rc=$?
-		[ "$batch_golden_rc" -eq 0 ] || echo "[sweep] WARNING: batch-golden.mjs exited $batch_golden_rc (per-program golden checks in PHASE 3 will catch any that are missing)"
+		if [ "$batch_golden_rc" -ne 0 ]; then
+			echo "[sweep] golden mint failed: batch-golden.mjs exited $batch_golden_rc"
+			mint_failed=1
+		fi
 	fi
 	for dsl in "$ROOT"/parity/programs/*.dsl; do
 		name=$(basename "$dsl" .dsl)
@@ -328,9 +332,11 @@ if [ "${SKIP_GOLDEN:-0}" != "1" ]; then
 		read -r _tol _ssim every <<EOF
 $(timed_params "$name")
 EOF
-		SHADE_HEADLESS="${SHADE_HEADLESS:-1}" node "$ROOT/parity/export-and-render.mjs" "$dsl" "$ROOT/parity/out" \
-			--size "$SIZE" --backend webgl2 --run-seconds 30 --sample-every "$every" \
-			|| echo "[sweep] WARNING: golden mint for timed fixture $name exited nonzero"
+		if ! SHADE_HEADLESS="${SHADE_HEADLESS:-1}" node "$ROOT/parity/export-and-render.mjs" "$dsl" "$ROOT/parity/out" \
+			--size "$SIZE" --backend webgl2 --run-seconds 30 --sample-every "$every"; then
+			echo "[sweep] golden mint failed: timed fixture $name exited nonzero"
+			mint_failed=1
+		fi
 	done
 fi
 
@@ -473,6 +479,10 @@ if ! python3 "$ROOT/parity/write-ledger.py" --root "$ROOT" --results "$RESULTS" 
 	echo "[FAIL] sweep ledger contains rejecting or incomplete evidence: $LEDGER_PATH"
 	if [ "$fail" -eq 0 ]; then fail=$((fail + 1)); failed="$failed ledger"; fi
 fi
+if [ "$mint_failed" -ne 0 ]; then
+	echo "[FAIL] golden mint failed; prior images cannot establish fresh parity"
+	failed="$failed golden-mint"
+fi
 echo "=== SWEEP: $pass pass / $((pass + fail)) total${skip:+, $skip skipped (chaos/defer)}${failed:+  — FAILED:$failed} ==="
 echo "DONE"
-[ "$fail" -eq 0 ]
+[ "$fail" -eq 0 ] && [ "$mint_failed" -eq 0 ]

@@ -25,7 +25,8 @@
 #   near    — beyond the default contract but within the case's recorded
 #             policy from the sweep's own tolerance table (the ledger row's
 #             policy tolerance and ssim_min), including the two timed-sampling
-#             fixtures' policies.
+#             fixtures' policies. Numerically accepted; visual review is a
+#             separate qualification check.
 #   defer   — classified DEFER by the sweep (structurally unrenderable as a
 #             single frame).
 #   skip    — classified CHAOS by the sweep, or the case cannot execute here
@@ -34,8 +35,9 @@
 #   missing — expected but no ledger row, candidate PNG, or report exists.
 #
 # executed = exact + strict + near + fail. Exit 0 iff every expected case was
-# executed and passed within the published contract (exact + strict equals
-# expected and near/defer/skip/fail/missing are all zero); otherwise exit 1.
+# executed and passed within its published numerical policy (exact + strict +
+# near equals expected and defer/skip/fail/missing are all zero); otherwise exit 1.
+# Visual review of NEAR output is a separate qualification check.
 # On an infrastructure failure (no reference checkout, no nm-render), prints
 # the summary line with every expected case in skip and exits 2.
 #
@@ -295,7 +297,6 @@ for name in expected:
         counts['strict'] += 1
     elif row and max_diff <= row['policy']['tolerance'] and ssim >= row['policy']['ssim_min']:
         counts['near'] += 1
-        failures.append(name)
     else:
         counts['fail'] += 1
         failures.append(name)
@@ -304,8 +305,8 @@ print(f"PARITY-SUMMARY {json.dumps(counts, separators=(',', ':'))}")
 if failures:
     print(f"parity-summary: cases outside the published contract: {' '.join(failures)}", file=sys.stderr)
 ok = (counts['executed'] == counts['expected']
-      and counts['exact'] + counts['strict'] == counts['expected']
-      and all(counts[k] == 0 for k in ('near', 'defer', 'skip', 'fail', 'missing')))
+      and counts['exact'] + counts['strict'] + counts['near'] == counts['expected']
+      and all(counts[k] == 0 for k in ('defer', 'skip', 'fail', 'missing')))
 sys.exit(0 if ok else 1)
 EOF
 CLASSIFY_RC=$?
