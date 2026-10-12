@@ -1,0 +1,1238 @@
+{
+  "reference_commit": "00fb941c7371eed123a23d9e9262567d6cbcd1a3",
+  "reference_manifest_sha256": "05c4d7b7744837ae90a3bb4c89e5403ff09448a74d9d7e824abb3d719ad3314e",
+  "fixture_count": 386,
+  "compiled_fixture_graph_count": 386,
+  "authority_effect_count": 210,
+  "effects_with_fixture_count": 210,
+  "effects_with_no_fixture": [],
+  "authority_backed_exclusions": [],
+  "headless_signal_input_scope": {
+    "roll.dsl": "empty MIDI note grid",
+    "scope.dsl": "silent audio waveform",
+    "spectrum.dsl": "silent audio spectrum"
+  },
+  "effect_to_fixtures": {
+    "classicNoisedeck.bitEffects": [
+      "cnd_bitEffects.dsl"
+    ],
+    "classicNoisedeck.caustic": [
+      "cnd_caustic.dsl"
+    ],
+    "classicNoisedeck.cellNoise": [
+      "cellNoise.dsl"
+    ],
+    "classicNoisedeck.cellRefract": [
+      "cellRefract.dsl"
+    ],
+    "classicNoisedeck.coalesce": [
+      "coalesce.dsl"
+    ],
+    "classicNoisedeck.colorLab": [
+      "colorLab.dsl"
+    ],
+    "classicNoisedeck.composite": [
+      "composite.dsl"
+    ],
+    "classicNoisedeck.effects": [
+      "effects.dsl",
+      "effects_cga.dsl",
+      "effects_sobel.dsl"
+    ],
+    "classicNoisedeck.fractal": [
+      "cnd_fractal.dsl"
+    ],
+    "classicNoisedeck.glitch": [
+      "glitch.dsl"
+    ],
+    "classicNoisedeck.kaleido": [
+      "classicKaleido.dsl"
+    ],
+    "classicNoisedeck.lensDistortion": [
+      "lensDistortion.dsl"
+    ],
+    "classicNoisedeck.moodscape": [
+      "cnd_moodscape.dsl"
+    ],
+    "classicNoisedeck.noise": [
+      "cnd_noise.dsl"
+    ],
+    "classicNoisedeck.noise3d": [
+      "cnd_noise3d.dsl"
+    ],
+    "classicNoisedeck.refract": [
+      "refract.dsl"
+    ],
+    "classicNoisedeck.shapeMixer": [
+      "shapeMixer.dsl",
+      "shapeMixer_simplex.dsl",
+      "shapeMixer_sine.dsl",
+      "shapeMixer_vnoise.dsl"
+    ],
+    "classicNoisedeck.shapes": [
+      "cnd_shapes.dsl"
+    ],
+    "classicNoisedeck.shapes3d": [
+      "classicShapes3d.dsl"
+    ],
+    "classicNoisedeck.splat": [
+      "splat.dsl"
+    ],
+    "filter.adjust": [
+      "adjust.dsl"
+    ],
+    "filter.bloom": [
+      "bloom.dsl"
+    ],
+    "filter.blur": [
+      "blur.dsl",
+      "funcNumeric.dsl",
+      "loopBegin.dsl",
+      "loopEnd.dsl"
+    ],
+    "filter.bulge": [
+      "bulge.dsl"
+    ],
+    "filter.celShading": [
+      "celShading.dsl"
+    ],
+    "filter.channel": [
+      "channel.dsl"
+    ],
+    "filter.chroma": [
+      "chroma.dsl"
+    ],
+    "filter.chromaticAberration": [
+      "chromaticAberration.dsl"
+    ],
+    "filter.chrome": [
+      "chrome.dsl",
+      "chromeLiquid.dsl"
+    ],
+    "filter.clouds": [
+      "clouds.dsl"
+    ],
+    "filter.colorReplace": [
+      "colorReplace.dsl"
+    ],
+    "filter.convolutionFeedback": [
+      "convolutionFeedback.dsl",
+      "convolutionFeedbackNoFeedback.dsl"
+    ],
+    "filter.corrupt": [
+      "corrupt.dsl"
+    ],
+    "filter.craquelure": [
+      "craquelure.dsl",
+      "craquelureBig.dsl"
+    ],
+    "filter.crt": [
+      "crt.dsl"
+    ],
+    "filter.degauss": [
+      "degauss.dsl"
+    ],
+    "filter.deriv": [
+      "deriv.dsl"
+    ],
+    "filter.directionalBlur": [
+      "directionalBlur.dsl",
+      "directionalBlurAngled.dsl",
+      "directionalBlurDefault.dsl"
+    ],
+    "filter.dither": [
+      "dither.dsl",
+      "ditherErrorDiffusion.dsl",
+      "ditherReferenceErrorDiffusion.dsl"
+    ],
+    "filter.edge": [
+      "edge.dsl",
+      "edgeContour.dsl",
+      "edgeReferenceContour.dsl"
+    ],
+    "filter.emboss": [
+      "emboss.dsl",
+      "embossAngle.dsl",
+      "embossGray.dsl",
+      "embossReferenceGray.dsl"
+    ],
+    "filter.extrude": [
+      "extrude.dsl",
+      "extrudeBlocksRandom.dsl",
+      "extrudePyramids.dsl",
+      "extrudePyramidsLuminance.dsl",
+      "extrudePyramidsRandomReference.dsl"
+    ],
+    "filter.feedback": [
+      "feedback.dsl"
+    ],
+    "filter.fibers": [
+      "fibers.dsl"
+    ],
+    "filter.flipMirror": [
+      "flipMirror.dsl"
+    ],
+    "filter.fxaa": [
+      "fxaa.dsl"
+    ],
+    "filter.glowingEdge": [
+      "glowingEdge.dsl"
+    ],
+    "filter.glyphMap": [
+      "glyphMap.dsl"
+    ],
+    "filter.grade": [
+      "grade.dsl"
+    ],
+    "filter.grain": [
+      "grain.dsl"
+    ],
+    "filter.grime": [
+      "grime.dsl"
+    ],
+    "filter.halftone": [
+      "halftone.dsl",
+      "halftoneCircle.dsl",
+      "halftoneMono.dsl",
+      "halftoneMonoDot.dsl",
+      "halftoneReferenceMonoCircle.dsl",
+      "halftoneReferenceMonoDot.dsl",
+      "halftoneReferenceMonoLine.dsl"
+    ],
+    "filter.hatch": [
+      "hatch.dsl",
+      "hatchChalk.dsl",
+      "hatchCharcoal.dsl",
+      "hatchConte.dsl",
+      "hatchCrosshatch.dsl",
+      "hatchPencil.dsl",
+      "hatchReferenceChalkCharcoal.dsl",
+      "hatchReferenceCharcoal.dsl",
+      "hatchReferenceColoredPencil.dsl",
+      "hatchReferenceColoredPencilLeftDiag.dsl",
+      "hatchReferenceConte.dsl",
+      "hatchReferenceCrosshatch.dsl",
+      "hatchReferencePen.dsl"
+    ],
+    "filter.highPass": [
+      "highPass.dsl",
+      "highPassMono.dsl"
+    ],
+    "filter.historicPalette": [
+      "historicPalette.dsl"
+    ],
+    "filter.invert": [
+      "invert.dsl",
+      "invertSolarize.dsl"
+    ],
+    "filter.lens": [
+      "lens.dsl"
+    ],
+    "filter.lensFlare": [
+      "lensFlare.dsl",
+      "lensFlareMovie.dsl",
+      "lensFlarePrime105.dsl",
+      "lensFlarePrime35.dsl",
+      "lensFlareReferenceMovie.dsl",
+      "lensFlareReferencePrime105.dsl",
+      "lensFlareReferencePrime35.dsl",
+      "lensFlareReferenceZoom.dsl"
+    ],
+    "filter.lensWarp": [
+      "lensWarp.dsl"
+    ],
+    "filter.lightLeak": [
+      "lightLeak.dsl"
+    ],
+    "filter.lighting": [
+      "lighting.dsl",
+      "lightingHeightMap.dsl",
+      "lightingRefl.dsl"
+    ],
+    "filter.lowPoly": [
+      "lowPoly.dsl",
+      "lowPolyDistance2.dsl",
+      "lowPolyDistance3.dsl",
+      "lowPolyFlat.dsl",
+      "lowPolyReferenceDistance2.dsl",
+      "lowPolyReferenceDistance3.dsl",
+      "lowPolyReferenceEdges.dsl",
+      "lowPolyReferenceFlat.dsl",
+      "lowPolyStainedGlass.dsl"
+    ],
+    "filter.median": [
+      "median.dsl",
+      "medianGradient.dsl",
+      "medianRadius1.dsl",
+      "medianRadius2.dsl"
+    ],
+    "filter.morphology": [
+      "morphology.dsl",
+      "morphologyDilateRound.dsl",
+      "morphologyErodeSquare.dsl",
+      "morphologyReferenceDilateRound.dsl",
+      "morphologyReferenceErodeRound.dsl",
+      "morphologyReferenceErodeSquare.dsl",
+      "morphologyRound.dsl"
+    ],
+    "filter.mosaicTiles": [
+      "mosaicTiles.dsl",
+      "mosaicTilesGapBackground.dsl",
+      "mosaicTilesGapUnaltered.dsl",
+      "mosaicTilesReferenceMosaic.dsl",
+      "mosaicTilesReferenceShifted.dsl",
+      "mosaicTilesShifted.dsl"
+    ],
+    "filter.motionBlur": [
+      "motionBlur.dsl"
+    ],
+    "filter.normalMap": [
+      "normalMap.dsl"
+    ],
+    "filter.normalize": [
+      "normalize.dsl"
+    ],
+    "filter.octaveWarp": [
+      "octaveWarp.dsl"
+    ],
+    "filter.oilPaint": [
+      "oilPaint.dsl",
+      "oilPaintDryBrush.dsl",
+      "oilPaintFacet.dsl",
+      "oilPaintFresco.dsl",
+      "oilPaintKnife.dsl",
+      "oilPaintReferenceDaubs.dsl",
+      "oilPaintReferenceDryBrush.dsl",
+      "oilPaintReferenceFacet.dsl",
+      "oilPaintReferenceFresco.dsl",
+      "oilPaintReferenceKnife.dsl",
+      "oilPaintReferenceSponge.dsl",
+      "oilPaintSponge.dsl"
+    ],
+    "filter.osd": [
+      "osd.dsl"
+    ],
+    "filter.outline": [
+      "outline.dsl"
+    ],
+    "filter.palette": [
+      "palette.dsl"
+    ],
+    "filter.parallax": [
+      "parallax.dsl",
+      "parallaxHeightMap.dsl"
+    ],
+    "filter.patchwork": [
+      "patchwork.dsl",
+      "patchworkLight.dsl"
+    ],
+    "filter.photocopy": [
+      "photocopy.dsl",
+      "photocopyDark.dsl"
+    ],
+    "filter.pinch": [
+      "pinch.dsl"
+    ],
+    "filter.pixelSort": [
+      "pixelSort.dsl"
+    ],
+    "filter.pixels": [
+      "pixels.dsl"
+    ],
+    "filter.plasticWrap": [
+      "plasticWrap.dsl",
+      "plasticWrapDirected.dsl",
+      "plasticWrapDirectedReference.dsl",
+      "plasticWrapGloss.dsl"
+    ],
+    "filter.polar": [
+      "polar.dsl"
+    ],
+    "filter.pondRipples": [
+      "pondRipples.dsl",
+      "pondRipplesAround.dsl",
+      "pondRipplesClamp.dsl",
+      "pondRipplesOut.dsl",
+      "pondRipplesReferenceAround.dsl",
+      "pondRipplesReferenceOut.dsl",
+      "pondRipplesReferencePond.dsl",
+      "pondRipplesRepeat.dsl",
+      "pondRipplesSpeed.dsl",
+      "pondRipplesSpeedNeg.dsl"
+    ],
+    "filter.posterize": [
+      "posterize.dsl"
+    ],
+    "filter.prismaticAberration": [
+      "prismaticAberration.dsl"
+    ],
+    "filter.reindex": [
+      "reindex.dsl"
+    ],
+    "filter.relief": [
+      "relief.dsl",
+      "reliefNotePaper.dsl",
+      "reliefPlaster.dsl",
+      "reliefReferenceBas.dsl",
+      "reliefReferenceNotePaper.dsl",
+      "reliefReferencePlaster.dsl"
+    ],
+    "filter.repeat": [
+      "repeat.dsl"
+    ],
+    "filter.reverb": [
+      "reverb.dsl"
+    ],
+    "filter.ridge": [
+      "ridge.dsl"
+    ],
+    "filter.rotate": [
+      "rotate.dsl"
+    ],
+    "filter.scale": [
+      "scale.dsl"
+    ],
+    "filter.scanlineError": [
+      "scanlineError.dsl"
+    ],
+    "filter.scatter": [
+      "scatter.dsl",
+      "scatterAniso.dsl",
+      "scatterClumped.dsl",
+      "scatterDarkenOnly.dsl",
+      "scatterLightenOnly.dsl",
+      "scatterReferenceAnisotropic.dsl",
+      "scatterReferenceClumped.dsl",
+      "scatterReferenceDarken.dsl",
+      "scatterReferenceLighten.dsl",
+      "scatterReferenceNormal.dsl"
+    ],
+    "filter.scratches": [
+      "scratches.dsl"
+    ],
+    "filter.scroll": [
+      "scroll.dsl"
+    ],
+    "filter.seamless": [
+      "seamless.dsl"
+    ],
+    "filter.sharpen": [
+      "sharpen.dsl"
+    ],
+    "filter.simpleAberration": [
+      "simpleAberration.dsl"
+    ],
+    "filter.sine": [
+      "sine.dsl"
+    ],
+    "filter.skew": [
+      "skew.dsl"
+    ],
+    "filter.smooth": [
+      "smooth.dsl"
+    ],
+    "filter.smoothstep": [
+      "smoothstep.dsl"
+    ],
+    "filter.snow": [
+      "snow.dsl"
+    ],
+    "filter.sobel": [
+      "sobel.dsl"
+    ],
+    "filter.spatter": [
+      "spatter.dsl"
+    ],
+    "filter.spinBlur": [
+      "spinBlur.dsl",
+      "spinBlurCentered.dsl",
+      "spinBlurDefault.dsl",
+      "spinBlurOffCenter.dsl"
+    ],
+    "filter.spiral": [
+      "spiral.dsl"
+    ],
+    "filter.spookyTicker": [
+      "spookyTicker.dsl"
+    ],
+    "filter.stamp": [
+      "stamp.dsl",
+      "stampTorn.dsl"
+    ],
+    "filter.step": [
+      "step.dsl"
+    ],
+    "filter.stipple": [
+      "stipple.dsl",
+      "stippleMezzoDots.dsl",
+      "stippleMezzoLines.dsl",
+      "stippleReferenceMezzoDots.dsl",
+      "stippleReferenceMezzoLines.dsl",
+      "stippleReferenceMezzoStrokes.dsl",
+      "stippleReferencePointillize.dsl",
+      "stippleReferenceReticulation.dsl",
+      "stippleReticulation.dsl",
+      "stippleStrokes.dsl"
+    ],
+    "filter.strayHair": [
+      "strayHair.dsl"
+    ],
+    "filter.strokes": [
+      "strokes.dsl",
+      "strokesDark.dsl",
+      "strokesReferenceAngled.dsl",
+      "strokesReferenceDark.dsl",
+      "strokesReferenceSmudge.dsl",
+      "strokesReferenceSprayed.dsl",
+      "strokesReferenceSumiE.dsl",
+      "strokesSmudge.dsl",
+      "strokesSprayed.dsl",
+      "strokesSumiE.dsl"
+    ],
+    "filter.temporalAberration": [
+      "temporalAberration.dsl"
+    ],
+    "filter.tetraColorArray": [
+      "tetraColorArray.dsl"
+    ],
+    "filter.tetraCosine": [
+      "tetraCosine.dsl"
+    ],
+    "filter.text": [
+      "text.dsl"
+    ],
+    "filter.texture": [
+      "texture.dsl",
+      "textureClumped.dsl",
+      "textureContrasty.dsl",
+      "textureEnlarged.dsl",
+      "textureHorizontal.dsl",
+      "textureReferenceClumped.dsl",
+      "textureReferenceContrasty.dsl",
+      "textureReferenceEnlarged.dsl",
+      "textureReferenceHorizontal.dsl",
+      "textureReferenceRegular.dsl",
+      "textureReferenceSoft.dsl",
+      "textureReferenceSpeckle.dsl",
+      "textureReferenceSprinkles.dsl",
+      "textureReferenceStippled.dsl",
+      "textureReferenceVertical.dsl",
+      "textureRegular.dsl",
+      "textureSoft.dsl",
+      "textureSpeckle.dsl",
+      "textureSprinkles.dsl",
+      "textureStippled.dsl",
+      "textureVertical.dsl"
+    ],
+    "filter.threshold": [
+      "threshold.dsl"
+    ],
+    "filter.tile": [
+      "tile.dsl"
+    ],
+    "filter.tint": [
+      "tint.dsl"
+    ],
+    "filter.translate": [
+      "translate.dsl"
+    ],
+    "filter.tunnel": [
+      "tunnel.dsl"
+    ],
+    "filter.unsharpMask": [
+      "unsharpMask.dsl"
+    ],
+    "filter.vaseline": [
+      "vaseline.dsl"
+    ],
+    "filter.vignette": [
+      "vignette.dsl"
+    ],
+    "filter.warp": [
+      "warp.dsl"
+    ],
+    "filter.watercolor": [
+      "watercolor.dsl",
+      "watercolorGrain.dsl"
+    ],
+    "filter.waves": [
+      "waves.dsl"
+    ],
+    "filter.wind": [
+      "wind.dsl",
+      "windMethodBlastFromRight.dsl",
+      "windMethodStaggerFromLeft.dsl",
+      "windMethodStaggerFromRight.dsl",
+      "windMethodWind.dsl",
+      "windMethodWindFromLeft.dsl",
+      "windMethodWindFromRight.dsl",
+      "windStagger.dsl"
+    ],
+    "filter.wobble": [
+      "wobble.dsl"
+    ],
+    "filter.wormhole": [
+      "wormhole.dsl"
+    ],
+    "filter.zoomBlur": [
+      "zoomBlur.dsl"
+    ],
+    "filter3d.flow3d": [
+      "filter3dFlow3d.dsl"
+    ],
+    "filter3d.palette3d": [
+      "filter3dPalette3d.dsl"
+    ],
+    "mixer.alphaMask": [
+      "alphaMask.dsl",
+      "grade.dsl"
+    ],
+    "mixer.applyMode": [
+      "applyMode.dsl"
+    ],
+    "mixer.blendMode": [
+      "blendMode.dsl"
+    ],
+    "mixer.cellSplit": [
+      "cellSplit.dsl"
+    ],
+    "mixer.centerMask": [
+      "centerMask.dsl"
+    ],
+    "mixer.channelCombine": [
+      "channelCombine.dsl"
+    ],
+    "mixer.distortion": [
+      "distortion.dsl"
+    ],
+    "mixer.focusBlur": [
+      "focusBlur.dsl"
+    ],
+    "mixer.mashup": [
+      "mashup.dsl"
+    ],
+    "mixer.patternMix": [
+      "patternMix.dsl"
+    ],
+    "mixer.shadow": [
+      "shadow.dsl"
+    ],
+    "mixer.shapeMask": [
+      "shapeMask.dsl"
+    ],
+    "mixer.split": [
+      "split.dsl"
+    ],
+    "mixer.thresholdMix": [
+      "thresholdMix.dsl"
+    ],
+    "mixer.uvRemap": [
+      "uvRemap.dsl"
+    ],
+    "points.attractor": [
+      "pointsAttractor.dsl"
+    ],
+    "points.buddhabrot": [
+      "pointsBuddhabrot.dsl"
+    ],
+    "points.dla": [
+      "pointsDla.dsl"
+    ],
+    "points.flock": [
+      "pointsFlock.dsl"
+    ],
+    "points.flow": [
+      "agentsPoints.dsl",
+      "agentsPointsState256.dsl"
+    ],
+    "points.heightGrid": [
+      "heightGrid_billboard.dsl",
+      "heightGrid_billboard_alpha.dsl",
+      "heightGrid_pointsRender_perspective.dsl"
+    ],
+    "points.hydraulic": [
+      "pointsHydraulic.dsl"
+    ],
+    "points.lenia": [
+      "pointsLenia.dsl"
+    ],
+    "points.life": [
+      "pointsLife.dsl"
+    ],
+    "points.physarum": [
+      "funcNodeScoped.dsl",
+      "physarum.dsl",
+      "physarumNoSense.dsl"
+    ],
+    "points.physical": [
+      "pointsPhysical.dsl"
+    ],
+    "render.loopBegin": [
+      "loopBegin.dsl",
+      "loopEnd.dsl"
+    ],
+    "render.loopEnd": [
+      "loopBegin.dsl",
+      "loopEnd.dsl"
+    ],
+    "render.meshLoader": [
+      "meshLoaderDefault.dsl",
+      "meshLoaderPreview.dsl",
+      "meshRenderParams.dsl",
+      "meshRenderWireframe.dsl"
+    ],
+    "render.meshRender": [
+      "meshLoaderDefault.dsl",
+      "meshRenderCustom.dsl",
+      "meshRenderEmpty.dsl",
+      "meshRenderParams.dsl",
+      "meshRenderWireframe.dsl"
+    ],
+    "render.pointsBillboardRender": [
+      "heightGrid_billboard.dsl",
+      "heightGrid_billboard_alpha.dsl"
+    ],
+    "render.pointsEmit": [
+      "agentsPoints.dsl",
+      "agentsPointsState256.dsl",
+      "funcNodeScoped.dsl",
+      "heightGrid_billboard.dsl",
+      "heightGrid_billboard_alpha.dsl",
+      "heightGrid_pointsRender_perspective.dsl",
+      "physarum.dsl",
+      "physarumNoSense.dsl",
+      "pointsAttractor.dsl",
+      "pointsBuddhabrot.dsl",
+      "pointsDla.dsl",
+      "pointsFlock.dsl",
+      "pointsHydraulic.dsl",
+      "pointsLenia.dsl",
+      "pointsLife.dsl",
+      "pointsPhysical.dsl",
+      "pointsRenderOnly.dsl"
+    ],
+    "render.pointsRender": [
+      "agentsPoints.dsl",
+      "agentsPointsState256.dsl",
+      "funcNodeScoped.dsl",
+      "heightGrid_pointsRender_perspective.dsl",
+      "physarum.dsl",
+      "physarumNoSense.dsl",
+      "pointsAttractor.dsl",
+      "pointsBuddhabrot.dsl",
+      "pointsDla.dsl",
+      "pointsFlock.dsl",
+      "pointsHydraulic.dsl",
+      "pointsLenia.dsl",
+      "pointsLife.dsl",
+      "pointsPhysical.dsl",
+      "pointsRenderOnly.dsl"
+    ],
+    "render.render3d": [
+      "filter3dFlow3d.dsl",
+      "filter3dPalette3d.dsl",
+      "funcVolumeSize.dsl",
+      "synth3dCell3d.dsl",
+      "synth3dCellularAutomata3d.dsl",
+      "synth3dFlythrough3d.dsl",
+      "synth3dFractal3d.dsl",
+      "synth3dNoise3d.dsl",
+      "synth3dReactionDiffusion3d.dsl",
+      "synth3dShape3d.dsl"
+    ],
+    "render.renderCubemap3d": [
+      "renderCubemap3d.dsl"
+    ],
+    "render.renderCubemapSurface": [
+      "renderCubemapSurface.dsl"
+    ],
+    "render.renderLandscape3d": [
+      "funcHiddenFloat.dsl",
+      "heightmap3d_landscape.dsl"
+    ],
+    "render.renderLit3d": [
+      "renderLit3d.dsl"
+    ],
+    "synth.bitwise": [
+      "bitwise.dsl"
+    ],
+    "synth.cell": [
+      "cell.dsl",
+      "channelCombine.dsl"
+    ],
+    "synth.cellularAutomata": [
+      "cellularAutomata.dsl",
+      "funcChainScoped.dsl",
+      "funcHiddenParam.dsl"
+    ],
+    "synth.curl": [
+      "curl.dsl",
+      "curlSeeded.dsl"
+    ],
+    "synth.gabor": [
+      "gabor.dsl"
+    ],
+    "synth.gradient": [
+      "alphaMask.dsl",
+      "applyMode.dsl",
+      "blendMode.dsl",
+      "cellSplit.dsl",
+      "centerMask.dsl",
+      "channelCombine.dsl",
+      "coalesce.dsl",
+      "composite.dsl",
+      "distortion.dsl",
+      "focusBlur.dsl",
+      "funcHiddenFloat.dsl",
+      "gradient.dsl",
+      "heightmap3d_landscape.dsl",
+      "mashup.dsl",
+      "medianGradient.dsl",
+      "patternMix.dsl",
+      "shadow.dsl",
+      "shapeMask.dsl",
+      "shapeMixer.dsl",
+      "shapeMixer_simplex.dsl",
+      "shapeMixer_sine.dsl",
+      "shapeMixer_vnoise.dsl",
+      "split.dsl",
+      "thresholdMix.dsl",
+      "uvRemap.dsl"
+    ],
+    "synth.julia": [
+      "julia.dsl"
+    ],
+    "synth.mandala": [
+      "mandala.dsl"
+    ],
+    "synth.mandelbrot": [
+      "mandelbrot.dsl"
+    ],
+    "synth.media": [
+      "media.dsl"
+    ],
+    "synth.mnca": [
+      "mnca.dsl"
+    ],
+    "synth.modPattern": [
+      "modPattern.dsl"
+    ],
+    "synth.navierStokes": [
+      "navierStokes.dsl"
+    ],
+    "synth.newton": [
+      "newton.dsl"
+    ],
+    "synth.noise": [
+      "adjust.dsl",
+      "alphaMask.dsl",
+      "applyMode.dsl",
+      "blendMode.dsl",
+      "bloom.dsl",
+      "blur.dsl",
+      "bulge.dsl",
+      "celShading.dsl",
+      "cellRefract.dsl",
+      "cellSplit.dsl",
+      "centerMask.dsl",
+      "channel.dsl",
+      "channelCombine.dsl",
+      "chroma.dsl",
+      "chromaticAberration.dsl",
+      "chrome.dsl",
+      "chromeLiquid.dsl",
+      "classicKaleido.dsl",
+      "clouds.dsl",
+      "coalesce.dsl",
+      "colorLab.dsl",
+      "colorReplace.dsl",
+      "composite.dsl",
+      "convolutionFeedback.dsl",
+      "convolutionFeedbackNoFeedback.dsl",
+      "corrupt.dsl",
+      "craquelure.dsl",
+      "craquelureBig.dsl",
+      "crt.dsl",
+      "degauss.dsl",
+      "deriv.dsl",
+      "directionalBlur.dsl",
+      "directionalBlurAngled.dsl",
+      "directionalBlurDefault.dsl",
+      "distortion.dsl",
+      "dither.dsl",
+      "ditherErrorDiffusion.dsl",
+      "ditherReferenceErrorDiffusion.dsl",
+      "edge.dsl",
+      "edgeContour.dsl",
+      "edgeReferenceContour.dsl",
+      "effects.dsl",
+      "effects_cga.dsl",
+      "effects_sobel.dsl",
+      "emboss.dsl",
+      "embossAngle.dsl",
+      "embossGray.dsl",
+      "embossReferenceGray.dsl",
+      "extrude.dsl",
+      "extrudeBlocksRandom.dsl",
+      "extrudePyramids.dsl",
+      "extrudePyramidsLuminance.dsl",
+      "extrudePyramidsRandomReference.dsl",
+      "feedback.dsl",
+      "flipMirror.dsl",
+      "focusBlur.dsl",
+      "funcBoolean.dsl",
+      "funcHiddenFloat.dsl",
+      "funcNumeric.dsl",
+      "funcStateValues.dsl",
+      "fxaa.dsl",
+      "glitch.dsl",
+      "glowingEdge.dsl",
+      "glyphMap.dsl",
+      "grain.dsl",
+      "grime.dsl",
+      "halftone.dsl",
+      "halftoneCircle.dsl",
+      "halftoneMono.dsl",
+      "halftoneMonoDot.dsl",
+      "halftoneReferenceMonoCircle.dsl",
+      "halftoneReferenceMonoDot.dsl",
+      "halftoneReferenceMonoLine.dsl",
+      "hatch.dsl",
+      "hatchChalk.dsl",
+      "hatchCharcoal.dsl",
+      "hatchConte.dsl",
+      "hatchCrosshatch.dsl",
+      "hatchPencil.dsl",
+      "hatchReferenceChalkCharcoal.dsl",
+      "hatchReferenceCharcoal.dsl",
+      "hatchReferenceColoredPencil.dsl",
+      "hatchReferenceColoredPencilLeftDiag.dsl",
+      "hatchReferenceConte.dsl",
+      "hatchReferenceCrosshatch.dsl",
+      "hatchReferencePen.dsl",
+      "heightmap3d_landscape.dsl",
+      "highPass.dsl",
+      "highPassMono.dsl",
+      "historicPalette.dsl",
+      "invert.dsl",
+      "invertSolarize.dsl",
+      "lens.dsl",
+      "lensDistortion.dsl",
+      "lensFlare.dsl",
+      "lensFlareMovie.dsl",
+      "lensFlarePrime105.dsl",
+      "lensFlarePrime35.dsl",
+      "lensFlareReferenceMovie.dsl",
+      "lensFlareReferencePrime105.dsl",
+      "lensFlareReferencePrime35.dsl",
+      "lensFlareReferenceZoom.dsl",
+      "lensWarp.dsl",
+      "lightLeak.dsl",
+      "lighting.dsl",
+      "lightingHeightMap.dsl",
+      "lightingRefl.dsl",
+      "loopBegin.dsl",
+      "loopEnd.dsl",
+      "lowPoly.dsl",
+      "lowPolyDistance2.dsl",
+      "lowPolyDistance3.dsl",
+      "lowPolyFlat.dsl",
+      "lowPolyReferenceDistance2.dsl",
+      "lowPolyReferenceDistance3.dsl",
+      "lowPolyReferenceEdges.dsl",
+      "lowPolyReferenceFlat.dsl",
+      "lowPolyStainedGlass.dsl",
+      "mashup.dsl",
+      "median.dsl",
+      "medianRadius1.dsl",
+      "medianRadius2.dsl",
+      "meshRenderCustom.dsl",
+      "meshRenderEmpty.dsl",
+      "morphology.dsl",
+      "morphologyDilateRound.dsl",
+      "morphologyErodeSquare.dsl",
+      "morphologyReferenceDilateRound.dsl",
+      "morphologyReferenceErodeRound.dsl",
+      "morphologyReferenceErodeSquare.dsl",
+      "morphologyRound.dsl",
+      "mosaicTiles.dsl",
+      "mosaicTilesGapBackground.dsl",
+      "mosaicTilesGapUnaltered.dsl",
+      "mosaicTilesReferenceMosaic.dsl",
+      "mosaicTilesReferenceShifted.dsl",
+      "mosaicTilesShifted.dsl",
+      "motionBlur.dsl",
+      "navierStokes.dsl",
+      "noise.dsl",
+      "normalMap.dsl",
+      "normalize.dsl",
+      "octaveWarp.dsl",
+      "oilPaint.dsl",
+      "oilPaintDryBrush.dsl",
+      "oilPaintFacet.dsl",
+      "oilPaintFresco.dsl",
+      "oilPaintKnife.dsl",
+      "oilPaintReferenceDaubs.dsl",
+      "oilPaintReferenceDryBrush.dsl",
+      "oilPaintReferenceFacet.dsl",
+      "oilPaintReferenceFresco.dsl",
+      "oilPaintReferenceKnife.dsl",
+      "oilPaintReferenceSponge.dsl",
+      "oilPaintSponge.dsl",
+      "osd.dsl",
+      "outline.dsl",
+      "palette.dsl",
+      "parallax.dsl",
+      "parallaxHeightMap.dsl",
+      "patchwork.dsl",
+      "patchworkLight.dsl",
+      "patternMix.dsl",
+      "photocopy.dsl",
+      "photocopyDark.dsl",
+      "pinch.dsl",
+      "pixelSort.dsl",
+      "pixels.dsl",
+      "plasticWrap.dsl",
+      "plasticWrapDirected.dsl",
+      "plasticWrapDirectedReference.dsl",
+      "plasticWrapGloss.dsl",
+      "pointsAttractor.dsl",
+      "pointsBuddhabrot.dsl",
+      "pointsDla.dsl",
+      "pointsFlock.dsl",
+      "pointsHydraulic.dsl",
+      "pointsLenia.dsl",
+      "pointsLife.dsl",
+      "pointsPhysical.dsl",
+      "polar.dsl",
+      "pondRipples.dsl",
+      "pondRipplesAround.dsl",
+      "pondRipplesClamp.dsl",
+      "pondRipplesOut.dsl",
+      "pondRipplesReferenceAround.dsl",
+      "pondRipplesReferenceOut.dsl",
+      "pondRipplesReferencePond.dsl",
+      "pondRipplesRepeat.dsl",
+      "pondRipplesSpeed.dsl",
+      "pondRipplesSpeedNeg.dsl",
+      "posterize.dsl",
+      "prismaticAberration.dsl",
+      "refract.dsl",
+      "reindex.dsl",
+      "relief.dsl",
+      "reliefNotePaper.dsl",
+      "reliefPlaster.dsl",
+      "reliefReferenceBas.dsl",
+      "reliefReferenceNotePaper.dsl",
+      "reliefReferencePlaster.dsl",
+      "remap_zone.dsl",
+      "repeat.dsl",
+      "reverb.dsl",
+      "ridge.dsl",
+      "rotate.dsl",
+      "scale.dsl",
+      "scanlineError.dsl",
+      "scatter.dsl",
+      "scatterAniso.dsl",
+      "scatterClumped.dsl",
+      "scatterDarkenOnly.dsl",
+      "scatterLightenOnly.dsl",
+      "scatterReferenceAnisotropic.dsl",
+      "scatterReferenceClumped.dsl",
+      "scatterReferenceDarken.dsl",
+      "scatterReferenceLighten.dsl",
+      "scatterReferenceNormal.dsl",
+      "scroll.dsl",
+      "seamless.dsl",
+      "shadow.dsl",
+      "shapeMask.dsl",
+      "shapeMixer.dsl",
+      "shapeMixer_simplex.dsl",
+      "shapeMixer_sine.dsl",
+      "shapeMixer_vnoise.dsl",
+      "sharpen.dsl",
+      "simpleAberration.dsl",
+      "sine.dsl",
+      "skew.dsl",
+      "smooth.dsl",
+      "smoothstep.dsl",
+      "snow.dsl",
+      "sobel.dsl",
+      "spatter.dsl",
+      "spinBlur.dsl",
+      "spinBlurCentered.dsl",
+      "spinBlurDefault.dsl",
+      "spinBlurOffCenter.dsl",
+      "spiral.dsl",
+      "splat.dsl",
+      "split.dsl",
+      "spookyTicker.dsl",
+      "stamp.dsl",
+      "stampTorn.dsl",
+      "step.dsl",
+      "stipple.dsl",
+      "stippleMezzoDots.dsl",
+      "stippleMezzoLines.dsl",
+      "stippleReferenceMezzoDots.dsl",
+      "stippleReferenceMezzoLines.dsl",
+      "stippleReferenceMezzoStrokes.dsl",
+      "stippleReferencePointillize.dsl",
+      "stippleReferenceReticulation.dsl",
+      "stippleReticulation.dsl",
+      "stippleStrokes.dsl",
+      "strokes.dsl",
+      "strokesDark.dsl",
+      "strokesReferenceAngled.dsl",
+      "strokesReferenceDark.dsl",
+      "strokesReferenceSmudge.dsl",
+      "strokesReferenceSprayed.dsl",
+      "strokesReferenceSumiE.dsl",
+      "strokesSmudge.dsl",
+      "strokesSprayed.dsl",
+      "strokesSumiE.dsl",
+      "temporalAberration.dsl",
+      "tetraColorArray.dsl",
+      "tetraCosine.dsl",
+      "text.dsl",
+      "texture.dsl",
+      "textureClumped.dsl",
+      "textureContrasty.dsl",
+      "textureEnlarged.dsl",
+      "textureHorizontal.dsl",
+      "textureReferenceClumped.dsl",
+      "textureReferenceContrasty.dsl",
+      "textureReferenceEnlarged.dsl",
+      "textureReferenceHorizontal.dsl",
+      "textureReferenceRegular.dsl",
+      "textureReferenceSoft.dsl",
+      "textureReferenceSpeckle.dsl",
+      "textureReferenceSprinkles.dsl",
+      "textureReferenceStippled.dsl",
+      "textureReferenceVertical.dsl",
+      "textureRegular.dsl",
+      "textureSoft.dsl",
+      "textureSpeckle.dsl",
+      "textureSprinkles.dsl",
+      "textureStippled.dsl",
+      "textureVertical.dsl",
+      "threshold.dsl",
+      "thresholdMix.dsl",
+      "tile.dsl",
+      "tint.dsl",
+      "translate.dsl",
+      "tunnel.dsl",
+      "unsharpMask.dsl",
+      "uvRemap.dsl",
+      "vaseline.dsl",
+      "vignette.dsl",
+      "warp.dsl",
+      "watercolor.dsl",
+      "watercolorGrain.dsl",
+      "waves.dsl",
+      "wind.dsl",
+      "windMethodBlastFromRight.dsl",
+      "windMethodStaggerFromLeft.dsl",
+      "windMethodStaggerFromRight.dsl",
+      "windMethodWind.dsl",
+      "windMethodWindFromLeft.dsl",
+      "windMethodWindFromRight.dsl",
+      "windStagger.dsl",
+      "wobble.dsl",
+      "wormhole.dsl",
+      "zoomBlur.dsl"
+    ],
+    "synth.osc2d": [
+      "osc2d.dsl"
+    ],
+    "synth.pattern": [
+      "pattern.dsl"
+    ],
+    "synth.perlin": [
+      "agentsPoints.dsl",
+      "agentsPointsState256.dsl",
+      "heightGrid_billboard.dsl",
+      "heightGrid_billboard_alpha.dsl",
+      "heightGrid_pointsRender_perspective.dsl",
+      "mashup.dsl",
+      "perlin.dsl",
+      "strayHair.dsl"
+    ],
+    "synth.polygon": [
+      "polygon.dsl"
+    ],
+    "synth.reactionDiffusion": [
+      "reactionDiffusion.dsl"
+    ],
+    "synth.remap": [
+      "remap.dsl",
+      "remap_zone.dsl"
+    ],
+    "synth.roll": [
+      "roll.dsl"
+    ],
+    "synth.sacredGeometry": [
+      "sacredGeometry.dsl"
+    ],
+    "synth.scope": [
+      "scope.dsl"
+    ],
+    "synth.shape": [
+      "shape.dsl"
+    ],
+    "synth.solid": [
+      "fibers.dsl",
+      "funcNodeScoped.dsl",
+      "grade.dsl",
+      "heightGrid_billboard.dsl",
+      "heightGrid_billboard_alpha.dsl",
+      "heightGrid_pointsRender_perspective.dsl",
+      "mashup.dsl",
+      "physarum.dsl",
+      "physarumNoSense.dsl",
+      "pointsRenderOnly.dsl",
+      "scratches.dsl",
+      "solid.dsl"
+    ],
+    "synth.spectrum": [
+      "spectrum.dsl"
+    ],
+    "synth.subdivide": [
+      "subdivide.dsl"
+    ],
+    "synth.testPattern": [
+      "grade.dsl",
+      "testPattern.dsl"
+    ],
+    "synth3d.cell3d": [
+      "synth3dCell3d.dsl"
+    ],
+    "synth3d.cellularAutomata3d": [
+      "synth3dCellularAutomata3d.dsl"
+    ],
+    "synth3d.flythrough3d": [
+      "synth3dFlythrough3d.dsl"
+    ],
+    "synth3d.fractal3d": [
+      "synth3dFractal3d.dsl"
+    ],
+    "synth3d.heightmap3d": [
+      "funcHiddenFloat.dsl",
+      "heightmap3d_landscape.dsl"
+    ],
+    "synth3d.noise3d": [
+      "filter3dFlow3d.dsl",
+      "filter3dPalette3d.dsl",
+      "funcVolumeSize.dsl",
+      "renderCubemap3d.dsl",
+      "renderCubemapSurface.dsl",
+      "renderLit3d.dsl",
+      "synth3dNoise3d.dsl"
+    ],
+    "synth3d.reactionDiffusion3d": [
+      "synth3dReactionDiffusion3d.dsl"
+    ],
+    "synth3d.shape3d": [
+      "synth3dShape3d.dsl"
+    ]
+  }
+}

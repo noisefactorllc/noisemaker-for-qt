@@ -489,6 +489,7 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
       name === 'xyz' || name === 'vel' || name === 'rgba' || name === 'trail' ||
       name.endsWith('_xyz') || name.endsWith('_vel') || name.endsWith('_rgba') || name.endsWith('_trail') ||
       /state/i.test(name) || /^(xyz|vel|rgba|points_trail)_node_\d+$/.test(name) ||
+      /^life_data_node_\d+$/.test(name) || /^dla_grid_/.test(name) || /^accum_/.test(name) ||
       /_pheromone_/.test(name) || /_trail_/.test(name) ||
       /^o\d+$/.test(name) // render/display surfaces (o0-o7) -- final fix wave,
       // see export-and-render.mjs's own copy of this predicate for the full
@@ -503,22 +504,31 @@ async function mintOne (page, globals, opts, dsl, graph, programName, meshes) {
       // "verbatim copy" comments in this file before assuming a future
       // export-and-render.mjs change doesn't also need mirroring here.
     const clearedNames = []
+    const clearTexture = (physicalKey) => {
+      const info = backend.textures.get(physicalKey)
+      if (!info?.handle) return
+      const fbo = gl.createFramebuffer()
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, info.handle, 0)
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
+        gl.clearColor(0, 0, 0, 0)
+        gl.clear(gl.COLOR_BUFFER_BIT)
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      gl.deleteFramebuffer(fbo)
+    }
     for (const [bareId, surf] of p.surfaces.entries()) {
       if (!isStateSurface(bareId)) continue
       for (const physicalKey of new Set([surf.read, surf.write].filter(Boolean))) {
-        const info = backend.textures.get(physicalKey)
-        if (!info?.handle) continue
-        const fbo = gl.createFramebuffer()
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, info.handle, 0)
-        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
-          gl.clearColor(0, 0, 0, 0)
-          gl.clear(gl.COLOR_BUFFER_BIT)
-        }
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-        gl.deleteFramebuffer(fbo)
+        clearTexture(physicalKey)
       }
       clearedNames.push(bareId)
+    }
+    // Roll's feedback is a local texture, so it is absent from p.surfaces.
+    for (const physicalKey of backend.textures.keys()) {
+      if (!/_rollFb$/.test(physicalKey)) continue
+      clearTexture(physicalKey)
+      clearedNames.push(physicalKey)
     }
     gl.finish()
     return { clearedNames }
