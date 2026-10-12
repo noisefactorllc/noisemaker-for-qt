@@ -498,6 +498,18 @@ async function main () {
     }
     await logGoldenRenderer(page)
 
+    // Signal fixtures intentionally render with no MIDI or microphone input.
+    // Deny permission before loading the DSL so headed Chromium cannot hold
+    // the render behind an unanswered device prompt.
+    const signalPermission = programName === 'roll' ? 'midi'
+      : (programName === 'scope' || programName === 'spectrum') ? 'microphone' : null
+    if (signalPermission) {
+      await page.context().grantPermissions([])
+      const state = await page.evaluate(async name =>
+        (await navigator.permissions.query({ name })).state, signalPermission)
+      if (state !== 'denied') throw new Error(`${programName} ${signalPermission} permission is ${state}, expected denied`)
+    }
+
     // Pause and size the demo BEFORE loading our DSL. A resize runs
     // pipeline.initAsyncEffects(), which cancels in-flight asyncInit overlays
     // and drops the host's pending parameter regeneration, and the demo host
