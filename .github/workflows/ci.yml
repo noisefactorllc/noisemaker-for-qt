@@ -138,7 +138,14 @@ jobs:
         env:
           QT_QPA_PLATFORM: xcb
           LIBGL_ALWAYS_SOFTWARE: "1"
-        run: xvfb-run -a -s "-screen 0 1280x1024x24" ctest --test-dir build --output-on-failure
+        run: |
+          set +e
+          xvfb-run -a -s "-screen 0 1280x1024x24" ctest --test-dir build --output-on-failure -E '^test_async_overlay$'
+          tests_rc=$?
+          # Retain the native 1080p retrace timing for GAP-038 on each CI head.
+          xvfb-run -a -s "-screen 0 1280x1024x24" ctest --test-dir build --output-on-failure -V -R '^test_async_overlay$'
+          overlay_rc=$?
+          if [ "$tests_rc" -ne 0 ] || [ "$overlay_rc" -ne 0 ]; then exit 1; fi
 
       - name: ctest (Windows, llvmpipe)
         if: runner.os == 'Windows'
