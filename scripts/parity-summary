@@ -210,7 +210,7 @@ fi
 LEDGER="$(mktemp -t noisemaker-parity-summary-ledger.XXXXXX)"
 [ -n "${XVFB_PID:-}" ] || trap 'rm -f "$LEDGER"' EXIT
 echo "[SWEEP] running the canonical fresh sweep (mint + render + grade)" >&2
-if ! LEDGER_PATH="$LEDGER" "${SWEEP[@]}" bash "$ROOT/parity/sweep.sh" "$@"; then
+if ! LEDGER_PATH="$LEDGER" ${SWEEP[@]+"${SWEEP[@]}"} bash "$ROOT/parity/sweep.sh" "$@"; then
   echo "[SWEEP] parity/sweep.sh exited nonzero; classifying whatever was produced" >&2
   SWEEP_RC=1
 else
