@@ -2,7 +2,7 @@
 // registry (candidate, via `tests/registry_dump [dataRoot]`) against the
 // reference registration logic (oracle, via tools/dump-registry.mjs), both
 // fed the SAME effect JSONs under qt/noisemaker/effects. Deep value-compare
-// per surface (ops / enums / paramAliases / effectAliases / effectKeys);
+// per surface (ops / enums / effectAliases / effectKeys);
 // report PASS or the first divergence.
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker NM_REGISTRY_DUMP=qt/build-compiler/tests/registry_dump \
@@ -79,7 +79,7 @@ function firstDiff(a, b, path) {
     return `${path}: (object differs)`
 }
 
-const sections = ['ops', 'enums', 'paramAliases', 'effectAliases', 'effectKeys']
+const sections = ['ops', 'enums', 'effectAliases', 'effectKeys']
 let allPass = true
 console.log('REGISTRY PARITY:')
 for (const s of sections) {

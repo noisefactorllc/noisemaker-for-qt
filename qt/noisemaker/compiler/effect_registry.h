@@ -4,7 +4,7 @@
 // starter/namespace tables the Validator (and, later, the Expander) need.
 // Port of the REFERENCE load-time registration in renderer/canvas.js
 // registerEffectWithRuntime() (with runtime/registry.js, lang/ops.js,
-// lang/paramAliases.js, lang/effectAliases.js, lang/enums.js), cross-
+// lang/effectAliases.js, lang/enums.js), cross-
 // checked against td/noisemaker/compiler/lang/effect_registry.py and
 // godot/addons/noisemaker/compiler/lang/effect_registry.gd. See
 // effect_registry.cpp for the PARITY-CRITICAL details (starter derivation
@@ -37,7 +37,7 @@
 //                lazy-load path additionally registers BARE names too, but
 //                that is a different bootstrap this port does not mirror --
 //                our oracle is tools/dump-validate.mjs, which never does).
-//   - paramAliases / effectAliases : "<ns>.<func>" -> alias maps.
+//   - effectAliases : "<ns>.<func>" -> replacement name.
 //   - defineMap : "<ns>.<func>" -> {globalKey: DEFINE_NAME} for globals
 //                that are compile-time defines (Expander concern; exposed
 //                here since EffectRegistry is the single load point).
@@ -163,11 +163,6 @@ public:
     // empty QString if `opName` carries no alias.
     QString checkEffectAlias(const QString& opName) const;
 
-    // reference/01 SS8.5 -- mutates `kwargs` in place (old key renamed to
-    // new, new key wins if both present), returns one warning string per
-    // alias hit.
-    QStringList resolveParamAliases(const QString& opName, QJsonObject& kwargs) const;
-
     Enums& enums() { return enums_; }
     const Enums& enums() const { return enums_; }
 
@@ -188,7 +183,7 @@ public:
     // surface -- does not change any existing method's behavior.
     QByteArray rawJson(const QString& opName) const { return rawJson_.value(opName); }
 
-    // {ops, enums, paramAliases, effectAliases, effectKeys} -- the exact
+    // {ops, enums, effectAliases, effectKeys} -- the exact
     // surface parity/check_registry.mjs diffs against tools/dump-
     // registry.mjs's oracle output. Optional/absent fields are omitted
     // from the dump (never emitted as JSON null), matching the oracle's
@@ -206,7 +201,6 @@ private:
     QMap<QString, QJsonObject> effects_;      // lookup key -> raw effect def
     QMap<QString, OpSpec> ops_;               // "<ns>.<func>" -> spec
     QSet<QString> starterOps_;                // "<ns>.<func>" set
-    QMap<QString, QJsonObject> paramAliases_; // "<ns>.<func>" -> {old:new}, non-empty only
     QMap<QString, QString> effectAliases_;    // "<ns>.<func>" -> replacement name
     QJsonObject defineMap_;                   // "<ns>.<func>" -> {globalKey: DEFINE_NAME}
     QMap<QString, QByteArray> rawJson_;        // "<ns>.<func>" -> raw file bytes (T10)

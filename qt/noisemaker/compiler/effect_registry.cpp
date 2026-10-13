@@ -323,11 +323,6 @@ void EffectRegistry::registerEffect(const QByteArray& rawJson) {
         starterOps_.insert(opName);
     }
 
-    const QJsonValue paramAliasesVal = def.value(QStringLiteral("paramAliases"));
-    if (paramAliasesVal.isObject() && !paramAliasesVal.toObject().isEmpty()) {
-        paramAliases_.insert(opName, paramAliasesVal.toObject());
-    }
-
     if (def.value(QStringLiteral("hidden")).toBool(false)) {
         const QJsonValue deprecatedBy = def.value(QStringLiteral("deprecatedBy"));
         if (deprecatedBy.isString()) {
@@ -393,29 +388,8 @@ QString EffectRegistry::checkEffectAlias(const QString& opName) const {
     const QString newName = it.value();
     const int dot = opName.lastIndexOf(QLatin1Char('.'));
     const QString oldName = dot >= 0 ? opName.mid(dot + 1) : opName;
-    return QStringLiteral("effect '%1' is deprecated, use '%2' instead. Aliases will be removed on 2026-09-01.")
+    return QStringLiteral("effect '%1' is deprecated, use '%2' instead.")
         .arg(oldName, newName);
-}
-
-QStringList EffectRegistry::resolveParamAliases(const QString& opName, QJsonObject& kwargs) const {
-    // reference/01 SS8.5 -- mutates kwargs in place; returns warnings.
-    QStringList warnings;
-    const auto it = paramAliases_.find(opName);
-    if (it == paramAliases_.end()) return warnings;
-    const QJsonObject aliases = it.value();
-    for (auto ait = aliases.constBegin(); ait != aliases.constEnd(); ++ait) {
-        const QString oldName = ait.key();
-        if (!kwargs.contains(oldName)) continue;
-        const QString newName = ait.value().toString();
-        if (!kwargs.contains(newName)) {
-            kwargs.insert(newName, kwargs.value(oldName));
-        }
-        kwargs.remove(oldName);
-        warnings.append(
-            QStringLiteral("param '%1' is deprecated, use '%2' instead. Aliases will be removed on 2026-09-01.")
-                .arg(oldName, newName));
-    }
-    return warnings;
 }
 
 bool EffectRegistry::isStarterDef(const QJsonObject& def) {
@@ -466,10 +440,6 @@ QJsonObject EffectRegistry::dumpSummary() const {
     for (auto it = ops_.constBegin(); it != ops_.constEnd(); ++it) {
         opsOut.insert(it.key(), opSpecToJson(it.value()));
     }
-    QJsonObject paramAliasesOut;
-    for (auto it = paramAliases_.constBegin(); it != paramAliases_.constEnd(); ++it) {
-        paramAliasesOut.insert(it.key(), it.value());
-    }
     QJsonObject effectAliasesOut;
     for (auto it = effectAliases_.constBegin(); it != effectAliases_.constEnd(); ++it) {
         effectAliasesOut.insert(it.key(), it.value());
@@ -485,7 +455,6 @@ QJsonObject EffectRegistry::dumpSummary() const {
     QJsonObject out;
     out.insert(QStringLiteral("ops"), opsOut);
     out.insert(QStringLiteral("enums"), enums_.project());
-    out.insert(QStringLiteral("paramAliases"), paramAliasesOut);
     out.insert(QStringLiteral("effectAliases"), effectAliasesOut);
     out.insert(QStringLiteral("effectKeys"), effectKeysOut);
     return out;

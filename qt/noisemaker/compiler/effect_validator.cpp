@@ -211,7 +211,7 @@ const QStringList& topLevelKeys() {
         QStringLiteral("description"), QStringLiteral("tags"), QStringLiteral("globals"),
         QStringLiteral("passes"), QStringLiteral("textures"), QStringLiteral("textures3d"),
         QStringLiteral("shaders"), QStringLiteral("uniformLayout"), QStringLiteral("uniformLayouts"),
-        QStringLiteral("paramAliases"), QStringLiteral("openCategories"),
+        QStringLiteral("openCategories"),
         QStringLiteral("defaultProgram"), QStringLiteral("hidden"), QStringLiteral("deprecatedBy"),
         QStringLiteral("externalTexture"), QStringLiteral("externalMesh"),
         QStringLiteral("builtinMeshes"), QStringLiteral("outputTex3d"), QStringLiteral("outputGeo"),
@@ -1717,25 +1717,6 @@ std::vector<std::string> validateEffectDefinition(const QJsonValue& def) {
             for (auto it = layoutsObj.begin(); it != layoutsObj.end(); ++it) {
                 validateUniformLayout(it.value(),
                                       errors, "uniformLayouts['" + toStd(it.key()) + "']");
-            }
-        }
-    }
-
-    // --- param aliases ---
-    const QJsonValue paramAliases = source.value(QStringLiteral("paramAliases"));
-    if (!paramAliases.isUndefined()) {
-        if (!paramAliases.isObject()) {
-            errors.push_back("\"paramAliases\" must be an object mapping aliases to global names");
-        } else {
-            const QJsonObject aliasesObj = paramAliases.toObject();
-            for (auto it = aliasesObj.begin(); it != aliasesObj.end(); ++it) {
-                const QJsonValue target = it.value();
-                if (!isNonEmptyString(target)) {
-                    errors.push_back("paramAliases['" + toStd(it.key()) + "'] must be a non-empty string");
-                } else if (!context.globalKeys.contains(target.toString())) {
-                    errors.push_back("paramAliases['" + toStd(it.key()) + "'] references unknown global '"
-                                     + toStd(target.toString()) + "'");
-                }
             }
         }
     }

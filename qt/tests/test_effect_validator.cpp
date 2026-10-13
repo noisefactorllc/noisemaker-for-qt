@@ -65,7 +65,6 @@ QJsonObject validDefinition() {
     "uniformLayouts": {
         "alt": { "amount": { "slot": 0, "components": "x" } }
     },
-    "paramAliases": { "amt": "amount" },
     "textures": {
         "scratch": { "width": 64, "height": "100%", "format": "rgba16f" },
         "scaled": { "width": { "param": "volumeSize", "power": 2, "default": 1024 }, "height": { "screenDivide": "zoom", "default": 8 } }
@@ -454,10 +453,6 @@ int main() {
             {"uniformLayouts value is a string", [](QJsonObject& d) {
                  QJsonObject ls; ls.insert("p", "layout"); d.insert("uniformLayouts", ls);
              }},
-            {"paramAliases is a string", [](QJsonObject& d) { d.insert("paramAliases", "aliases"); }},
-            {"paramAliases target is unknown", [](QJsonObject& d) {
-                 QJsonObject a; a.insert("amt", "nosuchglobal"); d.insert("paramAliases", a);
-             }},
             {"tags is a string", [](QJsonObject& d) { d.insert("tags", "noise"); }},
             {"tags contains an unknown tag", [](QJsonObject& d) {
                  QJsonArray t; t.append("not-a-tag"); d.insert("tags", t);
@@ -627,22 +622,6 @@ int main() {
             if (e == want) ok = true;
         }
         std::printf("%s: non-string texture format interpolates as String(1)\n", ok ? "PASS" : "FAIL");
-        if (!ok) {
-            for (const std::string& e : errors) std::printf("  [%s]\n", e.c_str());
-            ++g_failures;
-        }
-    }
-    {
-        // The reference emits paramAliases['<alias>'] with BOTH quotes.
-        QJsonObject def = validDefinition();
-        QJsonObject a; a.insert("amt", "nosuchglobal"); def.insert("paramAliases", a);
-        const std::string want = "paramAliases['amt'] references unknown global 'nosuchglobal'";
-        const std::vector<std::string> errors = validate(def);
-        bool ok = false;
-        for (const std::string& e : errors) {
-            if (e == want) ok = true;
-        }
-        std::printf("%s: paramAliases unknown-global message is exact\n", ok ? "PASS" : "FAIL");
         if (!ok) {
             for (const std::string& e : errors) std::printf("  [%s]\n", e.c_str());
             ++g_failures;

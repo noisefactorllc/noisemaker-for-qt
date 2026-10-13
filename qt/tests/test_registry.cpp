@@ -259,24 +259,6 @@ int main() {
     }
 
     // ==================================================================
-    // paramAliases: non-empty maps only (empty maps are inert)
-    // ==================================================================
-    {
-        QJsonObject kwargs;
-        kwargs.insert(QStringLiteral("noiseType"), 3.0);
-        const QStringList warnings = reg.resolveParamAliases(QStringLiteral("synth.noise"), kwargs);
-        check(warnings.size() == 1, "resolveParamAliases produces one warning for one deprecated kwarg");
-        check(!kwargs.contains(QStringLiteral("noiseType")) && kwargs.contains(QStringLiteral("type"))
-                  && kwargs.value(QStringLiteral("type")).toDouble() == 3.0,
-              "resolveParamAliases renames noiseType -> type in place, preserving the value");
-
-        QJsonObject emptyAliasKwargs;
-        emptyAliasKwargs.insert(QStringLiteral("brightness"), 1.0);
-        const QStringList noWarnings = reg.resolveParamAliases(QStringLiteral("filter.adjust"), emptyAliasKwargs);
-        check(noWarnings.isEmpty(), "an effect with an EMPTY paramAliases map ({}) produces no warnings");
-    }
-
-    // ==================================================================
     // effect aliases: hidden + deprecatedBy
     // ==================================================================
     {
@@ -303,9 +285,9 @@ int main() {
     {
         const QJsonObject dump = reg.dumpSummary();
         check(dump.contains(QStringLiteral("ops")) && dump.contains(QStringLiteral("enums"))
-                  && dump.contains(QStringLiteral("paramAliases")) && dump.contains(QStringLiteral("effectAliases"))
+                  && dump.contains(QStringLiteral("effectAliases"))
                   && dump.contains(QStringLiteral("effectKeys")),
-              "dumpSummary() has exactly the five gate keys");
+              "dumpSummary() has exactly the four gate keys");
         check(dump.value(QStringLiteral("ops")).toObject().size() == 210, "dumpSummary().ops has 210 entries");
         const QJsonObject remapArg = dump.value(QStringLiteral("ops")).toObject().value(QStringLiteral("synth.remap"))
                                           .toObject();

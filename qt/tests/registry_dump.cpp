@@ -1,7 +1,7 @@
 // registry_dump.cpp -- parity-gate helper (candidate side of
 // parity/check_registry.mjs). Loads the C++ EffectRegistry exactly as any
 // real consumer would and prints its dumpSummary() ({ops, enums,
-// paramAliases, effectAliases, effectKeys}) as compact JSON to stdout.
+// effectAliases, effectKeys}) as compact JSON to stdout.
 //
 // NOT part of nm-render: main.cpp's flag-hook table (qt/tools/nm-render/
 // flag_hooks.h) has no pre-declared slot for a registry-summary mode (only

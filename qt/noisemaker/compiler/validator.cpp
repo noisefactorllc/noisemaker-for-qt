@@ -1291,10 +1291,6 @@ QJsonValue Validator::resolveArgs(QJsonArray& chain, const OpSpec& spec, const Q
                                    const QString& writeName) {
     const bool hasKw = call.contains(QStringLiteral("kwargs"));
     QJsonObject kw = hasKw ? call.value(QStringLiteral("kwargs")).toObject() : QJsonObject();
-    if (hasKw) {
-        const QStringList warnings = reg_.resolveParamAliases(opName, kw);
-        for (const QString& w : warnings) pushDiag(QStringLiteral("S007"), call, w);
-    }
     const QJsonArray callArgs = call.value(QStringLiteral("args")).toArray();
     QSet<QString> seen;
     QJsonObject argSources;

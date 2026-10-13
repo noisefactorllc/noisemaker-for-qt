@@ -1,8 +1,8 @@
 // dump-registry.mjs — ORACLE for the EffectRegistry parity gate. Builds the reference's load-time
 // registry from the SAME effect JSONs the GDScript candidate loads, using the REAL reference stores
-// (runtime/registry.js, lang/ops.js, lang/enums.js, lang/paramAliases.js, lang/effectAliases.js)
+// (runtime/registry.js, lang/ops.js, lang/enums.js, lang/effectAliases.js)
 // and mirroring renderer/canvas.js registerEffectWithRuntime() line-for-line. Dumps
-// {ops, enums, paramAliases, effectAliases, effectKeys} as JSON for deep comparison.
+// {ops, enums, effectAliases, effectKeys} as JSON for deep comparison.
 //
 //   NM_REFERENCE_ROOT=/path/to/noisemaker node tools/dump-registry.mjs <effectsDir>
 //
@@ -22,7 +22,6 @@ const REF = resolve(process.env.NM_REFERENCE_ROOT)
 const { registerEffect, getAllEffects } = await import(pathToFileURL(resolve(REF, 'shaders/src/runtime/registry.js')).href)
 const { ops, registerOp } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/ops.js')).href)
 const { mergeIntoEnums } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/enums.js')).href)
-const { registerParamAliases } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/paramAliases.js')).href)
 const { registerEffectAlias } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/effectAliases.js')).href)
 
 // verbatim from renderer/canvas.js
@@ -47,7 +46,6 @@ for (const ns of readdirSync(effectsDir, { withFileTypes: true })) {
 rels.sort()
 
 let mergedEnums = null
-const paramAliasesOut = {}
 const effectAliasesOut = {}
 
 for (const rel of rels) {
@@ -96,11 +94,6 @@ for (const rel of rels) {
         if (Object.keys(choicesToRegister).length > 0) {
             mergedEnums = await mergeIntoEnums(choicesToRegister)
         }
-        // Non-empty param-alias maps only (empty maps are inert; the candidate skips them too).
-        if (instance.paramAliases && Object.keys(instance.paramAliases).length > 0) {
-            registerParamAliases(`${namespace}.${instance.func}`, instance.paramAliases)
-            paramAliasesOut[`${namespace}.${instance.func}`] = instance.paramAliases
-        }
         if (instance.hidden && instance.deprecatedBy) {
             registerEffectAlias(`${namespace}.${instance.func}`, instance.deprecatedBy)
             effectAliasesOut[`${namespace}.${instance.func}`] = instance.deprecatedBy
@@ -119,7 +112,7 @@ for (const [k, inst] of getAllEffects()) {
 const out = JSON.parse(JSON.stringify({
     ops,
     enums: mergedEnums || {},
-    paramAliases: paramAliasesOut,
+
     effectAliases: effectAliasesOut,
     effectKeys
 }))

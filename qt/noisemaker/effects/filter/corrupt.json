@@ -8,7 +8,6 @@
     "glitch"
   ],
   "description": "Scanline-based data corruption",
-  "paramAliases": {},
   "globals": {
     "intensity": {
       "type": "float",

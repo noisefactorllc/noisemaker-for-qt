@@ -302,7 +302,7 @@ int main() {
     // ======================================================================
     {
         static const char kDefinition[] = R"({
-  "name": "Gpgpu", "namespace": "synth", "func": "gpgpu", "starter": true, "paramAliases": {},
+  "name": "Gpgpu", "namespace": "synth", "func": "gpgpu", "starter": true,
   "globals": {"speed": {"type": "float", "default": 1, "uniform": "speed", "min": 0, "max": 4}},
   "passes": [
     {"name": "simulate", "program": "sim", "inputs": {}, "outputs": {"outputBuffer": "outputTex"},
@@ -347,7 +347,7 @@ int main() {
     // ======================================================================
     {
         static const char kDefinition[] = R"({
-  "name": "Pass Field Probe", "namespace": "synth", "func": "passFieldProbe", "starter": true, "paramAliases": {},
+  "name": "Pass Field Probe", "namespace": "synth", "func": "passFieldProbe", "starter": true,
   "globals": {"vol": {"type": "int", "default": 16, "uniform": "vol", "min": 1, "max": 64, "ui": {"label": "vol", "control": "slider"}}},
   "passes": [
     {"name": "probePass", "program": "probe", "type": "compute", "clear": true,

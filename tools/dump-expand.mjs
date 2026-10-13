@@ -17,7 +17,6 @@ const { expand } = await import(pathToFileURL(resolve(REF, 'shaders/src/runtime/
 const { registerEffect } = await import(pathToFileURL(resolve(REF, 'shaders/src/runtime/registry.js')).href)
 const { registerOp } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/ops.js')).href)
 const { mergeIntoEnums } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/enums.js')).href)
-const { registerParamAliases } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/paramAliases.js')).href)
 const { registerEffectAlias } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/effectAliases.js')).href)
 
 function isValidIdentifier(n) { return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n) }
@@ -71,7 +70,6 @@ for (const rel of rels) {
     })
     registerOp(`${namespace}.${func}`, { name: func, args })
     if (Object.keys(choicesToRegister).length) await mergeIntoEnums(choicesToRegister)
-    if (inst.paramAliases && Object.keys(inst.paramAliases).length) registerParamAliases(`${namespace}.${func}`, inst.paramAliases)
     if (inst.hidden && inst.deprecatedBy) registerEffectAlias(`${namespace}.${func}`, inst.deprecatedBy)
     if (isStarterDef(inst)) starterNames.push(`${namespace}.${func}`)
 }

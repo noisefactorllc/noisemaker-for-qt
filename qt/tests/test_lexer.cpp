@@ -406,7 +406,6 @@ int main() {
         check(nm::diagStage(QStringLiteral("R001")) == QStringLiteral("runtime"), "diagStage R001");
         check(nm::diagSeverity(QStringLiteral("L001")) == QStringLiteral("error"), "diagSeverity L001 error");
         check(nm::diagSeverity(QStringLiteral("S002")) == QStringLiteral("warning"), "diagSeverity S002 warning");
-        check(nm::diagSeverity(QStringLiteral("S007")) == QStringLiteral("warning"), "diagSeverity S007 warning");
         check(nm::diagSeverity(QStringLiteral("S008")) == QStringLiteral("warning"), "diagSeverity S008 warning");
         check(nm::diagDefaultMessage(QStringLiteral("L003")) == QStringLiteral("Unterminated comment"), "diagDefaultMessage L003");
         check(nm::diagDefaultMessage(QStringLiteral("L004")) == QStringLiteral("Output surface reference out of range"), "diagDefaultMessage L004");

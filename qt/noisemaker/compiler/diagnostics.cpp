@@ -34,7 +34,6 @@ const QMap<QString, DiagnosticInfo>& diagTable() {
         {QStringLiteral("S004"), {"Cannot assign null or undefined", "error", "semantic"}},
         {QStringLiteral("S005"), {"Illegal chain structure", "error", "semantic"}},
         {QStringLiteral("S006"), {"Starter chain missing write() call", "error", "semantic"}},
-        {QStringLiteral("S007"), {"Deprecated parameter alias", "warning", "semantic"}},
         {QStringLiteral("S008"), {"Deprecated effect", "warning", "semantic"}},
         {QStringLiteral("R001"), {"Runtime error", "error", "runtime"}},
     };
