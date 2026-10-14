@@ -354,7 +354,8 @@ void AsyncOverlays::startJob(Job& job) {
     job.thread = std::thread([target, effectKey = std::move(effectKey), params = std::move(params), size] {
         StrokeCanvas canvas(size.width(), size.height());
         const TraceResult result = runAsyncInit(effectKey, canvas, params,
-                                                [target] { return target->cancelled.load(std::memory_order_relaxed); });
+                                                [target] { return target->cancelled.load(std::memory_order_relaxed); },
+                                                [](const QString&) { std::this_thread::yield(); });
         if (result != TraceResult::Cancelled) {
             target->pixels = canvas.unpremultipliedRgba8();
             target->completed = true;

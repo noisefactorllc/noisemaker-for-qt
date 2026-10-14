@@ -563,10 +563,10 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     std::printf("  re-trace render samples ms:");
     for (double sample : retraceMs) std::printf(" %.3f", sample);
     std::printf("; count %zu, max %.3f ms\n", retraceMs.size(), maxRetraceMs);
+    check(maxRetraceMs <= 16.667,
+          "every sampled render during a 1920x1080 re-trace fits the 60 Hz frame budget");
     check(pendingAfterRetrace && retraceRender <= 4.0 * steady + 0.05 && retraceRender < 0.5 * syncRetrace,
           "during a 1920x1080 re-trace render() takes a frame's time, not the trace's");
-    // The printed 30-frame maximum is diagnostic on shared CI hosts: their
-    // steady frames can also be descheduled past 16.67 ms.
     check(duringRetrace == syncSeed1, "the previous overlay keeps rendering until the new trace completes");
     background.waitForOverlayTraces();
     background.render(graph, 0.25);
