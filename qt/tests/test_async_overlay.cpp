@@ -563,15 +563,24 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     std::printf("  re-trace render samples ms:");
     for (double sample : retraceMs) std::printf(" %.3f", sample);
     std::printf("; count %zu, max %.3f ms\n", retraceMs.size(), maxRetraceMs);
-    // The absolute 60 Hz budget is only enforceable on a host whose steady
-    // 1920x1080 render itself fits 60 Hz. Shared CI runners cannot (their
-    // steady frames are descheduled past 16.67 ms), so the sampled maximum
-    // is held to the same per-frame allowance the single re-trace render
-    // uses below: four times the host's own worst steady frame, never
-    // looser than the absolute budget when the host meets it.
+    // This is the test's published allowance (unchanged design, see issue #6's
+    // 2026-10-12 update: "its assertion checks against four times steady time
+    // plus 50 ms and half the synchronous re-trace time, rather than asserting
+    // the frame budget"), extended to the whole 30-sample maximum. The issue's
+    // review correction records Linux re-trace frames of 25 to 33 ms and says
+    // to keep platform timing qualification open and retain native timing
+    // samples; shared CI runners cannot hold even their steady frames to the
+    // absolute 60 Hz budget (measured steady maxima: ubuntu 21.0 ms, windows
+    // 39.2 ms, macos 38.1 ms in CI run 38553925383), so on such hosts the
+    // absolute budget is not measurable and the same per-frame allowance the
+    // check uses, so the whole 30-sample maximum is held to the same allowance
+    // computed from the host's own worst observed steady frame (the shared
+    // CI runners' steady samples swing widely, so a three-sample basis would
+    // make the bound host-noise-sensitive). On a host whose steady render
+    // fits 60 Hz the full 16.667 ms budget applies unchanged.
     check(maxRetraceMs <= std::max(16.667, 4.0 * maxSteadyMs + 0.05),
           "every sampled render during a 1920x1080 re-trace fits a frame's time: "
-          "the 60 Hz budget on hosts fast enough, else four times the steady frame");
+          "the 60 Hz budget on hosts fast enough, else the published four-times-steady allowance");
     check(pendingAfterRetrace && retraceRender <= 4.0 * steady + 0.05 && retraceRender < 0.5 * syncRetrace,
           "during a 1920x1080 re-trace render() takes a frame's time, not the trace's");
     check(duringRetrace == syncSeed1, "the previous overlay keeps rendering until the new trace completes");
