@@ -450,8 +450,11 @@ private:
         bool generated = false; // an asyncInit overlay AsyncOverlays uploaded, not a host texture
     };
     QHash<QString, ExternalTexture> m_externalTextures;
-    // AsyncOverlays' side of the external texture table.
-    void uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size);
+    // AsyncOverlays' side of the external texture table. `rgba8` holds row 0
+    // at the top, flipped on upload as the reference uploads it (flipY =
+    // true), or with `bottomUp` its rows already in texture order.
+    void uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size,
+                                bool bottomUp);
     bool hasGeneratedTexture(const QString& texId) const;
     bool hostSuppliesTexture(const QString& texId) const;
     void removeGeneratedTexture(const QString& texId);

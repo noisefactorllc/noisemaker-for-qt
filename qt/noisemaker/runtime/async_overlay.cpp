@@ -14,9 +14,58 @@
 #include <limits>
 #include <thread>
 
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <pthread.h>
+#include <sys/qos.h>
+#elif defined(__linux__)
+#include <pthread.h>
+#include <sched.h>
+#endif
+
 namespace nm {
 
 namespace {
+
+// Called first on a background trace's worker thread (GAP-038). The trace
+// runs below every thread that draws a frame, so it takes only CPU time no
+// frame needs. At normal priority it competes with the frame: Mesa llvmpipe
+// rasterizes on one thread per CPU, so a trace took one CPU's share from
+// every frame. In seven Linux CI runs (4 CPUs, 1920x1080 fibers) the median
+// frame during a trace took 1.31 to 1.45 times the median steady frame,
+// about the 4/3 of losing one of four CPUs, and single frames took up to
+// 30.9 ms. A lowered priority makes the scheduler run the rasterizer
+// threads and the host's render thread first whenever they are runnable:
+//   - Linux: SCHED_IDLE. A waking normal thread always preempts it, and a CPU
+//     that runs only SCHED_IDLE work counts as idle when a woken thread
+//     picks its CPU. nice 19 has neither property.
+//   - macOS: QOS_CLASS_UTILITY, below the default and user-interactive
+//     classes of render threads.
+//   - Windows: THREAD_PRIORITY_LOWEST, below every normal-priority thread.
+// None of them stops the trace: it runs whenever a CPU is idle, which a
+// host that presents at its display rate leaves on every frame, and the
+// Linux and Windows schedulers still give a starved thread CPU time. A
+// trace on a host whose CPUs other work keeps busy completes later; so does
+// the exit of a cancelled one, which ~AsyncOverlays() and clear() wait for.
+// A failed call leaves the default priority, as before this change.
+void lowerTraceThreadPriority() {
+#if defined(_WIN32)
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#elif defined(__APPLE__)
+    pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
+#elif defined(__linux__) && defined(SCHED_IDLE)
+    sched_param param{};
+    param.sched_priority = 0;
+    pthread_setschedparam(pthread_self(), SCHED_IDLE, &param);
+#endif
+}
 
 constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
@@ -286,6 +335,13 @@ QStringList asyncOverlayTextureIds(const Graph& graph) {
 // thread; the worker thread traces its own deep copies of them. The worker
 // writes only pixels, completed and done, and the render thread reads pixels
 // and completed only after it sees done.
+//
+// done is the worker's last access to the Job: it frees its canvas and its
+// copies first, so after done it only returns. The render thread therefore
+// never joins an ended worker (release()): a join waits until the worker
+// thread has exited, and a worker at its lowered priority
+// (lowerTraceThreadPriority) can wait for a CPU behind every rasterizer
+// thread first. Only wait(), clear() and the destructor join.
 struct AsyncOverlays::Job {
     QString effectKey;
     QSize size;
@@ -293,6 +349,8 @@ struct AsyncOverlays::Job {
     std::atomic<bool> cancelled{false};
     std::atomic<bool> done{false};
     bool completed = false; // traced to the end (not cancelled)
+    // The overlay's rows in texture order, bottom row first: the worker
+    // flips them, so the upload copies them as they are.
     std::vector<std::uint8_t> pixels;
     std::thread thread;
 
@@ -301,6 +359,10 @@ struct AsyncOverlays::Job {
     }
     void join() {
         if (thread.joinable()) thread.join();
+    }
+    // After done: lets the worker finish returning on its own.
+    void release() {
+        if (thread.joinable()) thread.detach();
     }
     ~Job() {
         cancelled.store(true, std::memory_order_relaxed);
@@ -337,6 +399,19 @@ QJsonValue detachedCopy(const QJsonValue& value) {
     }
 }
 
+// Reverses the row order of the RGBA8 `pixels` of `size`: the reference's
+// flipY = true upload, done by a background trace's worker so the render
+// thread copies nothing (Backend::uploadGeneratedTexture, bottomUp).
+void flipRows(std::vector<std::uint8_t>& pixels, QSize size) {
+    const std::size_t rowBytes = static_cast<std::size_t>(size.width()) * 4;
+    if (size.height() <= 1 || pixels.size() != rowBytes * static_cast<std::size_t>(size.height())) return;
+    for (int top = 0, bottom = size.height() - 1; top < bottom; ++top, --bottom) {
+        std::uint8_t* const a = pixels.data() + static_cast<std::size_t>(top) * rowBytes;
+        std::uint8_t* const b = pixels.data() + static_cast<std::size_t>(bottom) * rowBytes;
+        std::swap_ranges(a, a + rowBytes, b);
+    }
+}
+
 } // namespace
 
 AsyncOverlays::AsyncOverlays() = default;
@@ -346,21 +421,32 @@ AsyncOverlays::~AsyncOverlays() {
 }
 
 void AsyncOverlays::startJob(Job& job) {
-    Job* const target = &job; // the Job joins this thread before it is destroyed
+    // The Job outlives this thread's last access to it: it joins the thread
+    // before it is destroyed, or releases it after done.
+    Job* const target = &job;
     // Deep copies, so no implicitly shared data crosses to the worker thread.
     QString effectKey = QString::fromUtf8(job.effectKey.toUtf8());
     QJsonObject params = detachedCopy(QJsonValue(job.params)).toObject();
     const QSize size = job.size;
-    job.thread = std::thread([target, effectKey = std::move(effectKey), params = std::move(params), size] {
-        StrokeCanvas canvas(size.width(), size.height());
-        const TraceResult result = runAsyncInit(effectKey, canvas, params,
-                                                [target] { return target->cancelled.load(std::memory_order_relaxed); },
-                                                [](const QString&) { std::this_thread::yield(); });
-        if (result != TraceResult::Cancelled) {
-            target->pixels = canvas.unpremultipliedRgba8();
-            target->completed = true;
+    job.thread = std::thread([target, effectKey = std::move(effectKey), params = std::move(params), size]() mutable {
+        lowerTraceThreadPriority();
+        std::vector<std::uint8_t> pixels;
+        bool completed = false;
+        {
+            StrokeCanvas canvas(size.width(), size.height());
+            const TraceResult result = runAsyncInit(effectKey, canvas, params,
+                                                    [target] { return target->cancelled.load(std::memory_order_relaxed); });
+            if (result != TraceResult::Cancelled) {
+                pixels = canvas.unpremultipliedRgba8();
+                flipRows(pixels, size);
+                completed = true;
+            }
         }
-        target->done.store(true, std::memory_order_release);
+        effectKey = QString();
+        params = QJsonObject();
+        target->pixels = std::move(pixels);
+        target->completed = completed;
+        target->done.store(true, std::memory_order_release); // the last access to *target
     });
 }
 
@@ -371,9 +457,12 @@ void AsyncOverlays::retire(std::unique_ptr<Job> job) {
 }
 
 int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const QJsonObject& globalUniforms) {
-    // Cancelled traces that have ended can be joined without waiting.
+    // Cancelled traces that have ended: released, not joined (Job).
+    for (std::unique_ptr<Job>& job : m_retired) {
+        if (job->done.load(std::memory_order_acquire)) job->release();
+    }
     m_retired.erase(std::remove_if(m_retired.begin(), m_retired.end(),
-                                   [](const std::unique_ptr<Job>& job) { return job->done.load(std::memory_order_acquire); }),
+                                   [](const std::unique_ptr<Job>& job) { return !job->thread.joinable(); }),
                     m_retired.end());
 
     int uploads = 0;
@@ -403,11 +492,12 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
         const bool upToDate = uploaded && !node.placeholder && node.effectKey == pass.effectKey
             && node.size == size && node.params == params;
 
-        const auto upload = [&](const std::vector<std::uint8_t>& pixels, bool placeholder) {
+        // bottomUp: `pixels` holds its rows in texture order (Job::pixels).
+        const auto upload = [&](const std::vector<std::uint8_t>& pixels, bool placeholder, bool bottomUp) {
             for (const QString& texId : node.textureIds) {
                 if (!textureIds.contains(texId)) backend.removeGeneratedTexture(texId);
             }
-            for (const QString& texId : textureIds) backend.uploadGeneratedTexture(texId, pixels, size);
+            for (const QString& texId : textureIds) backend.uploadGeneratedTexture(texId, pixels, size, bottomUp);
             node.effectKey = pass.effectKey;
             node.size = size;
             node.params = params;
@@ -418,7 +508,7 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
         if (!m_background) {
             retire(std::move(node.job)); // left over from the background mode
             if (upToDate) continue;
-            upload(generateAsyncOverlay(pass.effectKey, size, params), false);
+            upload(generateAsyncOverlay(pass.effectKey, size, params), false, false);
             ++uploads;
             continue;
         }
@@ -426,9 +516,9 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
         if (node.job && node.job->matches(pass.effectKey, size, params)) {
             if (!node.job->done.load(std::memory_order_acquire)) continue; // keep the uploaded overlay
             std::unique_ptr<Job> job = std::move(node.job);
-            job->join();
+            job->release();
             if (job->completed) {
-                upload(job->pixels, false);
+                upload(job->pixels, false, true);
                 ++uploads;
                 continue;
             }
@@ -442,7 +532,7 @@ int AsyncOverlays::sync(Backend& backend, const Graph& graph, QSize size, const 
         // than another size's texels.
         if (!uploaded || node.size != size || node.effectKey != pass.effectKey) {
             upload(std::vector<std::uint8_t>(static_cast<size_t>(size.width()) * static_cast<size_t>(size.height()) * 4, 0),
-                   true);
+                   true, true);
         }
         auto job = std::make_unique<Job>();
         job->effectKey = pass.effectKey;

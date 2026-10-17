@@ -101,10 +101,13 @@ std::vector<std::uint8_t> generateAsyncOverlay(const QString& effectKey, QSize s
 //
 // Background traces run the tracer and the canvas (worm_tracer.h,
 // stroke_canvas.h) on a worker thread each; they touch no GL and no Backend
-// state, and work on their own deep copy of the parameters. sync(), on the
-// render thread, uploads a completed trace, but only when it still matches
-// the node's current effect, parameters and size: a newer change cancels
-// the older trace and its pixels are never uploaded.
+// state, and work on their own deep copy of the parameters. The worker runs
+// at a lowered priority, below the threads that draw a frame (GAP-038,
+// async_overlay.cpp), and flips its rows into texture order. sync(), on the
+// render thread, never waits for a worker: it reads an atomic flag and
+// uploads a completed trace, but only when it still matches the node's
+// current effect, parameters and size: a newer change cancels the older
+// trace and its pixels are never uploaded.
 class AsyncOverlays {
 public:
     AsyncOverlays();

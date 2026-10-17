@@ -29,7 +29,20 @@
 #include <cstdlib>
 #include <limits>
 #include <memory>
+#include <thread>
 #include <vector>
+
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <sys/resource.h>
+#endif
 
 namespace {
 
@@ -469,6 +482,39 @@ double secondsSince(std::chrono::steady_clock::time_point start) {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
 
+// CPU seconds this process has used, all threads.
+double processCpuSeconds() {
+#if defined(_WIN32)
+    FILETIME creation, exit, kernel, user;
+    if (!GetProcessTimes(GetCurrentProcess(), &creation, &exit, &kernel, &user)) return 0.0;
+    const auto seconds = [](const FILETIME& t) {
+        return static_cast<double>((static_cast<unsigned long long>(t.dwHighDateTime) << 32) | t.dwLowDateTime) * 1e-7;
+    };
+    return seconds(kernel) + seconds(user);
+#else
+    rusage usage{};
+    if (getrusage(RUSAGE_SELF, &usage) != 0) return 0.0;
+    return static_cast<double>(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+        + static_cast<double>(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) * 1e-6;
+#endif
+}
+
+// The p quantile of `samples` (linear interpolation between order statistics).
+double quantile(std::vector<double> samples, double p) {
+    std::sort(samples.begin(), samples.end());
+    const double rank = p * static_cast<double>(samples.size() - 1);
+    const size_t below = static_cast<size_t>(std::floor(rank));
+    const size_t above = std::min(below + 1, samples.size() - 1);
+    return samples[below] + (samples[above] - samples[below]) * (rank - static_cast<double>(below));
+}
+
+void printSamples(const char* label, const std::vector<double>& samples) {
+    std::printf("  %s samples ms:", label);
+    for (double sample : samples) std::printf(" %.3f", sample);
+    std::printf("; count %zu, median %.3f, max %.3f ms\n", samples.size(), quantile(samples, 0.5),
+                *std::max_element(samples.begin(), samples.end()));
+}
+
 void setSeed(nm::Backend& backend, nm::Graph& graph, nm::EffectRegistry& registry, int seed) {
     backend.applyStepParameterValues(graph, registry,
         QJsonObject{{QStringLiteral("step_1"), QJsonObject{{QStringLiteral("seed"), seed}}}});
@@ -526,67 +572,124 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     check(!background.overlayTracesPending() && background.readSurface() == syncSeed1,
           "the next render() after the trace uploads it: the frame equals the synchronous frame byte for byte");
 
-    // A frame with nothing to trace sets the host's frame time on this machine.
-    double steady = 0.0;
-    double maxSteadyMs = 0.0;
-    std::vector<double> steadyMs;
-    steadyMs.reserve(30);
-    for (int i = 0; i < 30; ++i) {
-        start = std::chrono::steady_clock::now();
+    // The host's own frame time on this machine: frames with nothing to
+    // trace, timed before the re-trace and again after it, so a drift of the
+    // host's speed across the re-trace widens the steady spread.
+    constexpr int kTimedFrames = 30;
+    const auto timedRender = [&] {
+        const auto t0 = std::chrono::steady_clock::now();
         background.render(graph, 0.25);
-        steadyMs.push_back(secondsSince(start) * 1000.0);
+        return secondsSince(t0) * 1000.0;
+    };
+    double steady = 0.0; // seconds: the slowest of the first three steady frames
+    std::vector<double> steadyMs;
+    steadyMs.reserve(2 * kTimedFrames);
+    double cpu = processCpuSeconds();
+    start = std::chrono::steady_clock::now();
+    for (int i = 0; i < kTimedFrames; ++i) {
+        steadyMs.push_back(timedRender());
         if (i < 3) steady = std::max(steady, steadyMs.back() / 1000.0);
-        maxSteadyMs = std::max(maxSteadyMs, steadyMs.back());
     }
-    std::printf("  steady render samples ms:");
-    for (double sample : steadyMs) std::printf(" %.3f", sample);
-    std::printf("; max %.3f ms\n", maxSteadyMs);
+    const double steadyCpus = (processCpuSeconds() - cpu) / secondsSince(start);
+    const double maxSteadyMs = *std::max_element(steadyMs.begin(), steadyMs.end());
+
     setSeed(background, graph, registry, 2);
     std::vector<double> retraceMs;
-    retraceMs.reserve(30);
+    retraceMs.reserve(kTimedFrames);
+    cpu = processCpuSeconds();
     start = std::chrono::steady_clock::now();
-    background.render(graph, 0.25);
-    const double retraceRender = secondsSince(start);
+    retraceMs.push_back(timedRender());
+    const double retraceRender = retraceMs.back() / 1000.0;
     const bool pendingAfterRetrace = background.overlayTracesPending();
     const QImage duringRetrace = background.readSurface();
-    retraceMs.push_back(retraceRender * 1000.0);
-    for (int i = 1; i < 30 && background.overlayTracesPending(); ++i) {
-        start = std::chrono::steady_clock::now();
-        background.render(graph, 0.25);
-        const double sampleMs = secondsSince(start) * 1000.0;
-        if (!background.overlayTracesPending()) break; // this frame uploaded the completed trace
-        retraceMs.push_back(sampleMs);
+    double switchMs = -1.0; // the render() that uploads the completed trace
+    while (static_cast<int>(retraceMs.size()) < kTimedFrames && background.overlayTracesPending()) {
+        const double sample = timedRender();
+        if (!background.overlayTracesPending()) {
+            switchMs = sample;
+            break;
+        }
+        retraceMs.push_back(sample);
     }
-    const double maxRetraceMs = *std::max_element(retraceMs.begin(), retraceMs.end());
+    const double retraceCpus = (processCpuSeconds() - cpu) / secondsSince(start);
+    if (switchMs < 0.0) {
+        background.waitForOverlayTraces();
+        switchMs = timedRender();
+    }
+    check(!background.overlayTracesPending() && background.readSurface() == syncSeed2,
+          "the completed re-trace equals the synchronous frame byte for byte");
+    for (int i = 0; i < kTimedFrames; ++i) steadyMs.push_back(timedRender());
+
     std::printf("  background: first render %.3f s, steady frame %.3f s, render during re-trace %.3f s\n",
                 firstRender, steady, retraceRender);
-    std::printf("  re-trace render samples ms:");
-    for (double sample : retraceMs) std::printf(" %.3f", sample);
-    std::printf("; count %zu, max %.3f ms\n", retraceMs.size(), maxRetraceMs);
-    // This is the test's published allowance (unchanged design, see issue #6's
-    // 2026-10-12 update: "its assertion checks against four times steady time
-    // plus 50 ms and half the synchronous re-trace time, rather than asserting
-    // the frame budget"), extended to the whole 30-sample maximum. The issue's
-    // review correction records Linux re-trace frames of 25 to 33 ms and says
-    // to keep platform timing qualification open and retain native timing
-    // samples; shared CI runners cannot hold even their steady frames to the
-    // absolute 60 Hz budget (measured steady maxima: ubuntu 21.0 ms, windows
-    // 39.2 ms, macos 38.1 ms in CI run 38553925383), so on such hosts the
-    // absolute budget is not measurable and the same per-frame allowance the
-    // check uses, so the whole 30-sample maximum is held to the same allowance
-    // computed from the host's own worst observed steady frame (the shared
-    // CI runners' steady samples swing widely, so a three-sample basis would
-    // make the bound host-noise-sensitive). On a host whose steady render
-    // fits 60 Hz the full 16.667 ms budget applies unchanged.
-    check(maxRetraceMs <= std::max(16.667, 4.0 * maxSteadyMs + 0.05),
-          "every sampled render during a 1920x1080 re-trace fits a frame's time: "
-          "the 60 Hz budget on hosts fast enough, else the published four-times-steady allowance");
+    printSamples("steady render", steadyMs);
+    printSamples("re-trace render", retraceMs);
+    std::printf("  switch to the completed trace: render %.3f ms\n", switchMs);
+    std::printf("  process CPU seconds per second: steady %.2f, during re-trace %.2f\n", steadyCpus, retraceCpus);
+
+    // GAP-038's criterion: in the background mode render() returns within one
+    // 60 Hz frame budget (16.667 ms) during a 1920x1080 re-trace. The frames
+    // counted are every render() while the trace is pending and the render()
+    // that switches to the completed overlay.
+    //
+    // Frames vary with no trace running. On Linux llvmpipe in CI a late frame
+    // is followed by an early one (17.422 ms, then 11.368 ms, around a median
+    // of 14.456 ms). The steady envelope is the slowest steady frame plus the
+    // steady frames' spread: max + (max - min).
+    //   - Envelope within the budget: the host renders inside the budget with
+    //     room for its own variation, and the criterion applies as written.
+    //     Every counted frame must be within 16.667 ms.
+    //   - Envelope over the budget: the host's own steady frames can miss the
+    //     budget, so the budget cannot show whether the trace stalls a frame.
+    //     The test then asserts what the budget protects: the trace stalls no
+    //     frame and takes no CPU from it. No counted frame may be slower than
+    //     the envelope. The median frame during the re-trace may exceed the
+    //     steady median by at most the steady interquartile range plus half
+    //     of one CPU's share of the steady median, median / (2 N) for N
+    //     hardware threads. A trace that takes one of the N CPUs a software
+    //     rasterizer uses costs about median / (N - 1): with the trace at
+    //     normal priority, seven Linux CI runs (N = 4) moved the median by
+    //     3.432 to 7.135 ms, 1.306 to 1.445 times the steady median, and every
+    //     run fails this bound. A trace that only shares caches and memory
+    //     bandwidth costs less: on Apple's software renderer (one rasterizer
+    //     thread, 8 CPUs) the median moved 0.332 ms, 2.25 percent.
+    constexpr double kFrameBudgetMs = 1000.0 / 60.0;
+    std::vector<double> counted = retraceMs;
+    counted.push_back(switchMs);
+    const double countedMax = *std::max_element(counted.begin(), counted.end());
+    const double steadyMax = *std::max_element(steadyMs.begin(), steadyMs.end());
+    const double steadyMin = *std::min_element(steadyMs.begin(), steadyMs.end());
+    const double envelope = steadyMax + (steadyMax - steadyMin);
+    const double steadyMedian = quantile(steadyMs, 0.5);
+    const double steadyIqr = quantile(steadyMs, 0.75) - quantile(steadyMs, 0.25);
+    const double retraceMedian = quantile(retraceMs, 0.5);
+    const unsigned cpus = std::max(1u, std::thread::hardware_concurrency());
+    const double medianBound = steadyMedian + steadyIqr + steadyMedian / (2.0 * cpus);
+    std::printf("  steady envelope %.3f ms (max %.3f + spread %.3f); steady median %.3f ms, interquartile range %.3f ms; "
+                "re-trace median %.3f ms (bound %.3f ms, %u hardware threads); counted max %.3f ms\n",
+                envelope, steadyMax, steadyMax - steadyMin, steadyMedian, steadyIqr, retraceMedian, medianBound, cpus,
+                countedMax);
+    check(retraceMs.size() >= 10, "the re-trace stays pending for at least ten timed frames");
+    if (envelope <= kFrameBudgetMs) {
+        std::printf("  the steady envelope fits the 60 Hz budget: every counted frame must fit it\n");
+        check(countedMax <= kFrameBudgetMs,
+              "every render() during a 1920x1080 re-trace, and the switch to the completed overlay, "
+              "returns within the 60 Hz frame budget (16.667 ms)");
+    } else {
+        std::printf("  the steady envelope exceeds the 60 Hz budget: the trace must add no stall beyond the steady variation\n");
+        check(countedMax <= envelope,
+              "no render() during a 1920x1080 re-trace, nor the switch to the completed overlay, "
+              "is slower than the steady envelope");
+        check(retraceMedian <= medianBound,
+              "the median render() during a 1920x1080 re-trace stays within the steady interquartile range "
+              "and half of one CPU's share of the steady median");
+    }
+    // The earlier allowances stay as well.
+    check(*std::max_element(retraceMs.begin(), retraceMs.end()) <= std::max(16.667, 4.0 * maxSteadyMs + 0.05),
+          "every sampled render during a 1920x1080 re-trace stays within four steady frames");
     check(pendingAfterRetrace && retraceRender <= 4.0 * steady + 0.05 && retraceRender < 0.5 * syncRetrace,
           "during a 1920x1080 re-trace render() takes a frame's time, not the trace's");
     check(duringRetrace == syncSeed1, "the previous overlay keeps rendering until the new trace completes");
-    background.waitForOverlayTraces();
-    background.render(graph, 0.25);
-    check(background.readSurface() == syncSeed2, "the completed re-trace equals the synchronous frame byte for byte");
     return syncRetrace;
 }
 

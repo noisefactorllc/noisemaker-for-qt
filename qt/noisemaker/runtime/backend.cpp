@@ -839,9 +839,10 @@ void Backend::waitForOverlayTraces() {
     if (m_asyncOverlays) m_asyncOverlays->wait();
 }
 
-void Backend::uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size) {
+void Backend::uploadGeneratedTexture(const QString& texId, const std::vector<std::uint8_t>& rgba8, QSize size,
+                                     bool bottomUp) {
     ExternalTextureOptions options;
-    options.flipY = true; // reference Pipeline._startAsyncInit updateTexture
+    options.flipY = !bottomUp; // reference Pipeline._startAsyncInit updateTexture: flipY = true
     updateTextureFromSource(texId, rgba8.data(), size.width(), size.height(), size.width() * 4, options);
     m_externalTextures[texId].generated = true;
 }
