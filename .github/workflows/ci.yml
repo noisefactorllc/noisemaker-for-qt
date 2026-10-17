@@ -375,6 +375,9 @@ jobs:
             node "parity/check_$gate.mjs"
             echo "::endgroup::"
           done
+          echo "::group::fixture_coverage"
+          node tools/fixture-coverage.mjs --check --reference-commit "$(git -C "$NM_REFERENCE_ROOT" rev-parse HEAD)"
+          echo "::endgroup::"
 
       - name: Upload function-body differential evidence
         if: always()
