@@ -5,6 +5,8 @@
 // (node, python3, network; no GPU, no Qt toolchain):
 //   - the three pure-node byte gates against the pinned reference checkout
 //     (SHADERS, DEFINITIONS, EFFECTS_UI — the effect-catalog parity gates)
+//   - the fixture-coverage record check (parity/effect-fixture-coverage.json must
+//     equal its regeneration against the pinned reference; tools/fixture-coverage.mjs)
 //   - the parity unit suites (test_artistic_matrix, test_harness_contract)
 // The C++/ctest layer needs a Qt + GL 4.1 toolchain and is not attempted
 // here; parity/pytest (57 + 10 subtests) covers the same unit cases via
@@ -55,5 +57,6 @@ for (const gate of [
     'parity/check_definitions.mjs',
     'parity/check_effects_ui.mjs',
 ]) run('node', [gate], { env })
+run('node', ['tools/fixture-coverage.mjs', '--check', '--reference-commit', PIN], { env })
 run('python3', ['-m', 'unittest', '-v', 'parity.test_artistic_matrix', 'parity.test_harness_contract'])
 console.log('scripts/test: all parity checks passed')
