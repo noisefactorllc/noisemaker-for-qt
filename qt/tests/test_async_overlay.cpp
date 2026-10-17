@@ -612,7 +612,32 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
         retraceMs.push_back(sample);
     }
     const double retraceCpus = (processCpuSeconds() - cpu) / secondsSince(start);
-    if (switchMs < 0.0) {
+    // The overlay must change to the completed trace while a live host keeps
+    // presenting, although the trace runs below the frame's threads: frames
+    // continue at a 60 Hz pace (back to back on a host slower than that)
+    // until the trace completes. The bound is ten synchronous trace times,
+    // inside the reference's own: Chromium completes this 1920x1080 trace in
+    // 33 s against the port's 2.8 s synchronous trace (async_overlay.h).
+    std::vector<double> pacedMs;
+    const auto deadline = start + std::chrono::duration<double>(10.0 * syncRetrace);
+    auto nextFrame = std::chrono::steady_clock::now();
+    while (switchMs < 0.0 && background.overlayTracesPending() && std::chrono::steady_clock::now() < deadline) {
+        nextFrame += std::chrono::microseconds(16667);
+        std::this_thread::sleep_until(nextFrame);
+        const double sample = timedRender();
+        if (!background.overlayTracesPending()) {
+            switchMs = sample;
+            break;
+        }
+        pacedMs.push_back(sample);
+    }
+    const double completionSeconds = secondsSince(start);
+    const bool completedLive = switchMs >= 0.0;
+    std::printf("  live re-trace completion %.3f s after %zu paced frames; synchronous re-trace %.3f s\n",
+                completionSeconds, pacedMs.size(), syncRetrace);
+    check(completedLive,
+          "the overlay changes to the completed trace while frames continue at 60 Hz, within ten synchronous trace times");
+    if (!completedLive) {
         background.waitForOverlayTraces();
         switchMs = timedRender();
     }
@@ -624,13 +649,23 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
                 firstRender, steady, retraceRender);
     printSamples("steady render", steadyMs);
     printSamples("re-trace render", retraceMs);
+    if (!pacedMs.empty()) {
+        printSamples("paced re-trace render", pacedMs);
+        std::printf("  paced re-trace frames over 16.667 ms: %ld of %zu\n",
+                    static_cast<long>(std::count_if(pacedMs.begin(), pacedMs.end(), [](double ms) { return ms > 1000.0 / 60.0; })),
+                    pacedMs.size());
+    }
     std::printf("  switch to the completed trace: render %.3f ms\n", switchMs);
     std::printf("  process CPU seconds per second: steady %.2f, during re-trace %.2f\n", steadyCpus, retraceCpus);
 
     // GAP-038's criterion: in the background mode render() returns within one
     // 60 Hz frame budget (16.667 ms) during a 1920x1080 re-trace. The frames
-    // counted are every render() while the trace is pending and the render()
-    // that switches to the completed overlay.
+    // counted are the back-to-back render() calls while the trace is pending
+    // and the render() that switches to the completed overlay; the steady
+    // frames are back to back too. The paced frames are printed, not counted:
+    // their number follows the trace's duration (hundreds of frames), so
+    // their slowest frame measures the host's rare preemptions, which the 60
+    // steady frames do not sample as often.
     //
     // Frames vary with no trace running. On Linux llvmpipe in CI a late frame
     // is followed by an early one (17.422 ms, then 11.368 ms, around a median
