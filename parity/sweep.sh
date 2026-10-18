@@ -66,6 +66,10 @@ LEDGER_PATH="${LEDGER_PATH:-parity/ledger.json}"
 SIZE=256
 TIME=0.25
 FRAMES=8
+HOST_OS="$(uname -s 2>/dev/null)"
+# The Apple chip of a macOS host ("Apple M2"), for the NEAR policies measured on it.
+HOST_CHIP=""
+[ "$HOST_OS" = "Darwin" ] && HOST_CHIP="$(sysctl -n machdep.cpu.brand_string 2>/dev/null)"
 
 # --- optional case-id scoping ------------------------------------------------
 # Positional arguments scope the sweep to those case ids (used by
@@ -166,6 +170,83 @@ defer_reason() {
 	echo "no single-frame golden is meaningful (3D scene or live external input) -- stage-classification, task-T6-report.md"
 }
 
+# --- tol_for_apple_m2(): Apple M2 NEAR policies (GAP-058) --------------------
+# Measured on Apple M2, macOS 14.8.3 arm64, port f99a0a8, reference at the
+# scripts/test PIN 6cb1a3c3. Capture protocol: scripts/parity-summary with
+# the macOS defaults; goldens minted headless (SHADE_HEADLESS=1, Playwright
+# 1.64.0 Chromium build 1248, "ANGLE Metal Renderer: Apple M2"), candidates
+# from nm-render --batch-manifest on Apple OpenGL 4.1 (cocoa), 256x256,
+# t=0.25, 8 frames. Two fresh runs gave byte-identical goldens and candidates.
+# On Linux llvmpipe the golden and the candidate of each fixture are
+# byte-identical (parity-llvmpipe.yml run 38292595571: port cf0fb0c, reference
+# 3f5775c6, which differs from the PIN in no input of these fixtures except
+# the crt shader). The M2 golden and the M2 candidate both differ from that
+# pair, by similar amounts (the candidate's changed pixels are 0.82 to 1.18
+# times the golden's), and in 31 of the 32 comparable fixtures they differ
+# less from each other than from it: the Apple GPU compilers on both sides
+# move these pixels, not the port. Each pair was reviewed side by side at
+# native size and looks the same. The policies apply only on a macOS host
+# whose chip is an Apple M2 (machdep.cpu.brand_string "Apple M2..."), where
+# they were measured. Linux llvmpipe keeps the strict bar for these fixtures,
+# and the Apple M4 keeps the bar of its GAP-047 qualification. On an Apple M2
+# an entry here replaces the entry for the same fixture in tol_for(). Each
+# entry's tolerance is the measured max + 0.001 and its SSIM minimum is below
+# the measured SSIM. The comment gives the measured max, the pixels with any
+# difference out of 65536, those over 2, and the SSIM.
+tol_for_apple_m2() {
+	case "$1" in
+		# Crack lines: the crack mask moves one pixel along cell edges.
+		craquelure)    echo "12.001 0.999" ;;  # max 12, 1523 px, 178 over 2, ssim 0.9999939
+		craquelureBig) echo "13.001 0.999" ;;  # max 13, 1710 px, 175 over 2, ssim 0.9999882
+		# Stroke masks: isolated stroke pixels flip at the hatch threshold
+		# (the hatchPencil mechanism in tol_for()).
+		hatch|hatchReferencePen)       echo "220.001 0.999" ;; # max 220, 29 px, 29 over 2, ssim 0.9990937
+		hatchChalk)                    echo "110.001 0.999" ;; # max 110, 15 px, 15 over 2, ssim 0.9998220
+		hatchReferenceChalkCharcoal)   echo "110.001 0.999" ;; # max 110, 15 px, 15 over 2, ssim 0.9998246
+		hatchCharcoal)                 echo "175.001 0.999" ;; # max 175, 16 px, 16 over 2, ssim 0.9994828
+		hatchReferenceCharcoal)        echo "170.001 0.999" ;; # max 170, 12 px, 12 over 2, ssim 0.9996073
+		hatchReferenceColoredPencil)   echo "244.001 0.999" ;; # max 244, 19 px, 18 over 2, ssim 0.9995792
+		hatchConte)                    echo "11.001 0.999" ;;  # max 11, 1026 px, 6 over 2, ssim 0.9999995
+		hatchReferenceConte)           echo "43.001 0.999" ;;  # max 43, 888 px, 8 over 2, ssim 0.9999970
+		hatchCrosshatch)               echo "81.001 0.999" ;;  # max 81, 1561 px, 11 over 2, ssim 0.9999601
+		hatchReferenceCrosshatch)      echo "59.001 0.999" ;;  # max 59, 1384 px, 24 over 2, ssim 0.9999756
+		strokesSmudge)                 echo "72.001 0.999" ;;  # max 72, 930 px, 279 over 2, ssim 0.9999754
+		# Dot and threshold masks: dot edges, a few whole dots and torn edges
+		# change at a threshold or nearest-cell tie.
+		stipple|stippleReferencePointillize) echo "248.001 0.997" ;; # max 248, 4471 px, 331 over 2, ssim 0.9974415
+		stippleReticulation)           echo "234.001 0.999" ;; # max 234, 12 px, 12 over 2, ssim 0.9996167
+		stippleReferenceReticulation)  echo "234.001 0.999" ;; # max 234, 13 px, 13 over 2, ssim 0.9996035
+		stamp)                         echo "7.001 0.999" ;;   # max 7, 1 px, 1 over 2, ssim 1.0000002
+		stampTorn)                     echo "126.001 0.999" ;; # max 126, 3062 px, 127 over 2, ssim 0.9998534
+		scanlineError)                 echo "195.001 0.999" ;; # max 195, 116 px, 24 over 2, ssim 0.9993268
+		# Coordinate ties: a remapped coordinate selects the adjacent texel, on
+		# isolated pixels or along an angle seam (the rotate/tunnel mechanism).
+		crt)                           echo "10.001 0.999" ;;  # max 10, 34 px, 7 over 2, ssim 1.0000000
+		octaveWarp)                    echo "4.001 0.999" ;;   # max 4, 5 px, 1 over 2, ssim 1.0000000
+		parallaxHeightMap)             echo "10.001 0.999" ;;  # max 10, 7 px, 1 over 2, ssim 0.9999999
+		pondRipplesClamp|pondRipplesReferencePond) echo "5.001 0.999" ;; # max 5, 3 px, 1 over 2, ssim 1.0000000
+		pondRipplesRepeat)             echo "5.001 0.999" ;;   # max 5, 4 px, 1 over 2, ssim 1.0000001
+		reindex)                       echo "13.001 0.999" ;;  # max 13, 1 px, 1 over 2, ssim 0.9999989
+		spiral)                        echo "9.001 0.999" ;;   # max 9, 9 px, 4 over 2, ssim 0.9999999
+		shadow)                        echo "125.001 0.999" ;; # triangle edge and one diagonal seam: max 125, 254 px, 71 over 2, ssim 0.9999778
+		uvRemap)                       echo "20.001 0.999" ;;  # diagonal angle seam: max 20, 125 px, 125 over 2, ssim 0.9999762
+		# Specular pow amplification (the plasticWrap mechanism in tol_for()).
+		plasticWrapDirected)           echo "31.001 0.999" ;;  # max 31, 23 px, 11 over 2, ssim 0.9999990
+		plasticWrapGloss)              echo "39.001 0.999" ;;  # max 39, 28 px, 24 over 2, ssim 0.9999948
+		*) return 1 ;;
+	esac
+}
+reason_for_apple_m2() {
+	case "$1" in
+		craquelure|craquelureBig) echo "Apple M2: the crack mask moves one pixel along cell edges under the Apple GPU compilers (GAP-058)" ;;
+		hatch|hatchReferencePen|hatchChalk|hatchReferenceChalkCharcoal|hatchCharcoal|hatchReferenceCharcoal|hatchReferenceColoredPencil|hatchConte|hatchReferenceConte|hatchCrosshatch|hatchReferenceCrosshatch|strokesSmudge) echo "Apple M2: isolated stroke-mask pixels flip at the stroke threshold under the Apple GPU compilers (GAP-058)" ;;
+		stipple|stippleReferencePointillize|stippleReticulation|stippleReferenceReticulation|stamp|stampTorn|scanlineError) echo "Apple M2: dot, threshold and torn-edge masks change at threshold or nearest-cell ties under the Apple GPU compilers (GAP-058)" ;;
+		crt|octaveWarp|parallaxHeightMap|pondRipplesClamp|pondRipplesReferencePond|pondRipplesRepeat|reindex|spiral|shadow|uvRemap) echo "Apple M2: remapped coordinates select the adjacent texel at boundary ties and angle seams under the Apple GPU compilers (GAP-058)" ;;
+		plasticWrapDirected|plasticWrapGloss) echo "Apple M2: Blinn specular pow amplifies isolated sub-LSB luminance-gradient differences (GAP-058)" ;;
+		*) return 1 ;;
+	esac
+}
+
 # --- tol_for(): START STRICT for every program (PORTING-GUIDE.md rule 5) ---
 # Tolerance loosenings live ONLY here, per program, each with the mechanism
 # actually observed on THIS backend traced in an inline comment. Do NOT
@@ -181,6 +262,7 @@ defer_reason() {
 # ANGLE GL and nm-render share Mesa's compiler, all 45 of these fixtures
 # are bit-exact (parity-llvmpipe.yml, CI runs 36055292025 and 36077644490).
 tol_for() {
+	case "$HOST_CHIP" in "Apple M2"*) tol_for_apple_m2 "$1" && return 0 ;; esac
 	case "$1" in
 		# --- Fractal basin/escape-boundary chaos (godot's newton mechanism,
 		# re-observed on this backend, now also seen on julia/mandelbrot --
@@ -291,6 +373,7 @@ tol_for() {
 	esac
 }
 reason_for() {
+	case "$HOST_CHIP" in "Apple M2"*) reason_for_apple_m2 "$1" && return 0 ;; esac
 	case "$1" in
 		newton|julia|mandelbrot) echo "iterative escape/root-basin classification is chaotic under cross-backend floating-point rounding at the boundary (diff heatmap traces the set boundary exactly)" ;;
 		hatchPencil|hatchReferenceColoredPencil|hatchReferenceColoredPencilLeftDiag|strokesReferenceSmudge|strokesSmudge) echo "near-zero Sobel/gradient singularity makes the edge-following stroke angle discontinuous across GPU compilers" ;;

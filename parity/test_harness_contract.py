@@ -62,6 +62,8 @@ beyond a literal port:
   - test_summary_selects_the_apple_gpu_route_on_macos and
     test_sweep_prints_the_renderer_error_when_nm_render_fails_to_start
     (the macOS defaults and the renderer failure output; GAP-059)
+  - test_sweep_applies_the_apple_m2_policies_only_on_an_apple_m2 (the
+    Apple M2 NEAR policies leave other hosts' bars unchanged; GAP-058)
 """
 
 import os
@@ -1339,6 +1341,51 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         ledger = json.loads((parity / "ledger.json").read_text())
         self.assertEqual(ledger[0]["verdict"], "PASS")
+
+    def test_sweep_applies_the_apple_m2_policies_only_on_an_apple_m2(self):
+        # GAP-058: the Apple M2 NEAR policies (tol_for_apple_m2) apply on an
+        # Apple M2; the Apple M4 and Linux llvmpipe keep their earlier bars for
+        # those fixtures, and fixtures outside that table keep their tol_for()
+        # policy everywhere.
+        earlier = {"stipple": "2.001 0.98", "plasticWrapGloss": "27.001 0.999", "newton": "255 0.98"}
+        expected = {
+            ("Darwin", "Apple M2"): {"stipple": "248.001 0.997", "plasticWrapGloss": "39.001 0.999", "newton": "255 0.98"},
+            ("Darwin", "Apple M2 Pro"): {"stipple": "248.001 0.997", "plasticWrapGloss": "39.001 0.999", "newton": "255 0.98"},
+            ("Darwin", "Apple M4"): earlier,
+            ("Linux", "Apple M2"): earlier,
+        }
+        for (host, chip), policies in expected.items():
+            with self.subTest(host=host, chip=chip):
+                root = self.tmp / f"{host}-{chip.replace(' ', '-')}"
+                parity = root / "parity"
+                (parity / "programs").mkdir(parents=True)
+                (parity / "out").mkdir()
+                for helper in ("sweep.sh", "write-ledger.py", "make-batch-manifest.py"):
+                    shutil.copy2(REPO / "parity" / helper, parity / helper)
+                for name in policies:
+                    (parity / "programs" / f"{name}.dsl").write_text("noise().write(o0)\n")
+                    (parity / "out" / f"{name}.golden.png").touch()
+                (parity / "run.sh").write_text(
+                    "#!/usr/bin/env bash\n"
+                    "echo \"$1 $2 $3\" >> \"$(dirname \"$0\")/policies.txt\"\n"
+                    "printf '%s\\n' \"{\\\"name\\\":\\\"$1\\\",\\\"passed\\\":true,\\\"max_abs_diff\\\":0,\\\"mean_abs_diff\\\":0,\\\"ssim\\\":1,\\\"tolerance\\\":$2,\\\"ssim_min\\\":$3}\" > \"$(dirname \"$0\")/out/$1.report.json\"\n"
+                    "echo \"[PASS] $1\"\n"
+                )
+                (parity / "run.sh").chmod(0o755)
+                (root / "bin").mkdir()
+                (root / "bin" / "uname").write_text(f"#!/bin/sh\necho {host}\n")
+                (root / "bin" / "uname").chmod(0o755)
+                (root / "bin" / "sysctl").write_text(f"#!/bin/sh\necho '{chip}'\n")
+                (root / "bin" / "sysctl").chmod(0o755)
+                result = subprocess.run(
+                    ["bash", str(parity / "sweep.sh")],
+                    env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}", "NM_RENDER": "/bin/false",
+                         "SKIP_RENDER": "1", "SKIP_GOLDEN": "1", "LEDGER_PATH": str(root / "ledger.json")},
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                recorded = dict(line.split(" ", 1) for line in (parity / "policies.txt").read_text().splitlines())
+                self.assertEqual(recorded, policies)
 
     def test_sweep_rejects_normal_child_nonzero_even_with_pass_report(self):
         parity = self.tmp / "parity"
