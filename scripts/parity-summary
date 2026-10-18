@@ -136,11 +136,13 @@ if [ -z "${NM_REFERENCE_ROOT:-}" ]; then
   fi
   echo "[REFERENCE] using $NM_REFERENCE_ROOT" >&2
 fi
+# The golden minter loads the reference's own Playwright: install the versions
+# that the reference lockfile names, as CI does (npm ci), never a fixed version.
 if [ ! -f "$NM_REFERENCE_ROOT/node_modules/playwright/package.json" ]; then
-  echo "[REFERENCE] installing playwright@1.63.0 into the reference clone" >&2
-  ( cd "$NM_REFERENCE_ROOT" && npm install --no-save --no-audit --no-fund "playwright@1.63.0" >/dev/null 2>&1 ) || true
+  echo "[REFERENCE] installing the reference lockfile dependencies (npm ci)" >&2
+  ( cd "$NM_REFERENCE_ROOT" && npm ci --no-audit --no-fund >/dev/null 2>&1 ) || true
   [ -f "$NM_REFERENCE_ROOT/node_modules/playwright/package.json" ] \
-    || fail_infra "playwright unavailable for the reference harness (set NM_REFERENCE_ROOT to a prepared checkout)"
+    || fail_infra "playwright unavailable for the reference harness after npm ci (set NM_REFERENCE_ROOT to a prepared checkout)"
 fi
 
 # --------------------------------------------------- python compare venv
@@ -169,9 +171,13 @@ fi
 export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$ROOT/parity/.cache/pw-browsers}"
 CHROME_PATH="$( cd "$NM_REFERENCE_ROOT" && node -e "process.stdout.write(require('playwright').chromium.executablePath())" 2>/dev/null )"
 if [ -n "$CHROME_PATH" ] && [ ! -e "$CHROME_PATH" ]; then
-  echo "[BROWSERS] installing playwright chromium" >&2
-  ( cd "$NM_REFERENCE_ROOT" && npx playwright install chromium >/dev/null 2>&1 ) || true
-  [ -e "$CHROME_PATH" ] || fail_infra "playwright chromium is not installed at $CHROME_PATH (run npx playwright install chromium)"
+  # Install Chromium with the CLI of the Playwright package that the minter
+  # loads (require('playwright')). node_modules/.bin/playwright can resolve to
+  # another package (@playwright/test) that installs another Chromium build.
+  PLAYWRIGHT_CLI="$( cd "$NM_REFERENCE_ROOT" && node -e "process.stdout.write(require('path').join(require('path').dirname(require.resolve('playwright/package.json')), 'cli.js'))" 2>/dev/null )"
+  echo "[BROWSERS] installing playwright chromium ($PLAYWRIGHT_CLI)" >&2
+  ( cd "$NM_REFERENCE_ROOT" && node "$PLAYWRIGHT_CLI" install chromium >/dev/null 2>&1 ) || true
+  [ -e "$CHROME_PATH" ] || fail_infra "playwright chromium is not installed at $CHROME_PATH (run node $PLAYWRIGHT_CLI install chromium in the reference checkout)"
 fi
 
 # ------------------------------------------------------------------- sweep

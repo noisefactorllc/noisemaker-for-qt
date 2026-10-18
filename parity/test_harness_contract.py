@@ -56,6 +56,9 @@ beyond a literal port:
   - test_scripts_test_rejects_a_reference_checkout_that_is_not_at_the_pin and
     test_fixture_coverage_rejects_a_reference_checkout_that_is_not_at_the_commit
     (a reference checkout whose HEAD is not the pin stops the run; GAP-054)
+  - test_summary_installs_the_lockfile_playwright_and_its_own_chromium
+    (the bootstrap installs the lockfile Playwright and the Chromium build
+    that the loaded package names; GAP-053)
 """
 
 import os
@@ -499,6 +502,122 @@ class HarnessContractTests(unittest.TestCase):
         self.assertIn(f"HEAD {other}", output)
         self.assertIn(f"--reference-commit {pin}", output)
         self.assertNotIn("COVERAGE", output)
+
+    def _summary_port(self, root, host_os):
+        """A scratch port for scripts/parity-summary: one case, a fake sweep that records
+        its environment, and a bin/ directory with a fake uname that reports host_os."""
+        parity = root / "parity"
+        (root / "scripts").mkdir(parents=True)
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        (parity / ".venv" / "bin").mkdir(parents=True)
+        (parity / ".venv" / "bin" / "python").write_text("#!/bin/sh\n")
+        (parity / ".venv" / "bin" / "python").chmod(0o755)
+        shutil.copy2(REPO / "scripts" / "parity-summary", root / "scripts" / "parity-summary")
+        (parity / "programs" / "case.dsl").write_text("noise().write(o0)\n")
+        (parity / "out" / "case.golden.png").write_bytes(b"same")
+        (parity / "out" / "case.candidate.png").write_bytes(b"same")
+        row = {"program": "case", "verdict": "PASS", "max_abs_diff": 0, "ssim": 1.0,
+               "policy": {"tolerance": 2.001, "ssim_min": 0.98}}
+        (parity / "fake-ledger.json").write_text(json.dumps([row]))
+        (parity / "sweep.sh").write_text(
+            "#!/bin/sh\n"
+            "env > \"$(dirname \"$0\")/sweep-env.txt\"\n"
+            "cp \"$(dirname \"$0\")/fake-ledger.json\" \"$LEDGER_PATH\"\n"
+        )
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "uname").write_text(f"#!/bin/sh\necho {host_os}\n")
+        (bin_dir / "uname").chmod(0o755)
+        return parity, bin_dir
+
+    def _fake_playwright(self, node_modules):
+        """node_modules with a loaded playwright package and a .bin/playwright that
+        resolves to another package (@playwright/test) installing another Chromium build."""
+        loaded = node_modules / "playwright"
+        loaded.mkdir(parents=True)
+        (loaded / "package.json").write_text(json.dumps({
+            "name": "playwright", "version": "9.9.1", "main": "index.js",
+            "exports": {".": "./index.js", "./package.json": "./package.json"}}))
+        def chrome(build):
+            return f"require('path').join(process.env.PLAYWRIGHT_BROWSERS_PATH, '{build}', 'chrome')"
+
+        def install(build):
+            return ("const fs = require('fs'), path = require('path')\n"
+                    "if (process.argv[2] === 'install' && process.argv[3] === 'chromium') {\n"
+                    "  const exe = " + chrome(build) + "\n"
+                    "  fs.mkdirSync(path.dirname(exe), { recursive: true })\n"
+                    "  fs.writeFileSync(exe, '')\n"
+                    "}\n")
+        (loaded / "index.js").write_text(
+            "module.exports = { chromium: { executablePath: () => " + chrome("chromium-9991") + " } }\n")
+        (loaded / "cli.js").write_text(install("chromium-9991"))
+        other = node_modules / "@playwright" / "test"
+        other.mkdir(parents=True)
+        (other / "cli.js").write_text(install("chromium-9992"))
+        (node_modules / ".bin").mkdir()
+        (node_modules / ".bin" / "playwright").write_text(
+            "#!/bin/sh\nexec node \"$(dirname \"$0\")/../@playwright/test/cli.js\" \"$@\"\n")
+        (node_modules / ".bin" / "playwright").chmod(0o755)
+
+    def _summary_env(self, bin_dir, **extra):
+        cleared = ("NM_REFERENCE_ROOT", "PLAYWRIGHT_BROWSERS_PATH", "SHADE_HEADLESS", "DISPLAY",
+                   "QT_QPA_PLATFORM", "NM_GOLDEN_CHROMIUM_ARGS", "LIBGL_ALWAYS_SOFTWARE",
+                   "QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM")
+        env = {k: v for k, v in os.environ.items() if k not in cleared}
+        env.update({"PATH": f"{bin_dir}:{os.environ['PATH']}", "NM_RENDER": shutil.which("true")})
+        env.update(extra)
+        return env
+
+    def test_summary_installs_the_lockfile_playwright_and_its_own_chromium(self):
+        # GAP-053: with no reference node_modules and an empty browser cache, the
+        # bootstrap runs npm ci (the reference lockfile versions) and installs
+        # Chromium with the CLI of the playwright package that the minter loads.
+        root = self.tmp / "port"
+        parity, bin_dir = self._summary_port(root, "Linux")
+        reference = self.tmp / "reference"
+        reference.mkdir()
+        (reference / "package.json").write_text('{"name": "fake-reference", "private": true}\n')
+        template = self.tmp / "lockfile-node_modules"
+        self._fake_playwright(template)
+        npm_log = self.tmp / "npm.log"
+        (bin_dir / "npm").write_text(
+            "#!/bin/sh\n"
+            f"echo \"$*\" >> '{npm_log}'\n"
+            f"[ \"$1\" = ci ] && cp -R '{template}' node_modules\n"
+            "exit 0\n"
+        )
+        (bin_dir / "npm").chmod(0o755)
+        browsers = self.tmp / "browsers"
+        result = subprocess.run(
+            ["bash", str(root / "scripts" / "parity-summary"), "case"],
+            env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
+                                  PLAYWRIGHT_BROWSERS_PATH=str(browsers), DISPLAY=":99"),
+            capture_output=True, text=True,
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertEqual([line.split()[0] for line in npm_log.read_text().splitlines()], ["ci"])
+        self.assertNotIn("playwright@", npm_log.read_text())
+        self.assertTrue((browsers / "chromium-9991" / "chrome").exists(), output)
+        self.assertFalse((browsers / "chromium-9992").exists(), output)
+        self.assertIn("[SWEEP] running the canonical fresh sweep", output)
+        self.assertIn('"expected":1,"executed":1', result.stdout)
+
+        # A prepared reference whose .bin/playwright is another package: the
+        # browser install still uses the loaded package (npx would install 9992).
+        browsers = self.tmp / "browsers-second"
+        result = subprocess.run(
+            ["bash", str(root / "scripts" / "parity-summary"), "case"],
+            env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
+                                  PLAYWRIGHT_BROWSERS_PATH=str(browsers), DISPLAY=":99"),
+            capture_output=True, text=True,
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertEqual(len(npm_log.read_text().splitlines()), 1)
+        self.assertTrue((browsers / "chromium-9991" / "chrome").exists(), output)
+        self.assertFalse((browsers / "chromium-9992").exists(), output)
 
     def test_sweep_rejects_failed_golden_mint_even_with_stale_passing_images(self):
         for name in ("chrome", "navierStokes"):
