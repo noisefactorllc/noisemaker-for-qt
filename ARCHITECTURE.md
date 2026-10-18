@@ -135,8 +135,8 @@ against host-fed state (`nm::MidiState`, `nm::AudioState`).
 six green gates once hid 31 silently-drifted definitions because oracle and candidate both read
 the same stale JSON).
 
-Namespaces: `synth` 29 · `filter` 116 · `mixer` 15 · `classicNoisedeck` 20 · `points` 10 ·
-`render` 11 · `synth3d` 7 · `filter3d` 2.
+Namespaces: `synth` 29 · `filter` 113 · `mixer` 15 · `classicNoisedeck` 20 · `points` 11 ·
+`render` 12 · `synth3d` 8 · `filter3d` 2.
 
 ## Parity
 
@@ -146,7 +146,10 @@ protocol; `parity/export-and-render.mjs`), headed and on the same rasterizer as 
 (`scripts/parity-summary` uses ANGLE's GL backend over Mesa llvmpipe), candidates rendered by
 `nm-render --batch-manifest` (one process, many fixtures), graded by `parity/compare.py`
 (max-abs-diff in 8-bit units + dependency-free global SSIM), ledgered by `parity/write-ledger.py`
-into `parity/ledger.json`.
+into `parity/ledger.json` (`LEDGER_PATH` overrides the path; `scripts/parity-summary` writes a
+temporary ledger). The tracked `parity/ledger.json` is a dated record, not current evidence: a
+full sweep from 2026-09-24 (last changed in `4db8f7d`), 362 rows (317 PASS, 45 NEAR), before the
+24 fixtures that GAP-052 added. `scripts/parity-summary` grades a fresh sweep of every fixture.
 
 - **Strict bar:** max-abs-diff ≤ 2.001 and SSIM ≥ 0.98 → PASS.
 - **NEAR:** passes only a per-program, documented tolerance from `sweep.sh tol_for()` — every

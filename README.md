@@ -191,7 +191,7 @@ The port is synced to the reference commit pinned in `scripts/test` (`const PIN`
 
 - **210 effect definitions** and their **effect UI files**, generated from the reference and byte-identical (`parity/check_definitions.mjs`, `check_effects_ui.mjs`).
 - **317/317 shaders byte-identical** (`check_shaders.mjs`).
-- **Compiler gates at 388/388** for lex, parse, validate, expand and graph over the fixture corpus; registry 5/5.
+- **Compiler gates at 412/412** for lex, parse, validate, expand and graph over the fixture corpus (`parity/programs` and `parity/corpus`); registry 4/4.
 - **State and parser gates:** MIDI_STATE 66/66 and AUDIO_STATE 93/93 exact against the reference classes; OBJ parser 443/443 inputs identical, the seven built-in meshes byte-identical; the reference's JavaScript function bodies classified as V8 classifies them (`check_func_bodies_differential.mjs`).
 
 CI's `gates` job runs every one of these after building `nm-render` and the dump helpers. `node scripts/test` runs the three byte gates and the parity unit suites with no Qt toolchain. `scripts/parity-summary` mints goldens with the reference engine, renders each fixture with `nm-render`, and grades the pair (`parity/sweep.sh`); a fixture's tolerance and every loosening's mechanism live in `tol_for()` in that script.

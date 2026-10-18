@@ -12,8 +12,8 @@
 // commit (NM_REFERENCE_ROOT, NM_TEST_REFERENCE or the default cache) stops the
 // run before any gate, and the error names HEAD and PIN.
 // The C++/ctest layer needs a Qt + GL 4.1 toolchain and is not attempted
-// here; parity/pytest (57 + 10 subtests) covers the same unit cases via
-// python3 -m unittest so no pip install is required.
+// here. The parity unit suites run with python3 -m unittest, so no pip
+// install is required; the run prints the test count.
 // Exits nonzero on any failure.
 
 import { spawnSync } from 'node:child_process'
