@@ -720,6 +720,17 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     //     run fails this bound. A trace that only shares caches and memory
     //     bandwidth costs less: on Apple's software renderer (one rasterizer
     //     thread, 8 CPUs) the median moved 0.332 ms, 2.25 percent.
+    //     The steady median in this bound is scaled by the CPU that the
+    //     process lost to other processes during the re-trace frames: the
+    //     steady process CPU per second divided by the re-trace process CPU
+    //     per second, when that is above 1. The trace runs in this process, so
+    //     a trace that takes CPU from the frames does not lower the re-trace
+    //     process CPU and does not scale the bound. On a 4-thread Windows CI
+    //     runner, 19 of the 30 re-trace frames took 15.5 to 17.3 ms against a
+    //     12.4 ms steady median while the process CPU fell from 3.88 to 3.08
+    //     per second. The process used 43.8 ms of CPU per re-trace frame
+    //     against 48.9 ms per steady frame, so the CPU that the frames did not
+    //     receive went outside the process, not to the trace.
     constexpr double kFrameBudgetMs = 1000.0 / 60.0;
     std::vector<double> counted = retraceMs;
     counted.push_back(switchMs);
@@ -730,11 +741,12 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     const double steadyMedian = quantile(steadyMs, 0.5);
     const double steadyIqr = quantile(steadyMs, 0.75) - quantile(steadyMs, 0.25);
     const double retraceMedian = quantile(retraceMs, 0.5);
-    const double medianBound = steadyMedian + steadyIqr + steadyMedian / (2.0 * cpus);
+    const double cpuShortfall = retraceCpus > 0.0 && steadyCpus > retraceCpus ? steadyCpus / retraceCpus : 1.0;
+    const double medianBound = steadyMedian * cpuShortfall + steadyIqr + steadyMedian / (2.0 * cpus);
     std::printf("  steady envelope %.3f ms (max %.3f + spread %.3f); steady median %.3f ms, interquartile range %.3f ms; "
-                "re-trace median %.3f ms (bound %.3f ms, %u hardware threads); counted max %.3f ms\n",
+                "re-trace median %.3f ms (bound %.3f ms, %u hardware threads, CPU shortfall %.3f); counted max %.3f ms\n",
                 envelope, steadyMax, steadyMax - steadyMin, steadyMedian, steadyIqr, retraceMedian, medianBound, cpus,
-                countedMax);
+                cpuShortfall, countedMax);
     check(retraceMs.size() >= 10, "the re-trace stays pending for at least ten timed frames");
     if (envelope <= kFrameBudgetMs) {
         std::printf("  the steady envelope fits the 60 Hz budget: every counted frame must fit it\n");
@@ -748,7 +760,7 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
               "is slower than the steady envelope");
         check(retraceMedian <= medianBound,
               "the median render() during a 1920x1080 re-trace stays within the steady interquartile range "
-              "and half of one CPU's share of the steady median");
+              "and half of one CPU's share of the steady median, scaled by the CPU that other processes took");
     }
     // The earlier allowances stay as well.
     check(*std::max_element(retraceMs.begin(), retraceMs.end()) <= std::max(16.667, 4.0 * maxSteadyMs + 0.05),
