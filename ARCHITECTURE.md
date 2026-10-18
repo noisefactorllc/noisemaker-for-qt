@@ -95,7 +95,7 @@ reference WebGL2 backend:
 | `repeat: N` / iterations | Intra-frame ping-pong loop (Jacobi solvers etc.) |
 | Uniforms | Named uniforms, set via location lookup per active uniform — the reference's `extractUniforms` model. `synth/remap`'s `std140` UBO is kept as the reference wrote it (real UBO, `glUniformBlockBinding`) |
 | Defines | Prepended above source per `injectDefines` mirror (above); program cache keyed `(effect, progName, defines)` |
-| Time | `render(t)` pins normalized time, 8 settle frames for feedback graphs, 1 otherwise; `renderSamples(frames, sampleEvery)` steps `deltaTime = 1/600` for stateful sims |
+| Time | `render(graph, t)` renders one frame at normalized loop time `t`, 0 <= t < 1, and sets `deltaTime` (`t` minus the previous `t`, 0 on the first frame, 1/600 after a wrap) and `frame` as the reference does. It does not loop for settle frames: the caller chooses the frame count. `nm-render --frames N` renders N frames at one `t` (default 1; the parity sweep uses 8, and feedback effects need more than 1). `nm-render --samples TOTAL:EVERY` steps `t` by 1/600 (one 60 fps frame of the 10 s loop) for TOTAL frames and writes every EVERY-th frame, for stateful sims |
 | Readback | `glReadPixels` as float, bottom-up → top-down flip at the edge, `round(v*255)` clamp to 8-bit, no gamma — PNG via `QImage` |
 
 Everything above is contract, not preference: each row is what the golden renders with, and the
