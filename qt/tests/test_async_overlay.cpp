@@ -643,7 +643,11 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     // every CPU at 60 Hz. On a 4-thread Windows CI runner (Mesa llvmpipe,
     // 1920x1080 frames of 15.8 ms median) the trace completed after more than
     // 42.6 s, ten synchronous trace times of 4.26 s; on Linux CI it completed
-    // in 3.7 to 11.9 s, 2.1 to 4.0 synchronous trace times.
+    // in 3.7 to 11.9 s, 2.1 to 4.0 synchronous trace times. A known risk: the
+    // trace can receive much less than the CPU that the frames leave. In CI
+    // run 39113237922 on Windows the frames left 0.16 CPUs, and the trace
+    // completed in 197.3 s against a 263.5 s bound, 7.5 times its CPU-limited
+    // time of 26.3 s.
     const double spareCpus = std::max(0.1, static_cast<double>(cpus) - pacedCpus);
     const double traceSeconds = std::max(syncRetrace, syncRetraceCpu / spareCpus);
     std::vector<double> pacedMs;
