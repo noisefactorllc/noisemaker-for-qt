@@ -83,6 +83,11 @@ trap 'rm -f "$RESULTS" "$CANDIDATE_NAMES" "$GOLDEN_LIST" "$BATCH_MANIFEST"' EXIT
 record_result() {
 	printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" >> "$RESULTS"
 }
+# A failed nm-render launch: show the output lines that the filters above drop
+# (a Qt platform plugin that cannot load, for example), so the log names the cause.
+print_render_failure() {
+	printf '%s\n' "$1" | grep -vE "^RENDERED " | tail -n 20 | sed 's/^/[nm-render] /'
+}
 
 # --- classification ----------------------------------------------------------
 
@@ -384,7 +389,7 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" ${mesh_args[@]+"${mesh_args[@]}"} ${external_args[@]+"${external_args[@]}"} 2>&1)
 				rc=$?
 				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
-				[ "$rc" -eq 0 ] || { echo "[sweep] live-DSL render FAILED for $name (exit $rc)"; batch_rc=1; }
+				[ "$rc" -eq 0 ] || { echo "[sweep] live-DSL render FAILED for $name (exit $rc)"; print_render_failure "$render_log"; batch_rc=1; }
 			done < "$CANDIDATE_NAMES"
 		else
 			batch_count=$(python3 "$ROOT/parity/make-batch-manifest.py" --root "$ROOT" \
@@ -393,6 +398,10 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 				render_log=$("$NM_RENDER" --batch-manifest "$BATCH_MANIFEST" 2>&1)
 				batch_rc=$?
 				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
+				if [ "$batch_rc" -ne 0 ]; then
+					echo "[sweep] nm-render --batch-manifest exited $batch_rc"
+					print_render_failure "$render_log"
+				fi
 			fi
 		fi
 	fi

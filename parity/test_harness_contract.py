@@ -59,6 +59,9 @@ beyond a literal port:
   - test_summary_installs_the_lockfile_playwright_and_its_own_chromium
     (the bootstrap installs the lockfile Playwright and the Chromium build
     that the loaded package names; GAP-053)
+  - test_summary_selects_the_apple_gpu_route_on_macos and
+    test_sweep_prints_the_renderer_error_when_nm_render_fails_to_start
+    (the macOS defaults and the renderer failure output; GAP-059)
 """
 
 import os
@@ -400,6 +403,10 @@ class HarnessContractTests(unittest.TestCase):
         (parity / "sweep.sh").write_text(
             "#!/bin/sh\ncp \"$(dirname \"$0\")/fake-ledger.json\" \"$LEDGER_PATH\"\n"
         )
+        # The Linux route on every host (the macOS route is tested separately).
+        (root / "bin").mkdir()
+        (root / "bin" / "uname").write_text("#!/bin/sh\necho Linux\n")
+        (root / "bin" / "uname").chmod(0o755)
 
         def run_summary(verdict, max_diff):
             row = {
@@ -417,7 +424,8 @@ class HarnessContractTests(unittest.TestCase):
             return subprocess.run(
                 ["bash", str(root / "scripts" / "parity-summary"), "case"],
                 env={**os.environ, "NM_RENDER": shutil.which("true"),
-                     "NM_REFERENCE_ROOT": str(reference), "DISPLAY": ":99"},
+                     "NM_REFERENCE_ROOT": str(reference), "DISPLAY": ":99",
+                     "PATH": f"{root / 'bin'}:{os.environ['PATH']}"},
                 capture_output=True, text=True,
             )
 
@@ -618,6 +626,95 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(len(npm_log.read_text().splitlines()), 1)
         self.assertTrue((browsers / "chromium-9991" / "chrome").exists(), output)
         self.assertFalse((browsers / "chromium-9992").exists(), output)
+
+    def test_summary_selects_the_apple_gpu_route_on_macos(self):
+        # GAP-059: on macOS the defaults are the Apple GPU route (cocoa, ANGLE
+        # Metal), no X display is needed, and the caller must choose
+        # SHADE_HEADLESS because headed minting opens a visible window.
+        root = self.tmp / "port"
+        parity, bin_dir = self._summary_port(root, "Darwin")
+        reference = self.tmp / "reference"
+        self._fake_playwright(reference / "node_modules")
+        browsers = self.tmp / "browsers"
+        (browsers / "chromium-9991").mkdir(parents=True)
+        (browsers / "chromium-9991" / "chrome").write_text("")
+
+        def run_summary(**extra):
+            (parity / "sweep-env.txt").unlink(missing_ok=True)
+            return subprocess.run(
+                ["bash", str(root / "scripts" / "parity-summary"), "case"],
+                env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
+                                      PLAYWRIGHT_BROWSERS_PATH=str(browsers), **extra),
+                capture_output=True, text=True,
+            )
+
+        def sweep_env():
+            lines = (parity / "sweep-env.txt").read_text().splitlines()
+            return dict(line.split("=", 1) for line in lines if "=" in line)
+
+        unchosen = run_summary()
+        self.assertEqual(unchosen.returncode, 2, unchosen.stdout + unchosen.stderr)
+        self.assertIn("SHADE_HEADLESS=0", unchosen.stderr)
+        self.assertIn("SHADE_HEADLESS=1", unchosen.stderr)
+        self.assertIn('"skip":1', unchosen.stdout)
+        self.assertFalse((parity / "sweep-env.txt").exists())
+
+        headless = run_summary(SHADE_HEADLESS="1")
+        self.assertEqual(headless.returncode, 0, headless.stdout + headless.stderr)
+        env = sweep_env()
+        self.assertEqual(env["QT_QPA_PLATFORM"], "cocoa")
+        self.assertEqual(env["NM_GOLDEN_CHROMIUM_ARGS"],
+                         "--use-gl=angle --use-angle=metal --ignore-gpu-blocklist")
+        self.assertEqual(env["LIBGL_ALWAYS_SOFTWARE"], "0")
+        self.assertEqual(env["SHADE_HEADLESS"], "1")
+        self.assertEqual(env["QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM"], "1")
+        self.assertNotIn("DISPLAY", env)
+
+        override = run_summary(SHADE_HEADLESS="1", QT_QPA_PLATFORM="offscreen")
+        self.assertEqual(override.returncode, 0, override.stdout + override.stderr)
+        self.assertEqual(sweep_env()["QT_QPA_PLATFORM"], "offscreen")
+
+        (bin_dir / "uname").write_text("#!/bin/sh\necho Linux\n")
+        linux = run_summary(DISPLAY=":99")
+        self.assertEqual(linux.returncode, 0, linux.stdout + linux.stderr)
+        env = sweep_env()
+        self.assertEqual(env["QT_QPA_PLATFORM"], "xcb")
+        self.assertEqual(env["NM_GOLDEN_CHROMIUM_ARGS"],
+                         "--use-gl=angle --use-angle=gl --ignore-gpu-blocklist")
+        self.assertEqual(env["LIBGL_ALWAYS_SOFTWARE"], "1")
+        self.assertEqual(env["SHADE_HEADLESS"], "0")
+
+    def test_sweep_prints_the_renderer_error_when_nm_render_fails_to_start(self):
+        # GAP-059: the render log filters keep only RENDERED/ERROR lines; a renderer
+        # that aborts before it renders (no Qt platform plugin) must still be named.
+        parity = self.tmp / "parity"
+        (parity / "programs").mkdir(parents=True)
+        (parity / "out").mkdir()
+        for helper in ("sweep.sh", "write-ledger.py", "make-batch-manifest.py"):
+            shutil.copy2(REPO / "parity" / helper, parity / helper)
+        (parity / "programs" / "noise.dsl").write_text("noise().write(o0)\n")
+        (parity / "out" / "noise.golden.png").touch()
+        (parity / "out" / "noise.graph.json").write_text("{}")
+        (parity / "run.sh").write_text("#!/bin/sh\necho '[FAIL] noise: no candidate'\nexit 1\n")
+        renderer = self.tmp / "fake-nm-render"
+        renderer.write_text(
+            "#!/bin/sh\n"
+            "echo 'qt.qpa.plugin: Could not find the Qt platform plugin \"xcb\" in \"\"' >&2\n"
+            "echo 'Available platform plugins are: offscreen, minimal, cocoa.' >&2\n"
+            "exit 134\n"
+        )
+        renderer.chmod(0o755)
+        result = subprocess.run(
+            ["bash", str(parity / "sweep.sh")],
+            env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1",
+                 "LEDGER_PATH": str(self.tmp / "ledger.json")},
+            capture_output=True, text=True,
+        )
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, output)
+        self.assertIn("nm-render --batch-manifest exited 134", output)
+        self.assertIn('Could not find the Qt platform plugin "xcb"', output)
+        self.assertIn("Available platform plugins are: offscreen, minimal, cocoa.", output)
 
     def test_sweep_rejects_failed_golden_mint_even_with_stale_passing_images(self):
         for name in ("chrome", "navierStokes"):

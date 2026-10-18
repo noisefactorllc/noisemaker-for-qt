@@ -45,11 +45,21 @@
 #   NM_RENDER            candidate binary (default qt/build/nm-render).
 #   NM_REFERENCE_ROOT    reference engine checkout (the goldens' authority);
 #                        pin-cloned at scripts/test's PIN when unset.
-#   SHADE_HEADLESS, NM_GOLDEN_CHROMIUM_ARGS, DISPLAY, LIBGL_ALWAYS_SOFTWARE
+#   SHADE_HEADLESS, NM_GOLDEN_CHROMIUM_ARGS, DISPLAY, LIBGL_ALWAYS_SOFTWARE,
+#   QT_QPA_PLATFORM
 #                        passed through to the sweep's minting and rendering
 #                        (minted goldens need headed Chromium on the same
 #                        llvmpipe the candidate renders on; see "Golden browser
-#                        switches" in parity/export-and-render.mjs).
+#                        switches" in parity/export-and-render.mjs). Linux
+#                        defaults: SHADE_HEADLESS=0, ANGLE GL switches,
+#                        LIBGL_ALWAYS_SOFTWARE=1, QT_QPA_PLATFORM=xcb, and an
+#                        Xvfb display when DISPLAY is unset.
+#                        macOS defaults: ANGLE Metal switches
+#                        (--use-gl=angle --use-angle=metal
+#                        --ignore-gpu-blocklist), LIBGL_ALWAYS_SOFTWARE=0,
+#                        QT_QPA_PLATFORM=cocoa, no DISPLAY; SHADE_HEADLESS has
+#                        no macOS default and the script exits 2 when it is
+#                        unset (0 opens a visible Chromium window).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CASE_ARGS="$*"
@@ -185,13 +195,30 @@ fi
 # Chromium on the same Mesa llvmpipe the candidate renders on, and
 # fibers/scratches/strayHair grade the port's own overlays. A caller may
 # override any of these.
+#
+# macOS has no xcb platform plugin and no Mesa llvmpipe: the Linux defaults
+# make nm-render abort and Chromium mint on SwiftShader. On macOS the defaults
+# are the Apple GPU route of the Apple M4 qualification (GAP-047): nm-render on
+# the cocoa platform (an offscreen surface, kept a background process) and
+# Chromium on ANGLE's Metal backend. Headed minting opens a visible Chromium
+# window on macOS, so there the caller must choose SHADE_HEADLESS.
+HOST_OS="$(uname -s 2>/dev/null)"
+if [ "$HOST_OS" = "Darwin" ]; then
+  [ -n "${SHADE_HEADLESS:-}" ] || fail_infra "macOS: set SHADE_HEADLESS=0 to mint goldens in a visible Chromium window (the Apple M4 qualification mode) or SHADE_HEADLESS=1 to mint them headless"
+  export NM_GOLDEN_CHROMIUM_ARGS="${NM_GOLDEN_CHROMIUM_ARGS:---use-gl=angle --use-angle=metal --ignore-gpu-blocklist}"
+  export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-0}"
+  export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-cocoa}"
+  export QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM="${QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM:-1}"
+  echo "[MACOS] QT_QPA_PLATFORM=$QT_QPA_PLATFORM LIBGL_ALWAYS_SOFTWARE=$LIBGL_ALWAYS_SOFTWARE SHADE_HEADLESS=$SHADE_HEADLESS NM_GOLDEN_CHROMIUM_ARGS='$NM_GOLDEN_CHROMIUM_ARGS'" >&2
+fi
 export SHADE_HEADLESS="${SHADE_HEADLESS:-0}"
 export NM_GOLDEN_CHROMIUM_ARGS="${NM_GOLDEN_CHROMIUM_ARGS:---use-gl=angle --use-angle=gl --ignore-gpu-blocklist}"
 export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
 export NM_REFERENCE_OVERLAYS="${NM_REFERENCE_OVERLAYS:-0}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
 SWEEP=()
-if [ -z "${DISPLAY:-}" ]; then
+# Chromium and Qt on macOS draw without an X display.
+if [ "$HOST_OS" != "Darwin" ] && [ -z "${DISPLAY:-}" ]; then
   if command -v xvfb-run >/dev/null 2>&1; then
     echo "[DISPLAY] no DISPLAY; running the sweep under xvfb-run" >&2
     SWEEP=(xvfb-run -a -s "-screen 0 1280x1024x24")
