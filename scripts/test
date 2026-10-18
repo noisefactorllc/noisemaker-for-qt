@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/test — repository test entrypoint for the supervisor's check run.
+// scripts/test — repository test entrypoint for automated check runs.
 //
 // Runs the repository's build-free parity suite in a plain Linux container
 // (node, python3, network; no GPU, no Qt toolchain):
