@@ -152,7 +152,15 @@ jobs:
         env:
           GALLIUM_DRIVER: llvmpipe
           QT_OPENGL: software
-        run: ctest --test-dir build -C Release --output-on-failure
+        shell: bash
+        run: |
+          set +e
+          ctest --test-dir build -C Release --output-on-failure -E '^test_async_overlay$'
+          tests_rc=$?
+          # Retain the native 1080p retrace timing for GAP-038 on each CI head.
+          ctest --test-dir build -C Release --output-on-failure -V -R '^test_async_overlay$'
+          overlay_rc=$?
+          if [ "$tests_rc" -ne 0 ] || [ "$overlay_rc" -ne 0 ]; then exit 1; fi
 
       - name: ctest (macOS)
         if: runner.os == 'macOS'
