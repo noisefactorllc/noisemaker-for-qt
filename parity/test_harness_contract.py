@@ -53,6 +53,9 @@ beyond a literal port:
     and test_golden_mints_fail_without_the_demo_program_state (a batch mint
     equals the single mint of a fixture whose effect structure matches the
     previous fixture's; GAP-041)
+  - test_scripts_test_rejects_a_reference_checkout_that_is_not_at_the_pin and
+    test_fixture_coverage_rejects_a_reference_checkout_that_is_not_at_the_commit
+    (a reference checkout whose HEAD is not the pin stops the run; GAP-054)
 """
 
 import os
@@ -424,6 +427,78 @@ class HarnessContractTests(unittest.TestCase):
         skipped = run_summary("CHAOS", 9.0)
         self.assertNotEqual(skipped.returncode, 0, skipped.stdout + skipped.stderr)
         self.assertIn('"skip":1', skipped.stdout)
+
+    def _reference_with_two_commits(self, path):
+        """A git checkout with shaders/src at two commits; returns (first, second), HEAD at second."""
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+               "-c", "commit.gpgsign=false", "-C", str(path)]
+        (path / "shaders" / "src").mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(path)], check=True)
+        shas = []
+        for content in ("first\n", "second\n"):
+            (path / "shaders" / "src" / "index.js").write_text(content)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", content.strip()], check=True)
+            shas.append(subprocess.run(git + ["rev-parse", "HEAD"], check=True,
+                                       capture_output=True, text=True).stdout.strip())
+        return shas[0], shas[1]
+
+    def test_scripts_test_rejects_a_reference_checkout_that_is_not_at_the_pin(self):
+        # GAP-054: a reused or caller-set checkout that contains the pin but has
+        # another HEAD stops the run before any gate, naming HEAD and PIN.
+        root = self.tmp / "port"
+        (root / "scripts").mkdir(parents=True)
+        reference = self.tmp / "reference"
+        pin, other = self._reference_with_two_commits(reference)
+        script = (REPO / "scripts" / "test").read_text()
+        pinned = "\n".join(f"const PIN = '{pin}'" if line.startswith("const PIN = '") else line
+                           for line in script.splitlines()) + "\n"
+        self.assertIn(f"const PIN = '{pin}'", pinned)
+        (root / "scripts" / "test").write_text(pinned)
+        base_env = {k: v for k, v in os.environ.items()
+                    if k not in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE")}
+
+        def run_test(**env):
+            return subprocess.run(["node", str(root / "scripts" / "test")],
+                                  env={**base_env, **env}, capture_output=True, text=True)
+
+        for variable in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE"):
+            with self.subTest(variable=variable):
+                result = run_test(**{variable: str(reference)})
+                output = result.stdout + result.stderr
+                self.assertEqual(result.returncode, 1, output)
+                self.assertIn(f"HEAD {other}", output)
+                self.assertIn(f"PIN {pin}", output)
+                self.assertNotIn("FAIL: node", output)
+
+        # The default checkout belongs to the script: it moves to the pin, then
+        # the gates run (they fail here, because this scratch port has none).
+        default = self.tmp / f"noisemaker-reference-{pin[:12]}"
+        subprocess.run(["git", "clone", "-q", str(reference), str(default)], check=True)
+        result = run_test(TMPDIR=str(self.tmp))
+        output = result.stdout + result.stderr
+        self.assertIn(f"reference checkout: {default} (HEAD {pin})", output)
+        self.assertIn("FAIL: node parity/check_shaders.mjs", output)
+
+        # A caller-set checkout at the pin passes the revision check.
+        subprocess.run(["git", "-C", str(reference), "checkout", "-q", pin], check=True)
+        result = run_test(NM_REFERENCE_ROOT=str(reference))
+        output = result.stdout + result.stderr
+        self.assertIn(f"reference checkout: {reference} (HEAD {pin})", output)
+
+    def test_fixture_coverage_rejects_a_reference_checkout_that_is_not_at_the_commit(self):
+        reference = self.tmp / "reference"
+        pin, other = self._reference_with_two_commits(reference)
+        result = subprocess.run(
+            ["node", str(REPO / "tools" / "fixture-coverage.mjs"), "--check", "--reference-commit", pin],
+            env={**os.environ, "NM_REFERENCE_ROOT": str(reference)},
+            capture_output=True, text=True,
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 1, output)
+        self.assertIn(f"HEAD {other}", output)
+        self.assertIn(f"--reference-commit {pin}", output)
+        self.assertNotIn("COVERAGE", output)
 
     def test_sweep_rejects_failed_golden_mint_even_with_stale_passing_images(self):
         for name in ("chrome", "navierStokes"):

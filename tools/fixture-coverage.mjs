@@ -17,7 +17,9 @@
 //   --check  exit 1 unless the committed record equals the regenerated one (the default)
 //
 // The reference checkout must be at --reference-commit; scripts/test passes its pinned PIN.
+// The script exits 1, before it reads the reference, when the checkout HEAD is another commit.
 
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -79,9 +81,19 @@ export async function buildRecord ({ referenceRoot, referenceCommit, committed }
   }
 }
 
+export function referenceHead (referenceRoot) {
+  const result = spawnSync('git', ['-C', referenceRoot, 'rev-parse', '--verify', 'HEAD^{commit}'], { encoding: 'utf8' })
+  return result.status === 0 ? result.stdout.trim() : null
+}
+
 async function main () {
   const args = parseArgs(process.argv.slice(2))
   if (!process.env.NM_REFERENCE_ROOT) throw new Error('NM_REFERENCE_ROOT is not set')
+  const head = referenceHead(resolve(process.env.NM_REFERENCE_ROOT))
+  if (head !== args.referenceCommit) {
+    throw new Error(`reference checkout ${resolve(process.env.NM_REFERENCE_ROOT)} is at HEAD ` +
+      `${head ?? '(no git revision)'}, not at --reference-commit ${args.referenceCommit}`)
+  }
   const committedText = readFileSync(recordPath, 'utf8')
   const { record, failures } = await buildRecord({
     referenceRoot: resolve(process.env.NM_REFERENCE_ROOT),
