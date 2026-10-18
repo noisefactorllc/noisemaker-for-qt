@@ -549,11 +549,14 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     const QImage syncSeed1 = synchronous.readSurface();
     nm::Graph syncGraph = graph;
     setSeed(synchronous, syncGraph, registry, 2);
+    double syncCpu = processCpuSeconds();
     start = std::chrono::steady_clock::now();
     synchronous.render(syncGraph, 0.25);
     const double syncRetrace = secondsSince(start);
+    const double syncRetraceCpu = processCpuSeconds() - syncCpu;
     const QImage syncSeed2 = synchronous.readSurface();
-    std::printf("  synchronous 1920x1080 fibers: first render %.3f s, re-trace render %.3f s\n", syncFirst, syncRetrace);
+    std::printf("  synchronous 1920x1080 fibers: first render %.3f s, re-trace render %.3f s (%.3f CPU s)\n", syncFirst,
+                syncRetrace, syncRetraceCpu);
 
     nm::Backend background;
     background.setup(nullptr, kDataRoot, size);
@@ -593,6 +596,21 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     const double steadyCpus = (processCpuSeconds() - cpu) / secondsSince(start);
     const double maxSteadyMs = *std::max_element(steadyMs.begin(), steadyMs.end());
 
+    // The CPU that a host presenting at 60 Hz leaves to the trace: the process
+    // CPU while frames are paced at 60 Hz with nothing to trace.
+    constexpr auto kFramePeriod = std::chrono::microseconds(16667);
+    constexpr int kPacedSteadyFrames = 60;
+    cpu = processCpuSeconds();
+    start = std::chrono::steady_clock::now();
+    auto pacedFrame = start;
+    for (int i = 0; i < kPacedSteadyFrames; ++i) {
+        pacedFrame += kFramePeriod;
+        std::this_thread::sleep_until(pacedFrame);
+        background.render(graph, 0.25);
+    }
+    const double pacedCpus = (processCpuSeconds() - cpu) / secondsSince(start);
+    const unsigned cpus = std::max(1u, std::thread::hardware_concurrency());
+
     setSeed(background, graph, registry, 2);
     std::vector<double> retraceMs;
     retraceMs.reserve(kTimedFrames);
@@ -615,14 +633,24 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     // The overlay must change to the completed trace while a live host keeps
     // presenting, although the trace runs below the frame's threads: frames
     // continue at a 60 Hz pace (back to back on a host slower than that)
-    // until the trace completes. The bound is ten synchronous trace times,
-    // inside the reference's own: Chromium completes this 1920x1080 trace in
-    // 33 s against the port's 2.8 s synchronous trace (async_overlay.h).
+    // until the trace completes. The bound is ten times the trace's time on
+    // this host, inside the reference's own: Chromium completes this
+    // 1920x1080 trace in 33 s against the port's 2.8 s synchronous trace
+    // (async_overlay.h). The trace's time is the synchronous trace time, or,
+    // when the 60 Hz frames leave the trace less than one CPU, its CPU time
+    // divided by the CPU that they leave: hardware threads minus the paced
+    // steady process CPU, at least 0.1. A software rasterizer can use nearly
+    // every CPU at 60 Hz. On a 4-thread Windows CI runner (Mesa llvmpipe,
+    // 1920x1080 frames of 15.8 ms median) the trace completed after more than
+    // 42.6 s, ten synchronous trace times of 4.26 s; on Linux CI it completed
+    // in 3.7 to 11.9 s, 2.1 to 4.0 synchronous trace times.
+    const double spareCpus = std::max(0.1, static_cast<double>(cpus) - pacedCpus);
+    const double traceSeconds = std::max(syncRetrace, syncRetraceCpu / spareCpus);
     std::vector<double> pacedMs;
-    const auto deadline = start + std::chrono::duration<double>(10.0 * syncRetrace);
+    const auto deadline = start + std::chrono::duration<double>(10.0 * traceSeconds);
     auto nextFrame = std::chrono::steady_clock::now();
     while (switchMs < 0.0 && background.overlayTracesPending() && std::chrono::steady_clock::now() < deadline) {
-        nextFrame += std::chrono::microseconds(16667);
+        nextFrame += kFramePeriod;
         std::this_thread::sleep_until(nextFrame);
         const double sample = timedRender();
         if (!background.overlayTracesPending()) {
@@ -633,10 +661,14 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     }
     const double completionSeconds = secondsSince(start);
     const bool completedLive = switchMs >= 0.0;
-    std::printf("  live re-trace completion %.3f s after %zu paced frames; synchronous re-trace %.3f s\n",
-                completionSeconds, pacedMs.size(), syncRetrace);
+    std::printf("  60 Hz frames with nothing to trace: process CPU %.2f s per second of %u hardware threads; "
+                "%.2f CPUs left to the trace\n", pacedCpus, cpus, spareCpus);
+    std::printf("  live re-trace completion %.3f s after %zu paced frames; bound %.3f s, ten times the trace's time %.3f s "
+                "(synchronous re-trace %.3f s, %.3f CPU s)\n",
+                completionSeconds, pacedMs.size(), 10.0 * traceSeconds, traceSeconds, syncRetrace, syncRetraceCpu);
     check(completedLive,
-          "the overlay changes to the completed trace while frames continue at 60 Hz, within ten synchronous trace times");
+          "the overlay changes to the completed trace while frames continue at 60 Hz, within ten times the trace's time "
+          "at the CPU that the frames leave it");
     if (!completedLive) {
         background.waitForOverlayTraces();
         switchMs = timedRender();
@@ -698,7 +730,6 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     const double steadyMedian = quantile(steadyMs, 0.5);
     const double steadyIqr = quantile(steadyMs, 0.75) - quantile(steadyMs, 0.25);
     const double retraceMedian = quantile(retraceMs, 0.5);
-    const unsigned cpus = std::max(1u, std::thread::hardware_concurrency());
     const double medianBound = steadyMedian + steadyIqr + steadyMedian / (2.0 * cpus);
     std::printf("  steady envelope %.3f ms (max %.3f + spread %.3f); steady median %.3f ms, interquartile range %.3f ms; "
                 "re-trace median %.3f ms (bound %.3f ms, %u hardware threads); counted max %.3f ms\n",
