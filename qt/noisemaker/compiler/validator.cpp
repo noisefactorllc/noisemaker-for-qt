@@ -60,7 +60,11 @@ namespace {
 //     bare Number argument clamps as a SCALAR even though the default may
 //     be an array (verified: synth.media's vec2 imageSize with no
 //     override keeps its [1024,1024] array default verbatim; with
-//     `imageSize: 5` becomes the scalar 5).
+//     `imageSize: 5` becomes the scalar 5). The ONE exception is the
+//     vec2()/vec4() constructor Call (reference GAP-009, 0553e242):
+//     vec2(x, y) on a vec2 parameter and vec4(x, y, z, w) on a color
+//     parameter whose default is a 4-component array set the written
+//     components; every other form keeps the dispatch above.
 //   - `clamp()` requires `typeof min/max === 'number'`; an array-valued
 //     min/max (vec3 params' per-component bounds, e.g.
 //     render.renderLit3d's cameraPosition min:[-1,-1,-1]) is never used
@@ -358,6 +362,9 @@ private:
                             const QJsonObject& original, QJsonObject& args, const QString& writeName);
     void resolveSurfaceArg(QJsonArray& chain, const ParamDef& def, const QJsonValue& node, const QJsonObject& call,
                             QJsonObject& args, const QString& argKey, const QString& writeName);
+    static bool isVecColorConstructor(const ParamDef& def, const QJsonValue& node);
+    void resolveVecColorConstructorArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call,
+                                       QJsonObject& args, const QString& argKey);
     void resolveColorArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call, QJsonObject& args,
                           const QString& argKey);
     void resolveVecArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call, QJsonObject& args,
@@ -1343,6 +1350,8 @@ QJsonValue Validator::resolveArgs(QJsonArray& chain, const OpSpec& spec, const Q
         const QString ty = def.type;
         if (ty == QStringLiteral("surface")) {
             resolveSurfaceArg(chain, def, node, call, args, argKey, writeName);
+        } else if (isVecColorConstructor(def, node)) {
+            resolveVecColorConstructorArg(def, node, call, args, argKey);
         } else if (ty == QStringLiteral("color")) {
             resolveColorArg(def, node, call, args, argKey);
         } else if (ty == QStringLiteral("vec3")) {
@@ -1495,6 +1504,42 @@ void Validator::resolveSurfaceArg(QJsonArray& chain, const ParamDef& def, const 
     args.insert(argKey, surf.isUndefined() ? QJsonValue(QJsonValue::Null) : surf);
 }
 
+// 6.2a vec2()/vec4() constructor argument (reference GAP-009, 0553e242):
+// vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a vec4 parameter
+// (the loader registers vec4 parameters as `color`; their default keeps its
+// four components). Any other form, including a wrong component count,
+// takes the branches below.
+bool Validator::isVecColorConstructor(const ParamDef& def, const QJsonValue& node) {
+    if (nodeType(node) != NodeKind::Call) return false;
+    const QJsonObject callNode = node.toObject();
+    const QString name = callNode.value(QStringLiteral("name")).toString();
+    const QJsonArray callArgs = callNode.value(QStringLiteral("args")).toArray();
+    if (callArgs.size() != (name == QStringLiteral("vec2") ? 2 : 4)) return false;
+    if (def.type == QStringLiteral("vec2")) return name == QStringLiteral("vec2");
+    if (def.type == QStringLiteral("color")) {
+        return name == QStringLiteral("vec4") && def.defaultValue.isArray()
+                   && def.defaultValue.toArray().size() == 4;
+    }
+    return false;
+}
+
+void Validator::resolveVecColorConstructorArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call,
+                                              QJsonObject& args, const QString& argKey) {
+    QJsonArray value;
+    const QJsonArray callArgs = node.toObject().value(QStringLiteral("args")).toArray();
+    for (const QJsonValue& arg : callArgs) {
+        if (nodeType(arg) == NodeKind::Number) {
+            value.append(arg.toObject().value(QStringLiteral("value")));
+        } else {
+            pushDiag(QStringLiteral("S002"), arg,
+                      QStringLiteral("Argument out of range for '%1' in %2()")
+                          .arg(def.name, call.value(QStringLiteral("name")).toString()));
+            value.append(0);
+        }
+    }
+    args.insert(argKey, value);
+}
+
 // 6.2 color
 void Validator::resolveColorArg(const ParamDef& def, const QJsonValue& node, const QJsonObject& call,
                                  QJsonObject& args, const QString& argKey) {
@@ -1584,13 +1629,16 @@ void Validator::resolveBooleanArg(const ParamDef& def, const QJsonValue& node, c
         args.insert(argKey, node.toObject().value(QStringLiteral("value")).toDouble() != 0.0);
         return;
     }
-    // `() => expr`: the reference keeps `{fn}` when `new Function` accepts
-    // the body (graph JSON drops the closure; nothing calls it), else S001
+    // `() => expr`: the reference keeps `{fn, _ast: node}` when `new
+    // Function` accepts the body (JSON round-trip drops the fn closure and
+    // keeps the _ast node for the unparser; nothing calls fn), else S001
     // and the default.
     if (t == NodeKind::Func) {
         const QString src = node.toObject().value(QStringLiteral("src")).toString();
         if (funcCompiles(src)) {
-            args.insert(argKey, QJsonObject());
+            QJsonObject value;
+            value.insert(QStringLiteral("_ast"), node);
+            args.insert(argKey, value);
         } else {
             pushDiag(QStringLiteral("S001"), node,
                      QStringLiteral("Invalid function for '%1': '%2'").arg(def.name, funcSnippet(src)));
@@ -1821,15 +1869,17 @@ void Validator::resolveNumericArg(const ParamDef& def, const QJsonValue& node, c
         }
         return;
     }
-    // `() => expr`: the reference stores `{fn, min: def.min, max: def.max}`
-    // when `new Function` accepts the body (graph JSON drops fn and an
-    // undefined bound), else S001 and the default.
+    // `() => expr`: the reference stores `{fn, min: def.min, max: def.max,
+    // _ast: node}` when `new Function` accepts the body (JSON round-trip
+    // drops fn and an undefined bound, keeps _ast for the unparser), else
+    // S001 and the default.
     if (t == NodeKind::Func) {
         const QString src = node.toObject().value(QStringLiteral("src")).toString();
         if (funcCompiles(src)) {
             QJsonObject value;
             if (def.hasMin()) value.insert(QStringLiteral("min"), def.minValue);
             if (def.hasMax()) value.insert(QStringLiteral("max"), def.maxValue);
+            value.insert(QStringLiteral("_ast"), node);
             args.insert(argKey, value);
         } else {
             pushDiag(QStringLiteral("S001"), node,

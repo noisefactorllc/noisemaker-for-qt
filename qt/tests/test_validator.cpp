@@ -209,6 +209,33 @@ int main() {
     }
 
     // ==================================================================
+    // vec2()/vec4() constructor arguments (reference GAP-009, 0553e242):
+    // vec2(x, y) on a vec2 parameter sets the written components; a wrong
+    // component count takes the numeric catch-all instead (S002 + default).
+    // The vec4() leg needs a color-typed param whose default is a
+    // 4-component array; the catalog has none (verified), so only the
+    // vec2 leg and the negative paths are observable here.
+    // ==================================================================
+    {
+        const QJsonObject out = validateSrc(QStringLiteral("search synth\nmedia(imageSize: vec2(64, 48)).write(o0)\nrender(o0)\n"));
+        const QJsonArray sz = args(out, 0, 0).value(QStringLiteral("imageSize")).toArray();
+        check(sz.size() == 2 && sz.at(0).toDouble() == 64.0 && sz.at(1).toDouble() == 48.0,
+              "vec2(64, 48) on a vec2-typed param resolves to [64, 48]");
+        check(diags(out).isEmpty(), "no diagnostics for a correct vec2() component count");
+
+        const QJsonObject bad = validateSrc(QStringLiteral("search synth\nmedia(imageSize: vec2(64, 48, 9)).write(o0)\nrender(o0)\n"));
+        const QJsonArray bd = diags(bad);
+        check(bd.size() == 1 && bd.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && bd.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("vec2")
+                  && bd.first().toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("Argument out of range for 'imageSize' in media()"),
+              "a wrong vec2() component count falls to the numeric catch-all: S002, identifier 'vec2'");
+        const QJsonArray kept = args(bad, 0, 0).value(QStringLiteral("imageSize")).toArray();
+        check(kept.size() == 2 && kept.at(0).toDouble() == 1024.0 && kept.at(1).toDouble() == 1024.0,
+              "the wrong component count keeps the [1024, 1024] default");
+    }
+
+    // ==================================================================
     // boolean arg resolution
     // ==================================================================
     {
@@ -426,10 +453,16 @@ int main() {
             "search synth\nnoise(octaves: () => Math.sin(time) * 4, wrap: () => frame > 3).write(o0)\nrender(o0)\n"));
         check(diags(valid).isEmpty(), "valid Func bodies: no diagnostics");
         check(args(valid, 0, 0).value(QStringLiteral("octaves")).toObject()
-                  == QJsonObject{{QStringLiteral("min"), 1}, {QStringLiteral("max"), 8}},
-              "valid numeric Func -> {min, max} (reference {fn, min, max})");
-        check(args(valid, 0, 0).value(QStringLiteral("wrap")) == QJsonValue(QJsonObject()),
-              "valid boolean Func -> {} (reference {fn})");
+                  == QJsonObject{{QStringLiteral("min"), 1}, {QStringLiteral("max"), 8},
+                                 {QStringLiteral("_ast"), valid.value(QStringLiteral("plans")).toArray().first().toObject()
+                                       .value(QStringLiteral("chain")).toArray().first().toObject()
+                                       .value(QStringLiteral("rawKwargs")).toObject().value(QStringLiteral("octaves"))}},
+              "valid numeric Func -> {min, max, _ast} (reference {fn, min, max, _ast}; _ast is the Func node itself)");
+        check(args(valid, 0, 0).value(QStringLiteral("wrap")).toObject()
+                  == QJsonObject{{QStringLiteral("_ast"), valid.value(QStringLiteral("plans")).toArray().first().toObject()
+                                       .value(QStringLiteral("chain")).toArray().first().toObject()
+                                       .value(QStringLiteral("rawKwargs")).toObject().value(QStringLiteral("wrap"))}},
+              "valid boolean Func -> {_ast} (reference {fn, _ast}; the JSON round-trip drops the closure, keeps _ast)");
 
         const QJsonObject invalid = validateSrc(QStringLiteral(
             "search synth\nnoise(octaves: () => time +, wrap: () => time // note\n).write(o0)\nrender(o0)\n"));
