@@ -7,6 +7,7 @@
 
 #include "data_root.h"
 #include "flag_hooks.h"
+#include "frame_args.h"
 #include "host_meshes.h"
 #include "host_textures.h"
 
@@ -27,7 +28,6 @@
 #include <QString>
 #include <QStringList>
 
-#include <algorithm>
 #include <cstdio>
 #include <exception>
 #include <stdexcept>
@@ -162,6 +162,17 @@ int runSingleGraph(const QStringList& args) {
         return 2;
     }
 
+    double time = 0.0;
+    if (!nm::parseTimeArg(timeText, &time)) {
+        std::fprintf(stderr, "ERROR: --time must be a number in [0, 1) (got '%s')\n", timeText.toUtf8().constData());
+        return 2;
+    }
+    int frames = 1;
+    if (!nm::parseFramesArg(framesText, &frames)) {
+        std::fprintf(stderr, "ERROR: --frames must be a positive integer (got '%s')\n", framesText.toUtf8().constData());
+        return 2;
+    }
+
     nm::HostTextures externalTextures;
     try {
         externalTextures = nm::findHostTextures(args);
@@ -169,9 +180,6 @@ int runSingleGraph(const QStringList& args) {
         std::fprintf(stderr, "ERROR: %s\n", e.what());
         return 2;
     }
-
-    const double time = timeText.isEmpty() ? 0.0 : timeText.toDouble();
-    const int frames = framesText.isEmpty() ? 1 : std::max(1, framesText.toInt());
 
     try {
         const nm::Graph graph = loadGraphFile(graphPath);
@@ -214,8 +222,6 @@ int runBatchManifest(const QString& manifestPath) {
         const QString graphPath = item.value(QStringLiteral("graph")).toString();
         const QString outPath = item.value(QStringLiteral("out")).toString();
         const QString sizeText = item.value(QStringLiteral("size")).toString();
-        const double time = item.value(QStringLiteral("time")).toDouble(0.0);
-        const int frames = std::max(1, item.value(QStringLiteral("frames")).toInt(1));
         const QString meshPath = item.value(QStringLiteral("mesh")).toString();
         const QString outLabel = outPath.isEmpty() ? QStringLiteral("<unknown>") : outPath;
 
@@ -226,6 +232,14 @@ int runBatchManifest(const QString& manifestPath) {
             QSize size;
             if (!parseSize(sizeText, &size)) {
                 throw std::runtime_error("manifest item has invalid or missing 'size' (expected WxH)");
+            }
+            double time = 0.0;
+            if (!nm::parseTimeValue(item.value(QStringLiteral("time")), &time)) {
+                throw std::runtime_error("manifest item has invalid 'time' (expected a number in [0, 1))");
+            }
+            int frames = 1;
+            if (!nm::parseFramesValue(item.value(QStringLiteral("frames")), &frames)) {
+                throw std::runtime_error("manifest item has invalid 'frames' (expected a positive integer)");
             }
 
             nm::HostTextures externalTextures;

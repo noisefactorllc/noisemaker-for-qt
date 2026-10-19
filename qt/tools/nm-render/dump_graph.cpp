@@ -26,6 +26,7 @@
 
 #include "data_root.h"
 #include "flag_hooks.h"
+#include "frame_args.h"
 #include "host_meshes.h"
 #include "host_textures.h"
 
@@ -48,7 +49,6 @@
 #include <QString>
 #include <QStringList>
 
-#include <algorithm>
 #include <cstdio>
 #include <exception>
 #include <stdexcept>
@@ -143,6 +143,17 @@ int handleDsl(const QStringList& args) {
         return 2;
     }
 
+    double time = 0.0;
+    if (!nm::parseTimeArg(timeText, &time)) {
+        std::fprintf(stderr, "ERROR: --time must be a number in [0, 1) (got '%s')\n", timeText.toUtf8().constData());
+        return 2;
+    }
+    int frames = 1;
+    if (!nm::parseFramesArg(framesText, &frames)) {
+        std::fprintf(stderr, "ERROR: --frames must be a positive integer (got '%s')\n", framesText.toUtf8().constData());
+        return 2;
+    }
+
     nm::HostTextures externalTextures;
     try {
         externalTextures = nm::findHostTextures(args);
@@ -150,9 +161,6 @@ int handleDsl(const QStringList& args) {
         std::fprintf(stderr, "ERROR: %s\n", e.what());
         return 2;
     }
-
-    const double time = timeText.isEmpty() ? 0.0 : timeText.toDouble();
-    const int frames = framesText.isEmpty() ? 1 : std::max(1, framesText.toInt());
 
     try {
         const QString src = readTextFile(dslPath);

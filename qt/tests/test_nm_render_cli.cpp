@@ -1,7 +1,8 @@
 // nm-render's command line: --help lists every mode and flag and exits 0;
 // an unknown option, no arguments or no mode print the usage and exit 2; a
 // malformed --external-texture value exits 2, and an asyncInit overlay id
-// accepts a host PNG. The data root is found at
+// accepts a host PNG. A bad --time or --frames value exits 2 in --dsl and
+// --graph mode, and fails its batch manifest item. The data root is found at
 // NOISEMAKER_QT_DATA_ROOT, then in an install layout, then in the source
 // tree (data_root.h); a wrong one is named.
 // Qt may add its own diagnostics to standard error (for example
@@ -16,6 +17,11 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QIODevice>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QList>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QStringList>
@@ -243,6 +249,109 @@ int main(int argc, char** argv) {
                                      scratch.path(), sourceDataRoot);
         check(absentNode.exitCode == 1 && absentNode.err.contains(QStringLiteral("not sampled by this graph")),
               "an overlay id of a node the graph does not have exits 1");
+    }
+
+    // --time and --frames follow the export kit's rules: a number T with
+    // 0 <= T < 1 and a positive integer. In --dsl and --graph mode a bad
+    // value is a usage error (exit 2, no PNG, the value named). A bad batch
+    // manifest item fails like one with a bad size: no PNG for it, its out
+    // path named, exit 1, and the other items still render.
+    {
+        QTemporaryDir scratch;
+        const QString program = scratch.path() + QStringLiteral("/p.dsl");
+        QFile programFile(program);
+        const bool programWritten = programFile.open(QIODevice::WriteOnly)
+                                    && programFile.write("search synth\nnoise(seed: 3).write(o0)\nrender(o0)\n") > 0;
+        programFile.close();
+        const Result dump = runIn(nmRender, {QStringLiteral("--dump-graph"), program}, scratch.path(), sourceDataRoot);
+        const QJsonObject envelope = QJsonDocument::fromJson(dump.out.toUtf8()).object();
+        const QString graph = scratch.path() + QStringLiteral("/g.json");
+        QFile graphFile(graph);
+        const bool graphWritten = envelope.value(QStringLiteral("ok")).toBool() && graphFile.open(QIODevice::WriteOnly)
+                                  && graphFile.write(QJsonDocument(envelope.value(QStringLiteral("out")).toObject()).toJson()) > 0;
+        graphFile.close();
+        check(programWritten && graphWritten, "the --time/--frames program and its exported graph are written");
+
+        const QString png = scratch.path() + QStringLiteral("/o.png");
+        const QList<QStringList> badValues = {
+            {QStringLiteral("--time"), QStringLiteral("abc")},   {QStringLiteral("--time"), QStringLiteral("1.5")},
+            {QStringLiteral("--time"), QStringLiteral("-0.2")},  {QStringLiteral("--time"), QStringLiteral("0,5")},
+            {QStringLiteral("--time"), QStringLiteral("1")},     {QStringLiteral("--time"), QStringLiteral("nan")},
+            {QStringLiteral("--frames"), QStringLiteral("0")},   {QStringLiteral("--frames"), QStringLiteral("-3")},
+            {QStringLiteral("--frames"), QStringLiteral("abc")}, {QStringLiteral("--frames"), QStringLiteral("2.5")},
+        };
+        for (const QStringList& mode : {QStringList{QStringLiteral("--dsl"), program}, QStringList{QStringLiteral("--graph"), graph}}) {
+            const QStringList base = mode + QStringList{QStringLiteral("--size"), QStringLiteral("16x16"), QStringLiteral("--out"), png};
+            for (const QStringList& bad : badValues) {
+                QFile::remove(png);
+                const Result r = runIn(nmRender, base + bad, scratch.path(), sourceDataRoot);
+                const QString named = QStringLiteral("ERROR: %1 must be ").arg(bad.at(0));
+                const QString got = QStringLiteral("(got '%1')").arg(bad.at(1));
+                const QByteArray description = (mode.at(0) + QLatin1Char(' ') + bad.join(QLatin1Char(' '))
+                                                + QStringLiteral(" exits 2, writes no PNG and names the value"))
+                                                   .toUtf8();
+                check(r.exitCode == 2 && r.err.contains(named) && r.err.contains(got) && r.out.isEmpty()
+                          && !QFileInfo::exists(png),
+                      description.constData());
+            }
+            QFile::remove(png);
+            const Result valid = runIn(nmRender, base + QStringList{QStringLiteral("--time"), QStringLiteral("0.25"),
+                                                                    QStringLiteral("--frames"), QStringLiteral("8")},
+                                       scratch.path(), sourceDataRoot);
+            const QByteArray description = (mode.at(0) + QStringLiteral(" --time 0.25 --frames 8 renders and exits 0")).toUtf8();
+            check(valid.exitCode == 0 && valid.out.contains(QStringLiteral("RENDERED")) && QFileInfo::exists(png),
+                  description.constData());
+        }
+
+        struct Item {
+            const char* out;
+            const char* key;
+            QJsonValue value;
+        };
+        const QList<Item> badItems = {
+            {"frames-neg.png", "frames", -4},   {"frames-zero.png", "frames", 0},
+            {"frames-frac.png", "frames", 2.5}, {"frames-string.png", "frames", QStringLiteral("8")},
+            {"time-high.png", "time", 1.5},     {"time-neg.png", "time", -0.2},
+            {"time-string.png", "time", QStringLiteral("0.5")},
+        };
+        QJsonArray manifest;
+        const auto item = [&](const QString& out) {
+            return QJsonObject{{QStringLiteral("graph"), graph},
+                               {QStringLiteral("size"), QStringLiteral("16x16")},
+                               {QStringLiteral("out"), scratch.path() + QLatin1Char('/') + out}};
+        };
+        for (const Item& bad : badItems) {
+            QJsonObject entry = item(QString::fromLatin1(bad.out));
+            entry.insert(QString::fromLatin1(bad.key), bad.value);
+            manifest.append(entry);
+        }
+        QJsonObject timed = item(QStringLiteral("valid-timed.png"));
+        timed.insert(QStringLiteral("time"), 0.25);
+        timed.insert(QStringLiteral("frames"), 8);
+        manifest.append(timed);
+        manifest.append(item(QStringLiteral("valid-default.png")));
+        const QString manifestPath = scratch.path() + QStringLiteral("/manifest.json");
+        QFile manifestFile(manifestPath);
+        const bool manifestWritten = manifestFile.open(QIODevice::WriteOnly)
+                                     && manifestFile.write(QJsonDocument(manifest).toJson()) > 0;
+        manifestFile.close();
+        const Result batch = runIn(nmRender, {QStringLiteral("--batch-manifest"), manifestPath}, scratch.path(), sourceDataRoot);
+        check(manifestWritten && batch.exitCode == 1, "a batch manifest with an invalid time or frames item exits 1");
+        for (const Item& bad : badItems) {
+            const QString out = scratch.path() + QLatin1Char('/') + QString::fromLatin1(bad.out);
+            const QString named = QStringLiteral("ERROR %1: manifest item has invalid '%2'").arg(out, QString::fromLatin1(bad.key));
+            const QByteArray description = (QStringLiteral("batch item ") + QString::fromLatin1(bad.out)
+                                            + QStringLiteral(" writes no PNG and is named"))
+                                               .toUtf8();
+            check(batch.err.contains(named) && !QFileInfo::exists(out), description.constData());
+        }
+        for (const char* valid : {"valid-timed.png", "valid-default.png"}) {
+            const QString out = scratch.path() + QLatin1Char('/') + QString::fromLatin1(valid);
+            const QByteArray description = (QStringLiteral("batch item ") + QString::fromLatin1(valid)
+                                            + QStringLiteral(" still renders"))
+                                               .toUtf8();
+            check(batch.out.contains(QStringLiteral("RENDERED ") + out) && QFileInfo::exists(out), description.constData());
+        }
     }
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,
