@@ -209,7 +209,7 @@ int main() {
     }
 
     // ==================================================================
-    // vec2()/vec4() constructor arguments (reference GAP-009, 0553e242):
+    // vec2()/vec4() constructor arguments (reference 0553e242):
     // vec2(x, y) on a vec2 parameter sets the written components; a wrong
     // component count takes the numeric catch-all instead (S002 + default).
     // The vec4() leg needs a color-typed param whose default is a
@@ -266,6 +266,25 @@ int main() {
         const QJsonArray cKept = args(vec2onColor, 0, 0).value(QStringLiteral("color")).toArray();
         check(cKept.size() == 3 && cKept.at(0).toDouble() == 0.5 && cKept.at(1).toDouble() == 0.5 && cKept.at(2).toDouble() == 0.5,
               "vec2() on a color-typed param keeps the [0.5, 0.5, 0.5] default");
+
+        // A non-Number argument inside the constructor takes the
+        // constructor resolver's S002 branch: the diagnostic names the
+        // argument node (identifier 'x' for the bare Ident), severity is
+        // warning, and that component resolves to 0 (verified against the
+        // oracle: vec4(0.1, x, 0.3, 0.4) -> [0.1, 0, 0.3, 0.4]).
+        const QJsonObject vec4nonNum = validateSrc(
+            QStringLiteral("search synth\nremap(zone0_bounds: vec4(0.1, x, 0.3, 0.4)).write(o0)\nrender(o0)\n"));
+        const QJsonArray nn = diags(vec4nonNum);
+        check(nn.size() == 1 && nn.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && nn.first().toObject().value(QStringLiteral("severity")).toString() == QStringLiteral("warning")
+                  && nn.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("x")
+                  && nn.first().toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("Argument out of range for 'zone0_bounds' in remap()"),
+              "a non-Number argument inside vec4() hits the constructor resolver's S002 branch (identifier 'x', warning)");
+        const QJsonArray nnVal = args(vec4nonNum, 0, 0).value(QStringLiteral("zone0_bounds")).toArray();
+        check(nnVal.size() == 4 && nnVal.at(0).toDouble() == 0.1 && nnVal.at(1).toDouble() == 0.0
+                  && nnVal.at(2).toDouble() == 0.3 && nnVal.at(3).toDouble() == 0.4,
+              "the non-Number component resolves to 0: vec4(0.1, x, 0.3, 0.4) -> [0.1, 0, 0.3, 0.4]");
     }
 
     // ==================================================================

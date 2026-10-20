@@ -61,7 +61,7 @@ namespace {
 //     be an array (verified: synth.media's vec2 imageSize with no
 //     override keeps its [1024,1024] array default verbatim; with
 //     `imageSize: 5` becomes the scalar 5). The ONE exception is the
-//     vec2()/vec4() constructor Call (reference GAP-009, 0553e242):
+//     vec2()/vec4() constructor Call (reference 0553e242):
 //     vec2(x, y) on a vec2 parameter and vec4(x, y, z, w) on a color
 //     parameter whose default is a 4-component array set the written
 //     components; every other form keeps the dispatch above.
@@ -1504,7 +1504,7 @@ void Validator::resolveSurfaceArg(QJsonArray& chain, const ParamDef& def, const 
     args.insert(argKey, surf.isUndefined() ? QJsonValue(QJsonValue::Null) : surf);
 }
 
-// 6.2a vec2()/vec4() constructor argument (reference GAP-009, 0553e242):
+// 6.2a vec2()/vec4() constructor argument (reference 0553e242):
 // vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a vec4 parameter
 // (the loader registers vec4 parameters as `color`; their default keeps its
 // four components). Any other form, including a wrong component count,
