@@ -213,8 +213,10 @@ int main() {
     // vec2(x, y) on a vec2 parameter sets the written components; a wrong
     // component count takes the numeric catch-all instead (S002 + default).
     // The vec4() leg needs a color-typed param whose default is a
-    // 4-component array; the catalog has none (verified), so only the
-    // vec2 leg and the negative paths are observable here.
+    // 4-component array: the loader registers vec4 globals as `color`
+    // (effect_registry.cpp's vec4->color rewrite), so synth.remap's
+    // zone*_bounds (vec4 default [0, 0, 1, 1]) qualify. Verified against
+    // the oracle; parity/corpus/vec_constructor_args.dsl gates all legs.
     // ==================================================================
     {
         const QJsonObject out = validateSrc(QStringLiteral("search synth\nmedia(imageSize: vec2(64, 48)).write(o0)\nrender(o0)\n"));
@@ -233,6 +235,37 @@ int main() {
         const QJsonArray kept = args(bad, 0, 0).value(QStringLiteral("imageSize")).toArray();
         check(kept.size() == 2 && kept.at(0).toDouble() == 1024.0 && kept.at(1).toDouble() == 1024.0,
               "the wrong component count keeps the [1024, 1024] default");
+
+        const QJsonObject vec4ok = validateSrc(
+            QStringLiteral("search synth\nremap(zone0_bounds: vec4(0.1, 0.2, 0.3, 0.4)).write(o0)\nrender(o0)\n"));
+        const QJsonArray zb = args(vec4ok, 0, 0).value(QStringLiteral("zone0_bounds")).toArray();
+        check(zb.size() == 4 && zb.at(0).toDouble() == 0.1 && zb.at(1).toDouble() == 0.2 && zb.at(2).toDouble() == 0.3
+                  && zb.at(3).toDouble() == 0.4,
+              "vec4(0.1, 0.2, 0.3, 0.4) on a color-typed param with a 4-component default resolves to [0.1, 0.2, 0.3, 0.4]");
+        check(diags(vec4ok).isEmpty(), "no diagnostics for a correct vec4() component count");
+
+        const QJsonObject vec4bad = validateSrc(
+            QStringLiteral("search synth\nremap(zone0_bounds: vec4(0.1, 0.2, 0.3)).write(o0)\nrender(o0)\n"));
+        const QJsonArray vb = diags(vec4bad);
+        check(vb.size() == 1 && vb.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && vb.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("vec4")
+                  && vb.first().toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("Argument out of range for 'zone0_bounds' in remap()"),
+              "a wrong vec4() component count falls to the color resolver: S002, identifier 'vec4'");
+        const QJsonArray zbKept = args(vec4bad, 0, 0).value(QStringLiteral("zone0_bounds")).toArray();
+        check(zbKept.size() == 4 && zbKept.at(0).toDouble() == 0.0 && zbKept.at(1).toDouble() == 0.0
+                  && zbKept.at(2).toDouble() == 1.0 && zbKept.at(3).toDouble() == 1.0,
+              "the wrong vec4() count keeps the verbatim [0, 0, 1, 1] color default");
+
+        const QJsonObject vec2onColor = validateSrc(
+            QStringLiteral("search synth\nsolid(color: vec2(1, 2)).write(o0)\nrender(o0)\n"));
+        const QJsonArray sc = diags(vec2onColor);
+        check(sc.size() == 1 && sc.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && sc.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("vec2"),
+              "vec2() on a color-typed param does NOT dispatch to the constructor resolver: S002 from the color resolver");
+        const QJsonArray cKept = args(vec2onColor, 0, 0).value(QStringLiteral("color")).toArray();
+        check(cKept.size() == 3 && cKept.at(0).toDouble() == 0.5 && cKept.at(1).toDouble() == 0.5 && cKept.at(2).toDouble() == 0.5,
+              "vec2() on a color-typed param keeps the [0.5, 0.5, 0.5] default");
     }
 
     // ==================================================================
