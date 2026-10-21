@@ -736,9 +736,9 @@ int main(int argc, char** argv) {
         {
             const QJsonObject unshadowed = validateSrc(QStringLiteral(
                 "search synth\nif (0) { let x = 9\nnoise(speed: x).write(o2) }\nnoise(speed: x).write(o1)\nrender(o0)\n"));
-            const QJsonArray ds = diags(unshadowed);
-            check(ds.size() == 1 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
-                      && !ds.at(0).toObject().contains(QStringLiteral("location")),
+            const QJsonArray unshadowedDiags = diags(unshadowed);
+            check(unshadowedDiags.size() == 1 && unshadowedDiags.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                      && !unshadowedDiags.at(0).toObject().contains(QStringLiteral("location")),
                   "a block let does not leak: the name is unassigned again after the block (S003, no location)");
         }
     }
