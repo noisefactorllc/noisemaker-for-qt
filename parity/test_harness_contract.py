@@ -469,7 +469,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertIn(f"const PIN = '{pin}'", pinned)
         (root / "scripts" / "test").write_text(pinned)
         base_env = {k: v for k, v in os.environ.items()
-                    if k not in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE")}
+                    if k not in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE", "NM_CHANGED_FILES")}
 
         def run_test(**env):
             return subprocess.run(["node", str(root / "scripts" / "test")],
@@ -498,6 +498,60 @@ class HarnessContractTests(unittest.TestCase):
         result = run_test(NM_REFERENCE_ROOT=str(reference))
         output = result.stdout + result.stderr
         self.assertIn(f"reference checkout: {reference} (HEAD {pin})", output)
+
+    def test_scripts_test_changed_files_selection_runs_only_the_exercising_components(self):
+        # The operator changed-files rule: with NM_CHANGED_FILES set, only the
+        # suite components that exercise those paths run; with it unset, the
+        # whole suite runs. The scratch port has no parity/ or tools/ files, so
+        # every selected component fails with its own "FAIL:" line, which makes
+        # the selection observable without a working gate.
+        root = self.tmp / "port"
+        (root / "scripts").mkdir(parents=True)
+        (root / "parity").mkdir()
+        reference = self.tmp / "reference"
+        pin, _ = self._reference_with_two_commits(reference)
+        script = (REPO / "scripts" / "test").read_text()
+        pinned = "\n".join(f"const PIN = '{pin}'" if line.startswith("const PIN = '") else line
+                           for line in script.splitlines()) + "\n"
+        (root / "scripts" / "test").write_text(pinned)
+        # A passing stub for the first gate lets the run reach the next gate
+        # despite scripts/test exiting on the first failure.
+        (root / "parity" / "check_shaders.mjs").write_text("process.stdout.write('stub ok\\n')\n")
+        default = self.tmp / f"noisemaker-reference-{pin[:12]}"
+        subprocess.run(["git", "clone", "-q", str(reference), str(default)], check=True)
+        base_env = {k: v for k, v in os.environ.items()
+                    if k not in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE", "NM_CHANGED_FILES")}
+
+        def run_test(**env):
+            return subprocess.run(["node", str(root / "scripts" / "test")],
+                                  env={**base_env, "TMPDIR": str(self.tmp), **env},
+                                  capture_output=True, text=True)
+
+        # A shader change selects the shaders gate but not the other gates:
+        # the stub shaders gate passes and the run stops at the coverage step,
+        # so no definitions or effects-ui failure can appear.
+        result = run_test(NM_CHANGED_FILES="qt/noisemaker/shaders/effects/foo.frag")
+        output = result.stdout + result.stderr
+        self.assertNotIn("FAIL: node parity/check_definitions.mjs", output)
+        self.assertNotIn("FAIL: node parity/check_effects_ui.mjs", output)
+
+        # A C++ test path exercises no parity component: nothing runs, exit 0.
+        result = run_test(NM_CHANGED_FILES="qt/tests/test_validator.cpp")
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("no parity suite component exercises the changed paths", output)
+        self.assertNotIn("FAIL: node", output)
+
+        # A change to the entrypoint itself selects every component: the run
+        # passes the stub shaders gate and reaches the definitions gate.
+        result = run_test(NM_CHANGED_FILES="scripts/test")
+        output = result.stdout + result.stderr
+        self.assertIn("FAIL: node parity/check_definitions.mjs", output)
+
+        # Unset: the whole suite runs, exactly as before the rule.
+        result = run_test()
+        output = result.stdout + result.stderr
+        self.assertIn("FAIL: node parity/check_definitions.mjs", output)
 
     def test_fixture_coverage_rejects_a_reference_checkout_that_is_not_at_the_commit(self):
         reference = self.tmp / "reference"

@@ -8,6 +8,12 @@
     "sim"
   ],
   "params": {
+    "diffuseTex": {
+      "ui": {
+        "label": "diffuse map",
+        "category": "fractal"
+      }
+    },
     "stateSize": {
       "ui": {
         "control": false
@@ -61,5 +67,5 @@
       }
     }
   },
-  "help": "# buddhabrot\n\nBuddhabrot fractal via progressive orbit accumulation — agents test random c values and deposit escaped orbit traces\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 512 | - | Particle state texture size (no UI control) |\n| mode | int | standard | anti/standard | Standard or anti-buddhabrot |\n| maxIter | int | 200 | 20–2000 | Max orbit iterations |\n| minIter | int | 1 | 1–1000 | Min orbit iterations |\n| centerX | float | -0.5 | -3–3 | Center x |\n| centerY | float | 0 | -3–3 | Center y |\n| zoom | float | 1 | 0.1–5 | Zoom level |\n"
+  "help": "# buddhabrot\n\nBuddhabrot fractal via progressive orbit accumulation — agents test random c values and deposit escaped orbit traces\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| stateSize | int | 512 | - | Particle state texture size (no UI control) |\n| mode | int | standard | anti/standard | Standard or anti-buddhabrot |\n| maxIter | int | 200 | 20–2000 | Max orbit iterations |\n| minIter | int | 1 | 1–1000 | Min orbit iterations |\n| centerX | float | -0.5 | -3–3 | Center x |\n| centerY | float | 0 | -3–3 | Center y |\n| zoom | float | 1 | 0.1–5 | Zoom level |\n"
 }

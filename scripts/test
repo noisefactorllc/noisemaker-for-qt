@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 // The reference (noisemaker) commit this port is synced to. CI and scripts/parity-summary
 // read it from this line.
-const PIN = '668b82ea1f7b7568610b1fb1058444d61b6e330f'
+const PIN = '317c43ccb2eaaf0ea1d0dad6321c97c70edb9119'
 
 function run(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts })
@@ -65,11 +65,45 @@ if (head !== PIN) {
 console.log(`reference checkout: ${referenceRoot} (HEAD ${head})`)
 
 const env = { ...process.env, NM_REFERENCE_ROOT: referenceRoot }
+
+// Operator rule (2026-10-21): when NM_CHANGED_FILES names changed paths, run
+// only the suite components that exercise those paths. Selection is
+// deliberately broad: every component that could touch a changed path stays
+// selected, so no relevant test is dropped. With the variable unset the whole
+// suite runs exactly as before.
+const changedFiles = (process.env.NM_CHANGED_FILES ?? '')
+    .split(/\r?\n/)
+    .map(s => s.trim().replace(/^\.\//, ''))
+    .filter(Boolean)
+const selectFor = (...patterns) => changedFiles.length === 0
+    || changedFiles.some(f => patterns.some(p => p.test(f)))
+// The entrypoint itself is exercised by the whole suite (the harness contract
+// tests run it), so a change to scripts/test selects every component.
+const entrypointChanged = selectFor(/^scripts\/test$/)
+const shadersChanged = entrypointChanged || selectFor(/^qt\/noisemaker\/shaders\//, /^parity\/corpus\//)
+const effectsChanged = selectFor(/^qt\/noisemaker\/effects\//)
+const effectsUiChanged = selectFor(/^qt\/noisemaker\/effects-ui\//)
+const parityChanged = selectFor(/^parity\//, /^tools\/fixture-coverage/)
+const compilerChanged = selectFor(/^qt\/noisemaker\/compiler\//)
+const runShaders = shadersChanged || parityChanged
+const runDefinitions = entrypointChanged || effectsChanged || parityChanged
+const runEffectsUi = entrypointChanged || effectsUiChanged || effectsChanged || parityChanged
+const runCoverage = runShaders || runEffectsUi
+const runUnits = entrypointChanged || parityChanged || effectsChanged || shadersChanged || compilerChanged
+if (!runShaders && !runDefinitions && !runEffectsUi && !runCoverage && !runUnits) {
+    console.log('scripts/test: no parity suite component exercises the changed paths')
+} else {
 for (const gate of [
     'parity/check_shaders.mjs',
     'parity/check_definitions.mjs',
     'parity/check_effects_ui.mjs',
-]) run('node', [gate], { env })
-run('node', ['tools/fixture-coverage.mjs', '--check', '--reference-commit', PIN], { env })
-run('python3', ['-m', 'unittest', '-v', 'parity.test_artistic_matrix', 'parity.test_harness_contract'])
-console.log('scripts/test: all parity checks passed')
+]) {
+    if (gate === 'parity/check_shaders.mjs' && !runShaders) continue
+    if (gate === 'parity/check_definitions.mjs' && !runDefinitions) continue
+    if (gate === 'parity/check_effects_ui.mjs' && !runEffectsUi) continue
+    run('node', [gate], { env })
+}
+if (runCoverage) run('node', ['tools/fixture-coverage.mjs', '--check', '--reference-commit', PIN], { env })
+if (runUnits) run('python3', ['-m', 'unittest', '-v', 'parity.test_artistic_matrix', 'parity.test_harness_contract'])
+console.log('scripts/test: selected parity checks passed')
+}
