@@ -903,6 +903,12 @@ int main(int argc, char** argv) {
     nm::EffectRegistry registry;
     registry.loadAll(kDataRoot);
 
+    if (app.arguments().contains(QStringLiteral("--background-only"))) {
+        testBackgroundTrace(registry);
+        std::printf("%d failure(s)\n", g_failures);
+        return g_failures == 0 ? 0 : 1;
+    }
+
     testSeededRng();
     testMath();
     testCanvasStrokes();

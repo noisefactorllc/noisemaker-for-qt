@@ -28,42 +28,28 @@
 #elif defined(__linux__)
 #include <pthread.h>
 #include <sched.h>
+#include <sys/resource.h>
 #endif
 
 namespace nm {
 
 namespace {
 
-// Called first on a background trace's worker thread (GAP-038). The trace
-// runs below every thread that draws a frame, so it takes only CPU time no
-// frame needs. At normal priority it competes with the frame: Mesa llvmpipe
-// rasterizes on one thread per CPU, so a trace took one CPU's share from
-// every frame. In seven Linux CI runs (4 CPUs, 1920x1080 fibers) the median
-// frame during a trace took 1.31 to 1.45 times the median steady frame,
-// about the 4/3 of losing one of four CPUs, and single frames took up to
-// 30.9 ms. A lowered priority makes the scheduler run the rasterizer
-// threads and the host's render thread first whenever they are runnable:
-//   - Linux: SCHED_IDLE. A waking normal thread always preempts it, and a CPU
-//     that runs only SCHED_IDLE work counts as idle when a woken thread
-//     picks its CPU. nice 19 has neither property.
-//   - macOS: QOS_CLASS_UTILITY, below the default and user-interactive
-//     classes of render threads.
-//   - Windows: THREAD_PRIORITY_LOWEST, below every normal-priority thread.
-// None of them stops the trace: it runs whenever a CPU is idle, which a
-// host that presents at its display rate leaves on every frame, and the
-// Linux and Windows schedulers still give a starved thread CPU time. A
-// trace on a host whose CPUs other work keeps busy completes later; so does
-// the exit of a cancelled one, which ~AsyncOverlays() and clear() wait for.
-// A failed call leaves the default priority, as before this change.
+// Called first on a background trace's worker thread (GAP-038). Lower its
+// priority relative to the renderer, but keep the trace able to finish.
+// Linux uses the fair scheduler with nice 19: SCHED_IDLE can starve the
+// trace while a software renderer keeps presenting frames. macOS uses
+// utility QoS, and Windows uses the lowest normal thread priority.
 void lowerTraceThreadPriority() {
 #if defined(_WIN32)
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #elif defined(__APPLE__)
     pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
-#elif defined(__linux__) && defined(SCHED_IDLE)
+#elif defined(__linux__)
     sched_param param{};
     param.sched_priority = 0;
-    pthread_setschedparam(pthread_self(), SCHED_IDLE, &param);
+    pthread_setschedparam(pthread_self(), SCHED_OTHER, &param);
+    setpriority(PRIO_PROCESS, 0, 19);
 #endif
 }
 
