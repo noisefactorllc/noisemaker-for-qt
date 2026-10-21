@@ -11,10 +11,8 @@ uniform float stride;
 uniform float quantize;
 uniform float inverse;
 uniform float inputWeight;
-uniform float fieldActive;
 
 // Input state from pipeline (from pointsEmit)
-uniform sampler2D heightTex;
 uniform sampler2D inputTex;  // Source texture for gradient descent
 uniform sampler2D xyzTex;    // [x, y, z, alive]
 uniform sampler2D velTex;    // [x_dir, y_dir, inertia, 0]
@@ -24,15 +22,6 @@ uniform sampler2D rgbaTex;   // [r, g, b, a]
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
-
-uniform sampler2D diffuseTex;
-uniform float diffuseActive;
-
-vec4 selectedDiffuse(vec2 uv) {
-    ivec2 size = textureSize(diffuseTex, 0);
-    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
-    return texelFetch(diffuseTex, pixel, 0);
-}
 
 // === ORIGINAL HFLOW HELPER FUNCTIONS (PRESERVED EXACTLY) ===
 
@@ -85,7 +74,7 @@ float oklab_l(vec3 rgb) {
 vec4 fetch_texel(int x, int y, int width, int height) {
     int wrapped_x = wrap_int(x, width);
     int wrapped_y = wrap_int(y, height);
-    return fieldActive > 0.5 ? texelFetch(heightTex, ivec2(wrapped_x, wrapped_y), 0) : texelFetch(inputTex, ivec2(wrapped_x, wrapped_y), 0);
+    return texelFetch(inputTex, ivec2(wrapped_x, wrapped_y), 0);
 }
 
 float luminance_at(int x, int y, int width, int height) {
@@ -209,5 +198,5 @@ void main() {
     
     outXYZ = vec4(newPx, newPy, xyz.z, alive);
     outVel = vec4(normVx, normVy, vz, seed_f);
-    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
+    outRGBA = rgba;
 }

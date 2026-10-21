@@ -7,12 +7,6 @@
     "sim"
   ],
   "params": {
-    "diffuseTex": {
-      "ui": {
-        "label": "diffuse map",
-        "category": "physics"
-      }
-    },
     "stateSize": {
       "ui": {
         "control": false
@@ -67,5 +61,5 @@
       }
     }
   },
-  "help": "# physical\n\nPhysics-based particle simulation with wind and gravity forces\n\n## Description\n\nParticles fall under gravity, get pushed by wind, and experience drag and random wandering. Use negative gravity for rising particles (like smoke or bubbles).\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| stateSize | int | 256 | - | - |\n| gravity | float | 0.05 | -2-2 | Gravity |\n| wind | float | 0 | -2-2 | Wind |\n| energy | float | 0.5 | 0-2 | Energy |\n| drag | float | 0.15 | 0-0.2 | Drag |\n| deviation | float | 0.75 | 0-1 | Deviation |\n| wander | float | 0.25 | 0-1 | Wander |\n"
+  "help": "# physical\n\nPhysics-based particle simulation with wind and gravity forces\n\n## Description\n\nParticles fall under gravity, get pushed by wind, and experience drag and random wandering. Use negative gravity for rising particles (like smoke or bubbles).\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| gravity | float | 0.05 | -2-2 | Gravity |\n| wind | float | 0 | -2-2 | Wind |\n| energy | float | 0.5 | 0-2 | Energy |\n| drag | float | 0.15 | 0-0.2 | Drag |\n| deviation | float | 0.75 | 0-1 | Deviation |\n| wander | float | 0.25 | 0-1 | Wander |\n"
 }
