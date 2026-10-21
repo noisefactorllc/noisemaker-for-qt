@@ -131,6 +131,11 @@ public:
     // number of overlays uploaded from completed traces.
     int sync(Backend& backend, const Graph& graph, QSize size, const QJsonObject& globalUniforms);
 
+    // Budget background work during rendering. These calls never wait for
+    // a worker. endRender() carries shared credit and wakes paused jobs.
+    void beginRender();
+    void endRender();
+
     // True while a background trace runs, or has completed and awaits its
     // upload by the next sync().
     bool pending() const;
@@ -147,6 +152,7 @@ public:
     QStringList textureIds() const;
 
 private:
+    struct FrameGate;
     struct Job;
     struct Node {
         // The overlay uploaded under textureIds.
@@ -158,12 +164,13 @@ private:
         // The background trace for the node's current state, if any.
         std::unique_ptr<Job> job;
     };
-    static void startJob(Job& job);
+    void startJob(Job& job);
     void retire(std::unique_ptr<Job> job);
 
     std::unordered_map<QString, Node> m_nodes;  // nodeId -> overlay and trace
     std::vector<std::unique_ptr<Job>> m_retired; // cancelled traces, joined when they end
     bool m_background = false;
+    std::shared_ptr<FrameGate> m_frameGate;
 };
 
 } // namespace nm

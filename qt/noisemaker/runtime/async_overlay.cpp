@@ -7,12 +7,15 @@
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QSet>
+#include <QSemaphore>
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <thread>
+#include <time.h>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -51,6 +54,24 @@ void lowerTraceThreadPriority() {
     pthread_setschedparam(pthread_self(), SCHED_OTHER, &param);
     setpriority(PRIO_PROCESS, 0, 19);
 #endif
+}
+
+std::int64_t traceCpuNanoseconds() {
+#if defined(_WIN32)
+    FILETIME creation, exit, kernel, user;
+    if (GetThreadTimes(GetCurrentThread(), &creation, &exit, &kernel, &user)) {
+        const auto ticks = [](const FILETIME& value) {
+            return (static_cast<std::uint64_t>(value.dwHighDateTime) << 32) | value.dwLowDateTime;
+        };
+        return static_cast<std::int64_t>((ticks(kernel) + ticks(user)) * 100);
+    }
+#elif defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec value{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &value) == 0) {
+        return static_cast<std::int64_t>(value.tv_sec) * 1000000000 + value.tv_nsec;
+    }
+#endif
+    return -1;
 }
 
 constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
@@ -319,8 +340,8 @@ QStringList asyncOverlayTextureIds(const Graph& graph) {
 
 // A background trace. effectKey, size and params belong to the render
 // thread; the worker thread traces its own deep copies of them. The worker
-// writes only pixels, completed and done, and the render thread reads pixels
-// and completed only after it sees done.
+// writes pixels, completed, done and its wait flag. The render thread reads
+// pixels and completed only after it sees done.
 //
 // done is the worker's last access to the Job: it frees its canvas and its
 // copies first, so after done it only returns. The render thread therefore
@@ -328,18 +349,85 @@ QStringList asyncOverlayTextureIds(const Graph& graph) {
 // thread has exited, and a worker at its lowered priority
 // (lowerTraceThreadPriority) can wait for a CPU behind every rasterizer
 // thread first. Only wait(), clear() and the destructor join.
+struct AsyncOverlays::FrameGate {
+    std::atomic<bool> rendering{false};
+    std::atomic<std::uint64_t> serial{0};
+    std::atomic<std::int64_t> credit{0};
+    std::chrono::steady_clock::time_point started;
+    const double cores = std::max(1u, std::thread::hardware_concurrency());
+
+    std::int64_t ceiling() const {
+        return static_cast<std::int64_t>((1e9 / 60.0) * cores / (3.0 * cores + 1.0));
+    }
+    void grant() {
+        const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - started).count();
+        // One aggregate share: its ideal frame-time cost is 1/(3N),
+        // below the contract's 1/(2N) allowance for N hardware threads.
+        const double share = cores / (3.0 * cores + 1.0);
+        const auto earned = static_cast<std::int64_t>(elapsed * share);
+        auto current = credit.load();
+        while (!credit.compare_exchange_weak(current, std::min(ceiling(), current + earned))) {}
+    }
+};
+
 struct AsyncOverlays::Job {
     QString effectKey;
     QSize size;
     QJsonObject params;
     std::atomic<bool> cancelled{false};
     std::atomic<bool> done{false};
+    std::atomic<bool> waiting{false};
+    QSemaphore wake;
+    std::chrono::steady_clock::time_point lastCheckpoint;
+    std::int64_t lastCpu = -1;
+    std::uint64_t lastSerial = 0;
+    bool measured = false;
+    bool lastRendering = false;
     bool completed = false; // traced to the end (not cancelled)
     // The overlay's rows in texture order, bottom row first: the worker
     // flips them, so the upload copies them as they are.
     std::vector<std::uint8_t> pixels;
     std::thread thread;
 
+    bool cancelledOrWait(FrameGate& gate) {
+        const auto now = std::chrono::steady_clock::now();
+        const auto cpu = traceCpuNanoseconds();
+        const bool rendering = gate.rendering.load();
+        const auto serial = gate.serial.load();
+        if (measured && (lastRendering || rendering || serial != lastSerial)) {
+            if (cpu >= 0 && lastCpu >= 0) {
+                gate.credit.fetch_sub(std::max<std::int64_t>(0, cpu - lastCpu));
+            } else {
+                // A failed CPU clock must not turn descheduling into growing
+                // debt. Bound the fallback to one frame's aggregate credit.
+                const auto spent = std::min(gate.ceiling(), std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    now - lastCheckpoint).count());
+                auto current = gate.credit.load();
+                while (!gate.credit.compare_exchange_weak(current,
+                    std::max(std::min(current, -gate.ceiling()), current - spent))) {}
+            }
+        }
+        const auto paused = [&] { return gate.rendering.load() && gate.credit.load() <= 0; };
+        while (!cancelled.load(std::memory_order_acquire) && paused()) {
+            waiting.store(true);
+            if (!cancelled.load(std::memory_order_acquire) && paused()) wake.acquire();
+            waiting.store(false);
+        }
+        lastSerial = gate.serial.load();
+        lastRendering = gate.rendering.load();
+        lastCheckpoint = std::chrono::steady_clock::now();
+        lastCpu = traceCpuNanoseconds();
+        measured = true;
+        return cancelled.load(std::memory_order_acquire);
+    }
+    void resume() {
+        if (waiting.exchange(false)) wake.release();
+    }
+    void cancel() {
+        cancelled.store(true, std::memory_order_release);
+        wake.release();
+    }
     bool matches(const QString& key, QSize s, const QJsonObject& p) const {
         return effectKey == key && size == s && params == p;
     }
@@ -351,7 +439,7 @@ struct AsyncOverlays::Job {
         if (thread.joinable()) thread.detach();
     }
     ~Job() {
-        cancelled.store(true, std::memory_order_relaxed);
+        cancel();
         join();
     }
 };
@@ -400,7 +488,7 @@ void flipRows(std::vector<std::uint8_t>& pixels, QSize size) {
 
 } // namespace
 
-AsyncOverlays::AsyncOverlays() = default;
+AsyncOverlays::AsyncOverlays() : m_frameGate(std::make_shared<FrameGate>()) {}
 
 AsyncOverlays::~AsyncOverlays() {
     clear();
@@ -414,15 +502,15 @@ void AsyncOverlays::startJob(Job& job) {
     QString effectKey = QString::fromUtf8(job.effectKey.toUtf8());
     QJsonObject params = detachedCopy(QJsonValue(job.params)).toObject();
     const QSize size = job.size;
-    job.thread = std::thread([target, effectKey = std::move(effectKey), params = std::move(params), size]() mutable {
+    job.thread = std::thread([target, gate = m_frameGate, effectKey = std::move(effectKey), params = std::move(params), size]() mutable {
         lowerTraceThreadPriority();
         std::vector<std::uint8_t> pixels;
         bool completed = false;
-        {
+        if (!target->cancelledOrWait(*gate)) {
             StrokeCanvas canvas(size.width(), size.height());
             const TraceResult result = runAsyncInit(effectKey, canvas, params,
-                                                    [target] { return target->cancelled.load(std::memory_order_relaxed); });
-            if (result != TraceResult::Cancelled) {
+                                                    [target, &gate] { return target->cancelledOrWait(*gate); });
+            if (result != TraceResult::Cancelled && !target->cancelledOrWait(*gate)) {
                 pixels = canvas.unpremultipliedRgba8();
                 flipRows(pixels, size);
                 completed = true;
@@ -438,7 +526,7 @@ void AsyncOverlays::startJob(Job& job) {
 
 void AsyncOverlays::retire(std::unique_ptr<Job> job) {
     if (!job) return;
-    job->cancelled.store(true, std::memory_order_relaxed);
+    job->cancel();
     m_retired.push_back(std::move(job));
 }
 
@@ -547,15 +635,33 @@ bool AsyncOverlays::pending() const {
     return false;
 }
 
+void AsyncOverlays::beginRender() {
+    m_frameGate->started = std::chrono::steady_clock::now();
+    m_frameGate->rendering.store(true);
+    m_frameGate->serial.fetch_add(1);
+}
+
+void AsyncOverlays::endRender() {
+    if (m_frameGate->rendering.load()) m_frameGate->grant();
+    m_frameGate->rendering.store(false);
+    for (auto& entry : m_nodes) {
+        if (entry.second.job) entry.second.job->resume();
+    }
+    for (auto& job : m_retired) job->resume();
+}
+
 void AsyncOverlays::wait() {
+    const bool rendering = m_frameGate->rendering.load();
+    endRender();
     for (auto& entry : m_nodes) {
         if (entry.second.job) entry.second.job->join();
     }
+    if (rendering) beginRender();
 }
 
 void AsyncOverlays::clear() {
     for (auto& entry : m_nodes) {
-        if (entry.second.job) entry.second.job->cancelled.store(true, std::memory_order_relaxed);
+        if (entry.second.job) entry.second.job->cancel();
     }
     m_nodes.clear();   // each Job joins its thread
     m_retired.clear();

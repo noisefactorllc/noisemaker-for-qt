@@ -19,6 +19,7 @@
 #include <QOpenGLContext>
 #include <QOpenGLFunctions_4_1_Core>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QSet>
 #include <QSurfaceFormat>
 #include <QVector>
@@ -2617,6 +2618,9 @@ void Backend::renderInternal(
     const Graph& graph,
     double t,
     std::optional<double> presentationTimestamp) {
+    AsyncOverlays& overlays = asyncOverlays();
+    overlays.beginRender();
+    const auto renderEnd = qScopeGuard([&overlays] { overlays.endRender(); });
     makeOwnedContextCurrent();
     Graph effectiveGraph = graph;
     resolveFunctionValues(effectiveGraph);
