@@ -97,16 +97,22 @@ int main() {
               "top-level write reflects the LAST write in the chain, not the first");
     }
     {
-        // Comments are legal around chain dots (leadingComments), but NOT
-        // inside a block before a statement (parser has no collectComments
-        // call there) -- verified against the oracle: this throws.
-        bool threw = false;
-        try {
-            parseSrc(QStringLiteral("search synth\nif (1) {\n  // comment\n  solid(0.1,0.2,0.3).write(o0)\n}\nrender(o0)\n"));
-        } catch (const nm::DslSyntaxError&) {
-            threw = true;
-        }
-        check(threw, "a comment immediately before a statement INSIDE a block is a syntax error (not collected there)");
+        // Reference 660e2680 (GAP-010): a comment inside an if/elif/else
+        // block attaches to the next statement in the block, as at top
+        // level. Comments before the closing '}' stay on the block as a
+        // non-enumerable trailingComments list in the reference -- invisible
+        // to every dump, and not represented in this port either.
+        const QJsonObject prog = parseSrc(QStringLiteral(
+            "search synth\nif (1) {\n  // c1\n  solid(0.1,0.2,0.3).write(o0)\n  // c2\n}\nrender(o0)\n"));
+        const QJsonObject ifStmt = prog.value(QStringLiteral("plans")).toArray().at(0).toObject();
+        const QJsonArray thenBlock = ifStmt.value(QStringLiteral("then")).toArray();
+        check(thenBlock.size() == 1, "comment inside a block: the statement still parses");
+        check(thenBlock.at(0).toObject().value(QStringLiteral("leadingComments")).toArray().size() == 1
+                  && thenBlock.at(0).toObject().value(QStringLiteral("leadingComments")).toArray().at(0).toString()
+                         == QStringLiteral("// c1"),
+              "a comment before a statement inside a block attaches as that statement's leadingComments");
+        check(!thenBlock.at(0).toObject().contains(QStringLiteral("trailingComments")),
+              "no trailingComments key leaks onto block statements");
     }
     {
         const QJsonObject prog = parseSrc(QStringLiteral(

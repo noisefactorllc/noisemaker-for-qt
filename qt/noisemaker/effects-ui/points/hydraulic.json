@@ -7,6 +7,18 @@
     "sim"
   ],
   "params": {
+    "diffuseTex": {
+      "ui": {
+        "label": "diffuse map",
+        "category": "agents"
+      }
+    },
+    "heightTex": {
+      "ui": {
+        "label": "height map",
+        "category": "agents"
+      }
+    },
     "stride": {
       "step": 1,
       "ui": {
@@ -38,5 +50,5 @@
       }
     }
   },
-  "help": "# hydraulic\n\nHydraulic erosion flow simulation (gradient descent)\n\n## Description\n\nAgents flow downhill following the steepest descent of the input texture brightness, simulating water flowing over terrain. Use `inverse: true` for uphill flow (gradient ascent).\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stride | float | 10 | 1-1000 | Stride |\n| quantize | boolean | false | - | Quantize |\n| inverse | boolean | false | - | Inverse |\n| inputWeight | float | 100 | 0-100 | Input weight |\n"
+  "help": "# hydraulic\n\nHydraulic erosion flow simulation (gradient descent)\n\n## Description\n\nAgents flow downhill following the steepest descent of the input texture brightness, simulating water flowing over terrain. Use `inverse: true` for uphill flow (gradient ascent).\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| heightTex | surface | none | - | Height field; defaults to the chained input |\n| stride | float | 10 | 1-1000 | Stride |\n| quantize | boolean | false | - | Quantize |\n| inverse | boolean | false | - | Inverse |\n| inputWeight | float | 100 | 0-100 | Input weight |\n"
 }

@@ -337,7 +337,9 @@ QString hashSource(const QString& source) {
 QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry,
                              const QJsonObject& options) {
     const QJsonArray tokens = nm::lex(source);
-    const QJsonObject ast = nm::parse(tokens, options);
+    // Keep the parser's private keys for validate() (Ident positions, let
+    // statement order); validate() strips them from everything it emits.
+    const QJsonObject ast = nm::parseKeepingPrivateKeys(tokens, options);
     const QJsonObject validated = nm::validate(ast, registry);
 
     const QJsonArray diagnostics = validated.value(QStringLiteral("diagnostics")).toArray();

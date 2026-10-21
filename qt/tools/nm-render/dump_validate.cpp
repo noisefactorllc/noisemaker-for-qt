@@ -73,7 +73,9 @@ int handleDumpValidated(const QStringList& args) {
         nm::EffectRegistry registry;
         registry.loadAll(nm::resolveDataRoot());
         const QJsonArray tokens = nm::lex(src);
-        const QJsonObject ast = nm::parse(tokens);
+        // Keep the parser's private keys for validate() (Ident positions, let
+        // statement order); validate() strips them from everything it emits.
+        const QJsonObject ast = nm::parseKeepingPrivateKeys(tokens);
         const QJsonObject validated = nm::validate(ast, registry);
         out.insert(QStringLiteral("ok"), true);
         out.insert(QStringLiteral("out"), validated);

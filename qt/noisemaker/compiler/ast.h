@@ -98,3 +98,46 @@ inline QJsonObject loc(int line, int col) {
 }
 
 } // namespace nm::ast
+
+// Private compiler keys: parser-authored fields that mirror the reference's
+// NON-ENUMERABLE JS properties, so they must never reach a dump or a cloned
+// node. The reference stores them with Object.defineProperty(...,
+// {enumerable:false}), which JSON.stringify drops and object spread drops;
+// this port stores them as "_"-prefixed keys and strips them at exactly the
+// boundaries where the reference's non-enumerability hides them:
+//   _pos        Ident position (reference Ident.position, 9cc041d0) --
+//               read by the validator's S003 read-before-let diagnostic and
+//               dropped by every JS clone/spread.
+//   _nid        per-process Ident node identity (a WeakSet has no
+//               QJsonObject equivalent) -- drives the reference's
+//               readsBeforeLet WeakSet in validator.cpp.
+//   _planIndex  VarAssign statement order (reference VarAssign.planIndex,
+//               9cc041d0) -- statement-order let declaration.
+// nm::parse() strips them from its public result; nm::validate() re-strips
+// anything it emits. In the validator, substitute() keeps them on
+// pass-through nodes (the reference returns the SAME object there, so its
+// non-enumerable position/id stay visible to the readsBeforeLet WeakSet) and
+// drops them exactly where the reference clones or spreads.
+inline QJsonValue stripPrivateCompilerKeys(const QJsonValue& val) {
+    if (val.isObject()) {
+        QJsonObject obj = val.toObject();
+        obj.remove(QStringLiteral("_pos"));
+        obj.remove(QStringLiteral("_nid"));
+        obj.remove(QStringLiteral("_planIndex"));
+        for (auto it = obj.begin(); it != obj.end(); ++it) {
+            if (it.value().isObject() || it.value().isArray()) {
+                *it = stripPrivateCompilerKeys(it.value());
+            }
+        }
+        return obj;
+    } else if (val.isArray()) {
+        QJsonArray arr = val.toArray();
+        for (int i = 0; i < arr.size(); ++i) {
+            if (arr.at(i).isObject() || arr.at(i).isArray()) {
+                arr.replace(i, stripPrivateCompilerKeys(arr.at(i)));
+            }
+        }
+        return arr;
+    }
+    return val;
+}

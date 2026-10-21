@@ -7,6 +7,18 @@
     "sim"
   ],
   "params": {
+    "diffuseTex": {
+      "ui": {
+        "label": "diffuse map",
+        "category": "agents"
+      }
+    },
+    "fieldTex": {
+      "ui": {
+        "label": "field map",
+        "category": "agents"
+      }
+    },
     "stateSize": {
       "ui": {
         "control": false
@@ -59,5 +71,5 @@
       }
     }
   },
-  "help": "# flow\n\nAgent-based luminosity flow field with behaviors\n\n## Description\n\nAgents move according to the brightness of the input texture, creating painterly strokes and flow patterns.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| behavior | int | obedient | none/obedient/crosshatch/unruly/chaotic/randomMix/meandering | Behavior |\n| stride | float | 10 | 1-1000 | Stride |\n| strideDeviation | float | 0.05 | 0-0.5 | Stride deviation |\n| kink | float | 1 | 0-10 | Kink |\n| quantize | boolean | false | - | Quantize |\n| inputWeight | float | 100 | 0-100 | Input weight |\n"
+  "help": "# flow\n\nAgent-based luminosity flow field with behaviors\n\n## Description\n\nAgents move according to the brightness of the input texture, creating painterly strokes and flow patterns.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| fieldTex | surface | none | - | Flow field; defaults to the chained input |\n| stateSize | int | 256 | - | - |\n| behavior | int | obedient | none/obedient/crosshatch/unruly/chaotic/randomMix/meandering | Behavior |\n| stride | float | 10 | 1-1000 | Stride |\n| strideDeviation | float | 0.05 | 0-0.5 | Stride deviation |\n| kink | float | 1 | 0-10 | Kink |\n| quantize | boolean | false | - | Quantize |\n| inputWeight | float | 100 | 0-100 | Input weight |\n"
 }

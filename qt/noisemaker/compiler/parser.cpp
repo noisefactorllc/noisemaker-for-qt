@@ -8,6 +8,7 @@
 #include <QStringList>
 #include <QVector>
 
+#include <atomic>
 #include <utility>
 
 namespace nm {
@@ -113,31 +114,32 @@ const QSet<QString>& namespaceTokenTypes() {
 }
 
 QJsonValue stripPrivatePos(const QJsonValue& val) {
-    if (val.isObject()) {
-        QJsonObject obj = val.toObject();
-        obj.remove(QStringLiteral("_pos"));
-        for (auto it = obj.begin(); it != obj.end(); ++it) {
-            if (it.value().isObject() || it.value().isArray()) {
-                *it = stripPrivatePos(it.value());
-            }
-        }
-        return obj;
-    } else if (val.isArray()) {
-        QJsonArray arr = val.toArray();
-        for (int i = 0; i < arr.size(); ++i) {
-            if (arr.at(i).isObject() || arr.at(i).isArray()) {
-                arr.replace(i, stripPrivatePos(arr.at(i)));
-            }
-        }
-        return arr;
-    }
-    return val;
+    // The reference's parser-authored private state is non-enumerable, so
+    // JSON.stringify and object spread both drop it. This port stores those
+    // fields as "_"-prefixed keys (see ast.h stripPrivateCompilerKeys for the
+    // per-key contract) and strips them here, at nm::parse's public boundary.
+    return stripPrivateCompilerKeys(val);
+}
+
+// Process-wide Ident identity (see refNode). Private IDs have no order
+// contract and are never visible in a dump.
+qint64 nextIdentNodeId() {
+    static std::atomic<qint64> counter{1};
+    return counter.fetch_add(1, std::memory_order_relaxed);
 }
 
 QJsonObject refNode(const QString& type, const QString& name) {
     QJsonObject o;
     o.insert(QStringLiteral("type"), type);
     o.insert(QStringLiteral("name"), name);
+    if (type == NodeKind::Ident) {
+        // Node identity for the validator's read-before-let bookkeeping: the
+        // reference marks the exact parser node object in a WeakSet
+        // (validator.js readsBeforeLet, 9cc041d0). QJsonObject is a value
+        // type, so identity is carried by this private counter instead; it
+        // is stripped from every dump and dropped by every clone.
+        o.insert(QStringLiteral("_nid"), nextIdentNodeId());
+    }
     return o;
 }
 
@@ -149,8 +151,10 @@ int hexPairToInt(const QString& pair) {
 
 class Parser {
 public:
-    explicit Parser(QVector<Token> tokens, bool strictSubchainArguments = false)
-        : tokens_(std::move(tokens)), strictSubchainArguments_(strictSubchainArguments) {}
+    explicit Parser(QVector<Token> tokens, bool strictSubchainArguments = false,
+                    bool keepPrivateKeys = false)
+        : tokens_(std::move(tokens)), strictSubchainArguments_(strictSubchainArguments),
+          keepPrivateKeys_(keepPrivateKeys) {}
 
     QJsonObject parseProgram();
 
@@ -158,6 +162,11 @@ private:
     QVector<Token> tokens_;
     int current_ = 0;
     bool strictSubchainArguments_ = false;
+    // Keep the "_"-prefixed private keys (Ident position / node id, VarAssign
+    // plan index) in the returned AST. nm::parse strips them (the reference's
+    // dumps never see its non-enumerables); the validator pipeline parses
+    // with them kept so validate() can read positions and statement order.
+    bool keepPrivateKeys_ = false;
 
     // Track the search order for the program (set by the search
     // directive -- REQUIRED). hasSearch_ mirrors the reference's
@@ -385,6 +394,11 @@ QJsonObject Parser::parseProgram() {
             stmt.insert(QStringLiteral("leadingComments"), leadingComments);
         }
         if (stmt.value(QStringLiteral("type")).toString() == NodeKind::VarAssign) {
+            // Reference 9cc041d0: the number of plans written before this
+            // let. Non-enumerable in the reference (AST shape unchanged);
+            // private key here, stripped by nm::parse and read by the
+            // validator's statement-order let declaration.
+            stmt.insert(QStringLiteral("_planIndex"), plans.size());
             vars.append(stmt);
         } else {
             plans.append(stmt);
@@ -413,7 +427,7 @@ QJsonObject Parser::parseProgram() {
                           hasNamespaceDefault_ ? QJsonValue(namespaceDefault_) : QJsonValue(QJsonValue::Null));
     namespaceMeta.insert(QStringLiteral("searchOrder"), searchOrderJson);
     program.insert(QStringLiteral("namespace"), namespaceMeta);
-    return stripPrivatePos(program).toObject();
+    return keepPrivateKeys_ ? program : stripPrivatePos(program).toObject();
 }
 
 void Parser::parseSearchDirective() {
@@ -478,8 +492,21 @@ void Parser::validateNamespace(const Token& token) {
 QJsonArray Parser::parseBlock() {
     expect(TokenType::LBRACE, QStringLiteral("Expect '{'"));
     QJsonArray body;
-    while (peek().type != TokenType::RBRACE) {
-        body.append(parseStatement());
+    // Reference 660e2680 (GAP-010): comments attach to the next statement in
+    // the block, as at top level. Comments before the closing '}' stay on the
+    // block as a non-enumerable trailingComments list in the reference;
+    // that property is unparser-only and invisible to every dump this port
+    // produces, so it is not represented here.
+    while (true) {
+        const QJsonArray leadingComments = collectComments();
+        if (peek().type == TokenType::RBRACE) {
+            break;
+        }
+        QJsonObject stmt = parseStatement();
+        if (!leadingComments.isEmpty()) {
+            stmt.insert(QStringLiteral("leadingComments"), leadingComments);
+        }
+        body.append(stmt);
         while (peek().type == TokenType::SEMICOLON) advance();
     }
     expect(TokenType::RBRACE, QStringLiteral("Expect '}'"));
@@ -1553,6 +1580,16 @@ QJsonObject Parser::parsePrimary() {
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::Ident);
         node.insert(QStringLiteral("name"), path.first());
+        // Reference 9cc041d0: an Ident carries its (non-enumerable) source
+        // position for structured diagnostics. The validator reads it for
+        // the S003 read-before-let location; every dump strips it.
+        if (token.hasPosition) {
+            QJsonObject pos;
+            pos.insert(QStringLiteral("line"), token.posLine);
+            pos.insert(QStringLiteral("column"), token.posColumn);
+            node.insert(QStringLiteral("_pos"), pos);
+        }
+        node.insert(QStringLiteral("_nid"), nextIdentNodeId());
         return node;
     }
     if (tt == TokenType::OUTPUT_REF) {
@@ -1598,15 +1635,33 @@ QJsonObject Parser::parsePrimary() {
 
 } // namespace
 
-QJsonObject parse(const QJsonArray& tokens, const QJsonObject& options) {
+namespace {
+
+QJsonObject parseTokens(const QJsonArray& tokens, const QJsonObject& options, bool keepPrivateKeys) {
     QVector<Token> tokenVec;
     tokenVec.reserve(tokens.size());
     for (const QJsonValue& v : tokens) {
         tokenVec.push_back(tokenFromJson(v.toObject()));
     }
     const bool strictSubchain = options.value(QStringLiteral("subchainArguments")).toString() == QStringLiteral("strict");
-    Parser parser(std::move(tokenVec), strictSubchain);
+    Parser parser(std::move(tokenVec), strictSubchain, keepPrivateKeys);
     return parser.parseProgram();
 }
+
+} // namespace
+
+QJsonObject parse(const QJsonArray& tokens, const QJsonObject& options) {
+    return parseTokens(tokens, options, /*keepPrivateKeys=*/false);
+}
+
+// Internal parse used by the validate() pipeline (dsl_compiler.cpp, nm-render's
+// --dump-validated, validator unit tests): keeps the parser's private keys so
+// validate() can read Ident positions and VarAssign statement order. Callers
+// must NOT dump the returned AST directly -- nm::validate() strips everything
+// it emits; use nm::parse() for the public dump shape.
+QJsonObject parseKeepingPrivateKeys(const QJsonArray& tokens, const QJsonObject& options) {
+    return parseTokens(tokens, options, /*keepPrivateKeys=*/true);
+}
+
 
 } // namespace nm

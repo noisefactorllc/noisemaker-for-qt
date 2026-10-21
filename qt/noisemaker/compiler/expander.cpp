@@ -4,6 +4,7 @@
 #include "effect_registry.h"
 #include "dim.h"
 
+#include <QHash>
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QSet>
@@ -456,11 +457,29 @@ private:
     }
 
     void expandPlan(const QJsonObject& plan, int planIndex) {
-        // The reference iterates `plan.chain` with for...of. Branch, Break,
-        // Continue and Return plans (control flow) have no chain, so the
-        // reference raises this TypeError and expands nothing.
+        // Reference 79c7f089 (GAP-010): Branch, Break, Continue and Return
+        // plans have no chain. The parser and validator accept them, but the
+        // runtime does not execute them: expand reports an error per plan
+        // (compileGraph then throws ERR_EXPANSION_FAILED) instead of the raw
+        // TypeError the reference raised before.
         if (!plan.value(QStringLiteral("chain")).isArray()) {
-            throw std::runtime_error("plan.chain is not iterable");
+            static const QHash<QString, QString> controlFlowKeywords = {
+                {QStringLiteral("Branch"), QStringLiteral("if")},
+                {QStringLiteral("Break"), QStringLiteral("break")},
+                {QStringLiteral("Continue"), QStringLiteral("continue")},
+                {QStringLiteral("Return"), QStringLiteral("return")},
+            };
+            const QJsonValue typeVal = plan.value(QStringLiteral("type"));
+            const QString planType = typeVal.isString()
+                                         ? typeVal.toString()
+                                         : (typeVal.isUndefined() ? QStringLiteral("undefined")
+                                                                  : typeVal.toString());
+            const QString keyword = controlFlowKeywords.value(planType, planType);
+            QJsonObject err;
+            err.insert(QStringLiteral("message"),
+                       QStringLiteral("The runtime does not yet execute control flow ('%1')").arg(keyword));
+            errors_.append(err);
+            return;
         }
         currentInput_.clear();
         currentInput3d_.clear();

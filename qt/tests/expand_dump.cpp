@@ -59,7 +59,10 @@ int main(int argc, char** argv) {
         nm::EffectRegistry registry;
         registry.loadAll(dataRoot);
         const QJsonArray tokens = nm::lex(src);
-        const QJsonObject ast = nm::parse(tokens);
+        // The production pipeline (compileGraphJson, dump-validated) parses
+        // with the private keys kept so validate() sees the statement order
+        // of lets; mirror it here.
+        const QJsonObject ast = nm::parseKeepingPrivateKeys(tokens);
         const QJsonObject validated = nm::validate(ast, registry);
         const nm::ExpandResult expanded = nm::expand(validated, registry);
 

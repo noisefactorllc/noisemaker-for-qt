@@ -1742,6 +1742,7 @@ const Backend::CompiledProgram& Backend::programFor(const Pass& pass) {
 
         compiled.uniformLocations.insert(name, location);
         compiled.uniformTypes.insert(name, type);
+        compiled.uniformSizes.insert(name, size);
 
         // Reference extractUniforms(): array uniforms ("foo[0]") are also
         // registered without the "[0]" suffix.
@@ -1749,6 +1750,7 @@ const Backend::CompiledProgram& Backend::programFor(const Pass& pass) {
             const QString baseName = name.left(name.size() - 3);
             compiled.uniformLocations.insert(baseName, location);
             compiled.uniformTypes.insert(baseName, type);
+            compiled.uniformSizes.insert(baseName, size);
         }
     }
 
@@ -2192,6 +2194,29 @@ void Backend::bindTextures(const Graph& graph, const CompiledProgram& program, c
         if (program.uniformLocations.contains(input.samplerName)) {
             m_gl->glUniform1i(program.uniformLocations.value(input.samplerName), unit);
         }
+    }
+
+    // Reference be8ed4cd (GAP-003): a declared sampler that the pass lists
+    // no input for gets the default texture (transparent black) on its own
+    // unit. Left alone it would keep unit 0 and sample the first input
+    // instead (cellularAutomata3d/reactionDiffusion3d reach that state when
+    // `source` is written read3d(vol0, geo0): seedTex is left out of
+    // pass.inputs). Uniform types are iterated in QHash order rather than
+    // the reference's insertion order; the binding is order-independent,
+    // since each sampler is told its own unit explicitly and every unlisted
+    // sampler binds the same default texture.
+    int unit = static_cast<int>(resolved.size());
+    for (auto it = program.uniformTypes.constBegin(); it != program.uniformTypes.constEnd(); ++it) {
+        const QString& name = it.key();
+        if (pass.inputs.contains(name) || name.endsWith(QStringLiteral("]"))) continue;
+        if (it.value() != GL_SAMPLER_2D) continue;
+        if (program.uniformSizes.value(name) != 1) continue;
+        if (unit >= m_maxTextureUnits) break;
+        m_gl->glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit));
+        m_gl->glBindTexture(GL_TEXTURE_2D, m_surfaces->defaultTextureHandle());
+        const int location = program.uniformLocations.value(name, -1);
+        if (location >= 0) m_gl->glUniform1i(location, unit);
+        ++unit;
     }
 }
 

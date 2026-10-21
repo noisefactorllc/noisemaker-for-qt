@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 
@@ -319,9 +320,26 @@ private:
     QStringList programSearchOrder_;
     int tempIndex_ = 0;
 
+    // Statement-order let declaration (reference 9cc041d0, GAP-011): a
+    // top-level chain sees only the lets written before it, and the latest
+    // assignment of a name wins. topLevelVars_ holds the AST's vars in
+    // statement order; nextVar_ indexes the next undeclared one; pendingLets_
+    // holds the names of the lets that come after the current statement.
+    QJsonArray topLevelVars_;
+    int nextVar_ = 0;
+    QSet<QString> pendingLets_;
+    // Ident nodes that already have their S003 for a read before the let
+    // (reference readsBeforeLet WeakSet). QJsonObject is a value type, so
+    // identity is the parser's private _nid counter; nodes without one
+    // (hand-built ASTs) fall back to content equality.
+    QSet<qint64> readsBeforeLetNids_;
+    QList<QJsonObject> readsBeforeLetNodes_;
+
     // -------------------------------------------------- diagnostics
     void pushDiag(const QString& code, const QJsonValue& node, const QString& message = QString());
     static QString extractIdentifierName(const QJsonValue& node);
+    void declareVarsBefore(int planIndex);
+    void reportReadsBeforeLet(const QJsonValue& node);
 
     // -------------------------------------------------- enum / symbol resolution
     QJsonValue resolveEnum(const QStringList& path);
@@ -331,6 +349,7 @@ private:
     QJsonValue getStarterInfo(const QJsonValue& node);
     bool isStarterChain(const QJsonValue& node);
     QJsonValue substitute(const QJsonValue& node, const QStringList& resolving = {});
+    QJsonValue substituteInternal(const QJsonValue& node, const QStringList& resolving);
     void bindVar(const QJsonObject& v);
     static QJsonValue buildNamespaceSnapshot(const QJsonValue& callNamespace);
 
@@ -426,6 +445,18 @@ QString Validator::extractIdentifierName(const QJsonValue& nodeVal) {
 }
 
 void Validator::pushDiag(const QString& code, const QJsonValue& nodeVal, const QString& message) {
+    // Reference 9cc041d0: an identifier node that already has its S003 for a
+    // read before the let suppresses every further diagnostic pushed with
+    // that same node (readsBeforeLet WeakSet early return).
+    if (nodeVal.isObject()) {
+        const QJsonObject nodeObj = nodeVal.toObject();
+        const QJsonValue nidVal = nodeObj.value(QStringLiteral("_nid"));
+        if (nidVal.isDouble()) {
+            if (readsBeforeLetNids_.contains(nidVal.toInteger())) return;
+        } else if (!readsBeforeLetNodes_.isEmpty() && readsBeforeLetNodes_.contains(nodeObj)) {
+            return;
+        }
+    }
     const QString msg = message.isEmpty() ? diagDefaultMessage(code) : message;
     const QString identName = extractIdentifierName(nodeVal);
     QString enriched = msg;
@@ -460,6 +491,67 @@ void Validator::pushDiag(const QString& code, const QJsonValue& nodeVal, const Q
     }
     if (!identName.isEmpty()) diag.insert(QStringLiteral("identifier"), identName);
     diagnostics_.append(diag);
+}
+
+// Reference 9cc041d0: top-level lets are declared in statement order. A let
+// whose statement index is <= planIndex is declared; pendingLets_ then holds
+// the names of the lets that come after the current statement. `?? 0` keeps
+// hand-built ASTs (no private plan index) declared before the first plan, and
+// the trailing INT_MAX call declares the lets that follow the last statement
+// so their own checks still run.
+void Validator::declareVarsBefore(int planIndex) {
+    while (nextVar_ < topLevelVars_.size()) {
+        const QJsonObject v = topLevelVars_.at(nextVar_).toObject();
+        const QJsonValue planIndexVal = v.value(QStringLiteral("_planIndex"));
+        const int varPlanIndex = planIndexVal.isDouble() ? static_cast<int>(planIndexVal.toDouble()) : 0;
+        if (varPlanIndex > planIndex) break;
+        bindVar(v);
+        ++nextVar_;
+    }
+    pendingLets_.clear();
+    for (int i = nextVar_; i < topLevelVars_.size(); ++i) {
+        pendingLets_.insert(topLevelVars_.at(i).toObject().value(QStringLiteral("name")).toString());
+    }
+}
+
+// Reference 9cc041d0: a statement that reads a variable before any let
+// assigns it gets S003 "Variable used before assignment" at the identifier,
+// with the identifier's source position when the parser recorded one. Other
+// diagnostics for that identifier node are not added (pushDiag's
+// readsBeforeLet early return).
+void Validator::reportReadsBeforeLet(const QJsonValue& nodeVal) {
+    if (pendingLets_.isEmpty()) return;
+    if (nodeVal.isArray()) {
+        for (const QJsonValue& item : nodeVal.toArray()) reportReadsBeforeLet(item);
+        return;
+    }
+    if (!nodeVal.isObject()) return;
+    const QJsonObject node = nodeVal.toObject();
+    if (node.value(QStringLiteral("type")).toString() != NodeKind::Ident) {
+        for (auto it = node.begin(); it != node.end(); ++it) reportReadsBeforeLet(it.value());
+        return;
+    }
+    const QString name = node.value(QStringLiteral("name")).toString();
+    if (!pendingLets_.contains(name) || symbols_.contains(name)) return;
+    const QJsonValue nidVal = node.value(QStringLiteral("_nid"));
+    const bool hasNid = nidVal.isDouble();
+    if (hasNid ? readsBeforeLetNids_.contains(nidVal.toInteger())
+               : readsBeforeLetNodes_.contains(node)) {
+        return;
+    }
+    QJsonObject diagNode;
+    diagNode.insert(QStringLiteral("type"), NodeKind::Ident);
+    diagNode.insert(QStringLiteral("name"), name);
+    if (node.contains(QStringLiteral("_pos"))) {
+        const QJsonObject pos = node.value(QStringLiteral("_pos")).toObject();
+        QJsonObject loc;
+        loc.insert(QStringLiteral("line"), pos.value(QStringLiteral("line")));
+        loc.insert(QStringLiteral("column"), pos.value(QStringLiteral("column")));
+        diagNode.insert(QStringLiteral("loc"), loc);
+    }
+    pushDiag(QStringLiteral("S003"), diagNode);
+    if (hasNid) readsBeforeLetNids_.insert(nidVal.toInteger());
+    else readsBeforeLetNodes_.append(node);
 }
 
 // ---------------------------------------------------------------- enum resolution
@@ -598,6 +690,19 @@ bool Validator::isStarterChain(const QJsonValue& node) {
 }
 
 QJsonValue Validator::substitute(const QJsonValue& nodeVal, const QStringList& resolving) {
+    // The reference substitutes a CLONE only where it substitutes:
+    // `substitute(clone(symbols.get(name)))` at the symbol branch, and
+    // `{...node}` / rebuilt Call/Chain objects elsewhere. Everything else
+    // returns the SAME node object, so the parser's non-enumerable position/
+    // id survive a pass-through and the readsBeforeLet WeakSet can still
+    // recognize the node (suppression contract, reference 9cc041d0). This
+    // port keeps that shape: pass-throughs return the original value with
+    // its private keys; private compiler keys are stripped exactly where the
+    // reference's clone()/spread would drop them.
+    return substituteInternal(nodeVal, resolving);
+}
+
+QJsonValue Validator::substituteInternal(const QJsonValue& nodeVal, const QStringList& resolving) {
     if (!nodeVal.isObject()) return nodeVal;
     const QJsonObject node = nodeVal.toObject();
     const QString t = node.value(QStringLiteral("type")).toString();
@@ -622,7 +727,8 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal, const QStringList& r
         const QString name = node.value(QStringLiteral("name")).toString();
         QStringList nestedResolving = resolving;
         nestedResolving.append(name);
-        QJsonValue result = substitute(symbols_.value(name), nestedResolving);
+        QJsonValue result = stripPrivateCompilerKeys(
+            substitute(symbols_.value(name), nestedResolving));
         // Marks the substituted node as having come from a variable
         // reference -- resolveNumericArg's Number/Boolean case and
         // compileAutomationDescriptor both read this back (verified against the
@@ -638,11 +744,14 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal, const QStringList& r
         return result;
     }
     if (automationFields().contains(t)) {
+        // Reference `{...node}` spread: the mapped automation node drops the
+        // parser's non-enumerable position/id, exactly as the stripped clone
+        // here does.
         QJsonObject mapped = node;
         for (const QString& field : automationFields().value(t)) {
             if (node.contains(field)) mapped.insert(field, substitute(node.value(field), resolving));
         }
-        return mapped;
+        return stripPrivateCompilerKeys(mapped);
     }
     if (t == NodeKind::Chain) {
         QJsonArray mapped;
@@ -687,7 +796,9 @@ QJsonValue Validator::substitute(const QJsonValue& nodeVal, const QStringList& r
 
 void Validator::bindVar(const QJsonObject& v) {
     const QString name = v.value(QStringLiteral("name")).toString();
-    const QJsonValue expr = substitute(v.value(QStringLiteral("expr")), {name});
+    // Reference declareVar: substitute(clone(v.expr), [v.name]) — the clone
+    // drops the parser's private keys before the symbol tree is stored.
+    const QJsonValue expr = substitute(stripPrivateCompilerKeys(v.value(QStringLiteral("expr"))), {name});
     if (isStarterChain(expr)) {
         const QJsonValue head = firstChainCall(expr);
         if (!head.isUndefined()) pushDiag(QStringLiteral("S006"), head);
@@ -828,7 +939,11 @@ QJsonValue Validator::make3dRef(const QJsonValue& nVal, const QString& defaultKi
 // enum resolution of a Member (a number becomes a Number node; any other
 // resolved value is returned as is).
 QJsonValue Validator::evalExpr(const QJsonValue& node) {
-    const QJsonValue expr = substitute(node);
+    // Reference evalExpr substitutes a JSON CLONE (substitute(clone(node))):
+    // the clone drops the parser's non-enumerable position/id, so a pending
+    // Ident read in a condition is a fresh node here and its S003 is NOT
+    // suppressed by the readsBeforeLet mark on the original.
+    const QJsonValue expr = substitute(stripPrivateCompilerKeys(node));
     if (isStarterChain(expr)) {
         const QJsonValue head = firstChainCall(expr);
         if (!head.isUndefined()) pushDiag(QStringLiteral("S006"), head);
@@ -885,9 +1000,29 @@ QJsonValue Validator::evalCondition(const QJsonValue& node) {
 
 QJsonArray Validator::compileBlock(const QJsonValue& body) {
     QJsonArray result;
-    for (const QJsonValue& s : body.toArray()) {
-        const QJsonValue compiled = compileStmt(s.toObject());
+    // Reference 4d05e186 (GAP-010): a `let` inside a block applies to the
+    // rest of that block only, so a block cannot change how statements
+    // outside it compile. Shadowed symbols are restored afterwards.
+    QMap<QString, QJsonValue> shadowed;
+    for (const QJsonValue& sVal : body.toArray()) {
+        const QJsonObject s = sVal.toObject();
+        if (s.value(QStringLiteral("type")).toString() == NodeKind::VarAssign) {
+            const QString name = s.value(QStringLiteral("name")).toString();
+            if (!shadowed.contains(name)) {
+                shadowed.insert(name, symbols_.contains(name) ? symbols_.value(name)
+                                                              : QJsonValue(QJsonValue::Undefined));
+            }
+            bindVar(s);
+            // Kept as the parser node, like the top-level `vars` entries.
+            result.append(sVal);
+            continue;
+        }
+        const QJsonValue compiled = compileStmt(s);
         if (!compiled.isUndefined()) result.append(compiled);
+    }
+    for (auto it = shadowed.constBegin(); it != shadowed.constEnd(); ++it) {
+        if (it.value().isUndefined()) symbols_.remove(it.key());
+        else symbols_.insert(it.key(), it.value());
     }
     return result;
 }
@@ -900,11 +1035,13 @@ QJsonArray Validator::compileBlock(const QJsonValue& body) {
 QJsonValue Validator::compileStmt(const QJsonObject& stmt) {
     const QString t = stmt.value(QStringLiteral("type")).toString();
     if (t == NodeKind::IfStmt) {
+        reportReadsBeforeLet(stmt.value(QStringLiteral("condition")));
         const QJsonValue cond = evalCondition(stmt.value(QStringLiteral("condition")));
         const QJsonArray thenBranch = compileBlock(stmt.value(QStringLiteral("then")));
         QJsonArray elif;
         for (const QJsonValue& e : stmt.value(QStringLiteral("elif")).toArray()) {
             const QJsonObject eo = e.toObject();
+            reportReadsBeforeLet(eo.value(QStringLiteral("condition")));
             QJsonObject entry;
             entry.insert(QStringLiteral("cond"), evalCondition(eo.value(QStringLiteral("condition"))));
             entry.insert(QStringLiteral("then"), compileBlock(eo.value(QStringLiteral("then"))));
@@ -928,6 +1065,7 @@ QJsonValue Validator::compileStmt(const QJsonObject& stmt) {
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::Return);
         if (isTruthy(stmt.value(QStringLiteral("value")))) {
+            reportReadsBeforeLet(stmt.value(QStringLiteral("value")));
             node.insert(QStringLiteral("value"), evalExpr(stmt.value(QStringLiteral("value"))));
         }
         return node;
@@ -949,6 +1087,7 @@ QJsonValue Validator::compileStmt(const QJsonObject& stmt) {
 QJsonObject Validator::compileChainStatement(const QJsonObject& stmt) {
     QJsonArray chain;
     const QJsonArray stmtChain = stmt.value(QStringLiteral("chain")).toArray();
+    reportReadsBeforeLet(stmt.value(QStringLiteral("chain")));
 
     QJsonObject chainNode;
     chainNode.insert(QStringLiteral("type"), NodeKind::Chain);
@@ -2284,13 +2423,21 @@ QJsonObject Validator::run(const QJsonObject& ast) {
             "to specify namespace search order.");
     }
 
-    for (const QJsonValue& v : ast.value(QStringLiteral("vars")).toArray()) bindVar(v.toObject());
-
+    // Reference 9cc041d0: statements compile in order. Each one sees the lets
+    // written before it, and the latest assignment of a name wins. Lets that
+    // come after the last statement are still declared, so their own checks
+    // run.
+    topLevelVars_ = ast.value(QStringLiteral("vars")).toArray();
+    nextVar_ = 0;
+    pendingLets_.clear();
+    const QJsonArray statements = ast.value(QStringLiteral("plans")).toArray();
     QJsonArray plans;
-    for (const QJsonValue& stmtVal : ast.value(QStringLiteral("plans")).toArray()) {
-        const QJsonValue compiled = compileStmt(stmtVal.toObject());
+    for (int index = 0; index < statements.size(); ++index) {
+        declareVarsBefore(index);
+        const QJsonValue compiled = compileStmt(statements.at(index).toObject());
         if (!compiled.isUndefined()) plans.append(compiled);
     }
+    declareVarsBefore(std::numeric_limits<int>::max());
 
     QJsonObject result;
     result.insert(QStringLiteral("plans"), plans);
@@ -2303,7 +2450,13 @@ QJsonObject Validator::run(const QJsonObject& ast) {
     if (ast.contains(QStringLiteral("trailingComments"))) {
         result.insert(QStringLiteral("trailingComments"), ast.value(QStringLiteral("trailingComments")));
     }
-    return result;
+    // The pipeline parses with the parser's private keys kept (parser.h
+    // parseKeepingPrivateKeys); this port's substitutes only mirror the
+    // reference's clone boundaries, so raw nodes embedded verbatim (block
+    // `let` statements, rawKwargs captures) still carry them here. Strip at
+    // this single output boundary -- the reference's non-enumerables are
+    // equally invisible in every serialized form of this result.
+    return stripPrivateCompilerKeys(result).toObject();
 }
 
 } // namespace

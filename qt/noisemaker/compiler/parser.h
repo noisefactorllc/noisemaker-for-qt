@@ -16,6 +16,13 @@ namespace nm {
 // (QJsonObject, same node `type` strings as the reference parser.js).
 // Throws nm::DslSyntaxError on malformed input, exactly where the
 // reference throws.
-QJsonObject parse(const QJsonArray& tokens, const QJsonObject& options = QJsonObject());
+QJsonObject parse(const QJsonArray& tokens, const QJsonObject& options = {});
+
+// Same grammar, but the returned AST keeps the parser's private compiler
+// keys (Ident position/node identity, VarAssign plan index) the way the
+// reference's non-enumerable JS properties travel parse -> validate.
+// validate() reads them and strips them from everything it emits. Never
+// dump this AST directly; use parse() for the dump shape.
+QJsonObject parseKeepingPrivateKeys(const QJsonArray& tokens, const QJsonObject& options = {});
 
 } // namespace nm

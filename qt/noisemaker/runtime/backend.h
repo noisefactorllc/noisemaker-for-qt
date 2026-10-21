@@ -367,6 +367,7 @@ private:
         unsigned int handle = 0;
         QHash<QString, int> uniformLocations;          // GLint
         QHash<QString, unsigned int> uniformTypes;     // GLenum
+        QHash<QString, int> uniformSizes;              // GLint active-uniform array size (1 for non-arrays)
         // synth/remap's std140 UBO (ARCHITECTURE.md "Uniforms"; detected
         // generically -- see programFor()). Every other program in the
         // corpus has hasUbo == false and the three fields below stay zero.

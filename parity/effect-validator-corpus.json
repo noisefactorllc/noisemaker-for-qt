@@ -1,7 +1,7 @@
 {
  "provenance": {
   "reference": "noisefactorllc/noisemaker",
-  "referenceCommit": "0553e24295b553160c316bfaca9fae08c10c60c0",
+  "referenceCommit": "668b82ea1f7b7568610b1fb1058444d61b6e330f",
   "generator": "parity/gen-effect-validator-corpus.mjs",
   "note": "referenceErrors are the reference validateEffectDefinition() output at referenceCommit, verbatim. Consumers compare SORTED error lists (port emits sorted key order; see effect_validator.h deviation note)."
  },

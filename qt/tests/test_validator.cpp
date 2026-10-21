@@ -32,12 +32,18 @@
 #include "../noisemaker/compiler/validator.h"
 
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QString>
 
 #include <cstdio>
+#include <algorithm>
+#include <atomic>
+#include <functional>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -63,7 +69,10 @@ nm::EffectRegistry& registry() {
 }
 
 QJsonObject validateSrc(const QString& src) {
-    return nm::validate(nm::parse(nm::lex(src)), registry());
+    // The production pipeline parses with the private keys kept (dsl_compiler
+    // compileGraphJson, nm-render --dump-validated); validate() strips them
+    // from everything it emits.
+    return nm::validate(nm::parseKeepingPrivateKeys(nm::lex(src)), registry());
 }
 
 // One chain step out of plans[0].chain, by 0-based index.
@@ -85,9 +94,104 @@ bool anyDiagCode(const QJsonObject& out, const QString& code) {
     return false;
 }
 
+void testConcurrentIdentities() {
+    constexpr int workers = 8;
+    constexpr int iterations = 1000;
+    constexpr int identifiers = 32;
+    QString source = QStringLiteral("search synth\nnoise(");
+    for (int i = 0; i < identifiers; ++i) {
+        if (i) source += QLatin1Char(',');
+        source += QStringLiteral("arg%1: name%1").arg(i);
+    }
+    source += QStringLiteral(").write(o0)\nrender(o0)\n");
+    const QJsonArray tokens = nm::lex(source);
+    std::atomic<int> ready{0};
+    std::atomic<bool> start{false};
+    std::vector<std::vector<qint64>> ids(workers);
+    std::vector<std::thread> threads;
+    for (int worker = 0; worker < workers; ++worker) {
+        threads.emplace_back([&, worker] {
+            auto& values = ids[worker];
+            values.reserve(iterations * identifiers);
+            const std::function<void(const QJsonValue&)> collect = [&](const QJsonValue& value) {
+                if (value.isArray()) {
+                    for (const auto& child : value.toArray()) collect(child);
+                } else if (value.isObject()) {
+                    const QJsonObject object = value.toObject();
+                    if (object.contains(QStringLiteral("_nid"))) {
+                        values.push_back(object.value(QStringLiteral("_nid")).toInteger());
+                    }
+                    for (auto it = object.constBegin(); it != object.constEnd(); ++it) collect(it.value());
+                }
+            };
+            ready.fetch_add(1, std::memory_order_release);
+            while (!start.load(std::memory_order_acquire)) std::this_thread::yield();
+            for (int i = 0; i < iterations; ++i) collect(nm::parseKeepingPrivateKeys(tokens));
+        });
+    }
+    while (ready.load(std::memory_order_acquire) != workers) std::this_thread::yield();
+    start.store(true, std::memory_order_release);
+    for (auto& thread : threads) thread.join();
+    std::vector<qint64> all;
+    for (const auto& values : ids) all.insert(all.end(), values.begin(), values.end());
+    std::sort(all.begin(), all.end());
+    check(all.size() == workers * iterations * identifiers,
+          "concurrent parser calls retain every identifier identity");
+    check(std::adjacent_find(all.begin(), all.end()) == all.end(),
+          "concurrent parser calls never reuse an identifier identity");
+}
+
+void testWideIdentities() {
+    QJsonObject ast = nm::parseKeepingPrivateKeys(nm::lex(QStringLiteral(
+        "search synth\nnoise(speed: x, scale: y).write(o0)\nlet x = 1\nlet y = 2\nrender(o0)\n")));
+    const std::function<QJsonValue(QJsonValue)> widen = [&](QJsonValue value) -> QJsonValue {
+        if (value.isArray()) {
+            QJsonArray array = value.toArray();
+            for (int i = 0; i < array.size(); ++i) array[i] = widen(array.at(i));
+            return array;
+        }
+        if (value.isObject()) {
+            QJsonObject object = value.toObject();
+            if (object.contains(QStringLiteral("_nid"))) {
+                const qint64 id = Q_INT64_C(9007199254740992)
+                    + (object.value(QStringLiteral("name")).toString() == QStringLiteral("y") ? 1 : 0);
+                object.insert(QStringLiteral("_nid"), id);
+            }
+            for (auto it = object.begin(); it != object.end(); ++it) *it = widen(it.value());
+            return object;
+        }
+        return value;
+    };
+    ast = widen(ast).toObject();
+    const QJsonArray diagnostics = diags(nm::validate(ast, registry()));
+    QStringList names;
+    bool onlyUnassignedReads = true;
+    for (const QJsonValue& diagnostic : diagnostics) {
+        names.append(diagnostic.toObject().value(QStringLiteral("identifier")).toString());
+        onlyUnassignedReads = onlyUnassignedReads
+            && diagnostic.toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003");
+    }
+    names.sort();
+    const bool distinct = onlyUnassignedReads && names == QStringList{QStringLiteral("x"), QStringLiteral("y")};
+    if (!distinct) {
+        std::fprintf(stderr, "%s\n", QJsonDocument(diagnostics).toJson(QJsonDocument::Compact).constData());
+    }
+    check(distinct,
+          "identifier identities above the double integer boundary remain distinct in validation");
+}
+
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 2 && QString::fromLocal8Bit(argv[1]) == QStringLiteral("--wide-identities-only")) {
+        testWideIdentities();
+        return g_failures ? 1 : 0;
+    }
+    testConcurrentIdentities();
+    testWideIdentities();
+    if (argc == 2 && QString::fromLocal8Bit(argv[1]) == QStringLiteral("--identities-only")) {
+        return g_failures ? 1 : 0;
+    }
     // ==================================================================
     // numeric arg resolution: clamp + S002, and pass-through when in range
     // ==================================================================
@@ -586,14 +690,57 @@ int main() {
                   && ds.at(1).toObject().value(QStringLiteral("message")).toString() == QStringLiteral("Unknown enum path: 'foo.bar'"),
               "diagnostics: S003 for bogus, S001 'Unknown enum path' for foo.bar, in evaluation order");
 
-        QString letError;
-        try {
-            validateSrc(QStringLiteral("search synth\nif (1) {\n  let x = 1\n}\n"));
-        } catch (const std::runtime_error& e) {
-            letError = QString::fromUtf8(e.what());
+        // Reference 4d05e186 (GAP-010): a let inside a block compiles instead
+        // of throwing a TypeError. It stays in the block as the parser node
+        // and applies to the rest of that block only (k/e probes).
+        {
+            const QJsonObject letInBlock = validateSrc(QStringLiteral("search synth\nif (1) {\n  let x = 1\n}\n"));
+            check(diags(letInBlock).isEmpty(), "let inside a block: no diagnostics");
+            const QJsonArray letPlans = letInBlock.value(QStringLiteral("plans")).toArray();
+            check(letPlans.size() == 1
+                      && letPlans.at(0).toObject().value(QStringLiteral("type")).toString() == QStringLiteral("Branch"),
+                  "let inside a block compiles to the Branch plan");
+            const QJsonArray thenNodes = letPlans.at(0).toObject().value(QStringLiteral("then")).toArray();
+            check(thenNodes.size() == 1
+                      && thenNodes.at(0).toObject().value(QStringLiteral("type")).toString() == QStringLiteral("VarAssign")
+                      && thenNodes.at(0).toObject().value(QStringLiteral("name")).toString() == QStringLiteral("x")
+                      && thenNodes.at(0).toObject().value(QStringLiteral("expr")).toObject().value(QStringLiteral("value")).toDouble() == 1.0,
+                  "block let is kept as the parsed VarAssign node in the block");
         }
-        check(letError == QStringLiteral("Cannot read properties of undefined (reading '0')"),
-              "let inside a block fails validation with the reference's TypeError text");
+        {
+            const QJsonObject blockScope = validateSrc(QStringLiteral(
+                "search synth\nif (1) { let x = 2\nnoise(speed: x).write(o0) }\nrender(o0)\n"));
+            check(diags(blockScope).isEmpty(), "a block chain reads the block's own let");
+            const QJsonArray thenNodes = blockScope.value(QStringLiteral("plans")).toArray()
+                                             .at(0).toObject().value(QStringLiteral("then")).toArray();
+            const double blockSpeed = thenNodes.at(1).toObject().value(QStringLiteral("chain")).toArray()
+                                          .at(0).toObject().value(QStringLiteral("args")).toObject()
+                                          .value(QStringLiteral("speed")).toObject().value(QStringLiteral("value")).toDouble();
+            check(blockSpeed == 2.0, "block chain resolves the block let (speed 2 with _varRef)");
+        }
+        // Block shadowing + restoration (l/m probes): a block let shadows a
+        // top-level symbol for the rest of that block only; afterwards the
+        // previous symbol returns (l) or the name is unassigned again (m).
+        {
+            const QJsonObject shadow = validateSrc(QStringLiteral(
+                "search synth\nlet x = 1\nnoise(speed: x).write(o0)\n"
+                "if (0) { let x = 9\nnoise(speed: x).write(o2) }\nnoise(speed: x).write(o1)\nrender(o0)\n"));
+            check(diags(shadow).isEmpty(), "block shadowing: no diagnostics");
+            const QJsonArray shadowPlans = shadow.value(QStringLiteral("plans")).toArray();
+            check(shadowPlans.size() == 3, "block shadowing: 3 plans (chain, Branch, chain)");
+            const double afterSpeed = shadowPlans.at(2).toObject().value(QStringLiteral("chain")).toArray()
+                                          .at(0).toObject().value(QStringLiteral("args")).toObject()
+                                          .value(QStringLiteral("speed")).toObject().value(QStringLiteral("value")).toDouble();
+            check(afterSpeed == 1.0, "after the block, the shadowed top-level let is restored (speed 1)");
+        }
+        {
+            const QJsonObject unshadowed = validateSrc(QStringLiteral(
+                "search synth\nif (0) { let x = 9\nnoise(speed: x).write(o2) }\nnoise(speed: x).write(o1)\nrender(o0)\n"));
+            const QJsonArray ds = diags(unshadowed);
+            check(ds.size() == 1 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                      && !ds.at(0).toObject().contains(QStringLiteral("location")),
+                  "a block let does not leak: the name is unassigned again after the block (S003, no location)");
+        }
     }
 
     // Bare state values (time/frame/...) compile to the values the reference
@@ -875,6 +1022,103 @@ int main() {
                       "compileGraphJson strict unknown key emits P008");
             }
             check(caught, "compileGraphJson in strict mode throws for unknown subchain key");
+        }
+    }
+
+    // ==================================================================
+    // Reference 9cc041d0 (GAP-011): statement-order let declaration.
+    // A chain sees only the lets written before it, and the latest
+    // assignment of a name wins. A chain that reads a variable before any
+    // let assigns it gets S003 at the identifier, with the identifier's
+    // source position, and other diagnostics for that identifier node are
+    // not added. (h/a/j/g/c/n probes against the live oracle.)
+    // ==================================================================
+    {
+        // h: a chain reads x before the only `let x` -> one S003 WITH location.
+        const QJsonObject h = validateSrc(QStringLiteral(
+            "search synth\nnoise(speed: x).write(o0)\nlet x = 1\nrender(o0)\n"));
+        {
+            const QJsonArray ds = diags(h);
+            check(ds.size() == 1 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003"),
+                  "read before let: exactly one S003 (the arg-level S003 on the same node is suppressed)");
+            const QJsonObject d = ds.at(0).toObject();
+            check(d.value(QStringLiteral("message")).toString() == QStringLiteral("Variable used before assignment: 'x'")
+                      && d.value(QStringLiteral("severity")).toString() == QStringLiteral("error")
+                      && d.value(QStringLiteral("identifier")).toString() == QStringLiteral("x"),
+                  "read before let: message/severity/identifier match the oracle");
+            const QJsonObject loc = d.value(QStringLiteral("location")).toObject();
+            check(loc.value(QStringLiteral("line")).toInt() == 2 && loc.value(QStringLiteral("column")).toInt() == 14,
+                  "read before let: S003 carries the identifier's source position {line 2, column 14}");
+        }
+        // a: no let anywhere -> pendingLets is empty, so the S003 comes from
+        // the pre-existing argument path WITHOUT a location.
+        const QJsonObject a = validateSrc(QStringLiteral("search synth\nnoise(speed: x).write(o0)\nrender(o0)\n"));
+        {
+            const QJsonArray ds = diags(a);
+            check(ds.size() == 1 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                      && ds.at(0).toObject().value(QStringLiteral("message")).toString() == QStringLiteral("Variable used before assignment: 'x'")
+                      && !ds.at(0).toObject().contains(QStringLiteral("location")),
+                  "an unknown identifier with no lets at all keeps the old S003 (no location)");
+        }
+        // j: the condition's original Ident node gets the located S003; the
+        // substituted clone inside evalCondition still produces its own
+        // unlocated S003 (the reference's WeakSet only suppresses the exact
+        // parser node).
+        const QJsonObject j = validateSrc(QStringLiteral(
+            "search synth\nif (x) { noise().write(o0) }\nlet x = 1\nrender(o0)\n"));
+        {
+            const QJsonArray ds = diags(j);
+            check(ds.size() == 2 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                      && ds.at(1).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003"),
+                  "read before let in a condition: two S003s (located original + clone)");
+            const QJsonObject firstLoc = ds.at(0).toObject().value(QStringLiteral("location")).toObject();
+            check(firstLoc.value(QStringLiteral("line")).toInt() == 2 && firstLoc.value(QStringLiteral("column")).toInt() == 5,
+                  "the first S003 carries the condition identifier's position {line 2, column 5}");
+            check(!ds.at(1).toObject().contains(QStringLiteral("location")),
+                  "the second S003 (evalCondition clone) has no location");
+        }
+        // g: the latest assignment of a name wins.
+        {
+            const QJsonObject g = validateSrc(QStringLiteral(
+                "search synth\nlet x = 1\nnoise(speed: x).write(o0)\nlet x = 2\nnoise(speed: x).write(o1)\nrender(o0)\n"));
+            check(diags(g).isEmpty(), "let reassignment: no diagnostics");
+            const QJsonArray gPlans = g.value(QStringLiteral("plans")).toArray();
+            const auto speedOf = [&](const QJsonObject& plan) {
+                return plan.value(QStringLiteral("chain")).toArray().at(0).toObject()
+                    .value(QStringLiteral("args")).toObject().value(QStringLiteral("speed"))
+                    .toObject().value(QStringLiteral("value")).toDouble();
+            };
+            check(gPlans.size() == 2 && speedOf(gPlans.at(0).toObject()) == 1.0 && speedOf(gPlans.at(1).toObject()) == 2.0,
+                  "each chain sees the latest assignment of the name before it (1 then 2)");
+        }
+        // c: lets in the pending set may still refer to each other in any
+        // order -- but a let whose name is read before the other let binds
+        // still reports S003 at the bind, with the un-enriched default
+        // message (the message already contains the single-letter name).
+        {
+            const QJsonObject c = validateSrc(QStringLiteral(
+                "search synth\nlet a = b\nnoise().write(o0)\nlet b = 1\nrender(o0)\n"));
+            const QJsonArray ds = diags(c);
+            check(ds.size() == 1 && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                      && ds.at(0).toObject().value(QStringLiteral("message")).toString() == QStringLiteral("Variable used before assignment")
+                      && ds.at(0).toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("b"),
+                  "a let referring to a later let reports S003 at the bind (un-enriched message)");
+        }
+        // n: diagnostics interleave in statement order -- each plan compiles
+        // after the lets written before it, so the S003 for a late `let q =
+        // bogus` lands between the second and third chain's S002s (the old
+        // all-vars-first order was S003 first).
+        {
+            const QJsonObject n = validateSrc(QStringLiteral(
+                "search synth\nnoise(octaves: 20).write(o0)\nnoise(octaves: 20).write(o1)\n"
+                "let q = bogus\nnoise(octaves: 20).write(o2)\nrender(o0)\n"));
+            const QJsonArray ds = diags(n);
+            check(ds.size() == 4
+                      && ds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                      && ds.at(1).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                      && ds.at(2).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S003")
+                      && ds.at(3).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002"),
+                  "diagnostics compile in statement order (S002, S002, S003, S002)");
         }
     }
 
