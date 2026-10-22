@@ -23,7 +23,11 @@ QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, 
                                             ? stateSizeScope
                                             : scopeSuffix;
         const QString scoped = original + QLatin1Char('_') + effectiveScope;
-        scopedParamMap.insert(original, scoped);
+        // An inherited dimension reads the scope's value and never writes
+        // this effect's own value over it.
+        if (o.value(QStringLiteral("inherit")).toBool(false) == false) {
+            scopedParamMap.insert(original, scoped);
+        }
         o.insert(QStringLiteral("param"), scoped);
         return o;
     }

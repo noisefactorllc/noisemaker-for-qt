@@ -163,6 +163,10 @@ public:
     // empty QString if `opName` carries no alias.
     QString checkEffectAlias(const QString& opName) const;
 
+    // Deprecated parameter aliases for an op: {oldName: newName}. Empty when
+    // the effect defines no paramAliases (reference lang/paramAliases.js).
+    QJsonObject getParamAliases(const QString& opName) const;
+
     Enums& enums() { return enums_; }
     const Enums& enums() const { return enums_; }
 
@@ -202,6 +206,7 @@ private:
     QMap<QString, OpSpec> ops_;               // "<ns>.<func>" -> spec
     QSet<QString> starterOps_;                // "<ns>.<func>" set
     QMap<QString, QString> effectAliases_;    // "<ns>.<func>" -> replacement name
+    QMap<QString, QJsonObject> paramAliases_; // "<ns>.<func>" -> {oldName: newName}
     QJsonObject defineMap_;                   // "<ns>.<func>" -> {globalKey: DEFINE_NAME}
     QMap<QString, QByteArray> rawJson_;        // "<ns>.<func>" -> raw file bytes (T10)
     Enums enums_;

@@ -23,6 +23,7 @@ const { registerEffect, getAllEffects } = await import(pathToFileURL(resolve(REF
 const { ops, registerOp } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/ops.js')).href)
 const { mergeIntoEnums } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/enums.js')).href)
 const { registerEffectAlias } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/effectAliases.js')).href)
+const { registerParamAliases } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/paramAliases.js')).href)
 
 // verbatim from renderer/canvas.js
 function isValidIdentifier(name) { return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) }
@@ -97,6 +98,9 @@ for (const rel of rels) {
         if (instance.hidden && instance.deprecatedBy) {
             registerEffectAlias(`${namespace}.${instance.func}`, instance.deprecatedBy)
             effectAliasesOut[`${namespace}.${instance.func}`] = instance.deprecatedBy
+        }
+        if (instance.paramAliases) {
+            registerParamAliases(`${namespace}.${instance.func}`, instance.paramAliases)
         }
     }
 }

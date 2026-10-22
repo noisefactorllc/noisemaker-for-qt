@@ -330,6 +330,11 @@ void EffectRegistry::registerEffect(const QByteArray& rawJson) {
         }
     }
 
+    const QJsonValue paramAliases = def.value(QStringLiteral("paramAliases"));
+    if (paramAliases.isObject()) {
+        paramAliases_.insert(opName, paramAliases.toObject());
+    }
+
     // define-map: globals carrying `define` -> {globalKey: DEFINE_NAME}
     // (Expander/orchestrator concern; not part of any T9 gate -- order is
     // irrelevant, this is a lookup map, not a compared array).
@@ -390,6 +395,10 @@ QString EffectRegistry::checkEffectAlias(const QString& opName) const {
     const QString oldName = dot >= 0 ? opName.mid(dot + 1) : opName;
     return QStringLiteral("effect '%1' is deprecated, use '%2' instead.")
         .arg(oldName, newName);
+}
+
+QJsonObject EffectRegistry::getParamAliases(const QString& opName) const {
+    return paramAliases_.value(opName);
 }
 
 bool EffectRegistry::isStarterDef(const QJsonObject& def) {

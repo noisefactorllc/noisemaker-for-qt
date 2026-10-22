@@ -7,7 +7,7 @@ uniform sampler2D xyzTex;      // [x, y, heading, alive] in normalized [0,1]
 uniform sampler2D velTex;      // [0, 0, age, seed]
 uniform sampler2D rgbaTex;     // [r, g, b, a]
 uniform sampler2D trailTex;    // Trail texture for sensor feedback
-uniform sampler2D fieldTex;
+uniform sampler2D heightTex;
 uniform sampler2D inputTex;    // Input texture for field attraction
 
 uniform vec2 resolution;
@@ -31,6 +31,30 @@ vec4 selectedDiffuse(vec2 uv) {
     ivec2 size = textureSize(diffuseTex, 0);
     ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
     return texelFetch(diffuseTex, pixel, 0);
+}
+
+uniform sampler2D baseColorTex;  // Agent color kept while a diffuse map is active
+layout(location = 3) out vec4 outBaseColor;
+
+// Color render/pointsEmit gives an agent spawned at pos.
+vec4 spawnColor(vec2 pos) {
+    ivec2 dims = textureSize(inputTex, 0);
+    vec4 sampled = texelFetch(inputTex, ivec2(pos * vec2(dims)), 0);
+    return sampled.a > 0.0 ? sampled : vec4(1.0);
+}
+
+// The agent's color without a diffuse map. baseColorTex keeps it (alpha > 0)
+// while a diffuse map is active and is cleared otherwise, so this is rgba
+// unless the agent still carries a diffuse color and has not respawned.
+vec4 baseColor(ivec2 coord, vec4 rgba, vec2 pos) {
+    vec4 kept = texelFetch(baseColorTex, coord, 0);
+    if (kept.a == 0.0) return rgba;
+    vec4 spawnDelta = abs(round(rgba * 255.0) - round(clamp(spawnColor(pos), 0.0, 1.0) * 255.0));
+    return all(lessThanEqual(spawnDelta, vec4(1.0))) ? rgba : kept;
+}
+
+vec4 keptBaseColor(vec4 base) {
+    return diffuseActive > 0.5 ? vec4(base.rgb, max(base.a, 1.0 / 255.0)) : vec4(0.0);
 }
 
 const float TAU = 6.28318530718;
@@ -68,7 +92,7 @@ float sampleTrail(vec2 uv) {
 float sampleExternalField(vec2 uv, float weight) {
     if (weight <= 0.0) return 0.0;
     float blend = clamp(weight * 0.01, 0.0, 1.0);
-    vec3 field = fieldActive > 0.5 ? texture(fieldTex, uv).rgb : texture(inputTex, uv).rgb;
+    vec3 field = fieldActive > 0.5 ? texture(heightTex, uv).rgb : texture(inputTex, uv).rgb;
     return luminance(field) * blend * 0.05;
 }
 
@@ -80,6 +104,7 @@ void main() {
     vec4 xyz = texelFetch(xyzTex, coord, 0);
     vec4 vel = texelFetch(velTex, coord, 0);
     vec4 rgba = texelFetch(rgbaTex, coord, 0);
+    vec4 base = baseColor(coord, rgba, xyz.xy);
     
     vec2 pos = xyz.xy;           // Normalized [0,1]
     float heading = xyz.z;       // Radians
@@ -94,6 +119,7 @@ void main() {
         outXYZ = vec4(pos, hash(uint(seed * 1000.0)) * TAU, 0.0);
         outVel = vel;
         outRGBA = rgba;
+        outBaseColor = keptBaseColor(base);
         return;
     }
     
@@ -135,7 +161,7 @@ void main() {
     float speedScale = 1.0;
     float blend = clamp(inputWeight * 0.01, 0.0, 1.0);
     if (blend > 0.0) {
-        vec3 field = fieldActive > 0.5 ? texture(fieldTex, pos).rgb : texture(inputTex, pos).rgb;
+        vec3 field = fieldActive > 0.5 ? texture(heightTex, pos).rgb : texture(inputTex, pos).rgb;
         float localInput = luminance(field);
         // Invert: slow in bright, fast in dark
         speedScale = mix(1.0, mix(1.8, 0.35, localInput), blend);
@@ -152,5 +178,6 @@ void main() {
     // Output
     outXYZ = vec4(newPos, newHeading, 1.0);  // alive = 1
     outVel = vec4(0.0, 0.0, newAge, seed);
-    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
+    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : base;
+    outBaseColor = keptBaseColor(base);
 }

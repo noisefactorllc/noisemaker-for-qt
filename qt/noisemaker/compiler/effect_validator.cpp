@@ -198,7 +198,7 @@ const QStringList& dimSpecKeys() {
         QStringLiteral("param"), QStringLiteral("power"), QStringLiteral("multiply"),
         QStringLiteral("default"), QStringLiteral("paramDefault"),
         QStringLiteral("screenDivide"), QStringLiteral("scale"), QStringLiteral("clamp"),
-        QStringLiteral("inputOverride"),
+        QStringLiteral("inputOverride"), QStringLiteral("inherit"),
     };
     return keys;
 }
@@ -211,6 +211,7 @@ const QStringList& topLevelKeys() {
         QStringLiteral("description"), QStringLiteral("tags"), QStringLiteral("globals"),
         QStringLiteral("passes"), QStringLiteral("textures"), QStringLiteral("textures3d"),
         QStringLiteral("shaders"), QStringLiteral("uniformLayout"), QStringLiteral("uniformLayouts"),
+        QStringLiteral("paramAliases"),
         QStringLiteral("openCategories"),
         QStringLiteral("defaultProgram"), QStringLiteral("hidden"), QStringLiteral("deprecatedBy"),
         QStringLiteral("externalTexture"), QStringLiteral("externalMesh"),
@@ -446,6 +447,10 @@ void validateDimSpec(const QJsonValue& spec, Errors& errors, const std::string& 
             const QJsonValue inputOverride = specObj.value(QStringLiteral("inputOverride"));
             if (!inputOverride.isUndefined() && !isNonEmptyString(inputOverride)) {
                 errors.push_back(label + ": \"inputOverride\" must be a non-empty string");
+            }
+            if (!specObj.value(QStringLiteral("inherit")).isUndefined()
+                && !specObj.value(QStringLiteral("inherit")).isBool()) {
+                errors.push_back(label + ": \"inherit\" must be a boolean");
             }
             return;
         }
@@ -1596,6 +1601,25 @@ std::vector<std::string> validateEffectDefinition(const QJsonValue& def) {
     const QJsonValue hidden = source.value(QStringLiteral("hidden"));
     if (!hidden.isUndefined() && !hidden.isBool()) {
         errors.push_back("\"hidden\" must be a boolean");
+    }
+
+    // --- param aliases ---
+    const QJsonValue paramAliases = source.value(QStringLiteral("paramAliases"));
+    if (!paramAliases.isUndefined()) {
+        if (!paramAliases.isObject()) {
+            errors.push_back("\"paramAliases\" must be an object mapping aliases to global names");
+        } else {
+            const QJsonObject aliases = paramAliases.toObject();
+            for (auto it = aliases.constBegin(); it != aliases.constEnd(); ++it) {
+                const QJsonValue target = it.value();
+                if (!target.isString() || target.toString().isEmpty()) {
+                    errors.push_back("paramAliases['" + it.key().toStdString() + "'] must be a non-empty string");
+                } else if (!context.globalKeys.contains(target.toString())) {
+                    errors.push_back("paramAliases['" + it.key().toStdString() + "'] references unknown global '"
+                                     + target.toString().toStdString() + "'");
+                }
+            }
+        }
     }
     const QJsonValue deprecatedBy = source.value(QStringLiteral("deprecatedBy"));
     if (!deprecatedBy.isUndefined() && !isNonEmptyString(deprecatedBy)) {

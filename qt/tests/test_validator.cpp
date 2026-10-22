@@ -1122,6 +1122,47 @@ int main(int argc, char** argv) {
         }
     }
 
+    // ==================================================================
+    // deprecated parameter aliases (reference lang/paramAliases.js +
+    // 27a2b58f): points.dla/flow/physarum accept fieldTex as a deprecated
+    // alias of heightTex; the alias rewrite happens before arg validation,
+    // so only S007 (never S001) is reported, args carry the canonical key,
+    // and the message carries the alias EOL date.
+    // ==================================================================
+    {
+        const QJsonObject aliased = validateSrc(QStringLiteral(
+            "search synth, points\nnoise().write(o1)\nnoise().dla(fieldTex: read(o1)).write(o0)\nrender(o0)\n"));
+        const QJsonArray ads = diags(aliased);
+        bool hasS007 = false;
+        bool hasError = false;
+        for (const QJsonValue& d : ads) {
+            const QJsonObject obj = d.toObject();
+            if (obj.value(QStringLiteral("code")).toString() == QStringLiteral("S007")) hasS007 = true;
+            if (obj.value(QStringLiteral("severity")).toString() == QStringLiteral("error")) hasError = true;
+        }
+        check(hasS007, "dla(fieldTex:) reports S007 (deprecated parameter alias)");
+        check(!hasError, "dla(fieldTex:) reports no error diagnostic");
+        check(ads.size() == 1
+                  && ads.at(0).toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("param 'fieldTex' is deprecated, use 'heightTex' instead. Aliases will be removed on 2027-06-01."),
+              "S007 message matches the oracle exactly");
+        const QJsonObject aargs = args(aliased, 1, 1);
+        check(aargs.contains(QStringLiteral("heightTex")) && !aargs.contains(QStringLiteral("fieldTex")),
+              "dla(fieldTex:) args carry canonical heightTex after the rewrite");
+
+        const QJsonObject canonical = validateSrc(QStringLiteral(
+            "search synth, points\nnoise().write(o1)\nnoise().dla(heightTex: read(o1)).write(o0)\nrender(o0)\n"));
+        check(diags(canonical).isEmpty(), "dla(heightTex:) compiles with no S007");
+        const QJsonObject cargs = args(canonical, 1, 1);
+        check(cargs == aargs, "aliased and canonical args are equal");
+
+        const QJsonObject retired = validateSrc(QStringLiteral(
+            "search synth\nnoise(xScale: 4).write(o0)\nrender(o0)\n"));
+        const QJsonArray rds = diags(retired);
+        check(rds.size() == 1 && rds.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S001"),
+              "noise(xScale:) is S001 (xScale is not an alias of scaleX in the registry)");
+    }
+
     if (g_failures == 0) {
         std::printf("ALL PASS (test_validator)\n");
         return 0;

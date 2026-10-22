@@ -18,6 +18,7 @@ const { registerEffect } = await import(pathToFileURL(resolve(REF, 'shaders/src/
 const { registerOp } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/ops.js')).href)
 const { mergeIntoEnums } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/enums.js')).href)
 const { registerEffectAlias } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/effectAliases.js')).href)
+const { registerParamAliases } = await import(pathToFileURL(resolve(REF, 'shaders/src/lang/paramAliases.js')).href)
 
 function isValidIdentifier(n) { return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n) }
 function sanitizeEnumName(name) {
@@ -71,6 +72,7 @@ for (const rel of rels) {
     registerOp(`${namespace}.${func}`, { name: func, args })
     if (Object.keys(choicesToRegister).length) await mergeIntoEnums(choicesToRegister)
     if (inst.hidden && inst.deprecatedBy) registerEffectAlias(`${namespace}.${func}`, inst.deprecatedBy)
+    if (inst.paramAliases) registerParamAliases(`${namespace}.${inst.func}`, inst.paramAliases)
     if (isStarterDef(inst)) starterNames.push(`${namespace}.${func}`)
 }
 registerStarterOps(starterNames)

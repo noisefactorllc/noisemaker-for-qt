@@ -7,15 +7,15 @@
     "sim"
   ],
   "params": {
-    "diffuseTex": {
+    "heightTex": {
       "ui": {
-        "label": "diffuse map",
+        "label": "height map",
         "category": "general"
       }
     },
-    "fieldTex": {
+    "diffuseTex": {
       "ui": {
-        "label": "field map",
+        "label": "diffuse map",
         "category": "general"
       }
     },
@@ -83,5 +83,5 @@
       }
     }
   },
-  "help": "# physarum\n\nPhysarum slime mold simulation\n\n## Description\n\nAgents sense pheromone trails using forward sensors and steer towards higher concentrations, depositing their own pheromone as they move. Creates organic network patterns. Lower `sensorAngle` creates tighter networks; higher values create more branching.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| fieldTex | surface | none | - | Movement field; defaults to the chained input |\n| moveSpeed | float | 1.78 | 0.05-3 | Move speed |\n| turnSpeed | float | 1 | 0-3.14159 | Turn speed |\n| sensorAngle | float | 1.26 | 0.1-1.5 | Sensor angle |\n| sensorDistance | float | 0.03 | 0.002-0.1 | Sensor distance |\n| inputWeight | float | 0 | 0-100 | Input weight |\n| deposit | float | 0.5 | 0-1 | Deposit |\n| decay | float | 0.1 | 0-1 | Decay |\n| resetState | boolean | false | - | State |\n"
+  "help": "# physarum\n\nPhysarum slime mold simulation\n\n## Description\n\nAgents sense pheromone trails using forward sensors and steer towards higher concentrations, depositing their own pheromone as they move. Creates organic network patterns. Lower `sensorAngle` creates tighter networks; higher values create more branching.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| heightTex | surface | none | - | Height field; defaults to the chained input |\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| moveSpeed | float | 1.78 | 0.05-3 | Move speed |\n| turnSpeed | float | 1 | 0-3.14159 | Turn speed |\n| sensorAngle | float | 1.26 | 0.1-1.5 | Sensor angle |\n| sensorDistance | float | 0.03 | 0.002-0.1 | Sensor distance |\n| inputWeight | float | 0 | 0-100 | Input weight |\n| deposit | float | 0.5 | 0-1 | Deposit |\n| decay | float | 0.1 | 0-1 | Decay |\n| resetState | boolean | false | - | State |\n"
 }

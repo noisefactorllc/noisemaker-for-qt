@@ -153,10 +153,10 @@ void testParticleInputs317() {
         QStringLiteral("dla"), QStringLiteral("flock"), QStringLiteral("flow"),
         QStringLiteral("hydraulic"), QStringLiteral("lenia"), QStringLiteral("life"),
         QStringLiteral("physarum"), QStringLiteral("physical")};
-    const QMap<QString, QString> fields = {{QStringLiteral("dla"), QStringLiteral("fieldTex")},
-        {QStringLiteral("flow"), QStringLiteral("fieldTex")},
+    const QMap<QString, QString> fields = {{QStringLiteral("dla"), QStringLiteral("heightTex")},
+        {QStringLiteral("flow"), QStringLiteral("heightTex")},
         {QStringLiteral("hydraulic"), QStringLiteral("heightTex")},
-        {QStringLiteral("physarum"), QStringLiteral("fieldTex")}};
+        {QStringLiteral("physarum"), QStringLiteral("heightTex")}};
     for (const QString& effect : effects) {
         const QJsonObject globals = registry().getEffect(QStringLiteral("points.") + effect)
                                         .value(QStringLiteral("globals")).toObject();

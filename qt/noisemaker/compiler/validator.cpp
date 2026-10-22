@@ -1400,6 +1400,31 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
         const int fromInput = starterHasInput ? -1 : current;
         if (starterHasInput) pushDiag(QStringLiteral("S005"), originalVal);
 
+        // Resolve deprecated parameter aliases (reference lang/validator.js:
+        // resolveParamAliases rewrites kw in place and warns S007 per hit).
+        const QJsonValue kwargsVal = call.value(QStringLiteral("kwargs"));
+        if (kwargsVal.isObject()) {
+            const QJsonObject sourceKw = kwargsVal.toObject();
+            QJsonObject kw = sourceKw;
+            const QJsonObject aliases = reg_.getParamAliases(opName);
+            bool mutated = false;
+            for (auto ait = aliases.constBegin(); ait != aliases.constEnd(); ++ait) {
+                const QString oldName = ait.key();
+                const QString newName = ait.value().toString();
+                if (!kw.contains(oldName)) continue;
+                kw.remove(oldName);
+                if (!kw.contains(newName)) kw.insert(newName, sourceKw.value(oldName));
+                mutated = true;
+                pushDiag(QStringLiteral("S007"), originalVal,
+                         QStringLiteral("param '%1' is deprecated, use '%2' instead. Aliases will be removed on %3.")
+                             .arg(oldName, newName, QStringLiteral("2027-06-01")));
+            }
+            if (mutated) {
+                call.remove(QStringLiteral("kwargs"));
+                call.insert(QStringLiteral("kwargs"), kw);
+            }
+        }
+
         QJsonObject args;
         const QJsonValue argSources = resolveArgs(chain, *spec, call, opName, original, args, writeName);
 
@@ -1415,7 +1440,7 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
             step.insert(QStringLiteral("leadingComments"), original.value(QStringLiteral("leadingComments")));
         }
         if (original.value(QStringLiteral("kwargs")).isObject() && !original.value(QStringLiteral("kwargs")).toObject().isEmpty()) {
-            step.insert(QStringLiteral("rawKwargs"), original.value(QStringLiteral("kwargs")));
+            step.insert(QStringLiteral("rawKwargs"), call.value(QStringLiteral("kwargs")));
         }
         if (!argSources.isUndefined()) step.insert(QStringLiteral("argSources"), argSources);
         chain.append(step);

@@ -428,7 +428,7 @@ private:
 
     QString scopeParticleTex(const QString& texName) const {
         if (currentParticlePipelineId_.isEmpty()) return texName;
-        static const QRegularExpression re(QStringLiteral("^global_(xyz|vel|rgba|points_trail|life_data)$"));
+        static const QRegularExpression re(QStringLiteral("^global_(xyz|vel|rgba|points_trail|life_data|[a-z]+_base_color)$"));
         if (re.match(texName).hasMatch()) return texName + QLatin1Char('_') + currentParticlePipelineId_;
         return texName;
     }
@@ -769,7 +769,7 @@ private:
 
     void collectTextures2d(const QJsonObject& effectDef, const QString& nodeId, QMap<QString, QString>& scopedParamMap) {
         const QJsonObject textures = effectDef.value(QStringLiteral("textures")).toObject();
-        static const QRegularExpression particleRe(QStringLiteral("^global_(xyz|vel|rgba|points_trail|life_data)$"));
+        static const QRegularExpression particleRe(QStringLiteral("^global_(xyz|vel|rgba|points_trail|life_data|[a-z]+_base_color)$"));
         for (auto it = textures.constBegin(); it != textures.constEnd(); ++it) {
             const QString texName = it.key();
             const QJsonObject spec = it.value().toObject();

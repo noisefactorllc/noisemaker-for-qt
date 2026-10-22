@@ -142,6 +142,19 @@ add('uniformLayout conflicts at one slot', (d) => {
 add('uniformLayouts value is a string', (d) => { d.uniformLayouts = { p: 'layout' } })
 add('paramAliases is a string', (d) => { d.paramAliases = 'aliases' })
 add('paramAliases target is unknown', (d) => { d.paramAliases = { amt: 'nosuchglobal' } })
+add('paramAliases mapping to declared globals accepted', (d) => { d.paramAliases = { amt: 'amount' } })
+add('inherited texture dimension accepted as boolean', (d) => {
+    d.textures.state = {
+        width: { param: 'amount', inherit: true },
+        height: { param: 'amount', inherit: true },
+    }
+})
+add('inherited texture dimension is a word', (d) => {
+    d.textures.state = {
+        width: { param: 'amount', inherit: 'yes' },
+        height: { param: 'amount', inherit: true },
+    }
+})
 add('tags is a string', (d) => { d.tags = 'noise' })
 add('tags contains an unknown tag', (d) => { d.tags = ['not-a-tag'] })
 add('tags contains a number', (d) => { d.tags = [42] })
