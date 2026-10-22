@@ -98,12 +98,6 @@ QString findOutput(const nm::ExpandedPass& pass, const QString& attachment) {
     return QString();
 }
 
-// points.heightGrid carries the declared authority's (668b82ea) optional
-// surface globals: heightTex and diffuseTex are type "surface" with default
-// "inputTex". These probes pin the optional-surface expansion contract the
-// expander must keep: an omitted surface binds the chained input, an explicit
-// none binds no texture, and a selected surface binds its own output
-// independently of the other surface.
 void testOptionalSurfaces() {
     const QJsonObject globals = registry().getEffect(QStringLiteral("points.heightGrid"))
                                     .value(QStringLiteral("globals")).toObject();
@@ -154,12 +148,74 @@ void testOptionalSurfaces() {
     }
 }
 
+void testParticleInputs317() {
+    const QStringList effects = {QStringLiteral("attractor"), QStringLiteral("buddhabrot"),
+        QStringLiteral("dla"), QStringLiteral("flock"), QStringLiteral("flow"),
+        QStringLiteral("hydraulic"), QStringLiteral("lenia"), QStringLiteral("life"),
+        QStringLiteral("physarum"), QStringLiteral("physical")};
+    const QMap<QString, QString> fields = {{QStringLiteral("dla"), QStringLiteral("fieldTex")},
+        {QStringLiteral("flow"), QStringLiteral("fieldTex")},
+        {QStringLiteral("hydraulic"), QStringLiteral("heightTex")},
+        {QStringLiteral("physarum"), QStringLiteral("fieldTex")}};
+    for (const QString& effect : effects) {
+        const QJsonObject globals = registry().getEffect(QStringLiteral("points.") + effect)
+                                        .value(QStringLiteral("globals")).toObject();
+        const QStringList parameters = fields.contains(effect)
+            ? QStringList{QStringLiteral("diffuseTex"), fields.value(effect)}
+            : QStringList{QStringLiteral("diffuseTex")};
+        for (const QString& parameter : parameters) {
+            const QString flag = parameter == QStringLiteral("diffuseTex")
+                ? QStringLiteral("diffuseActive") : QStringLiteral("fieldActive");
+            const QJsonObject spec = globals.value(parameter).toObject();
+            check(spec.value(QStringLiteral("type")).toString() == QStringLiteral("surface")
+                      && spec.value(QStringLiteral("default")).toString() == QStringLiteral("none")
+                      && spec.value(QStringLiteral("colorModeUniform")).toString() == flag,
+                  qPrintable(effect + QLatin1Char('.') + parameter + QStringLiteral(": optional surface defaults to none")));
+            for (int mode = 0; mode < 3; ++mode) {
+                const QString args = mode == 0 ? QString() : parameter + QStringLiteral(": ")
+                    + (mode == 1 ? QStringLiteral("none") : QStringLiteral("read(o1)"));
+                const QString source = QStringLiteral("search synth, render, points\n"
+                    "solid(color: #ff0000).write(o1)\n"
+                    "solid(color: #00ff00).pointsEmit(stateSize: x64).")
+                    + effect + QLatin1Char('(') + args + QStringLiteral(").write(o0)\nrender(o0)\n");
+                try {
+                    const nm::ExpandResult r = expandSrc(source);
+                    const nm::ExpandedPass* agent = nullptr;
+                    for (const auto& pass : r.passes) {
+                        if (pass.effectFunc.toString() == effect && !findOutput(pass, QStringLiteral("outRGBA")).isEmpty()) {
+                            agent = &pass;
+                            break;
+                        }
+                    }
+                    check(r.errors.isEmpty() && agent != nullptr,
+                          qPrintable(effect + QStringLiteral(": particle source compiles")));
+                    if (!agent) continue;
+                    check(agent->uniforms.contains(flag) && agent->uniforms.value(flag).toInt() == (mode == 2 ? 1 : 0),
+                          qPrintable(effect + QLatin1Char('.') + parameter + QStringLiteral(": omitted/none/selected activation")));
+                    if (mode == 2) {
+                        check(findInput(*agent, parameter) == QStringLiteral("global_o1"),
+                              qPrintable(effect + QLatin1Char('.') + parameter + QStringLiteral(": selected surface is independent")));
+                    }
+                    if (parameter != QStringLiteral("diffuseTex")) {
+                        check(findInput(*agent, QStringLiteral("inputTex")) == QStringLiteral("node_3_out"),
+                              qPrintable(effect + QStringLiteral(": movement keeps the chained fallback")));
+                    }
+                } catch (const std::exception& error) {
+                    std::printf("particle source error: %s\n", error.what());
+                    check(false, qPrintable(effect + QStringLiteral(": particle source compiles")));
+                }
+            }
+        }
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
     testOptionalSurfaces();
+    testParticleInputs317();
     // ======================================================================
     // Define collection + SORT ORDER (reference/03 §4.5; expander.h file
     // header "PARITY-CRITICAL DEVIATION FROM THE TASK BRIEF").

@@ -7,6 +7,18 @@
     "sim"
   ],
   "params": {
+    "diffuseTex": {
+      "ui": {
+        "label": "diffuse map",
+        "category": "chemistry"
+      }
+    },
+    "fieldTex": {
+      "ui": {
+        "label": "field map",
+        "category": "chemistry"
+      }
+    },
     "stateSize": {
       "ui": {
         "control": false
@@ -68,5 +80,5 @@
       }
     }
   },
-  "help": "# dla\n\nDiffusion-limited aggregation\n\n## Description\n\nAgents perform random walks until they contact existing structure, then stick and deposit. Creates fractal, crystalline growth patterns from a central seed.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| stateSize | int | 256 | - | - |\n| anchorDensity | float | 0.5 | 0.01-5 | Anchor density |\n| stride | float | 15 | 1-50 | Stride |\n| inputWeight | float | 15 | 0-100 | Input weight |\n| decay | float | 0.25 | 0-0.5 | Decay |\n| deposit | float | 17.5 | 0.5-20 | Deposit |\n| attrition | float | 7.5 | 0-10 | Attrition |\n| matteOpacity | float | 1 | 0-1 | Background opacity |\n"
+  "help": "# dla\n\nDiffusion-limited aggregation\n\n## Description\n\nAgents perform random walks until they contact existing structure, then stick and deposit. Creates fractal, crystalline growth patterns from a central seed.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| fieldTex | surface | none | - | Movement field; defaults to the chained input |\n| stateSize | int | 256 | - | - |\n| anchorDensity | float | 0.5 | 0.01-5 | Anchor density |\n| stride | float | 15 | 1-50 | Stride |\n| inputWeight | float | 15 | 0-100 | Input weight |\n| decay | float | 0.25 | 0-0.5 | Decay |\n| deposit | float | 17.5 | 0.5-20 | Deposit |\n| attrition | float | 7.5 | 0-10 | Attrition |\n| matteOpacity | float | 1 | 0-1 | Background opacity |\n"
 }

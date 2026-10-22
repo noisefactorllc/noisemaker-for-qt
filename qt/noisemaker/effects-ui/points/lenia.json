@@ -7,6 +7,12 @@
     "sim"
   ],
   "params": {
+    "diffuseTex": {
+      "ui": {
+        "label": "diffuse map",
+        "category": "kernel"
+      }
+    },
     "muK": {
       "step": 0.5,
       "ui": {
@@ -72,5 +78,5 @@
       }
     }
   },
-  "help": "# lenia\n\nParticle Lenia artificial life simulation\n\n## Description\n\nParticle Lenia is an artificial life system inspired by Lenia and continuous cellular automata. Unlike grid-based Lenia, this implementation uses particles that interact through potential fields, creating emergent self-organizing structures.\n\nBased on [Particle Lenia](https://google-research.github.io/self-organising-systems/particle-lenia/) by Alexander Mordvintsev et al.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| muK | float | 25 | 1-30 | Kernel μ |\n| sigmaK | float | 5 | 0.1-10 | Kernel σ |\n| muG | float | 0.25 | 0.1-2 | Growth μ |\n| sigmaG | float | 0.15 | 0.01-0.5 | Growth σ |\n| repulsion | float | 0.5 | 0-5 | Repulsion |\n| dt | float | 0.25 | 0.01-0.5 | Time step |\n| searchRadius | float | 25 | 5-40 | Search radius |\n| depositAmount | float | 3.6 | 0.1-5 | Deposit |\n\n## Notes\n\nTypical behaviors:\n- **Rotators**: Spinning formations that maintain stable structure\n- **Gliders**: Self-propelling compact structures\n- **Phase transitions**: Complex reorganization as particles find equilibrium\n- **Crystallization**: Stable lattice-like arrangements at low energy\n\nTips:\n- Start with default parameters and adjust gradually\n- More particles (higher count in pointsEmit) create richer dynamics\n- Lower time step for more stable simulations\n- Adjust kernel μ to match your particle density\n"
+  "help": "# lenia\n\nParticle Lenia artificial life simulation\n\n## Description\n\nParticle Lenia is an artificial life system inspired by Lenia and continuous cellular automata. Unlike grid-based Lenia, this implementation uses particles that interact through potential fields, creating emergent self-organizing structures.\n\nBased on [Particle Lenia](https://google-research.github.io/self-organising-systems/particle-lenia/) by Alexander Mordvintsev et al.\n\n## Parameters\n\n| Parameter | Type | Default | Range | Description |\n|-----------|------|---------|-------|-------------|\n| diffuseTex | surface | none | - | Particle color map; none preserves the existing particle color |\n| muK | float | 25 | 1-30 | Kernel μ |\n| sigmaK | float | 5 | 0.1-10 | Kernel σ |\n| muG | float | 0.25 | 0.1-2 | Growth μ |\n| sigmaG | float | 0.15 | 0.01-0.5 | Growth σ |\n| repulsion | float | 0.5 | 0-5 | Repulsion |\n| dt | float | 0.25 | 0.01-0.5 | Time step |\n| searchRadius | float | 25 | 5-40 | Search radius |\n| depositAmount | float | 3.6 | 0.1-5 | Deposit |\n\n## Notes\n\nTypical behaviors:\n- **Rotators**: Spinning formations that maintain stable structure\n- **Gliders**: Self-propelling compact structures\n- **Phase transitions**: Complex reorganization as particles find equilibrium\n- **Crystallization**: Stable lattice-like arrangements at low energy\n\nTips:\n- Start with default parameters and adjust gradually\n- More particles (higher count in pointsEmit) create richer dynamics\n- Lower time step for more stable simulations\n- Adjust kernel μ to match your particle density\n"
 }
