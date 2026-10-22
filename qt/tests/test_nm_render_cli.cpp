@@ -24,6 +24,7 @@
 #include <QList>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QRegularExpression>
 #include <QStringList>
 #include <QTemporaryDir>
 
@@ -351,6 +352,22 @@ int main(int argc, char** argv) {
                                             + QStringLiteral(" still renders"))
                                                .toUtf8();
             check(batch.out.contains(QStringLiteral("RENDERED ") + out) && QFileInfo::exists(out), description.constData());
+        }
+
+        // GAP-048 vendor verification: every rendered frame records the GL
+        // implementation strings beside the RENDERED line, so a run log names
+        // the GPU and driver that produced the graded pixels. The batch run
+        // above rendered twice, so it carries two GLINFO lines, one per item.
+        const int glinfoCount = batch.out.count(QLatin1String("GLINFO "));
+        const QRegularExpression glinfoRe(QStringLiteral(
+            "^GLINFO vendor=.+ renderer=.+ version=.+ glsl=.+$"));
+        check(glinfoCount == 2, "each batch item prints one GLINFO record");
+        if (glinfoCount > 0) {
+            QRegularExpressionMatch glinfo;
+            for (const QString& l : batch.out.split(QLatin1Char('\n'))) {
+                if (l.startsWith(QLatin1String("GLINFO "))) { glinfo = glinfoRe.match(l); break; }
+            }
+            check(glinfo.hasMatch(), "the GLINFO record names vendor, renderer, version and GLSL");
         }
     }
 

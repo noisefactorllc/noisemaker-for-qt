@@ -90,7 +90,7 @@ record_result() {
 # A failed nm-render launch: show the output lines that the filters above drop
 # (a Qt platform plugin that cannot load, for example), so the log names the cause.
 print_render_failure() {
-	printf '%s\n' "$1" | grep -vE "^RENDERED " | tail -n 20 | sed 's/^/[nm-render] /'
+	printf '%s\n' "$1" | grep -vE "^RENDERED |^GLINFO " | tail -n 20 | sed 's/^/[nm-render] /'
 }
 
 # --- classification ----------------------------------------------------------
@@ -471,7 +471,7 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 				fi
 				render_log=$("$NM_RENDER" --dsl "$dsl" --size "${SIZE}x${SIZE}" --time "$TIME" --frames "$FRAMES" --out "$cand" ${mesh_args[@]+"${mesh_args[@]}"} ${external_args[@]+"${external_args[@]}"} 2>&1)
 				rc=$?
-				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
+				printf '%s\n' "$render_log" | grep -E "RENDERED|GLINFO|ERROR|unimplemented|shader |missing|error" || true
 				[ "$rc" -eq 0 ] || { echo "[sweep] live-DSL render FAILED for $name (exit $rc)"; print_render_failure "$render_log"; batch_rc=1; }
 			done < "$CANDIDATE_NAMES"
 		else
@@ -480,7 +480,7 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 			if [ "$batch_count" -gt 0 ]; then
 				render_log=$("$NM_RENDER" --batch-manifest "$BATCH_MANIFEST" 2>&1)
 				batch_rc=$?
-				printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
+				printf '%s\n' "$render_log" | grep -E "RENDERED|GLINFO|ERROR|unimplemented|shader |missing|error" || true
 				if [ "$batch_rc" -ne 0 ]; then
 					echo "[sweep] nm-render --batch-manifest exited $batch_rc"
 					print_render_failure "$render_log"

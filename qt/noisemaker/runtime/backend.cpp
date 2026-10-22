@@ -1461,6 +1461,17 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
     m_maxTextureSize = maxTextureSize;
     m_maxColorBytesPerSample = probeColorBytesPerSample();
 
+    // Record which GL implementation renders the graded frames (GAP-048
+    // vendor verification). GL_VENDOR/GL_RENDERER/GL_VERSION are the
+    // implementation's own strings for the current context.
+    const auto glString = [](QOpenGLFunctions_4_1_Core* gl, unsigned int name) {
+        return QString::fromUtf8(reinterpret_cast<const char*>(gl->glGetString(name)));
+    };
+    m_glInfo.vendor = glString(m_gl, GL_VENDOR);
+    m_glInfo.renderer = glString(m_gl, GL_RENDERER);
+    m_glInfo.version = glString(m_gl, GL_VERSION);
+    m_glInfo.shadingLanguageVersion = glString(m_gl, GL_SHADING_LANGUAGE_VERSION);
+
     // PORTING-GUIDE.md GL state parity rules: WebGL2 has vertex-shader
     // point size always enabled; desktop GL defaults it off. Enabled once
     // for the context's lifetime -- no non-agent pass writes gl_PointSize,

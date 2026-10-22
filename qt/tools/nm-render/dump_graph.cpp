@@ -83,8 +83,11 @@ QString readTextFile(const QString& path) {
 
 // Mirrors main.cpp's renderGraph() (same settle-frame contract: caller's
 // --frames value is honored literally, no feedback-graph auto-detection).
+// Records the context's GL implementation strings in *glInfo (GAP-048),
+// when the caller passes a target.
 QImage renderGraph(const nm::Graph& graph, const QString& dataRoot, QSize size, double time, int frames,
-                   const QString& meshPath, const nm::HostTextures& externalTextures) {
+                   const QString& meshPath, const nm::HostTextures& externalTextures,
+                   nm::Backend::GlInfo* glInfo = nullptr) {
     nm::Backend backend;
     backend.setup(nullptr, dataRoot, size);
     nm::loadHostMeshes(backend, graph, meshPath);
@@ -92,6 +95,7 @@ QImage renderGraph(const nm::Graph& graph, const QString& dataRoot, QSize size, 
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
+    if (glInfo) *glInfo = backend.glInfo();
     return backend.readSurface();
 }
 
@@ -168,10 +172,14 @@ int handleDsl(const QStringList& args) {
         nm::EffectRegistry registry;
         registry.loadAll(dataRoot);
         const nm::Graph graph = nm::compileGraph(src, registry);
-        const QImage image = renderGraph(graph, dataRoot, size, time, frames, meshPath, externalTextures);
+        nm::Backend::GlInfo glInfo;
+        const QImage image = renderGraph(graph, dataRoot, size, time, frames, meshPath, externalTextures, &glInfo);
         if (!nm::savePng(image, outPath)) {
             throw std::runtime_error("failed to write PNG");
         }
+        std::printf("GLINFO vendor=%s renderer=%s version=%s glsl=%s\n",
+                    qPrintable(glInfo.vendor), qPrintable(glInfo.renderer),
+                    qPrintable(glInfo.version), qPrintable(glInfo.shadingLanguageVersion));
     } catch (const std::exception& e) {
         std::fprintf(stderr, "ERROR %s: %s\n", outPath.toUtf8().constData(), e.what());
         return 1;

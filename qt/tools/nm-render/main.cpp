@@ -99,6 +99,18 @@ int usageError(const QString& message) {
     return 2;
 }
 
+// The GL implementation strings of the most recently rendered graph (GAP-048
+// vendor verification). printGlInfo() prints them after each rendered frame.
+nm::Backend::GlInfo g_lastGlInfo;
+
+void printGlInfo() {
+    if (!g_lastGlInfo.vendor.isEmpty()) {
+        std::printf("GLINFO vendor=%s renderer=%s version=%s glsl=%s\n",
+                    qPrintable(g_lastGlInfo.vendor), qPrintable(g_lastGlInfo.renderer),
+                    qPrintable(g_lastGlInfo.version), qPrintable(g_lastGlInfo.shadingLanguageVersion));
+    }
+}
+
 QString findValue(const QStringList& args, const QString& flag) {
     const int idx = args.indexOf(flag);
     if (idx < 0 || idx + 1 >= args.size()) {
@@ -131,8 +143,10 @@ nm::Graph loadGraphFile(const QString& path) {
 // literally) before a single readSurface(). `meshPath` (may be empty) is
 // the host mesh for mesh0 (host_meshes.h); `externalTextures` are the host
 // pixels for external texture ids (host_textures.h). Throws on any failure.
+// Records the context's GL implementation strings in *glInfo (GAP-048), when
+// the caller passes a target.
 QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, const QString& meshPath,
-                   const nm::HostTextures& externalTextures) {
+                   const nm::HostTextures& externalTextures, nm::Backend::GlInfo* glInfo = nullptr) {
     nm::Backend backend;
     backend.setup(nullptr, nm::resolveDataRoot(), size);
     nm::loadHostMeshes(backend, graph, meshPath);
@@ -140,6 +154,7 @@ QImage renderGraph(const nm::Graph& graph, QSize size, double time, int frames, 
     for (int i = 0; i < frames; ++i) {
         backend.render(graph, time);
     }
+    if (glInfo) *glInfo = backend.glInfo();
     return backend.readSurface();
 }
 
@@ -183,7 +198,7 @@ int runSingleGraph(const QStringList& args) {
 
     try {
         const nm::Graph graph = loadGraphFile(graphPath);
-        const QImage image = renderGraph(graph, size, time, frames, meshPath, externalTextures);
+        const QImage image = renderGraph(graph, size, time, frames, meshPath, externalTextures, &g_lastGlInfo);
         if (!nm::savePng(image, outPath)) {
             throw std::runtime_error("failed to write PNG");
         }
@@ -193,6 +208,7 @@ int runSingleGraph(const QStringList& args) {
     }
 
     std::printf("RENDERED %s\n", outPath.toUtf8().constData());
+    printGlInfo();
     return 0;
 }
 
@@ -249,12 +265,13 @@ int runBatchManifest(const QString& manifestPath) {
             }
 
             const nm::Graph graph = loadGraphFile(graphPath);
-            const QImage image = renderGraph(graph, size, time, frames, meshPath, externalTextures);
+            const QImage image = renderGraph(graph, size, time, frames, meshPath, externalTextures, &g_lastGlInfo);
             if (!nm::savePng(image, outPath)) {
                 throw std::runtime_error("failed to write PNG");
             }
 
             std::printf("RENDERED %s\n", outPath.toUtf8().constData());
+            printGlInfo();
         } catch (const std::exception& e) {
             std::fprintf(stderr, "ERROR %s: %s\n", outLabel.toUtf8().constData(), e.what());
             anyFailed = true;

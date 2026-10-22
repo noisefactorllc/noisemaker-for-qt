@@ -95,7 +95,7 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 	render_log=$(NOISEMAKER_QT_DATA_ROOT="$DATA_ROOT" "$NM_RENDER" --graph "$GRAPH" --size "${SIZE}x${SIZE}" --time "$TIME" --frames 8 --out "$CAND" ${MESH_ARGS[@]+"${MESH_ARGS[@]}"} ${EXTERNAL_ARGS[@]+"${EXTERNAL_ARGS[@]}"} 2>&1)
 	render_rc=$?
 	set -e
-	printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
+	printf '%s\n' "$render_log" | grep -E "RENDERED|GLINFO|ERROR|unimplemented|shader |missing|error" || true
 	[ "$render_rc" -eq 0 ] || { echo "FAIL: nm-render exited $render_rc for $NAME"; exit 1; }
 fi
 [ -f "$CAND" ] || { echo "FAIL: nm-render produced no candidate for $NAME"; exit 1; }

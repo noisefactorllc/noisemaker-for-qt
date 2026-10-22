@@ -57,7 +57,7 @@ if [ "${SKIP_RENDER:-0}" != "1" ]; then
 		--out "$ROOT/parity/out/$NAME.candidate.png" 2>&1)
 	render_rc=$?
 	set -e
-	printf '%s\n' "$render_log" | grep -E "RENDERED|ERROR|unimplemented|shader |missing|error" || true
+	printf '%s\n' "$render_log" | grep -E "RENDERED|GLINFO|ERROR|unimplemented|shader |missing|error" || true
 	if [ "$render_rc" -ne 0 ]; then
 		echo "[FAIL] $NAME timed renderer exited $render_rc"
 		exit "$render_rc"

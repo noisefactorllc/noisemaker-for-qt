@@ -127,6 +127,7 @@ int handleSamples(const QStringList& args) {
         nm::Backend backend;
         backend.setup(nullptr, nm::resolveDataRoot(), size);
         nm::loadHostMeshes(backend, graph, meshPath);
+        const nm::Backend::GlInfo glInfo = backend.glInfo();
 
         static const double kDeltaTime = 1.0 / 600.0;
         for (int frame = 1; frame <= totalFrames; ++frame) {
@@ -142,6 +143,9 @@ int handleSamples(const QStringList& args) {
                     throw std::runtime_error(("failed to write PNG '" + samplePath + "'").toStdString());
                 }
                 std::printf("RENDERED %s\n", samplePath.toUtf8().constData());
+                std::printf("GLINFO vendor=%s renderer=%s version=%s glsl=%s\n",
+                            qPrintable(glInfo.vendor), qPrintable(glInfo.renderer),
+                            qPrintable(glInfo.version), qPrintable(glInfo.shadingLanguageVersion));
             }
         }
     } catch (const std::exception& e) {

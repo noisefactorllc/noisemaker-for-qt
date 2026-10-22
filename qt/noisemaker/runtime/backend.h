@@ -312,6 +312,19 @@ public:
     // if no graph has been rendered yet / the surface was never written.
     QImage readSurface() const;
 
+    // The OpenGL implementation description of the current context, captured
+    // in setup() (GL_VENDOR, GL_RENDERER, GL_VERSION and the shading-language
+    // version). Empty strings before setup(). A vendor-verification run
+    // prints this beside every rendered fixture, so the run's log records
+    // which GPU and driver produced the graded frames.
+    struct GlInfo {
+        QString vendor;
+        QString renderer;
+        QString version;
+        QString shadingLanguageVersion;
+    };
+    GlInfo glInfo() const { return m_glInfo; }
+
     // The GL texture holding the frame readSurface() reads, for hosts that
     // draw it on the GPU (a QOpenGLWidget, a Qt Quick item) instead of
     // reading it back. Rows run bottom-up (GL convention); the format is
@@ -423,6 +436,7 @@ private:
     QOpenGLContext* m_ownedContext = nullptr;
     QOffscreenSurface* m_ownedSurface = nullptr;
     QOpenGLFunctions_4_1_Core* m_gl = nullptr;
+    GlInfo m_glInfo;
 
     QString m_dataRoot;
     QSize m_size;
