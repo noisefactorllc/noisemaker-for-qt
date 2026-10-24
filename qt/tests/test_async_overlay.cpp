@@ -650,28 +650,18 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     // time of 26.3 s.
     const double spareCpus = std::max(0.1, static_cast<double>(cpus) - pacedCpus);
     const double traceSeconds = std::max(syncRetrace, syncRetraceCpu / spareCpus);
-    // Observing completion only at the next 60 Hz frame charges that frame's
-    // latency to the trace: on a slow CI host the last frame before the bound
-    // finds the trace still running, the next frame falls outside the
-    // deadline, and a trace that met the bound reads as late. Poll the trace
-    // state at 1 ms inside each frame's sleep instead. The deadline is
-    // unchanged; the observation is the poll time, not the next frame's
-    // render, and the switch render below only uploads the completed trace.
     std::vector<double> pacedMs;
     const auto deadline = start + std::chrono::duration<double>(10.0 * traceSeconds);
     auto nextFrame = std::chrono::steady_clock::now();
-    while (switchMs < 0.0 && std::chrono::steady_clock::now() < deadline) {
+    while (switchMs < 0.0 && background.overlayTracesPending() && std::chrono::steady_clock::now() < deadline) {
         nextFrame += kFramePeriod;
-        while (std::chrono::steady_clock::now() < nextFrame
-               && std::chrono::steady_clock::now() < deadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            if (!background.overlayTracesPending()) {
-                switchMs = timedRender(); // the render that uploads the completed trace
-                break;
-            }
+        std::this_thread::sleep_until(nextFrame);
+        const double sample = timedRender();
+        if (!background.overlayTracesPending()) {
+            switchMs = sample;
+            break;
         }
-        if (switchMs >= 0.0) break;
-        pacedMs.push_back(timedRender());
+        pacedMs.push_back(sample);
     }
     const double completionSeconds = secondsSince(start);
     const bool completedLive = switchMs >= 0.0;
