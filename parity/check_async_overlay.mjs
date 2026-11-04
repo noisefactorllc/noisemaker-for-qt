@@ -72,7 +72,7 @@ const restated = {
         'lineWidth: Math.max(1, width / 400)',
     ],
     'shaders/src/runtime/pipeline.js': [
-        "this.backend.updateTextureFromSource(texId, canvas, { flipY: true })",
+        "this.backend.updateTextureFromSource(texId, canvas, { flipY: true, context2d: canvas.getContext?.('2d') })",
         'const drawParams = params ? { ...params } : { ...this.globalUniforms }',
         'if (isAutomationValue(drawParams[paramName])) drawParams[paramName] = spec.default',
         'params: drawParams,',
