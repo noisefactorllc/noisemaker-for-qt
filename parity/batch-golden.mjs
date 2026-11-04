@@ -275,8 +275,17 @@ async function applyMeshPlan (page, plan) {
   }, null, { timeout: STATUS_TIMEOUT })
   const results = await page.evaluate(async ({ objText, builtins }) => {
     const r = window.__noisemakerCanvasRenderer
+    // Built-in mesh paths ("share/meshes/x.obj") resolve against the
+    // reference repository root, not the renderer's shaders base: upstream
+    // removed the shaders/share link (62e6c21d), the repo root is one level
+    // above the shaders base.
     const out = []
-    for (const b of builtins) out.push(await r.loadOBJFromURL(`${r._basePath}/${b.path}`, b.meshId))
+    if (builtins.length > 0) {
+      const shadersBase = new URL(r._basePath, location.href)
+      const meshBase = new URL(shadersBase)
+      meshBase.pathname = shadersBase.pathname.replace(/\/$/, '').replace(/\/[^/]*$/, '/')
+      for (const b of builtins) out.push(await r.loadOBJFromURL(`${meshBase}${b.path}`, b.meshId))
+    }
     if (objText !== null) out.push(await r.loadOBJFromString(objText, 'mesh0'))
     else if (builtins.length === 0) out.push(await r.loadOBJFromString('', 'mesh0'))
     return out
