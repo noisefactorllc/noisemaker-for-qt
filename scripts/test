@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 // The reference (noisemaker) commit this port is synced to. CI and scripts/parity-summary
 // read it from this line.
-const PIN = '7aa54b54492c0a158b000a5c563e94e6e4dce3dc'
+const PIN = '1faed961be169863e84fd719a4ca85c27a8b1322'
 
 function run(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts })
