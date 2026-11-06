@@ -663,13 +663,6 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
         }
         pacedMs.push_back(sample);
     }
-    if (switchMs < 0.0 && background.overlayTracesPending()) {
-        // Completion is only observable on the render after the trace
-        // finishes. If the deadline elapsed between the last paced frame's
-        // render and its deadline check, observe the completion now.
-        const double sample = timedRender();
-        if (!background.overlayTracesPending()) switchMs = sample;
-    }
     const double completionSeconds = secondsSince(start);
     const bool completedLive = switchMs >= 0.0;
     std::printf("  60 Hz frames with nothing to trace: process CPU %.2f s per second of %u hardware threads; "
