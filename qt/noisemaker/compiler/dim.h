@@ -26,8 +26,13 @@
 #include <QJsonValue>
 #include <QMap>
 #include <QString>
+#include <functional>
 
 namespace nm::dim {
+
+// Returns the FINAL scoped name for a base `${param}_${scopeSuffix}` sizing
+// reference (see the header comment on `scope`).
+using SizeParamClaim = std::function<QString(const QString& scopedParam, bool inherit)>;
 
 // True iff `d` is a JSON object carrying a `param` or `screenDivide` key
 // (reference/03 §6.3 `dimReferencesParam` / hasParamRef). Any other shape
@@ -52,7 +57,22 @@ bool referencesParam(const QJsonValue& d);
 // not this texture's own chain scope, so it agrees with the pipeline's real
 // state-texture dimensions instead of picking up an unrelated chain-scoped
 // default. Mirrors reference expander.js's inline `dimensionScope` ternary.
+//
+// `volumeSizeParam` is the plan-scoped `volumeSize_chain_N` name; a
+// `{param: "volumeSize"}` dimension always resolves to it (never to
+// `${param}_${scopeSuffix}`), matching the reference's own ternary.
+//
+// `chainSizeParam` receives the base `${param}_${scopeSuffix}` name and the
+// dimension's `inherit` flag and returns the FINAL name: particle-scoped or
+// inherited dimensions pass through unchanged, everything else goes through
+// the expander's size-param claim (reference `claimSizeParam` — the first
+// node that sizes private state from a param keeps the legacy chain-scoped
+// name; every later node appends its own node id). A default-constructed
+// callback means "no claim": the base name passes through, which reproduces
+// the pre-GAP-059 behavior exactly.
 QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, QString>& scopedParamMap,
-                  const QString& stateSizeScope = QString());
+                  const QString& stateSizeScope = QString(), const QString& volumeSizeParam = QString(),
+                  const SizeParamClaim& chainSizeParam = SizeParamClaim());
 
 } // namespace nm::dim
+

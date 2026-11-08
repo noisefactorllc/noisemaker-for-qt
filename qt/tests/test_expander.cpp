@@ -98,6 +98,157 @@ QString findOutput(const nm::ExpandedPass& pass, const QString& attachment) {
     return QString();
 }
 
+// All effect passes of one effect function, in expansion order.
+QVector<const nm::ExpandedPass*> passesOf(const nm::ExpandResult& r, const QString& effectFunc) {
+    QVector<const nm::ExpandedPass*> out;
+    for (const nm::ExpandedPass& p : r.passes) {
+        if (p.effectFunc.toString() == effectFunc) out.append(&p);
+    }
+    return out;
+}
+
+// GAP-059 (reference cf95f49c): each stateful effect instance in a chain gets
+// its own private state texture and sizing parameter; deliberately shared
+// globals (the loop accumulator, mesh buffers) and read-only external uploads
+// keep the chain scope, and single instances keep their legacy IDs.
+// Ground-truthed against the live reference oracle
+// (NM_REFERENCE_ROOT=... node tools/dump-expand.mjs) at cf95f49c.
+void testStatefulInstances() {
+    // Two reactionDiffusion instances in one chain: independent state and zoom.
+    {
+        const QString src = QStringLiteral("search synth, mixer\n"
+            "reactionDiffusion(zoom: x4).blendMode(tex: reactionDiffusion(zoom: x16)).write(o0)\nrender(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: two reactionDiffusion instances compile");
+        check(r.textureSpecs.contains(QStringLiteral("global_rd_state_chain_0"))
+                  && r.textureSpecs.contains(QStringLiteral("global_rd_state_chain_0_node_1")),
+              "stateful instances: the first reactionDiffusion keeps the legacy chain-scoped state id, "
+              "the second gets a node-suffixed one");
+        const QJsonObject firstSpec = r.textureSpecs.value(QStringLiteral("global_rd_state_chain_0")).toObject();
+        const QJsonObject secondSpec = r.textureSpecs.value(QStringLiteral("global_rd_state_chain_0_node_1")).toObject();
+        check(firstSpec.value(QStringLiteral("width")).toObject().value(QStringLiteral("screenDivide")).toString()
+                  == QStringLiteral("zoom_chain_0"),
+              "stateful instances: the first instance's state width keeps the chain-scoped zoom param");
+        check(secondSpec.value(QStringLiteral("width")).toObject().value(QStringLiteral("screenDivide")).toString()
+                  == QStringLiteral("zoom_chain_0_node_1"),
+              "stateful instances: the second instance's state width claims its own zoom param");
+        const QVector<const nm::ExpandedPass*> rd = passesOf(r, QStringLiteral("reactionDiffusion"));
+        check(rd.size() == 4, "stateful instances: both reactionDiffusion instances expanded");
+        if (rd.size() == 4) {
+            bool sized = true;
+            for (const nm::ExpandedPass* p : rd) {
+                const QString scoped = p->scopedParams.value(QStringLiteral("zoom")).toString();
+                const bool first = p->nodeId.toString() == QStringLiteral("node_0");
+                sized = sized && scoped == (first ? QStringLiteral("zoom_chain_0")
+                                                  : QStringLiteral("zoom_chain_0_node_1"))
+                    && p->uniforms.value(scoped).toDouble() == (first ? 4.0 : 16.0);
+            }
+            check(sized, "stateful instances: each instance's passes read their own zoom "
+                         "(4 for the first, 16 for the second)");
+        }
+    }
+
+    // Two watercolor instances: independent ping-pong state.
+    {
+        const QString src = QStringLiteral("search synth, filter\n"
+            "perlin().watercolor().watercolor().write(o0)\nrender(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: two watercolor instances compile");
+        check(r.textureSpecs.contains(QStringLiteral("global_wc_state_chain_0"))
+                  && r.textureSpecs.contains(QStringLiteral("global_wc_state_chain_0_node_2")),
+              "stateful instances: watercolor instances keep distinct ping-pong state textures");
+    }
+
+    // Different stateful effects in one chain: each sizes from its own zoom;
+    // the first claimant keeps the chain-scoped param name.
+    {
+        const QString src = QStringLiteral("search synth, mixer\n"
+            "reactionDiffusion(zoom: x4).blendMode(tex: cellularAutomata(zoom: x16)).write(o0)\nrender(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: reactionDiffusion + cellularAutomata compile");
+        check(r.textureSpecs.contains(QStringLiteral("global_rd_state_chain_0"))
+                  && r.textureSpecs.contains(QStringLiteral("global_ca_state_chain_0")),
+              "stateful instances: distinct stateful effects keep their chain-scoped state ids");
+        const QString rdParam = r.textureSpecs.value(QStringLiteral("global_rd_state_chain_0")).toObject()
+            .value(QStringLiteral("width")).toObject().value(QStringLiteral("screenDivide")).toString();
+        const QString caParam = r.textureSpecs.value(QStringLiteral("global_ca_state_chain_0")).toObject()
+            .value(QStringLiteral("width")).toObject().value(QStringLiteral("screenDivide")).toString();
+        check(rdParam == QStringLiteral("zoom_chain_0") && caParam == QStringLiteral("zoom_chain_0_node_1")
+                  && rdParam != caParam,
+              "stateful instances: the second stateful effect claims its own zoom param");
+    }
+
+    // loopBegin/loopEnd cooperate on one accumulator even when repeated.
+    {
+        const QString src = QStringLiteral("search synth, filter, render\n"
+            "noise(seed: 1).loopBegin().loopEnd().loopBegin().loopEnd().write(o0)\nrender(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: repeated loopBegin/loopEnd compile");
+        bool shared = true;
+        for (const nm::ExpandedPass& p : r.passes) {
+            if (p.effectFunc.toString() == QStringLiteral("loopBegin")) {
+                shared = shared && findInput(p, QStringLiteral("accumTex")) == QStringLiteral("global_accum_chain_0");
+            }
+            if (p.effectFunc.toString() == QStringLiteral("loopEnd")
+                    && findOutput(p, QStringLiteral("fragColor")).startsWith(QStringLiteral("global_"))) {
+                shared = shared && findOutput(p, QStringLiteral("fragColor")) == QStringLiteral("global_accum_chain_0");
+            }
+        }
+        check(shared, "stateful instances: repeated loop pairs share the chain-scoped accumulator");
+    }
+
+    // meshRender instances share the loader's mesh buffers.
+    {
+        const QString src = QStringLiteral("search render\n"
+            "meshLoader().meshRender().meshRender().write(o0)\nrender(o0)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: loader plus two meshRender instances compile");
+        const QVector<const nm::ExpandedPass*> renderers = passesOf(r, QStringLiteral("meshRender"));
+        bool shared = true;
+        int meshBound = 0;
+        for (const nm::ExpandedPass* p : renderers) {
+            if (findInput(*p, QStringLiteral("meshPositions")).isEmpty()) continue;
+            ++meshBound;
+            shared = shared
+                && findInput(*p, QStringLiteral("meshPositions")) == QStringLiteral("global_mesh0_positions_chain_0")
+                && findInput(*p, QStringLiteral("meshNormals")) == QStringLiteral("global_mesh0_normals_chain_0");
+        }
+        check(shared && meshBound == 2,
+              "stateful instances: both meshRender instances bind the loader's chain-scoped mesh buffers");
+    }
+
+    // A loader in another chain keeps the shared buffers chain-scoped too.
+    {
+        const QString src = QStringLiteral("search render\n"
+            "meshLoader().write(o0)\nread(o0).meshRender().meshRender().write(o1)\nrender(o1)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: cross-chain loader plus meshRender instances compile");
+        const QVector<const nm::ExpandedPass*> renderers = passesOf(r, QStringLiteral("meshRender"));
+        bool shared = true;
+        int meshBound = 0;
+        for (const nm::ExpandedPass* p : renderers) {
+            if (findInput(*p, QStringLiteral("meshPositions")).isEmpty()) continue;
+            ++meshBound;
+            shared = shared
+                && findInput(*p, QStringLiteral("meshPositions")) == QStringLiteral("global_mesh0_positions_chain_1")
+                && findInput(*p, QStringLiteral("meshNormals")) == QStringLiteral("global_mesh0_normals_chain_1");
+        }
+        check(shared && meshBound == 2,
+              "stateful instances: cross-chain meshRender instances keep the loader's chain-scoped buffers");
+    }
+
+    // Single instances in a later plan retain their existing texture IDs.
+    {
+        const QString src = QStringLiteral("search synth, filter\n"
+            "noise(seed: 1).write(o0)\nreactionDiffusion(zoom: x4).watercolor().write(o1)\nrender(o1)\n");
+        const nm::ExpandResult r = expandSrc(src);
+        check(r.errors.isEmpty(), "stateful instances: single instances in a second plan compile");
+        check(r.textureSpecs.contains(QStringLiteral("global_rd_state_chain_1"))
+                  && r.textureSpecs.contains(QStringLiteral("global_wc_state_chain_1")),
+              "stateful instances: single instances keep their legacy chain-scoped IDs");
+    }
+}
+
 void testOptionalSurfaces() {
     const QJsonObject globals = registry().getEffect(QStringLiteral("points.heightGrid"))
                                     .value(QStringLiteral("globals")).toObject();
@@ -216,6 +367,7 @@ int main(int argc, char** argv) {
     (void)argv;
     testOptionalSurfaces();
     testParticleInputs317();
+    testStatefulInstances();
     // ======================================================================
     // Define collection + SORT ORDER (reference/03 §4.5; expander.h file
     // header "PARITY-CRITICAL DEVIATION FROM THE TASK BRIEF").

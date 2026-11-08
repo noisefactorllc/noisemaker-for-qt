@@ -335,7 +335,92 @@ private:
     QJsonObject pipelineUniforms_;
     QString chainScopeId_;
 
+    // GAP-059: per-plan private-state scoping. `globalTextureUsers_` maps each
+    // `global_` texture ref to the set of DISTINCT effects in the plan that name
+    // it; `seenEffects_` tracks effect instances already expanded in the plan;
+    // `sizeParamOwners_` maps each chain-scoped sizing param to the first node
+    // that sized private state from it. The next three carry the current step's
+    // instance scope into the scopeChainTex/dim::scope helpers.
+    QHash<QString, QSet<QString>> globalTextureUsers_;
+    QSet<QString> seenEffects_;
+    QHash<QString, QString> sizeParamOwners_;
+    QString instanceScopeId_;
+    QSet<QString> ownedTextures_;
+    QString claimNodeId_;
+
     static QString nodeIdOf(int temp) { return QStringLiteral("node_%1").arg(temp); }
+
+    // GAP-059: find globals deliberately shared by different effects in a chain.
+    // Mirrors the reference's collectGlobalTextureUsers: every non-builtin,
+    // non-skipped step's effect contributes every `global_` ref it names —
+    // texture names, 3D texture names, surface-global defaults, outputTex/3d/
+    // Geo/Xyz/Vel/Rgba declarations and each pass's input/output refs.
+    QHash<QString, QSet<QString>> collectGlobalTextureUsers(const QJsonArray& chain) const {
+        QSet<QString> effectNames;
+        for (const QJsonValue& sv : chain) {
+            const QJsonObject step = sv.toObject();
+            if (step.value(QStringLiteral("builtin")).toBool(false)) continue;
+            if (step.value(QStringLiteral("args")).toObject().value(QStringLiteral("_skip")).toBool(false)) continue;
+            effectNames.insert(step.value(QStringLiteral("op")).toString());
+        }
+        QHash<QString, QSet<QString>> users;
+        for (const QString& name : qAsConst(effectNames)) {
+            if (!registry_.hasEffect(name)) continue;
+            const QJsonObject effect = registry_.getEffect(name);
+            QStringList refs;
+            const QJsonObject effectTextures = effect.value(QStringLiteral("textures")).toObject();
+            for (auto it = effectTextures.constBegin(); it != effectTextures.constEnd(); ++it) {
+                refs.append(it.key());
+            }
+            const QJsonObject effectTextures3d = effect.value(QStringLiteral("textures3d")).toObject();
+            for (auto it = effectTextures3d.constBegin(); it != effectTextures3d.constEnd(); ++it) {
+                refs.append(it.key());
+            }
+            for (const QJsonValue& gv : effect.value(QStringLiteral("globals")).toObject()) {
+                const QJsonValue def = gv.toObject().value(QStringLiteral("default"));
+                if (def.isString()) refs.append(def.toString());
+            }
+            for (const char* declKey : {"outputTex", "outputTex3d", "outputGeo", "outputXyz", "outputVel", "outputRgba"}) {
+                const QJsonValue decl = effect.value(QLatin1String(declKey));
+                if (decl.isString()) refs.append(decl.toString());
+            }
+            for (const QJsonValue& pv : effect.value(QStringLiteral("passes")).toArray()) {
+                const QJsonObject pass = pv.toObject();
+                for (const QJsonValue& iv : pass.value(QStringLiteral("inputs")).toObject()) {
+                    if (iv.isString()) refs.append(iv.toString());
+                }
+                for (const QJsonValue& ov : pass.value(QStringLiteral("outputs")).toObject()) {
+                    if (ov.isString()) refs.append(ov.toString());
+                }
+            }
+            for (const QString& ref : qAsConst(refs)) {
+                if (!ref.startsWith(QStringLiteral("global_"))) continue;
+                users[ref].insert(name);
+            }
+        }
+        return users;
+    }
+
+    // GAP-059: a global_ texture this effect owns that no OTHER effect in the
+    // chain names is private state. Read-only globals (external uploads) and
+    // textures shared across effects keep the chain scope.
+    bool isPrivateGlobal(const QString& texName) const {
+        return ownedTextures_.contains(texName) && globalTextureUsers_.value(texName).size() == 1;
+    }
+
+    QString globalScope(const QString& texName) const {
+        return isPrivateGlobal(texName) ? instanceScopeId_ : chainScopeId_;
+    }
+
+    // The first node to size private state from a param keeps the legacy
+    // chain-scoped name; any other node, of the same or another effect, gets
+    // its own (reference `claimSizeParam`).
+    QString claimSizeParam(const QString& scopedParam, bool isPrivate) {
+        const QString owner = sizeParamOwners_.value(scopedParam);
+        if (owner.isEmpty()) sizeParamOwners_.insert(scopedParam, claimNodeId_);
+        return isPrivate && !owner.isEmpty() && owner != claimNodeId_
+            ? scopedParam + QLatin1Char('_') + claimNodeId_ : scopedParam;
+    }
 
     QJsonObject resolveVolume(const QString& param, QSet<QString>& visited) const {
         if (visited.contains(param)) return {};
@@ -436,7 +521,7 @@ private:
     QString scopeChainTex(const QString& texName) const {
         const QString particleResult = scopeParticleTex(texName);
         if (particleResult != texName) return particleResult;
-        if (texName.startsWith(QStringLiteral("global_"))) return texName + QLatin1Char('_') + chainScopeId_;
+        if (texName.startsWith(QStringLiteral("global_"))) return texName + QLatin1Char('_') + globalScope(texName);
         return texName;
     }
 
@@ -494,6 +579,9 @@ private:
         volumeSizeParam_ = QStringLiteral("volumeSize_") + chainScopeId_;
 
         const QJsonArray chain = plan.value(QStringLiteral("chain")).toArray();
+        globalTextureUsers_ = collectGlobalTextureUsers(chain);
+        seenEffects_.clear();
+        sizeParamOwners_.clear();
         for (int stepPos = 0; stepPos < chain.size(); ++stepPos) {
             const QJsonObject step = chain.at(stepPos).toObject();
             const bool builtin = step.value(QStringLiteral("builtin")).toBool(false);
@@ -668,6 +756,30 @@ private:
                            const QString& effectName, const QString& nodeId, int temp, int stepPos, const QJsonObject& plan) {
         QMap<QString, QString> scopedParamMap;
 
+        // GAP-059: preserve legacy IDs for the first instance. Repeated private
+        // state gets a node suffix; cooperating effects retain the shared chain
+        // scope (reference expander.js's instanceScopeId/ownedTextures block).
+        instanceScopeId_ = seenEffects_.contains(effectName)
+                                ? chainScopeId_ + QLatin1Char('_') + nodeId
+                                : chainScopeId_;
+        seenEffects_.insert(effectName);
+        claimNodeId_ = nodeId;
+        ownedTextures_.clear();
+        const QJsonObject ownedTextures2d = effectDef.value(QStringLiteral("textures")).toObject();
+        for (auto it = ownedTextures2d.constBegin(); it != ownedTextures2d.constEnd(); ++it) {
+            ownedTextures_.insert(it.key());
+        }
+        const QJsonObject ownedTextures3d = effectDef.value(QStringLiteral("textures3d")).toObject();
+        for (auto it = ownedTextures3d.constBegin(); it != ownedTextures3d.constEnd(); ++it) {
+            ownedTextures_.insert(it.key());
+        }
+        for (const QJsonValue& pv : effectDef.value(QStringLiteral("passes")).toArray()) {
+            const QJsonObject outputs = pv.toObject().value(QStringLiteral("outputs")).toObject();
+            for (auto it = outputs.constBegin(); it != outputs.constEnd(); ++it) {
+                if (it.value().isString()) ownedTextures_.insert(it.value().toString());
+            }
+        }
+
         // 1. Particle-pipeline scope detection (§4.4 step 1).
         const QJsonObject textures = effectDef.value(QStringLiteral("textures")).toObject();
         if (textures.contains(QStringLiteral("global_xyz"))) {
@@ -779,8 +891,7 @@ private:
 
             QString virtualTexId;
             if (texName.startsWith(QStringLiteral("global_"))) {
-                virtualTexId = shouldScopeAsParticle ? (texName + QLatin1Char('_') + currentParticlePipelineId_)
-                                                      : (texName + QLatin1Char('_') + chainScopeId_);
+                virtualTexId = scopeChainTex(texName);
             } else {
                 virtualTexId = nodeId + QLatin1Char('_') + texName;
             }
@@ -800,8 +911,23 @@ private:
                 const QString stateSizeScope = (!currentParticlePipelineId_.isEmpty() && !texName.startsWith(QStringLiteral("global_")))
                                                     ? currentParticlePipelineId_
                                                     : QString();
-                resolvedSpec.insert(QStringLiteral("width"), dim::scope(spec.value(QStringLiteral("width")), scopeSuffix, scopedParamMap, stateSizeScope));
-                resolvedSpec.insert(QStringLiteral("height"), dim::scope(spec.value(QStringLiteral("height")), scopeSuffix, scopedParamMap, stateSizeScope));
+                // Node-local textures are always this node's private state;
+                // global_ textures only when this effect solely owns them here.
+                const bool isPrivateTex = !texName.startsWith(QStringLiteral("global_")) || isPrivateGlobal(texName);
+                resolvedSpec.insert(QStringLiteral("width"),
+                                    dim::scope(spec.value(QStringLiteral("width")), scopeSuffix, scopedParamMap,
+                                               stateSizeScope, volumeSizeParam_,
+                                               [this, shouldScopeAsParticle, isPrivateTex](const QString& scopedParam, bool inherit) {
+                                                   if (shouldScopeAsParticle || inherit) return scopedParam;
+                                                   return claimSizeParam(scopedParam, isPrivateTex);
+                                               }));
+                resolvedSpec.insert(QStringLiteral("height"),
+                                    dim::scope(spec.value(QStringLiteral("height")), scopeSuffix, scopedParamMap,
+                                               stateSizeScope, volumeSizeParam_,
+                                               [this, shouldScopeAsParticle, isPrivateTex](const QString& scopedParam, bool inherit) {
+                                                   if (shouldScopeAsParticle || inherit) return scopedParam;
+                                                   return claimSizeParam(scopedParam, isPrivateTex);
+                                               }));
             }
             textureSpecs_.insert(virtualTexId, resolvedSpec);
         }

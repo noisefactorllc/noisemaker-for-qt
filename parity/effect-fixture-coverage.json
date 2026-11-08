@@ -1,8 +1,8 @@
 {
-  "reference_commit": "6f98d26ab84f17ba7fb154bb74252d6362736f89",
+  "reference_commit": "cf95f49c900762ac1f23cb620dc16654c98ace77",
   "reference_manifest_sha256": "05c4d7b7744837ae90a3bb4c89e5403ff09448a74d9d7e824abb3d719ad3314e",
-  "fixture_count": 386,
-  "compiled_fixture_graph_count": 386,
+  "fixture_count": 394,
+  "compiled_fixture_graph_count": 394,
   "authority_effect_count": 210,
   "effects_with_fixture_count": 210,
   "effects_with_no_fixture": [],
@@ -552,6 +552,7 @@
       "warp.dsl"
     ],
     "filter.watercolor": [
+      "statefulInstancesWatercolor.dsl",
       "watercolor.dsl",
       "watercolorGrain.dsl"
     ],
@@ -591,7 +592,11 @@
       "applyMode.dsl"
     ],
     "mixer.blendMode": [
-      "blendMode.dsl"
+      "blendMode.dsl",
+      "statefulInstances.dsl",
+      "statefulInstancesCrossEffect.dsl",
+      "statefulInstancesDefaultZoom.dsl",
+      "statefulInstancesMiddle.dsl"
     ],
     "mixer.cellSplit": [
       "cellSplit.dsl"
@@ -669,24 +674,30 @@
     ],
     "render.loopBegin": [
       "loopBegin.dsl",
-      "loopEnd.dsl"
+      "loopEnd.dsl",
+      "statefulSharedLoop.dsl"
     ],
     "render.loopEnd": [
       "loopBegin.dsl",
-      "loopEnd.dsl"
+      "loopEnd.dsl",
+      "statefulSharedLoop.dsl"
     ],
     "render.meshLoader": [
       "meshLoaderDefault.dsl",
       "meshLoaderPreview.dsl",
       "meshRenderParams.dsl",
-      "meshRenderWireframe.dsl"
+      "meshRenderWireframe.dsl",
+      "statefulSharedMesh.dsl",
+      "statefulSharedMeshCrossChain.dsl"
     ],
     "render.meshRender": [
       "meshLoaderDefault.dsl",
       "meshRenderCustom.dsl",
       "meshRenderEmpty.dsl",
       "meshRenderParams.dsl",
-      "meshRenderWireframe.dsl"
+      "meshRenderWireframe.dsl",
+      "statefulSharedMesh.dsl",
+      "statefulSharedMeshCrossChain.dsl"
     ],
     "render.pointsBillboardRender": [
       "heightGrid_billboard.dsl",
@@ -763,7 +774,8 @@
     "synth.cellularAutomata": [
       "cellularAutomata.dsl",
       "funcChainScoped.dsl",
-      "funcHiddenParam.dsl"
+      "funcHiddenParam.dsl",
+      "statefulInstancesCrossEffect.dsl"
     ],
     "synth.curl": [
       "curl.dsl",
@@ -1069,6 +1081,7 @@
       "spookyTicker.dsl",
       "stamp.dsl",
       "stampTorn.dsl",
+      "statefulSharedLoop.dsl",
       "step.dsl",
       "stipple.dsl",
       "stippleMezzoDots.dsl",
@@ -1155,13 +1168,19 @@
       "heightGrid_pointsRender_perspective.dsl",
       "mashup.dsl",
       "perlin.dsl",
+      "statefulInstancesMiddle.dsl",
+      "statefulInstancesWatercolor.dsl",
       "strayHair.dsl"
     ],
     "synth.polygon": [
       "polygon.dsl"
     ],
     "synth.reactionDiffusion": [
-      "reactionDiffusion.dsl"
+      "reactionDiffusion.dsl",
+      "statefulInstances.dsl",
+      "statefulInstancesCrossEffect.dsl",
+      "statefulInstancesDefaultZoom.dsl",
+      "statefulInstancesMiddle.dsl"
     ],
     "synth.remap": [
       "remap.dsl",

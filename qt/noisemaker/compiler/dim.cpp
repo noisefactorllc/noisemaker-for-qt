@@ -11,7 +11,8 @@ bool referencesParam(const QJsonValue& d) {
 }
 
 QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, QString>& scopedParamMap,
-                  const QString& stateSizeScope) {
+                  const QString& stateSizeScope, const QString& volumeSizeParam,
+                  const SizeParamClaim& chainSizeParam) {
     if (!d.isObject()) return d;
     QJsonObject o = d.toObject();
     // `param` takes precedence, matching the reference's if/else-if chain
@@ -19,10 +20,18 @@ QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, 
     // `dimSpec.screenDivide !== undefined`).
     if (o.contains(QStringLiteral("param"))) {
         const QString original = o.value(QStringLiteral("param")).toString();
-        const QString effectiveScope = (original == QStringLiteral("stateSize") && !stateSizeScope.isEmpty())
-                                            ? stateSizeScope
-                                            : scopeSuffix;
-        const QString scoped = original + QLatin1Char('_') + effectiveScope;
+        QString scoped;
+        if (original == QStringLiteral("volumeSize") && !volumeSizeParam.isEmpty()) {
+            scoped = volumeSizeParam;
+        } else if (original == QStringLiteral("stateSize") && !stateSizeScope.isEmpty()) {
+            scoped = original + QLatin1Char('_') + stateSizeScope;
+        } else {
+            // Particle-scoped or inherited dimensions keep the base name;
+            // everything else goes through the expander's size-param claim.
+            scoped = chainSizeParam ? chainSizeParam(original + QLatin1Char('_') + scopeSuffix,
+                                                    o.value(QStringLiteral("inherit")).toBool(false))
+                                    : (original + QLatin1Char('_') + scopeSuffix);
+        }
         // An inherited dimension reads the scope's value and never writes
         // this effect's own value over it.
         if (o.value(QStringLiteral("inherit")).toBool(false) == false) {
@@ -33,7 +42,8 @@ QJsonValue scope(const QJsonValue& d, const QString& scopeSuffix, QMap<QString, 
     }
     if (o.contains(QStringLiteral("screenDivide"))) {
         const QString original = o.value(QStringLiteral("screenDivide")).toString();
-        const QString scoped = original + QLatin1Char('_') + scopeSuffix;
+        const QString scoped = chainSizeParam ? chainSizeParam(original + QLatin1Char('_') + scopeSuffix, false)
+                                              : (original + QLatin1Char('_') + scopeSuffix);
         scopedParamMap.insert(original, scoped);
         o.insert(QStringLiteral("screenDivide"), scoped);
         return o;
