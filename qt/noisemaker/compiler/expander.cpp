@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace nm {
 
@@ -364,7 +365,7 @@ private:
             effectNames.insert(step.value(QStringLiteral("op")).toString());
         }
         QHash<QString, QSet<QString>> users;
-        for (const QString& name : qAsConst(effectNames)) {
+        for (const QString& name : std::as_const(effectNames)) {
             if (!registry_.hasEffect(name)) continue;
             const QJsonObject effect = registry_.getEffect(name);
             QStringList refs;
@@ -393,7 +394,7 @@ private:
                     if (ov.isString()) refs.append(ov.toString());
                 }
             }
-            for (const QString& ref : qAsConst(refs)) {
+            for (const QString& ref : std::as_const(refs)) {
                 if (!ref.startsWith(QStringLiteral("global_"))) continue;
                 users[ref].insert(name);
             }
