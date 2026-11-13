@@ -26,6 +26,11 @@ public:
     virtual bool submit(const GpuSurface& surface, double timestamp) = 0;
     virtual void close(bool backendLost = false) = 0;
     virtual bool deferRender() { return false; }
+    // Reference Pipeline contract (pipeline.js reportSinkError): the pipeline
+    // passes each error a sink's configure(), deferRender() or submit()
+    // throws back to the sink's optional onError(error) method. A sink that
+    // does not override onError keeps the previous counting-only behavior.
+    virtual void onError(std::exception_ptr error) { (void)error; }
 };
 
 struct SinkStats {
@@ -65,5 +70,14 @@ private:
 
     std::shared_ptr<State> m_state;
 };
+
+// Reference pipeline.js reportSinkError: the pipeline's SinkManager reporter.
+// Passes each error a sink's configure(), deferRender() or submit() throws to
+// that sink's optional onError(error) method (OutputSink::onError). Rendering
+// and the other sinks continue either way; a throwing onError stays isolated
+// (SinkManager::report).
+void reportSinkError(
+    std::exception_ptr error,
+    const std::shared_ptr<OutputSink>& sink);
 
 } // namespace nm

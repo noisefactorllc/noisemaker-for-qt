@@ -1482,7 +1482,7 @@ void Backend::setup(QOpenGLContext* context, const QString& dataRoot, QSize size
     m_surfaces = std::make_unique<SurfaceCache>(m_gl);
     createFullscreenVao();
     createEmptyVao();
-    if (m_sinkManager.closed()) m_sinkManager = SinkManager();
+    if (m_sinkManager.closed()) m_sinkManager = SinkManager(&reportSinkError);
     OutputDescriptor descriptor;
     descriptor.width = size.width();
     descriptor.height = size.height();

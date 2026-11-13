@@ -488,7 +488,7 @@ private:
     qint64 m_frameIndex = 0;
     QJsonObject m_midiState;
     QJsonObject m_audioState;
-    SinkManager m_sinkManager;
+    SinkManager m_sinkManager{&reportSinkError};
     std::vector<std::weak_ptr<FrameExportQueue>> m_frameExportQueues;
     std::unique_ptr<AsyncOverlays> m_asyncOverlays; // asyncInit overlay uploads (async_overlay.h)
     AsyncOverlays& asyncOverlays();

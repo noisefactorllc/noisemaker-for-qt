@@ -34,6 +34,23 @@ public:
     bool throwOnSubmit = false;
     bool throwOnClose = false;
     bool throwOnDeferRender = false;
+    bool throwOnError = false;
+    // Mirrors the reference's optional onError: a sink that does not opt in
+    // leaves captureOnError false, so its onError has no observable effect.
+    bool captureOnError = false;
+    int onErrorCalls = 0;
+    std::vector<std::string> onErrorMessages;
+
+    void onError(std::exception_ptr error) override {
+        ++onErrorCalls;
+        if (throwOnError) throw std::runtime_error("reporter failed");
+        if (!captureOnError) return;
+        try {
+            std::rethrow_exception(error);
+        } catch (const std::exception& exception) {
+            onErrorMessages.emplace_back(exception.what());
+        }
+    }
 
     void configure(const nm::OutputDescriptor& value) override {
         ++configureCalls;
@@ -328,6 +345,56 @@ int main() {
               "a throwing deferRender does not prevent subsequent sinks from deferring");
         check(manager.statsFor(throwingSink.get()).failed == 2,
               "second shouldDeferRender call increments failed count again on throwing sink");
+    }
+
+    {
+        // Reference test_pipeline.js "A sink receives its own isolated
+        // configure, deferRender and submit errors": the pipeline reporter
+        // (reportSinkError) passes each error to the onError of the sink
+        // that threw it; other sinks and the counters are unchanged.
+        nm::SinkManager manager(&nm::reportSinkError);
+        auto failed = std::make_shared<TestSink>();
+        auto silent = std::make_shared<TestSink>();
+        auto throwingReporter = std::make_shared<TestSink>();
+        auto healthy = std::make_shared<TestSink>();
+        failed->throwOnConfigure = failed->throwOnDeferRender =
+            failed->throwOnSubmit = true;
+        failed->captureOnError = true;
+        silent->throwOnConfigure = silent->throwOnSubmit = true;
+        throwingReporter->throwOnConfigure = true;
+        throwingReporter->throwOnError = true;
+        manager.add(failed);
+        manager.add(silent);
+        manager.add(throwingReporter);
+        manager.add(healthy);
+
+        const nm::OutputDescriptor resized{
+            640, 480, QStringLiteral("rgba8unorm"), QStringLiteral("srgb"),
+            QStringLiteral("straight"), 60.0
+        };
+        manager.configure(resized);
+        check(!manager.shouldDeferRender(),
+              "a throwing deferRender must not defer the frame");
+        manager.submit(surface, 7.0);
+
+        check(failed->onErrorMessages == std::vector<std::string>{
+                  "configure failed", "deferRender failed", "submit failed"},
+              "each error reaches only the sink that threw it");
+        check(silent->onErrorMessages.empty(),
+              "a sink without onError is not reported to");
+        check(throwingReporter->onErrorCalls == 1,
+              "the throwing reporter receives its configure error once");
+        check(healthy->onErrorCalls == 0 && healthy->configureCalls == 1 &&
+                  healthy->deferRenderCalls == 1 && healthy->submitCalls == 1 &&
+                  healthy->descriptor.width == 640 && healthy->descriptor.height == 480,
+              "a sink that does not fail sees the same calls and no report");
+        check(manager.statsFor(failed.get()).failed == 3 &&
+                  manager.statsFor(silent.get()).failed == 2 &&
+                  manager.statsFor(throwingReporter.get()).accepted == 1 &&
+                  manager.statsFor(throwingReporter.get()).failed == 1 &&
+                  manager.statsFor(healthy.get()).accepted == 1 &&
+                  manager.statsFor(healthy.get()).failed == 0,
+              "sink counters are unchanged by the reported errors");
     }
 
     if (g_failures == 0) {

@@ -106,6 +106,12 @@ void SinkManager::report(
     }
 }
 
+void reportSinkError(
+    std::exception_ptr error,
+    const std::shared_ptr<OutputSink>& sink) {
+    if (sink) sink->onError(error);
+}
+
 void SinkManager::configure(const OutputDescriptor& descriptor) {
     if (m_state->closed) return;
     m_state->descriptor = descriptor;
