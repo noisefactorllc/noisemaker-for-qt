@@ -647,7 +647,13 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
     // trace can receive much less than the CPU that the frames leave. In CI
     // run 39113237922 on Windows the frames left 0.16 CPUs, and the trace
     // completed in 197.3 s against a 263.5 s bound, 7.5 times its CPU-limited
-    // time of 26.3 s.
+    // time of 26.3 s. In CI run 43362695625 the trace completed 13 ms past
+    // the bound after 3514 paced frames at 3.33 process CPUs per second: the
+    // completion is observable only on the render after the trace finishes
+    // (async_overlay.h uploads the result on the next render), and the
+    // deadline gates issuing frames, so the observing frame can fall one
+    // frame period past the ten-times deadline. The observation frame below
+    // measures the trace, not that lag.
     const double spareCpus = std::max(0.1, static_cast<double>(cpus) - pacedCpus);
     const double traceSeconds = std::max(syncRetrace, syncRetraceCpu / spareCpus);
     std::vector<double> pacedMs;
@@ -663,13 +669,23 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
         }
         pacedMs.push_back(sample);
     }
+    if (switchMs < 0.0 && background.overlayTracesPending()) {
+        // The completion is observable only on the render after the trace
+        // finishes. The deadline above gates issuing frames; when it elapsed
+        // while the last paced frame was in flight, the completion's
+        // observing frame has not run yet. Run it now, so the check measures
+        // the trace instead of the observation lag (at most one frame
+        // period, 16.667 ms).
+        const double sample = timedRender();
+        if (!background.overlayTracesPending()) switchMs = sample;
+    }
     const double completionSeconds = secondsSince(start);
     const bool completedLive = switchMs >= 0.0;
     std::printf("  60 Hz frames with nothing to trace: process CPU %.2f s per second of %u hardware threads; "
                 "%.2f CPUs left to the trace\n", pacedCpus, cpus, spareCpus);
-    std::printf("  live re-trace completion %.3f s after %zu paced frames; bound %.3f s, ten times the trace's time %.3f s "
+    std::printf("  live re-trace completion %.3f s after %zu paced frames; bound %.3f s, ten times the trace's time %.3f s plus one observation frame "
                 "(synchronous re-trace %.3f s, %.3f CPU s)\n",
-                completionSeconds, pacedMs.size(), 10.0 * traceSeconds, traceSeconds, syncRetrace, syncRetraceCpu);
+                completionSeconds, pacedMs.size(), 10.0 * traceSeconds + kFramePeriod.count() / 1e6, traceSeconds, syncRetrace, syncRetraceCpu);
     check(completedLive,
           "the overlay changes to the completed trace while frames continue at 60 Hz, within ten times the trace's time "
           "at the CPU that the frames leave it");
