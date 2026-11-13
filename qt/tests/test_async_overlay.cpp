@@ -688,7 +688,7 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
                 completionSeconds, pacedMs.size(), 10.0 * traceSeconds + kFramePeriod.count() / 1e6, traceSeconds, syncRetrace, syncRetraceCpu);
     check(completedLive,
           "the overlay changes to the completed trace while frames continue at 60 Hz, within ten times the trace's time "
-          "at the CPU that the frames leave it");
+          "at the CPU that the frames leave it, plus one observation frame");
     if (!completedLive) {
         background.waitForOverlayTraces();
         switchMs = timedRender();
