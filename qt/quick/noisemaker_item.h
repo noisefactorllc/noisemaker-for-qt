@@ -28,8 +28,10 @@
 // overlays of filter/fibers, filter/scratches and filter/strayHair trace on
 // a worker thread (nm::OverlayTraceMode::Background), so an edit or resize
 // never stalls the scene; a paused item keeps rendering until a trace's
-// overlay appears. Compile and setup errors appear in
-// `errorString`, and the item then shows transparent pixels. Like the
+// overlay appears. Compile and setup errors appear in `errorString`. A
+// rejected recompile keeps the accepted program rendering, as the
+// reference keeps the running program; with nothing accepted yet, the
+// item shows transparent pixels. Like the
 // reference canvas, the output is composited as premultiplied alpha.
 
 #include <QElapsedTimer>
@@ -55,9 +57,11 @@ class NoisemakerItem : public QQuickFramebufferObject {
     Q_PROPERTY(double time READ time WRITE setTime NOTIFY timeChanged)
     // Seconds per loop (the reference host's default is 10).
     Q_PROPERTY(double loopDuration READ loopDuration WRITE setLoopDuration NOTIFY loopDurationChanged)
-    // The last compile or setup error; empty while the program renders.
+    // The last compile or setup error; cleared when a later compile
+    // succeeds.
     Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
-    // Frames rendered for the current program.
+    // Frames rendered. A rejected recompile keeps the accepted program
+    // rendering, so its frames keep counting while the error stays.
     Q_PROPERTY(int frameCount READ frameCount NOTIFY frameRendered)
 
 public:
@@ -91,7 +95,7 @@ private:
     friend class NoisemakerItemRenderer;
 
     // Called on the GUI thread (queued from the render thread).
-    Q_INVOKABLE void reportFrame(quint64 generation, const QString& error);
+    Q_INVOKABLE void reportFrame(quint64 generation, bool rendered, const QString& error);
 
     QString m_program;
     QString m_dataRoot;

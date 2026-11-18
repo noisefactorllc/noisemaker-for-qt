@@ -1646,6 +1646,17 @@ QByteArray Backend::loadVertexSource(const Pass& pass) const {
     return file.readAll();
 }
 
+// reference Pipeline.compilePrograms(graph): compiles the candidate
+// graph's programs before the graph becomes current. A rejected program
+// throws here; the port's cache inserts a program only after its compile
+// and link succeeded (programFor()), so the accepted programs of the
+// running graph stay in place and the next frames keep rendering them.
+void Backend::preparePrograms(const Graph& graph) {
+    for (const Pass& pass : graph.passes) {
+        programFor(pass);
+    }
+}
+
 const Backend::CompiledProgram& Backend::programFor(const Pass& pass) {
     const QString key = programCacheKey(pass);
     auto cached = m_programs.find(key);

@@ -60,8 +60,13 @@ public:
         QOpenGLExtraFunctions* f = context->extraFunctions();
         if (m_compiledGeneration != m_generation) {
             m_compiledGeneration = m_generation;
-            m_graph.reset();
             m_error.clear();
+            // reference CanvasRenderer._compile (shaders/src/renderer/
+            // canvas.js): the candidate graph and its programs compile
+            // before anything becomes current, so a rejected recompile
+            // leaves the accepted graph, its programs and its surfaces in
+            // place and the next frames keep rendering the accepted
+            // program. prepare() therefore only swaps m_graph on success.
             prepare(context);
         } else if (m_graph && m_backendSize != m_size) {
             try {
@@ -103,9 +108,12 @@ public:
         QQuickOpenGLUtils::resetOpenGLState();
 
         if (m_item) {
+            // The accepted graph's frames count even while a rejected
+            // recompile holds its error in m_error, as the reference's
+            // frame counter keeps advancing.
             QMetaObject::invokeMethod(m_item, "reportFrame", Qt::QueuedConnection,
-                                      Q_ARG(quint64, m_compiledGeneration),
-                                      Q_ARG(QString, rendered ? QString() : m_error));
+                                      Q_ARG(quint64, m_compiledGeneration), Q_ARG(bool, rendered),
+                                      Q_ARG(QString, m_error));
         }
         // A paused item renders again while a background overlay trace
         // runs, so the completed overlay appears without another change.
@@ -122,6 +130,10 @@ private:
     // (Re)creates what the current program needs: the effect registry and
     // Backend for the data root, then the compiled graph and its text.
     void prepare(QOpenGLContext* context) {
+        // Setup phase: a failure here can have destroyed the accepted
+        // graph's Backend (a data-root change releases it before the new
+        // registry loads), so nothing can keep rendering and the graph is
+        // cleared.
         try {
             const QSurfaceFormat format = context->format();
             if (format.version() < qMakePair(4, 1) || format.profile() != QSurfaceFormat::CoreProfile) {
@@ -157,18 +169,47 @@ private:
                 m_backend->resize(m_size);
                 m_backendSize = m_size;
             }
-            m_graph = compileGraph(m_program, *m_registry);
-            updateTextTextures(*m_backend, *m_graph, m_backendRoot, m_size);
+        } catch (const std::exception& error) {
+            m_error = QStringLiteral("NoisemakerItem: ") + error.what();
+            qWarning("%s", qPrintable(m_error));
+            m_graph.reset();
+            return;
+        }
+
+        // Compile phase: the candidate graph and its programs compile
+        // before anything becomes current (reference CanvasRenderer
+        // _compile and Pipeline.compilePrograms(graph)). A rejection
+        // mutates no state, so the accepted graph keeps rendering (the
+        // reference keeps the running pipeline); with nothing accepted
+        // yet, m_graph stays empty and the item shows transparent pixels.
+        Graph candidate;
+        try {
+            candidate = compileGraph(m_program, *m_registry);
+            m_backend->preparePrograms(candidate);
+        } catch (const std::exception& error) {
+            m_error = QStringLiteral("NoisemakerItem: ") + error.what();
+            qWarning("%s", qPrintable(m_error));
+            return;
+        }
+
+        // Swap phase: updateTextTextures() and the mesh loads mutate
+        // Backend state that cannot roll back, so a throw in them clears
+        // the graph to transparent pixels (fail()). Only after they
+        // succeed does the candidate become the rendering graph.
+        try {
+            updateTextTextures(*m_backend, candidate, m_backendRoot, m_size);
             // As the reference demo host does: each meshLoader-style step
             // starts with its effect's first built-in mesh.
-            for (const ExternalMeshInput& input : m_backend->externalMeshes(*m_graph)) {
+            for (const ExternalMeshInput& input : m_backend->externalMeshes(candidate)) {
                 if (input.builtinMeshes.isEmpty()) continue;
                 const MeshLoadResult mesh = m_backend->loadOBJFromFile(input.builtinMeshes.first().path, input.meshId);
                 if (!mesh.success) throw std::runtime_error(mesh.error.toStdString());
             }
         } catch (const std::exception& error) {
             fail(error.what());
+            return;
         }
+        m_graph = std::move(candidate);
     }
 
     QPointer<NoisemakerItem> m_item;
@@ -250,13 +291,16 @@ void NoisemakerItem::setLoopDuration(double seconds) {
     emit loopDurationChanged();
 }
 
-void NoisemakerItem::reportFrame(quint64 generation, const QString& error) {
+void NoisemakerItem::reportFrame(quint64 generation, bool rendered, const QString& error) {
     if (generation != m_generation) return; // a frame of an earlier program
     if (error != m_errorString) {
         m_errorString = error;
         emit errorStringChanged();
     }
-    if (error.isEmpty()) {
+    // A frame that rendered counts even while a rejected recompile holds
+    // its error in errorString: the accepted program keeps rendering, as
+    // the reference keeps the running pipeline.
+    if (rendered) {
         ++m_frameCount;
         emit frameRendered();
     }

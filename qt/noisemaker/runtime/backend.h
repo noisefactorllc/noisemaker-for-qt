@@ -121,6 +121,11 @@ public:
     // (setOverlayTraceMode(); async_overlay.h).
     void render(const Graph& graph, double t);
     void render(const Graph& graph, double t, double presentationTimestamp);
+    // reference Pipeline.compilePrograms(graph): compiles every pass's
+    // program into the cache without rendering. A rejected program throws
+    // and the cache keeps only what compiled, so a failed recompile never
+    // evicts the accepted programs of the running graph.
+    void preparePrograms(const Graph& graph);
 
     // Selects how render() traces asyncInit overlays (OverlayTraceMode).
     // A live host (a widget or Qt Quick item that re-renders every frame)

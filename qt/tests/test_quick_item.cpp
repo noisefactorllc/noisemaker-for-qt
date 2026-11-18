@@ -16,6 +16,7 @@
 #include <QImage>
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
+#include <QTemporaryDir>
 #include <QOpenGLFunctions_4_1_Core>
 #include <QQmlComponent>
 #include <QQmlEngine>
@@ -176,8 +177,19 @@ void testItem() {
     item->setProgram(QStringLiteral("search synth\nnoize().write(o0)\nrender(o0)"));
     image = scene.frame();
     std::printf("  errorString: %s\n", qPrintable(item->errorString()));
-    check(!item->errorString().isEmpty() && uniform(image, qRgba(0, 0, 0, 0)) && item->frameCount() == 0,
-          "a program that does not compile reports errorString and draws transparent pixels");
+    // A rejected recompile keeps the accepted program running (the
+    // reference keeps the running pipeline): the text scene stays on
+    // screen and its frames count, with the rejection in errorString.
+    top = 0;
+    bottom = 0;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            if (qRed(image.pixel(x, y)) > 200) (y < 32 ? top : bottom)++;
+        }
+    }
+    std::printf("  text pixels after the rejected recompile: top=%d bottom=%d\n", top, bottom);
+    check(!item->errorString().isEmpty() && top > 40 && bottom == 0 && item->frameCount() == 1,
+          "a recompile that does not compile reports errorString and keeps the accepted program rendering");
     item->setProgram(QString::fromUtf8(kRed));
     image = scene.frame();
     check(item->errorString().isEmpty() && uniform(image, qRgba(255, 0, 0, 255)),
@@ -193,6 +205,23 @@ void testItem() {
     scene.frame();
     std::printf("  errorString: %s\n", qPrintable(item->errorString()));
     check(item->errorString().contains(QStringLiteral("data root")), "a data root without effects/ and shaders/ is named in errorString");
+    item->setDataRoot(goodRoot);
+    image = scene.frame();
+    check(item->errorString().isEmpty() && uniform(image, qRgba(255, 0, 0, 255)), "restoring the data root recovers");
+
+    // A data root with empty effects/ and shaders/ directories tears down
+    // the Backend during prepare() (EffectRegistry::loadAll throws on the
+    // missing definitions). Nothing can keep rendering, so the item
+    // clears the graph and draws transparent pixels instead of
+    // dereferencing the released Backend.
+    QTemporaryDir emptyRoot;
+    QDir(emptyRoot.path()).mkpath(QStringLiteral("effects"));
+    QDir(emptyRoot.path()).mkpath(QStringLiteral("shaders"));
+    item->setDataRoot(emptyRoot.path());
+    image = scene.frame();
+    std::printf("  errorString: %s\n", qPrintable(item->errorString()));
+    check(!item->errorString().isEmpty() && uniform(image, qRgba(0, 0, 0, 0)) && scene.lastGlError() == 0,
+          "a data root with no effect definitions reports errorString and draws transparent pixels");
     item->setDataRoot(goodRoot);
     image = scene.frame();
     check(item->errorString().isEmpty() && uniform(image, qRgba(255, 0, 0, 255)), "restoring the data root recovers");
@@ -231,6 +260,27 @@ void testItem() {
     std::printf("  paused frame vs Backend::readSurface: max diff %d\n", worst);
     check(!item->running() && item->time() == 0.25 && worst <= 1,
           "running false renders at `time`, matching a Backend render (float-to-8-bit rounding: 1 level)");
+}
+
+// A first compile that fails (nothing accepted yet) reports errorString
+// and shows transparent pixels: the reference keeps the running program
+// only when one is running.
+void testFirstCompileFailure() {
+    Scene scene;
+    if (!scene.create(QSize(32, 32))) {
+        check(false, "the offscreen QML scene initializes");
+        return;
+    }
+    nm::NoisemakerItem* item = scene.item();
+    item->setProgram(QStringLiteral("search synth\nnoize().write(o0)\nrender(o0)"));
+    const QImage image = scene.frame();
+    std::printf("  errorString: %s\n", qPrintable(item->errorString()));
+    check(!item->errorString().isEmpty() && uniform(image, qRgba(0, 0, 0, 0)) && item->frameCount() == 0,
+          "a first program that does not compile reports errorString and draws transparent pixels");
+    item->setProgram(QString::fromUtf8(kRed));
+    const QImage recovered = scene.frame();
+    check(item->errorString().isEmpty() && uniform(recovered, qRgba(255, 0, 0, 255)),
+          "a valid program after a failed first compile renders and clears errorString");
 }
 
 // fibers traces its overlay on a worker thread (GAP-038): the first frame
@@ -298,6 +348,7 @@ int main(int argc, char** argv) {
         std::printf("round %d\n", round + 1);
         testItem(); // three full create / use / destroy cycles
     }
+    testFirstCompileFailure();
     testBackgroundOverlay();
 
     std::printf("%s (%d failure%s)\n", g_failures == 0 ? "ALL PASS" : "FAILED", g_failures,
