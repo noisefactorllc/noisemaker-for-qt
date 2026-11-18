@@ -146,6 +146,14 @@ private:
                         .toStdString());
             }
             if (!m_backend || m_backendRoot != m_dataRoot) {
+                // A new Backend does not hold the accepted graph's programs
+                // or text textures (backend.cpp binds a text texture absent
+                // from its external textures to a default transparent
+                // texture), so the accepted graph cannot keep rendering on
+                // it: clear it here, so a rejected compile below leaves
+                // transparent pixels instead of the old graph rendering
+                // wrongly on the new Backend.
+                m_graph.reset();
                 const QDir root(m_dataRoot);
                 if (!root.exists(QStringLiteral("effects")) || !root.exists(QStringLiteral("shaders"))) {
                     throw std::runtime_error(

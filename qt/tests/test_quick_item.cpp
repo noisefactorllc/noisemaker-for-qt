@@ -12,6 +12,9 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
+#include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
 #include <QOffscreenSurface>
@@ -136,6 +139,20 @@ private:
     unsigned int m_lastGlError = 0;
 };
 
+// Copies a directory tree with plain files (no links): a second valid
+// data root for the data-root-switch test.
+void copyDir(const QString& from, const QString& to) {
+    QDir().mkpath(to);
+    QDirIterator it(from, QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot);
+    while (it.hasNext()) {
+        it.next();
+        const QFileInfo info = it.fileInfo();
+        const QString target = to + QLatin1Char('/') + info.fileName();
+        if (info.isDir()) copyDir(it.filePath(), target);
+        else QFile::copy(it.filePath(), target);
+    }
+}
+
 bool uniform(const QImage& image, QRgb color) {
     for (int y = 0; y < image.height(); ++y) {
         for (int x = 0; x < image.width(); ++x) {
@@ -225,6 +242,50 @@ void testItem() {
     item->setDataRoot(goodRoot);
     image = scene.frame();
     check(item->errorString().isEmpty() && uniform(image, qRgba(255, 0, 0, 255)), "restoring the data root recovers");
+
+    // A data-root switch replaces the Backend during prepare()'s setup
+    // phase, and the new Backend does not hold the accepted graph's text
+    // textures. A recompile that is then rejected must not leave the old
+    // graph rendering on the new Backend (backend.cpp binds its absent
+    // text textures to a default transparent texture): the graph is
+    // cleared and the item draws transparent pixels instead.
+    const QString textProgram = QStringLiteral(
+        "search synth, filter\nsolid(color: #000000).text(text: \"TOP\", size: 0.25, posY: 0.15).write(o0)\nrender(o0)");
+    item->setProgram(textProgram);
+    image = scene.frame();
+    top = 0;
+    bottom = 0;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            if (qRed(image.pixel(x, y)) > 200) (y < image.height() / 2 ? top : bottom)++;
+        }
+    }
+    std::printf("  text pixels after the empty-root recovery: top=%d bottom=%d\n", top, bottom);
+    check(top > 0 && bottom == 0, "the text program renders again after the empty-root recovery");
+
+    QTemporaryDir secondRoot;
+    copyDir(QStringLiteral("qt/noisemaker/effects"), secondRoot.filePath(QStringLiteral("effects")));
+    copyDir(QStringLiteral("qt/noisemaker/shaders"), secondRoot.filePath(QStringLiteral("shaders")));
+    copyDir(QStringLiteral("qt/noisemaker/fonts"), secondRoot.filePath(QStringLiteral("fonts")));
+    item->setDataRoot(secondRoot.path());
+    item->setProgram(QStringLiteral("search synth\nnoize().write(o0)\nrender(o0)"));
+    image = scene.frame();
+    std::printf("  errorString: %s\n", qPrintable(item->errorString()));
+    check(!item->errorString().isEmpty() && uniform(image, qRgba(0, 0, 0, 0)) && scene.lastGlError() == 0,
+          "a valid data-root switch whose new program does not compile draws transparent pixels, not the old graph");
+    item->setDataRoot(goodRoot);
+    item->setProgram(textProgram);
+    image = scene.frame();
+    top = 0;
+    bottom = 0;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            if (qRed(image.pixel(x, y)) > 200) (y < image.height() / 2 ? top : bottom)++;
+        }
+    }
+    std::printf("  text pixels after restoring the data root: top=%d bottom=%d\n", top, bottom);
+    check(top > 0 && bottom == 0 && item->errorString().isEmpty(),
+          "restoring the data root and the program renders the text again");
 
     // meshLoader starts with the built-in sphere: the lit mesh covers the
     // middle of the frame, over meshRender's background.
