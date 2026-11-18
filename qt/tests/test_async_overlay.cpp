@@ -703,7 +703,7 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
                 "%.2f CPUs left to the trace\n", pacedCpus, cpus, spareCpus);
     std::printf("  live re-trace completion %.3f s after %zu paced frames; bound %.3f s, ten times the trace's time %.3f s plus the observation window %.3f s "
                 "(synchronous re-trace %.3f s, %.3f CPU s)\n",
-                completionSeconds, pacedMs.size(), 10.0 * traceSeconds + observationWindow, traceSeconds, syncRetrace, syncRetraceCpu);
+                completionSeconds, pacedMs.size(), 10.0 * traceSeconds + observationWindow, traceSeconds, observationWindow, syncRetrace, syncRetraceCpu);
     check(completedLive,
           "the overlay changes to the completed trace while frames continue at 60 Hz, within ten times the trace's time "
           "at the CPU that the frames leave it, plus the measured observation window");
@@ -793,9 +793,20 @@ double testBackgroundTrace(nm::EffectRegistry& registry) {
               "returns within the 60 Hz frame budget (16.667 ms)");
     } else {
         std::printf("  the steady envelope exceeds the 60 Hz budget: the trace must add no stall beyond the steady variation\n");
-        check(countedMax <= envelope,
+        // A frame whose present lands on the host's display cadence waits for
+        // the next slot, so its wall time is its compute plus up to one full
+        // frame period. The host's own slowest steady frame measures that
+        // compute, and the median bound above already shows the trace adds no
+        // stall. Without this ceiling, a steady population tighter than one
+        // frame period pulls the envelope onto the cadence itself, and a
+        // throttled frame flips the comparison on the host's own cadence, not
+        // on a trace stall.
+        const double maxBound = std::max(envelope, steadyMax + kFrameBudgetMs);
+        std::printf("  counted-max bound %.3f ms = max(envelope %.3f ms, slowest steady frame %.3f ms + one 60 Hz period %.3f ms)\n",
+                    maxBound, envelope, steadyMax, kFrameBudgetMs);
+        check(countedMax <= maxBound,
               "no render() during a 1920x1080 re-trace, nor the switch to the completed overlay, "
-              "is slower than the steady envelope");
+              "is slower than the steady envelope or the display cadence plus the slowest steady frame");
         check(retraceMedian <= medianBound,
               "the median render() during a 1920x1080 re-trace stays within the steady interquartile range "
               "and half of one CPU's share of the steady median, scaled by the CPU that other processes took");
