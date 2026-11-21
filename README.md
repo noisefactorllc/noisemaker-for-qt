@@ -144,7 +144,7 @@ NoisemakerItem {
 }
 ```
 
-The item renders at its size in device pixels, every frame while `running` is true, and at `time` (normalized loop time) while it is false. A size change or a new `program` or `dataRoot` starts the program over. `filter/text` steps are drawn. A compile or setup error sets `errorString`, and the item shows transparent pixels until the program works again. Link it with:
+The item renders at its size in device pixels, every frame while `running` is true, and at `time` (normalized loop time) while it is false. A size change or a new `program` or `dataRoot` starts the program over. `filter/text` steps are drawn. A compile or setup error sets `errorString`. When a new `program` does not compile, the accepted program keeps rendering. With no accepted program, after a `dataRoot` change, or after a setup, text or mesh load failure, the item shows transparent pixels until a new `program` or `dataRoot` works. Link it with:
 
 ```cmake
 find_package(noisemaker-qt 0.1 CONFIG REQUIRED COMPONENTS Quick)
@@ -191,7 +191,7 @@ The port is synced to the reference commit pinned in `scripts/test` (`const PIN`
 
 - **210 effect definitions** and their **effect UI files**, generated from the reference and byte-identical (`parity/check_definitions.mjs`, `check_effects_ui.mjs`).
 - **317/317 shaders byte-identical** (`check_shaders.mjs`).
-- **Compiler gates at 412/412** for lex, parse, validate, expand and graph over the fixture corpus (`parity/programs` and `parity/corpus`); registry 4/4.
+- **Compiler gates** pass every fixture for lex, parse, validate, expand and graph over the fixture corpus (`parity/programs` and `parity/corpus`); registry 4/4.
 - **State and parser gates:** MIDI_STATE 66/66 and AUDIO_STATE 93/93 exact against the reference classes; OBJ parser 443/443 inputs identical, the seven built-in meshes byte-identical; the reference's JavaScript function bodies classified as V8 classifies them (`check_func_bodies_differential.mjs`).
 
 CI's `gates` job runs every one of these after building `nm-render` and the dump helpers. `node scripts/test` runs the three byte gates and the parity unit suites with no Qt toolchain. `scripts/parity-summary` mints goldens with the reference engine, renders each fixture with `nm-render`, and grades the pair (`parity/sweep.sh`); a fixture's tolerance and every loosening's mechanism live in `tol_for()` in that script.
@@ -204,7 +204,7 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the render-graph seam, OpenGL-vs-
 
 The port has one version series, `0.1`. It is the CMake project version (`find_package(noisemaker-qt 0.1)`) and the `series` in `export-kit/kit.config.json`; configure fails if they differ. In `0.x`, a new minor version may change the API.
 
-A push to `main` that changes `qt/noisemaker/`, `export-kit/` or `LICENSE` releases the export kit. `.github/workflows/export-kit.yml` dispatches the Noise Factor release workflow, which builds the kit from that commit, validates it, publishes it at `https://kits.noisedeck.app/qt/<version>/`, points `qt/0.1/` and `qt/0/` at it, and tags the commit `kit-qt-v0.1.<n>`. A published version directory never changes. Noisedeck's "Export shader pipeline" reads `qt/0/`, so a new export uses the newest `0.x` kit. The kit's `kit.json` records its version and source commit, and an export's `noisedeck-export.json` records that commit as `kitSha`.
+A successful "Full parity (llvmpipe)" run on `main` releases the export kit: the weekly scheduled run of `.github/workflows/parity-llvmpipe.yml`, or a manual dispatch of it. A push to `main` releases nothing. `.github/workflows/export-kit.yml` dispatches the Noise Factor release workflow, which builds the kit from the commit that run tested, validates it, publishes it at `https://kits.noisedeck.app/qt/<version>/`, points `qt/0.1/` and `qt/0/` at it, and tags the commit `kit-qt-v0.1.<n>`. A published version directory never changes. Noisedeck's "Export shader pipeline" reads `qt/0/`, so a new export uses the newest `0.x` kit. The kit's `kit.json` records its version and source commit, and an export's `noisedeck-export.json` records that commit as `kitSha`.
 
 A C++ project pins the source of a kit release by its tag:
 
