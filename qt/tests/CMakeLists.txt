@@ -69,6 +69,12 @@ if(NM_QT_BUILD_TOOLS)
     add_executable(test_nm_render_cli test_nm_render_cli.cpp)
     target_link_libraries(test_nm_render_cli PRIVATE Qt6::Core)
     add_test(NAME test_nm_render_cli COMMAND test_nm_render_cli $<TARGET_FILE:nm-render> ${PROJECT_SOURCE_DIR}/noisemaker)
+
+    # Focused render checks for synced effect behavior on non-square frames
+    # (the corpus sweep renders every fixture at a square 256 x 256).
+    add_executable(test_ported_effect_geometry test_ported_effect_geometry.cpp)
+    target_link_libraries(test_ported_effect_geometry PRIVATE Qt6::Core Qt6::Gui)
+    add_test(NAME test_ported_effect_geometry COMMAND test_ported_effect_geometry $<TARGET_FILE:nm-render> ${PROJECT_SOURCE_DIR}/noisemaker)
 endif()
 
 # The export kit's host input code (export-kit/kit/src), built against
