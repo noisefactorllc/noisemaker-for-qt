@@ -170,12 +170,6 @@ int main(int argc, char** argv) {
         return true;
     };
 
-    auto writePng = [&](const QString& name, const QImage& image) -> QString {
-        const QString path = QString("%1/%2.png").arg(dirPath, name);
-        image.save(path, "PNG");
-        return path;
-    };
-
     const QString referenceDsl =
         QStringLiteral("search synth\ntestPattern(pattern: uvMap).write(o0)\nrender(o0)");
 
