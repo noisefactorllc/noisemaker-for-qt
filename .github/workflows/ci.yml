@@ -13,7 +13,8 @@ name: CI
 #   warnings      Warnings-as-errors build (Clang/GCC -Wall -Wextra
 #                 -Wpedantic -Werror, MSVC /W4 /WX), for hosts that embed the
 #                 library under those flags.
-#   gates         Compiler, byte, MIDI-state and audio-state gates
+#   gates         The workflow contract (parity/test_workflow_contract.py),
+#                 then the compiler, byte, MIDI-state and audio-state gates
 #                 (parity/check_*.mjs) against the reference checkout at the
 #                 commit pinned in scripts/test.
 #   render-smoke  Mints goldens for a few fixtures with the reference engine
@@ -32,7 +33,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 2.x]
     # Inert documentation does not build.
     paths:
       - '**'
@@ -348,6 +349,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Workflow contract
+        # The test jobs run on every 2.x push, and every release, notice or
+        # dispatch job runs only for main.
+        run: python3 -m unittest -v parity.test_workflow_contract
 
       - name: Check out the reference at the pinned commit
         run: |

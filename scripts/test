@@ -8,6 +8,8 @@
 //   - the fixture-coverage record check (parity/effect-fixture-coverage.json must
 //     equal its regeneration against the pinned reference; tools/fixture-coverage.mjs)
 //   - the parity unit suites (test_artistic_matrix, test_harness_contract)
+//   - the workflow contract (test_workflow_contract: the test jobs run on every
+//     2.x push, and every release, notice or dispatch job runs only for main)
 // The reference checkout must be at PIN: a checkout whose HEAD is another
 // commit (NM_REFERENCE_ROOT, NM_TEST_REFERENCE or the default cache) stops the
 // run before any gate, and the error names HEAD and PIN.
@@ -90,7 +92,8 @@ const runDefinitions = entrypointChanged || effectsChanged || parityChanged
 const runEffectsUi = entrypointChanged || effectsUiChanged || effectsChanged || parityChanged
 const runCoverage = runShaders || runEffectsUi
 const runUnits = entrypointChanged || parityChanged || effectsChanged || shadersChanged || compilerChanged
-if (!runShaders && !runDefinitions && !runEffectsUi && !runCoverage && !runUnits) {
+const runContract = entrypointChanged || parityChanged || selectFor(/^\.github\/workflows\//)
+if (!runShaders && !runDefinitions && !runEffectsUi && !runCoverage && !runUnits && !runContract) {
     console.log('scripts/test: no parity suite component exercises the changed paths')
 } else {
 for (const gate of [
@@ -105,5 +108,6 @@ for (const gate of [
 }
 if (runCoverage) run('node', ['tools/fixture-coverage.mjs', '--check', '--reference-commit', PIN], { env })
 if (runUnits) run('python3', ['-m', 'unittest', '-v', 'parity.test_artistic_matrix', 'parity.test_harness_contract'])
+if (runContract) run('python3', ['-m', 'unittest', '-v', 'parity.test_workflow_contract'])
 console.log('scripts/test: selected parity checks passed')
 }
