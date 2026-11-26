@@ -524,6 +524,44 @@ class HarnessContractTests(unittest.TestCase):
         output = result.stdout + result.stderr
         self.assertIn(f"reference checkout: {reference} (HEAD {pin})", output)
 
+    def test_scripts_test_uses_the_system_temp_directory_without_tmpdir(self):
+        root = self.tmp / "port"
+        (root / "scripts").mkdir(parents=True)
+        reference = self.tmp / "reference"
+        pin, _ = self._reference_with_two_commits(reference)
+        script = (REPO / "scripts" / "test").read_text()
+        pinned = "\n".join(f"const PIN = '{pin}'" if line.startswith("const PIN = '") else line
+                           for line in script.splitlines()) + "\n"
+        # Keep a broken cache selection local too: no test may clone over the network.
+        pinned = pinned.replace("https://github.com/noisefactorllc/noisemaker.git", reference.as_uri())
+        (root / "scripts" / "test").write_text(pinned)
+        system_temp = self.tmp / "system-temp"
+        system_temp.mkdir()
+        default = system_temp / f"noisemaker-reference-{pin[:12]}"
+        subprocess.run(["git", "clone", "--no-hardlinks", "-q", str(reference), str(default)], check=True)
+        legacy = Path(subprocess.run(
+            ["node", "-p", f"require('node:path').resolve('/tmp', 'noisemaker-reference-{pin[:12]}')"],
+            cwd=root, check=True, capture_output=True, text=True,
+        ).stdout.strip())
+        existed = legacy.exists()
+        base_env = {k: v for k, v in os.environ.items()
+                    if k not in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE", "NM_CHANGED_FILES",
+                                 "TMPDIR", "TMP", "TEMP")}
+        try:
+            result = subprocess.run(
+                ["node", str(root / "scripts" / "test")], cwd=root,
+                env={**base_env, "TMP": str(system_temp), "TEMP": str(system_temp),
+                     "NM_CHANGED_FILES": "qt/tests/test_validator.cpp", "GIT_ALLOW_PROTOCOL": "file"},
+                capture_output=True, text=True,
+            )
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn(f"reference checkout: {default} (HEAD {pin})", output)
+            self.assertIn("no parity suite component exercises the changed paths", output)
+        finally:
+            if not existed and legacy.exists():
+                remove_fixture_tree(legacy)
+
     def test_scripts_test_changed_files_selection_runs_only_the_exercising_components(self):
         # The operator changed-files rule: with NM_CHANGED_FILES set, only the
         # suite components that exercise those paths run; with it unset, the
