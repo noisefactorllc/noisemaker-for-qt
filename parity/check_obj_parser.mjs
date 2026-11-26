@@ -38,7 +38,7 @@ if (!process.env.NM_REFERENCE_ROOT) { console.error('NM_REFERENCE_ROOT is not se
 if (!existsSync(DUMP)) { console.error(`obj_parser_dump not found at ${DUMP} (build qt/build first)`); process.exit(3) }
 
 const REF = resolve(process.env.NM_REFERENCE_ROOT)
-const { parseOBJ, packMeshDataForTextures } =
+const { parseOBJ } =
   await import(pathToFileURL(join(REF, 'shaders/src/runtime/obj-parser.js')).href)
 
 let failures = 0
@@ -214,10 +214,11 @@ async function referenceDump (entry) {
   const warn = console.warn
   console.warn = () => {} // truncation warning
   try {
-    const large = packMeshDataForTextures(mesh.positions, mesh.normals, mesh.uvs, 256, 256)
-    const small = packMeshDataForTextures(mesh.positions, mesh.normals, mesh.uvs, 4, 4)
+    const large = mesh.toPackedTextures(256, 256)
+    const small = mesh.toPackedTextures(4, 4)
     return {
       vertexCount: mesh.vertexCount,
+      indices: Array.from(mesh.indices),
       positions: hexArray(mesh.positions),
       normals: hexArray(mesh.normals),
       uvs: hexArray(mesh.uvs),
@@ -270,6 +271,7 @@ try {
     if (got.error) { fail(`${c.name}: candidate error ${got.error}`); continue }
     const want = await referenceDump(c)
     const problems = []
+    if (JSON.stringify(got.indices) !== JSON.stringify(want.indices)) problems.push("identity index buffer differs");
     if (got.vertexCount !== want.vertexCount) problems.push(`vertexCount reference ${want.vertexCount} candidate ${got.vertexCount}`)
     for (const key of ['positions', 'normals', 'uvs']) {
       if (got[key] !== want[key]) problems.push(`${key} ${firstHexDifference(want[key], got[key] || '')}`)

@@ -80,18 +80,21 @@ QJsonObject dumpEntry(const QJsonObject& entry) {
             mesh = nm::parseOBJ(text);
         }
         out.insert(QStringLiteral("vertexCount"), static_cast<double>(mesh.vertexCount));
+        QJsonArray indices;
+        for (const auto index : mesh.indices) indices.append(static_cast<double>(index));
+        out.insert(QStringLiteral("indices"), indices);
         out.insert(QStringLiteral("positions"), hexArray(mesh.positions));
         out.insert(QStringLiteral("normals"), hexArray(mesh.normals));
         out.insert(QStringLiteral("uvs"), hexArray(mesh.uvs));
 
-        const nm::PackedMeshData grid256 = nm::packMeshDataForTextures(mesh, 256, 256);
+        const nm::PackedMeshData grid256 = mesh.toPackedTextures(256, 256);
         out.insert(QStringLiteral("packed256"), QJsonObject{
             {QStringLiteral("vertexCount"), grid256.vertexCount},
             {QStringLiteral("positionData"), digest(grid256.positionData)},
             {QStringLiteral("normalData"), digest(grid256.normalData)},
             {QStringLiteral("uvData"), digest(grid256.uvData)},
         });
-        const nm::PackedMeshData grid4 = nm::packMeshDataForTextures(mesh, 4, 4);
+        const nm::PackedMeshData grid4 = mesh.toPackedTextures(4, 4);
         out.insert(QStringLiteral("packed4"), QJsonObject{
             {QStringLiteral("vertexCount"), grid4.vertexCount},
             {QStringLiteral("positionData"), hexArray(grid4.positionData)},

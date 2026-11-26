@@ -358,6 +358,7 @@ QJsonObject compileGraphJson(const QString& source, EffectRegistry& registry,
     passIOs.reserve(expanded.passes.size());
     for (const ExpandedPass& p : expanded.passes) {
         PassIO io;
+        io.nodeId = p.nodeId.toString();
         io.inputs.reserve(p.inputs.size());
         for (const auto& kv : p.inputs) io.inputs.append(kv.second);
         io.outputs.reserve(p.outputs.size());

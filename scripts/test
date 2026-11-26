@@ -20,13 +20,14 @@
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 // The reference (noisemaker) commit this port is synced to. CI and scripts/parity-summary
 // read it from this line.
-const PIN = '478f94eae7ebe34116dfc661ac52b373b884008b'
+const PIN = '24250c8c69610017b1413ccb9dc29a627663a790'
 
 function run(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts })
@@ -48,7 +49,7 @@ let referenceSource = 'NM_REFERENCE_ROOT'
 if (!referenceRoot) {
     referenceSource = process.env.NM_TEST_REFERENCE ? 'NM_TEST_REFERENCE' : null
     referenceRoot = process.env.NM_TEST_REFERENCE
-        || join(process.env.TMPDIR || '/tmp', `noisemaker-reference-${PIN.slice(0, 12)}`)
+        || resolve(process.env.TMPDIR || tmpdir(), `noisemaker-reference-${PIN.slice(0, 12)}`)
     if (!existsSync(join(referenceRoot, 'shaders', 'src'))) {
         rmSync(referenceRoot, { recursive: true, force: true })
         mkdirSync(referenceRoot, { recursive: true })

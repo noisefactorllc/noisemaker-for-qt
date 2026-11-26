@@ -9,10 +9,14 @@
 // given text produces bit-identical Float32 arrays to the reference.
 
 #include <QString>
+#include <QSize>
+#include <cstdint>
 
 #include <vector>
 
 namespace nm {
+
+struct PackedMeshData;
 
 // reference parseOBJ() result: de-indexed triangle-list vertex data, three
 // vertices per triangle, in the reference's (v0, v2, v1) winding order.
@@ -21,7 +25,14 @@ struct ObjMeshData {
     std::vector<float> normals;   // xyz per vertex
     std::vector<float> uvs;       // uv per vertex
     qsizetype vertexCount = 0;
+    std::vector<std::uint32_t> indices;
+
+    double triangleCount() const { return static_cast<double>(indices.size()) / 3.0; }
+    ObjMeshData deindex() const;
+    PackedMeshData toPackedTextures(int texWidth, int texHeight) const;
 };
+
+QSize meshTextureSize(qsizetype vertexCount);
 
 // reference packMeshDataForTextures() result: one RGBA32F texel per vertex,
 // row-major, texWidth * texHeight texels. positionData w is 1 for a used

@@ -47,6 +47,7 @@ namespace nm {
 struct PassIO {
     QVector<QString> inputs;
     QVector<QString> outputs;
+    QString nodeId = {};
 };
 
 struct TexLifetime {

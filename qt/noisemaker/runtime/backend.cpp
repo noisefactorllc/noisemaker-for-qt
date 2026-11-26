@@ -1021,7 +1021,7 @@ MeshLoadResult Backend::loadPackedMesh(const QString& meshId, std::vector<float>
 MeshLoadResult Backend::loadOBJFromString(const QString& objText, const QString& meshId) {
     if (!m_gl) return meshFailure(QStringLiteral("Pipeline not ready"));
     try {
-        PackedMeshData packed = packMeshDataForTextures(parseOBJ(objText), kMeshTextureSize, kMeshTextureSize);
+        PackedMeshData packed = parseOBJ(objText).toPackedTextures(kMeshTextureSize, kMeshTextureSize);
         return loadPackedMesh(meshId, std::move(packed.positionData), std::move(packed.normalData),
                               std::move(packed.uvData), packed.vertexCount);
     } catch (const std::exception& e) {
@@ -1032,7 +1032,7 @@ MeshLoadResult Backend::loadOBJFromString(const QString& objText, const QString&
 MeshLoadResult Backend::loadOBJFromFile(const QString& path, const QString& meshId) {
     if (!m_gl) return meshFailure(QStringLiteral("Pipeline not ready"));
     try {
-        PackedMeshData packed = packMeshDataForTextures(loadOBJ(path), kMeshTextureSize, kMeshTextureSize);
+        PackedMeshData packed = loadOBJ(path).toPackedTextures(kMeshTextureSize, kMeshTextureSize);
         return loadPackedMesh(meshId, std::move(packed.positionData), std::move(packed.normalData),
                               std::move(packed.uvData), packed.vertexCount);
     } catch (const std::exception& e) {
@@ -1227,6 +1227,7 @@ double Backend::normalizedLoopTime(double elapsedSeconds, double loopDurationSec
 
 void Backend::syncTime(double time) {
     m_lastTime = time;
+    m_hasTimeReference = true;
 }
 
 void Backend::setMidiState(const QJsonObject& state) {
@@ -2686,10 +2687,10 @@ void Backend::renderInternal(
     }
 
     // reference Pipeline.render: t is normalized and wraps, so a backwards
-    // step means a wrap and uses one 60 fps frame of a 10 s loop.
-    double deltaTime = m_lastTime > 0.0 ? t - m_lastTime : 0.0;
-    if (deltaTime < 0.0) deltaTime = 1.0 / 60.0 / 10.0;
-    m_lastTime = t;
+    // step crosses the end of the normalized loop.
+    double deltaTime = m_hasTimeReference ? t - m_lastTime : 0.0;
+    if (deltaTime < 0.0) deltaTime += 1.0;
+    syncTime(t);
     m_deltaTime = deltaTime;
 
     // reference Pipeline.initAsyncEffects / checkAsyncRegen: the CPU-traced

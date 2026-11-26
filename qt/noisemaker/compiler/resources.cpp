@@ -1,12 +1,39 @@
 #include "resources.h"
 
 #include <QSet>
+#include <QRegularExpression>
 
 namespace nm {
 
 namespace {
 bool isGlobal(const QString& texId) {
     return texId.startsWith(QStringLiteral("global_"));
+}
+
+QMap<QString, QString> buildInputAliases(const QVector<PassIO>& passes) {
+    static const QRegularExpression outputPattern(QStringLiteral("^node_[0-9]+_out$"));
+    QSet<QString> written;
+    for (const PassIO& pass : passes) for (const QString& id : pass.outputs) written.insert(id);
+    QMap<QString, QString> aliases;
+    for (int i = 0; i < passes.size(); ++i) {
+        const PassIO& pass = passes.at(i);
+        if (pass.nodeId.isEmpty()) continue;
+        for (const QString& id : pass.inputs) {
+            if (written.contains(id) || aliases.contains(id)) continue;
+            if (id != pass.nodeId + QStringLiteral("_inputTex") && id != pass.nodeId + QStringLiteral("_inputColor")) continue;
+            QString upstream;
+            for (int j = i - 1; j >= 0 && upstream.isEmpty(); --j) {
+                for (const QString& output : passes.at(j).outputs) {
+                    if (output != pass.nodeId + QStringLiteral("_out") && outputPattern.match(output).hasMatch()) {
+                        upstream = output;
+                        break;
+                    }
+                }
+            }
+            if (!upstream.isEmpty()) aliases.insert(id, upstream);
+        }
+    }
+    return aliases;
 }
 
 void touch(QMap<QString, TexLifetime>& lifetime, const QString& texId, int index) {
@@ -24,9 +51,10 @@ void touch(QMap<QString, TexLifetime>& lifetime, const QString& texId, int index
 
 QMap<QString, TexLifetime> analyzeLiveness(const QVector<PassIO>& passes) {
     QMap<QString, TexLifetime> lifetime;
+    const auto aliases = buildInputAliases(passes);
     for (int index = 0; index < passes.size(); ++index) {
         const PassIO& pass = passes.at(index);
-        for (const QString& tex : pass.inputs) touch(lifetime, tex, index);
+        for (const QString& tex : pass.inputs) touch(lifetime, aliases.value(tex, tex), index);
         for (const QString& tex : pass.outputs) touch(lifetime, tex, index);
     }
     return lifetime;
@@ -34,6 +62,7 @@ QMap<QString, TexLifetime> analyzeLiveness(const QVector<PassIO>& passes) {
 
 QMap<QString, QString> allocateResources(const QVector<PassIO>& passes) {
     const QMap<QString, TexLifetime> lifetime = analyzeLiveness(passes);
+    const auto aliases = buildInputAliases(passes);
     QMap<QString, QString> allocations;
     // freeList: ordered list of {physId, availableAfter}. Ordered (not a
     // map) because the reused-slot search must scan in PUSH order and
@@ -65,7 +94,8 @@ QMap<QString, QString> allocateResources(const QVector<PassIO>& passes) {
         // under several names (lighting's inputTex and heightMap); release it once, or its
         // slot is handed to two textures that are live together.
         QSet<QString> released;
-        for (const QString& texId : pass.inputs) {
+        for (const QString& inputId : pass.inputs) {
+            const QString texId = aliases.value(inputId, inputId);
             if (released.contains(texId)) continue;
             released.insert(texId);
             if (isGlobal(texId)) continue;

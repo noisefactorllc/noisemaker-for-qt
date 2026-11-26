@@ -32,6 +32,9 @@
 #include "../noisemaker/compiler/validator.h"
 
 #include <QJsonArray>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -195,6 +198,33 @@ int main(int argc, char** argv) {
     // ==================================================================
     // numeric arg resolution: clamp + S002, and pass-through when in range
     // ==================================================================
+    {
+        QTemporaryDir root;
+        QDir(root.path()).mkpath(QStringLiteral("effects/synth"));
+        QFile file(root.path() + QStringLiteral("/effects/synth/rgbProbe.json"));
+        check(file.open(QIODevice::WriteOnly), "open synthetic RGB definition");
+        file.write(R"json({"namespace":"synth","func":"rgbProbe","globals":{
+            "r":{"type":"float","default":0,"min":0,"max":1},
+            "g":{"type":"float","default":0,"min":0,"max":1},
+            "b":{"type":"float","default":0,"min":0,"max":1},
+            "alpha":{"type":"float","default":0,"min":0,"max":1}},"passes":[]})json");
+        file.close();
+        nm::EffectRegistry probe;
+        probe.loadAll(root.path());
+        const auto evaluate = [&](const QString& code) {
+            return nm::validate(nm::parseKeepingPrivateKeys(nm::lex(QStringLiteral("search synth\n")
+                + code + QStringLiteral(".write(o0)\nrender(o0)"))), probe);
+        };
+        const auto stored = evaluate(QStringLiteral("let c = rgbProbe(#804020)\nc(g: 0.7)"));
+        const QJsonObject expected{{"r",128.0/255.0},{"g",0.7},{"b",32.0/255.0},{"alpha",0}};
+        check(args(stored, 0, 0) == expected && diags(stored).isEmpty(), "stored RGB color retains its components around a keyword override");
+        const auto added = evaluate(QStringLiteral("let c = rgbProbe(g: 0.7)\nc(#804020)"));
+        check(args(added, 0, 0) == QJsonObject{{"r",0},{"g",0.7},{"b",0},{"alpha",0}}
+            && anyDiagCode(added, "S002"), "a color added after stored keywords keeps indexed argument binding");
+        const auto nested = evaluate(QStringLiteral("let c = rgbProbe(#804020)\nlet d = c(r: 0.25)\nd(b: 0.8)"));
+        check(args(nested, 0, 0) == QJsonObject{{"r",0.25},{"g",64.0/255.0},{"b",0.8},{"alpha",0}}
+            && diags(nested).isEmpty(), "nested lets preserve the original color splat and each override");
+    }
     {
         const QJsonObject out = validateSrc(QStringLiteral("search synth\nnoise(octaves: 20).write(o0)\nrender(o0)\n"));
         check(args(out, 0, 0).value(QStringLiteral("octaves")).toDouble() == 8.0, "octaves: 20 clamps to max 8");

@@ -36,6 +36,7 @@ const QMap<QString, DiagnosticInfo>& diagTable() {
         {QStringLiteral("S006"), {"Starter chain missing write() call", "error", "semantic"}},
         {QStringLiteral("S007"), {"Deprecated parameter alias", "warning", "semantic"}},
         {QStringLiteral("S008"), {"Deprecated effect", "warning", "semantic"}},
+        {QStringLiteral("S009"), {"Too many positional arguments", "warning", "semantic"}},
         {QStringLiteral("R001"), {"Runtime error", "error", "runtime"}},
     };
     return table;

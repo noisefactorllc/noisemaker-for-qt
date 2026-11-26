@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMap>
+#include <QRegularExpression>
 #include <QSet>
 #include <QString>
 #include <QStringList>
@@ -592,6 +593,34 @@ bool Validator::canResolveOpName(const QString& name) {
     return false;
 }
 
+QJsonValue dropCallMarks(const QJsonValue& value) {
+    if (value.isArray()) {
+        QJsonArray result;
+        for (const auto& child : value.toArray()) result.append(dropCallMarks(child));
+        return result;
+    }
+    if (!value.isObject()) return value;
+    QJsonObject result = value.toObject();
+    if (nodeType(value) == NodeKind::Call) result.remove(QStringLiteral("positionalsByIndex"));
+    for (auto it = result.begin(); it != result.end(); ++it) it.value() = dropCallMarks(it.value());
+    return result;
+}
+
+bool isWrittenMixed(const QJsonObject& call) {
+    return !call.contains(QStringLiteral("positionalsByIndex"))
+        && !call.value(QStringLiteral("args")).toArray().isEmpty()
+        && !call.value(QStringLiteral("kwargs")).toObject().isEmpty();
+}
+
+void keepElementId(const QJsonValue& id, QJsonObject& args) {
+    static const QRegularExpression pattern(QStringLiteral("^[A-Za-z][A-Za-z0-9_]*$"));
+    const QJsonObject node = id.toObject();
+    if (nodeType(id) == NodeKind::String && !node.contains(QStringLiteral("_varRef"))
+        && pattern.match(node.value(QStringLiteral("value")).toString()).hasMatch()) {
+        args.insert(QStringLiteral("_id"), node.value(QStringLiteral("value")));
+    }
+}
+
 QJsonValue Validator::resolveCall(QJsonObject call) {
     const QString name = call.value(QStringLiteral("name")).toString();
     if (!symbols_.contains(name)) return call;
@@ -621,6 +650,21 @@ QJsonValue Validator::resolveCall(QJsonObject call) {
         merged.insert(QStringLiteral("type"), NodeKind::Call);
         merged.insert(QStringLiteral("name"), valObj.value(QStringLiteral("name")));
         merged.insert(QStringLiteral("args"), mergedArgs);
+        if (haveKw && !mergedArgs.isEmpty() && !isWrittenMixed(valObj) && !isWrittenMixed(call)) {
+            bool hasBoundKeyword = false;
+            const QJsonObject storedKw = valObj.value(QStringLiteral("kwargs")).toObject();
+            for (auto it = storedKw.constBegin(); it != storedKw.constEnd(); ++it) {
+                if (it.key() != QStringLiteral("_skip") && it.key() != QStringLiteral("_id")) hasBoundKeyword = true;
+            }
+            const QJsonValue oldLimit = valObj.value(QStringLiteral("positionalsByIndex")).toObject()
+                .value(QStringLiteral("colorSplatLimit"));
+            const int limit = hasBoundKeyword
+                ? (oldLimit.isUndefined() ? static_cast<int>(valObj.value(QStringLiteral("args")).toArray().size()) : oldLimit.toInt())
+                : static_cast<int>(mergedArgs.size());
+            merged.insert(QStringLiteral("positionalsByIndex"), QJsonObject{{QStringLiteral("colorSplatLimit"), limit}});
+        }
+        const QJsonValue loc = call.contains(QStringLiteral("loc")) ? call.value(QStringLiteral("loc")) : valObj.value(QStringLiteral("loc"));
+        if (!loc.isUndefined()) merged.insert(QStringLiteral("loc"), loc);
         if (haveKw) merged.insert(QStringLiteral("kwargs"), mergedKw);
         if (call.contains(QStringLiteral("namespace"))) {
             merged.insert(QStringLiteral("namespace"), call.value(QStringLiteral("namespace")));
@@ -755,26 +799,8 @@ QJsonValue Validator::substituteInternal(const QJsonValue& nodeVal, const QStrin
     }
     if (t == NodeKind::Chain) {
         QJsonArray mapped;
-        for (const QJsonValue& cVal : node.value(QStringLiteral("chain")).toArray()) {
-            const QJsonObject c = cVal.toObject();
-            QJsonArray mappedArgs;
-            for (const QJsonValue& a : c.value(QStringLiteral("args")).toArray()) mappedArgs.append(substitute(a, resolving));
-            QJsonObject mappedCall;
-            mappedCall.insert(QStringLiteral("type"), NodeKind::Call);
-            mappedCall.insert(QStringLiteral("name"), c.value(QStringLiteral("name")));
-            mappedCall.insert(QStringLiteral("args"), mappedArgs);
-            if (c.contains(QStringLiteral("kwargs"))) {
-                QJsonObject kw;
-                const QJsonObject srcKw = c.value(QStringLiteral("kwargs")).toObject();
-                for (auto it = srcKw.constBegin(); it != srcKw.constEnd(); ++it) kw.insert(it.key(), substitute(it.value(), resolving));
-                mappedCall.insert(QStringLiteral("kwargs"), kw);
-            }
-            mapped.append(resolveCall(mappedCall));
-        }
-        QJsonObject out;
-        out.insert(QStringLiteral("type"), NodeKind::Chain);
-        out.insert(QStringLiteral("chain"), mapped);
-        return out;
+        for (const QJsonValue& entry : node.value(QStringLiteral("chain")).toArray()) mapped.append(substitute(entry, resolving));
+        return QJsonObject{{QStringLiteral("type"), NodeKind::Chain}, {QStringLiteral("chain"), mapped}};
     }
     if (t == NodeKind::Call) {
         QJsonArray mappedArgs;
@@ -783,6 +809,8 @@ QJsonValue Validator::substituteInternal(const QJsonValue& nodeVal, const QStrin
         mappedCall.insert(QStringLiteral("type"), NodeKind::Call);
         mappedCall.insert(QStringLiteral("name"), node.value(QStringLiteral("name")));
         mappedCall.insert(QStringLiteral("args"), mappedArgs);
+        if (node.contains(QStringLiteral("loc"))) mappedCall.insert(QStringLiteral("loc"), node.value(QStringLiteral("loc")));
+        if (node.contains(QStringLiteral("positionalsByIndex"))) mappedCall.insert(QStringLiteral("positionalsByIndex"), node.value(QStringLiteral("positionalsByIndex")));
         if (node.contains(QStringLiteral("kwargs"))) {
             QJsonObject kw;
             const QJsonObject srcKw = node.value(QStringLiteral("kwargs")).toObject();
@@ -1171,6 +1199,7 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
             if (original.value(QStringLiteral("_skip")).toBool(false)) stepArgs.insert(QStringLiteral("_skip"), true);
             QJsonObject step;
             step.insert(QStringLiteral("op"), QStringLiteral("_read"));
+            keepElementId(original.value(QStringLiteral("_id")), stepArgs);
             step.insert(QStringLiteral("args"), stepArgs);
             step.insert(QStringLiteral("from"), QJsonValue(QJsonValue::Null));
             step.insert(QStringLiteral("temp"), idx);
@@ -1205,6 +1234,7 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
             if (original.value(QStringLiteral("_skip")).toBool(false)) stepArgs.insert(QStringLiteral("_skip"), true);
             QJsonObject step;
             step.insert(QStringLiteral("op"), QStringLiteral("_read3d"));
+            keepElementId(original.value(QStringLiteral("_id")), stepArgs);
             step.insert(QStringLiteral("args"), stepArgs);
             step.insert(QStringLiteral("from"), QJsonValue(QJsonValue::Null));
             step.insert(QStringLiteral("temp"), idx);
@@ -1233,6 +1263,7 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
             stepArgs.insert(QStringLiteral("tex"), surface);
             QJsonObject step;
             step.insert(QStringLiteral("op"), QStringLiteral("_write"));
+            keepElementId(original.value(QStringLiteral("_id")), stepArgs);
             step.insert(QStringLiteral("args"), stepArgs);
             step.insert(QStringLiteral("from"), current);
             step.insert(QStringLiteral("temp"), idx);
@@ -1263,6 +1294,7 @@ int Validator::processChain(QJsonArray& chain, const QJsonArray& calls, int inpu
             stepArgs.insert(QStringLiteral("geo"), geo);
             QJsonObject step;
             step.insert(QStringLiteral("op"), QStringLiteral("_write3d"));
+            keepElementId(original.value(QStringLiteral("_id")), stepArgs);
             step.insert(QStringLiteral("args"), stepArgs);
             step.insert(QStringLiteral("from"), current);
             step.insert(QStringLiteral("temp"), idx);
@@ -1467,30 +1499,46 @@ QJsonValue Validator::resolveArgs(QJsonArray& chain, const OpSpec& spec, const Q
     QJsonObject argSources;
     bool haveArgSources = false;
 
+    int posCursor = 0;
+    const bool byIndex = !hasKw || call.contains(QStringLiteral("positionalsByIndex"));
+    const QJsonValue limit = call.value(QStringLiteral("positionalsByIndex")).toObject().value(QStringLiteral("colorSplatLimit"));
+    const int colorSplatLimit = limit.isUndefined() ? std::numeric_limits<int>::max() : limit.toInt();
+    QJsonObject splatValues;
     for (int i = 0; i < spec.args.size(); ++i) {
         const ParamDef& def = spec.args.at(i);
-        QJsonValue node = (hasKw && kw.contains(def.name)) ? kw.value(def.name)
-                                                             : (i < callArgs.size() ? callArgs.at(i) : QJsonValue(QJsonValue::Undefined));
-        node = substitute(node);
-        const QString argKey = def.name;
-
-        // color-splat special case: a bare Color literal spread into THREE
-        // consecutive r/g/b NUMERIC params (only fires positional-only,
-        // never with kwargs). Structurally unreachable on this catalog (no
-        // effect declares consecutive r/g/b globals) -- ported for
-        // fidelity, never exercised.
-        if (!hasKw && nodeType(node) == NodeKind::Color && def.type != QStringLiteral("color") && def.name == QStringLiteral("r")
+        if (byIndex) posCursor = i;
+        const bool fromKeyword = hasKw && kw.contains(def.name);
+        if (posCursor < colorSplatLimit && posCursor < callArgs.size()
+            && def.type != QStringLiteral("color") && def.name == QStringLiteral("r")
             && i + 2 < spec.args.size() && spec.args.at(i + 1).name == QStringLiteral("g")
             && spec.args.at(i + 2).name == QStringLiteral("b")) {
-            const QJsonArray cv = node.toObject().value(QStringLiteral("value")).toArray();
-            args.insert(QStringLiteral("r"), cv.at(0));
-            args.insert(spec.args.at(i + 1).name, cv.at(1));
-            args.insert(spec.args.at(i + 2).name, cv.at(2));
-            i += 2;
+            const QJsonValue positional = substitute(callArgs.at(posCursor));
+            if (nodeType(positional) == NodeKind::Color) {
+                ++posCursor;
+                const QJsonArray rgb = positional.toObject().value(QStringLiteral("value")).toArray();
+                splatValues = {{def.name, rgb.at(0)}, {spec.args.at(i + 1).name, rgb.at(1)}, {spec.args.at(i + 2).name, rgb.at(2)}};
+            }
+        }
+        if (!fromKeyword && splatValues.contains(def.name)) {
+            args.insert(def.name, splatValues.value(def.name));
             continue;
         }
-
-        if (hasKw && kw.contains(def.name)) seen.insert(def.name);
+        QJsonValue node(QJsonValue::Undefined);
+        if (fromKeyword) node = kw.value(def.name);
+        else if (posCursor < callArgs.size()) node = callArgs.at(posCursor++);
+        node = substitute(node);
+        const QString argKey = def.name;
+        if (fromKeyword) seen.insert(def.name);
+        if (nodeType(node) == NodeKind::Chain) {
+            const QJsonArray entries = node.toObject().value(QStringLiteral("chain")).toArray();
+            const bool onlyCalls = std::all_of(entries.constBegin(), entries.constEnd(), [](const QJsonValue& entry) { return nodeType(entry) == NodeKind::Call; });
+            if (!onlyCalls) {
+                pushDiag(QStringLiteral("S001"), entries.first(),
+                    QStringLiteral("Chain for argument '%1' in %2() may contain only effect calls").arg(def.name, call.value(QStringLiteral("name")).toString()));
+                args.insert(argKey, QJsonValue(QJsonValue::Null));
+                continue;
+            }
+        }
 
         // array literal -- additive numeric input form.
         if (nodeType(node) == NodeKind::ArrayLiteral) {
@@ -1540,6 +1588,10 @@ QJsonValue Validator::resolveArgs(QJsonArray& chain, const OpSpec& spec, const Q
         }
     }
 
+    if (hasKw && kw.contains(QStringLiteral("_id"))) {
+        keepElementId(kw.value(QStringLiteral("_id")), args);
+        seen.insert(QStringLiteral("_id"));
+    }
     // _skip meta-argument (reference/02 SS6.14).
     if (hasKw && kw.contains(QStringLiteral("_skip"))) {
         const QJsonValue skipNode = kw.value(QStringLiteral("_skip"));
@@ -1555,6 +1607,12 @@ QJsonValue Validator::resolveArgs(QJsonArray& chain, const OpSpec& spec, const Q
                           QStringLiteral("Unknown argument '%1' for %2()").arg(it.key(), call.value(QStringLiteral("name")).toString()));
             }
         }
+    }
+    if (byIndex) posCursor = static_cast<int>(spec.args.size());
+    if (posCursor < callArgs.size()) {
+        pushDiag(QStringLiteral("S009"), callArgs.at(posCursor),
+            QStringLiteral("Too many positional arguments for %1(): '%1' takes %2")
+                .arg(call.value(QStringLiteral("name")).toString()).arg(spec.args.size()));
     }
     return haveArgSources ? QJsonValue(argSources) : QJsonValue(QJsonValue::Undefined);
 }
@@ -2465,7 +2523,7 @@ QJsonObject Validator::run(const QJsonObject& ast) {
     declareVarsBefore(std::numeric_limits<int>::max());
 
     QJsonObject result;
-    result.insert(QStringLiteral("plans"), plans);
+    result.insert(QStringLiteral("plans"), dropCallMarks(plans));
     result.insert(QStringLiteral("diagnostics"), diagnostics_);
     result.insert(QStringLiteral("render"), render);
     result.insert(QStringLiteral("vars"), ast.value(QStringLiteral("vars")).isArray() ? ast.value(QStringLiteral("vars")) : QJsonValue(QJsonArray()));

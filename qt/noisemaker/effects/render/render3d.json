@@ -72,8 +72,7 @@
       "name": "render",
       "program": "render3d",
       "inputs": {
-        "volumeCache": "inputTex3d",
-        "analyticalGeo": "inputGeo"
+        "volumeCache": "inputTex3d"
       },
       "outputs": {
         "color": "outputTex",

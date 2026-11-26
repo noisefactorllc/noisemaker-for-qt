@@ -451,7 +451,41 @@ ObjMeshData parseOBJ(const QString& objText) {
     mesh.normals = toFloat32(normals);
     mesh.uvs = toFloat32(uvs);
     mesh.vertexCount = vertexCount;
+    mesh.indices.resize(static_cast<std::size_t>(vertexCount));
+    for (std::size_t i = 0; i < mesh.indices.size(); ++i) mesh.indices[i] = static_cast<std::uint32_t>(i);
     return mesh;
+}
+
+QSize meshTextureSize(qsizetype vertexCount) {
+    if (vertexCount <= 0) return QSize(1, 1);
+    const int width = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(vertexCount))));
+    return QSize(width, static_cast<int>(std::ceil(static_cast<double>(vertexCount) / width)));
+}
+
+ObjMeshData ObjMeshData::deindex() const {
+    ObjMeshData expanded;
+    expanded.vertexCount = static_cast<qsizetype>(indices.size());
+    const auto read = [](const std::vector<float>& data, std::size_t index) {
+        return index < data.size() ? data[index] : std::numeric_limits<float>::quiet_NaN();
+    };
+    expanded.positions.reserve(indices.size() * 3);
+    expanded.normals.reserve(indices.size() * 3);
+    expanded.uvs.reserve(indices.size() * 2);
+    for (const std::uint32_t index : indices) {
+        const auto vertex = static_cast<std::size_t>(index);
+        for (std::size_t component = 0; component < 3; ++component) {
+            expanded.positions.push_back(read(positions, vertex * 3 + component));
+            expanded.normals.push_back(read(normals, vertex * 3 + component));
+        }
+        for (std::size_t component = 0; component < 2; ++component) {
+            expanded.uvs.push_back(uvs.empty() && vertex < positions.size() / 3 ? 0.0f : read(uvs, vertex * 2 + component));
+        }
+    }
+    return expanded;
+}
+
+PackedMeshData ObjMeshData::toPackedTextures(int texWidth, int texHeight) const {
+    return packMeshDataForTextures(deindex(), texWidth, texHeight);
 }
 
 ObjMeshData loadOBJ(const QString& path) {
