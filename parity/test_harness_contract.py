@@ -393,6 +393,13 @@ def shell_path(path):
                           capture_output=True, text=True).stdout.strip()
 
 
+def shell_bash():
+    if os.name != "nt":
+        return shutil.which("bash")
+    return subprocess.run(["cygpath", "-w", "/usr/bin/bash.exe"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
 def remove_fixture_tree(path):
     def remove_readonly(function, name, error):
         os.chmod(name, stat.S_IWRITE | stat.S_IREAD)
@@ -449,7 +456,7 @@ class HarnessContractTests(unittest.TestCase):
             }
             (parity / "fake-ledger.json").write_text(json.dumps([row]))
             return subprocess.run(
-                ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
+                [shell_bash(), shell_path(root / "scripts" / "parity-summary"), "case"],
                 env={**os.environ, "NM_RENDER": shell_true(),
                      "NM_REFERENCE_ROOT": str(reference), "DISPLAY": ":99",
                      "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}"},
@@ -717,7 +724,7 @@ class HarnessContractTests(unittest.TestCase):
         (bin_dir / "npm").chmod(0o755)
         browsers = self.tmp / "browsers"
         result = subprocess.run(
-            ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
+            [shell_bash(), shell_path(root / "scripts" / "parity-summary"), "case"],
             env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
                                   PLAYWRIGHT_BROWSERS_PATH=str(browsers), DISPLAY=":99"),
             capture_output=True, text=True,
@@ -735,7 +742,7 @@ class HarnessContractTests(unittest.TestCase):
         # browser install still uses the loaded package (npx would install 9992).
         browsers = self.tmp / "browsers-second"
         result = subprocess.run(
-            ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
+            [shell_bash(), shell_path(root / "scripts" / "parity-summary"), "case"],
             env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
                                   PLAYWRIGHT_BROWSERS_PATH=str(browsers), DISPLAY=":99"),
             capture_output=True, text=True,
@@ -761,7 +768,7 @@ class HarnessContractTests(unittest.TestCase):
         def run_summary(**extra):
             (parity / "sweep-env.txt").unlink(missing_ok=True)
             return subprocess.run(
-                ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
+                [shell_bash(), shell_path(root / "scripts" / "parity-summary"), "case"],
                 env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
                                       PLAYWRIGHT_BROWSERS_PATH=str(browsers), **extra),
                 capture_output=True, text=True,
@@ -824,7 +831,7 @@ class HarnessContractTests(unittest.TestCase):
         )
         renderer.chmod(0o755)
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1",
                  "LEDGER_PATH": str(self.tmp / "ledger.json")},
             capture_output=True, text=True,
@@ -856,7 +863,7 @@ class HarnessContractTests(unittest.TestCase):
                 )
                 (parity / "write-ledger.py").write_text("raise SystemExit(0)\n")
                 result = subprocess.run(
-                    ["bash", shell_path(parity / "sweep.sh"), name],
+                    [shell_bash(), shell_path(parity / "sweep.sh"), name],
                     env={**os.environ, "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}",
                          "NM_RENDER": shell_true(), "SKIP_RENDER": "1"},
                     capture_output=True, text=True,
@@ -884,7 +891,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -909,7 +916,7 @@ class HarnessContractTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -943,7 +950,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh"), "scopedFailure"],
+            [shell_bash(), shell_path(parity / "sweep.sh"), "scopedFailure"],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -986,7 +993,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh"), "scopedOk1", "scopedOk2"],
+            [shell_bash(), shell_path(parity / "sweep.sh"), "scopedOk1", "scopedOk2"],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1039,7 +1046,7 @@ class HarnessContractTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={
                 **os.environ,
                 "NM_RENDER": "/bin/false",
@@ -1068,7 +1075,7 @@ class HarnessContractTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={
                 **os.environ,
                 "NM_RENDER": "/bin/false",
@@ -1188,7 +1195,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1420,7 +1427,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1449,7 +1456,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1495,7 +1502,7 @@ class HarnessContractTests(unittest.TestCase):
                 (root / "bin" / "sysctl").write_text(f"#!/bin/sh\necho '{chip}'\n")
                 (root / "bin" / "sysctl").chmod(0o755)
                 result = subprocess.run(
-                    ["bash", shell_path(parity / "sweep.sh")],
+                    [shell_bash(), shell_path(parity / "sweep.sh")],
                     env={**os.environ, "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}", "NM_RENDER": "/bin/false",
                          "SKIP_RENDER": "1", "SKIP_GOLDEN": "1", "LEDGER_PATH": str(root / "ledger.json")},
                     capture_output=True, text=True,
@@ -1522,7 +1529,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1562,7 +1569,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1591,7 +1598,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         return subprocess.run(
-            ["bash", shell_path(parity / "run.sh"), "chrome", "0", "0.999"],
+            [shell_bash(), shell_path(parity / "run.sh"), "chrome", "0", "0.999"],
             env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
@@ -1628,7 +1635,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         return subprocess.run(
-            ["bash", shell_path(parity / "run_samples.sh"), "temporalAberration", "2.001", "0.98", "30", "10", "256"],
+            [shell_bash(), shell_path(parity / "run_samples.sh"), "temporalAberration", "2.001", "0.98", "30", "10", "256"],
             env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
@@ -1852,7 +1859,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "run.sh"), "meshy"],
+            [shell_bash(), shell_path(parity / "run.sh"), "meshy"],
             env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
@@ -1882,7 +1889,7 @@ class HarnessContractTests(unittest.TestCase):
         )
         renderer.chmod(0o755)
         return subprocess.run(
-            ["bash", shell_path(parity / "run.sh"), "chrome"],
+            [shell_bash(), shell_path(parity / "run.sh"), "chrome"],
             env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
@@ -1972,7 +1979,7 @@ class HarnessContractTests(unittest.TestCase):
         )
         renderer.chmod(0o755)
         result = subprocess.run(
-            ["bash", shell_path(parity / "run.sh"), "fibers"],
+            [shell_bash(), shell_path(parity / "run.sh"), "fibers"],
             env={**os.environ, "NM_RENDER": shell_path(renderer), **env},
             capture_output=True,
             text=True,
@@ -2034,7 +2041,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "run.sh"), "text"],
+            [shell_bash(), shell_path(parity / "run.sh"), "text"],
             env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
@@ -2087,7 +2094,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", shell_path(parity / "sweep.sh")],
+            [shell_bash(), shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1"},
             capture_output=True,
             text=True,
@@ -2134,7 +2141,7 @@ class HarnessContractTests(unittest.TestCase):
                 renderer.chmod(0o755)
 
                 result = subprocess.run(
-                    ["bash", shell_path(parity / "sweep.sh")],
+                    [shell_bash(), shell_path(parity / "sweep.sh")],
                     env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1",
                          "NM_REFERENCE_OVERLAYS": flag},
                     capture_output=True,
