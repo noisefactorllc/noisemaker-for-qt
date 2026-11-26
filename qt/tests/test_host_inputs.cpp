@@ -484,11 +484,18 @@ void testEngineTime(nm::EffectRegistry& registry) {
     check(g.value(QStringLiteral("deltaTime")).toDouble() == 0.25 && g.value(QStringLiteral("frame")).toInt() == 1,
           "deltaTime is the normalized time step; frame counts prior renders");
     g = engineAfter(0.1);
-    check(g.value(QStringLiteral("deltaTime")).toDouble() == 1.0 / 60.0 / 10.0,
-          "a backwards (wrapped) time step uses 1/600");
+    check(g.value(QStringLiteral("deltaTime")).toDouble() == 0.6,
+          "a backwards time step wraps once around the normalized loop");
     backend.syncTime(0.3);
     g = engineAfter(0.3);
     check(g.value(QStringLiteral("deltaTime")).toDouble() == 0.0, "syncTime makes a paused re-render have deltaTime 0");
+    backend.syncTime(0.0);
+    g = engineAfter(0.125);
+    check(g.value(QStringLiteral("deltaTime")).toDouble() == 0.125, "zero is a valid synchronized clock reference");
+    g = engineAfter(0.0);
+    check(g.value(QStringLiteral("deltaTime")).toDouble() == 0.875, "a render at zero retains the wrapped delta");
+    g = engineAfter(0.25);
+    check(g.value(QStringLiteral("deltaTime")).toDouble() == 0.25, "a render after zero measures elapsed normalized time");
     check(std::fabs(nm::Backend::normalizedLoopTime(25.0) - 0.5) < 1e-12
               && std::fabs(nm::Backend::normalizedLoopTime(3.0, 4.0) - 0.75) < 1e-12,
           "normalizedLoopTime wraps elapsed seconds by the loop duration (default 10 s)");

@@ -31,6 +31,30 @@ void check(bool condition, const char* description) {
 } // namespace
 
 int main() {
+    {
+        const QVector<nm::PassIO> passes = {
+            {{}, {"node_0_out"}, "node_0"},
+            {{"node_1_inputColor", "node_1_inputTex"}, {"node_1_out"}, "node_1"},
+            {{"node_1_out"}, {"node_2_out", "node_2_aux"}, "node_2"},
+        };
+        const auto lifetime = nm::analyzeLiveness(passes);
+        check(lifetime.value("node_0_out").end == 1, "node-local color aliases extend the upstream lifetime");
+        check(!lifetime.contains("node_1_inputColor"), "unwritten pipeline alias is not a separate resource");
+        const auto alloc = nm::allocateResources(passes);
+        check(alloc.value("node_2_out") == alloc.value("node_0_out"), "upstream slot is released through both color aliases");
+        check(alloc.value("node_2_aux") != alloc.value("node_2_out"), "aliases release their shared resource only once");
+    }
+    {
+        const QVector<nm::PassIO> passes = {
+            {{}, {"node_0_out", "node_1_inputColor"}, "node_0"},
+            {{"node_1_inputColor", "node_1_overlayTex", "node_9_inputTex"}, {"node_1_out"}, "node_1"},
+        };
+        const auto lifetime = nm::analyzeLiveness(passes);
+        check(lifetime.value("node_0_out").end == 0, "written and foreign-node inputs do not alias the upstream output");
+        check(lifetime.contains("node_1_inputColor") && lifetime.contains("node_1_overlayTex")
+            && lifetime.contains("node_9_inputTex"), "written, upload and foreign-node resources keep their own lifetimes");
+    }
+
     // ======================================================================
     // Basic linear chain: A -> B -> C. Each pass's single output can reuse
     // the PREVIOUS pass's now-dead input slot once it's released.

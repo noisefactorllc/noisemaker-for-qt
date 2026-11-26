@@ -295,8 +295,8 @@ public:
     // default loop duration of 10 s.
     static double normalizedLoopTime(double elapsedSeconds, double loopDurationSeconds = 10.0);
     // Engine globals per render(t), as reference Pipeline.render:
-    // deltaTime = t - lastTime (0 on the first frame or while lastTime is
-    // 0; 1/600 when t wrapped below lastTime), and frame = number of
+    // deltaTime is elapsed normalized loop time, including a wrap; it is
+    // zero before the first clock reference. frame is the number of
     // render() calls before this one.
     // Sets lastTime without rendering (reference syncTime), so a paused
     // host re-rendering at t gets deltaTime 0.
@@ -489,6 +489,7 @@ private:
     QHash<QString, CachedMesh> m_meshCache;        // meshId -> last loaded OBJ (reference canvas _meshCache)
     QJsonObject m_globalUniforms;                  // host setUniform() globals; engine values override
     double m_lastTime = 0.0;
+    bool m_hasTimeReference = false;
     double m_deltaTime = 0.0;
     qint64 m_frameIndex = 0;
     QJsonObject m_midiState;

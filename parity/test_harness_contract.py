@@ -69,6 +69,7 @@ beyond a literal port:
 import os
 import json
 import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -379,12 +380,36 @@ def png_pixel(path, x, y):
     return tuple(raw[start:start + 4])
 
 
+class FixturePath(type(Path())):
+    def write_text(self, data, encoding="utf-8", errors=None):
+        with self.open("w", encoding=encoding, errors=errors, newline="\n") as stream:
+            return stream.write(data)
+
+
+def shell_path(path):
+    if os.name != "nt":
+        return str(path)
+    return subprocess.run(["cygpath", "-u", str(path)], check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def remove_fixture_tree(path):
+    def remove_readonly(function, name, error):
+        os.chmod(name, stat.S_IWRITE | stat.S_IREAD)
+        function(name)
+    shutil.rmtree(path, onerror=remove_readonly)
+
+
+def shell_true():
+    return "/bin/true" if os.name == "nt" else shutil.which("true")
+
+
 class HarnessContractTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="nm-qt-harness-"))
+        self.tmp = FixturePath(tempfile.mkdtemp(prefix="nm-qt-harness-"))
 
     def tearDown(self):
-        shutil.rmtree(self.tmp)
+        remove_fixture_tree(self.tmp)
 
     def test_summary_accepts_documented_near_but_rejects_fail_and_skip(self):
         root = self.tmp
@@ -424,10 +449,10 @@ class HarnessContractTests(unittest.TestCase):
             }
             (parity / "fake-ledger.json").write_text(json.dumps([row]))
             return subprocess.run(
-                ["bash", str(root / "scripts" / "parity-summary"), "case"],
-                env={**os.environ, "NM_RENDER": shutil.which("true"),
+                ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
+                env={**os.environ, "NM_RENDER": shell_true(),
                      "NM_REFERENCE_ROOT": str(reference), "DISPLAY": ":99",
-                     "PATH": f"{root / 'bin'}:{os.environ['PATH']}"},
+                     "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}"},
                 capture_output=True, text=True,
             )
 
@@ -487,7 +512,7 @@ class HarnessContractTests(unittest.TestCase):
         # The default checkout belongs to the script: it moves to the pin, then
         # the gates run (they fail here, because this scratch port has none).
         default = self.tmp / f"noisemaker-reference-{pin[:12]}"
-        subprocess.run(["git", "clone", "-q", str(reference), str(default)], check=True)
+        subprocess.run(["git", "clone", "--no-hardlinks", "-q", str(reference), str(default)], check=True)
         result = run_test(TMPDIR=str(self.tmp))
         output = result.stdout + result.stderr
         self.assertIn(f"reference checkout: {default} (HEAD {pin})", output)
@@ -518,7 +543,7 @@ class HarnessContractTests(unittest.TestCase):
         # despite scripts/test exiting on the first failure.
         (root / "parity" / "check_shaders.mjs").write_text("process.stdout.write('stub ok\\n')\n")
         default = self.tmp / f"noisemaker-reference-{pin[:12]}"
-        subprocess.run(["git", "clone", "-q", str(reference), str(default)], check=True)
+        subprocess.run(["git", "clone", "--no-hardlinks", "-q", str(reference), str(default)], check=True)
         base_env = {k: v for k, v in os.environ.items()
                     if k not in ("NM_REFERENCE_ROOT", "NM_TEST_REFERENCE", "NM_CHANGED_FILES")}
 
@@ -629,7 +654,7 @@ class HarnessContractTests(unittest.TestCase):
                    "QT_QPA_PLATFORM", "NM_GOLDEN_CHROMIUM_ARGS", "LIBGL_ALWAYS_SOFTWARE",
                    "QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM")
         env = {k: v for k, v in os.environ.items() if k not in cleared}
-        env.update({"PATH": f"{bin_dir}:{os.environ['PATH']}", "NM_RENDER": shutil.which("true")})
+        env.update({"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "NM_RENDER": shell_true()})
         env.update(extra)
         return env
 
@@ -654,7 +679,7 @@ class HarnessContractTests(unittest.TestCase):
         (bin_dir / "npm").chmod(0o755)
         browsers = self.tmp / "browsers"
         result = subprocess.run(
-            ["bash", str(root / "scripts" / "parity-summary"), "case"],
+            ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
             env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
                                   PLAYWRIGHT_BROWSERS_PATH=str(browsers), DISPLAY=":99"),
             capture_output=True, text=True,
@@ -672,7 +697,7 @@ class HarnessContractTests(unittest.TestCase):
         # browser install still uses the loaded package (npx would install 9992).
         browsers = self.tmp / "browsers-second"
         result = subprocess.run(
-            ["bash", str(root / "scripts" / "parity-summary"), "case"],
+            ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
             env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
                                   PLAYWRIGHT_BROWSERS_PATH=str(browsers), DISPLAY=":99"),
             capture_output=True, text=True,
@@ -698,7 +723,7 @@ class HarnessContractTests(unittest.TestCase):
         def run_summary(**extra):
             (parity / "sweep-env.txt").unlink(missing_ok=True)
             return subprocess.run(
-                ["bash", str(root / "scripts" / "parity-summary"), "case"],
+                ["bash", shell_path(root / "scripts" / "parity-summary"), "case"],
                 env=self._summary_env(bin_dir, NM_REFERENCE_ROOT=str(reference),
                                       PLAYWRIGHT_BROWSERS_PATH=str(browsers), **extra),
                 capture_output=True, text=True,
@@ -761,8 +786,8 @@ class HarnessContractTests(unittest.TestCase):
         )
         renderer.chmod(0o755)
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
-            env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1",
+            ["bash", shell_path(parity / "sweep.sh")],
+            env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1",
                  "LEDGER_PATH": str(self.tmp / "ledger.json")},
             capture_output=True, text=True,
         )
@@ -793,9 +818,9 @@ class HarnessContractTests(unittest.TestCase):
                 )
                 (parity / "write-ledger.py").write_text("raise SystemExit(0)\n")
                 result = subprocess.run(
-                    ["bash", str(parity / "sweep.sh"), name],
-                    env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}",
-                         "NM_RENDER": shutil.which("true"), "SKIP_RENDER": "1"},
+                    ["bash", shell_path(parity / "sweep.sh"), name],
+                    env={**os.environ, "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}",
+                         "NM_RENDER": shell_true(), "SKIP_RENDER": "1"},
                     capture_output=True, text=True,
                 )
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -821,7 +846,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -846,7 +871,7 @@ class HarnessContractTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -880,7 +905,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh"), "scopedFailure"],
+            ["bash", shell_path(parity / "sweep.sh"), "scopedFailure"],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -923,7 +948,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh"), "scopedOk1", "scopedOk2"],
+            ["bash", shell_path(parity / "sweep.sh"), "scopedOk1", "scopedOk2"],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -976,7 +1001,7 @@ class HarnessContractTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={
                 **os.environ,
                 "NM_RENDER": "/bin/false",
@@ -1005,7 +1030,7 @@ class HarnessContractTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={
                 **os.environ,
                 "NM_RENDER": "/bin/false",
@@ -1125,7 +1150,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1345,7 +1370,7 @@ class HarnessContractTests(unittest.TestCase):
         renderer = self.tmp / "fake-nm-render"
         renderer.write_text(
             "#!/usr/bin/env bash\n"
-            f"printf 'launch\\n' >> '{self.tmp / 'launches'}'\n"
+            f"printf 'launch\\n' >> '{shell_path(self.tmp / 'launches')}'\n"
             "manifest=''\n"
             "while [ $# -gt 0 ]; do\n"
             "  if [ \"$1\" = --batch-manifest ]; then manifest=$2; shift 2; else shift; fi\n"
@@ -1357,8 +1382,8 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
-            env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1"},
+            ["bash", shell_path(parity / "sweep.sh")],
+            env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
         )
@@ -1386,7 +1411,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1432,8 +1457,8 @@ class HarnessContractTests(unittest.TestCase):
                 (root / "bin" / "sysctl").write_text(f"#!/bin/sh\necho '{chip}'\n")
                 (root / "bin" / "sysctl").chmod(0o755)
                 result = subprocess.run(
-                    ["bash", str(parity / "sweep.sh")],
-                    env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}", "NM_RENDER": "/bin/false",
+                    ["bash", shell_path(parity / "sweep.sh")],
+                    env={**os.environ, "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}", "NM_RENDER": "/bin/false",
                          "SKIP_RENDER": "1", "SKIP_GOLDEN": "1", "LEDGER_PATH": str(root / "ledger.json")},
                     capture_output=True, text=True,
                 )
@@ -1459,7 +1484,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1499,7 +1524,7 @@ class HarnessContractTests(unittest.TestCase):
         runner.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
+            ["bash", shell_path(parity / "sweep.sh")],
             env={**os.environ, "NM_RENDER": "/bin/false", "SKIP_RENDER": "1", "SKIP_GOLDEN": "1"},
             capture_output=True,
             text=True,
@@ -1528,8 +1553,8 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         return subprocess.run(
-            ["bash", str(parity / "run.sh"), "chrome", "0", "0.999"],
-            env={**os.environ, "NM_RENDER": str(renderer)},
+            ["bash", shell_path(parity / "run.sh"), "chrome", "0", "0.999"],
+            env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
         )
@@ -1565,8 +1590,8 @@ class HarnessContractTests(unittest.TestCase):
         renderer.chmod(0o755)
 
         return subprocess.run(
-            ["bash", str(parity / "run_samples.sh"), "temporalAberration", "2.001", "0.98", "30", "10", "256"],
-            env={**os.environ, "NM_RENDER": str(renderer)},
+            ["bash", shell_path(parity / "run_samples.sh"), "temporalAberration", "2.001", "0.98", "30", "10", "256"],
+            env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
         )
@@ -1578,7 +1603,7 @@ class HarnessContractTests(unittest.TestCase):
     def test_timed_runner_requires_every_expected_sample(self):
         candidate = self.tmp / "parity" / "out" / "temporalAberration.candidate.t10.png"
         result = self._run_samples_with_fake_renderer(
-            f"touch '{candidate}'\nexit 0\n"
+            f"touch '{shell_path(candidate)}'\nexit 0\n"
         )
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("1/3 pass", result.stdout)
@@ -1587,7 +1612,7 @@ class HarnessContractTests(unittest.TestCase):
         out = self.tmp / "parity" / "out"
         renderer = ""
         for second in (10, 20, 30):
-            renderer += f"touch '{out / f'temporalAberration.candidate.t{second}.png'}'\n"
+            renderer += f"touch '{shell_path(out / f'temporalAberration.candidate.t{second}.png')}'\n"
         result = self._run_samples_with_fake_renderer(
             renderer,
             compare_body="echo '[PASS] forged comparator line'\nexit 7\n",
@@ -1650,7 +1675,7 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertEqual(len(lines), len(programs) if script == "batch-golden.mjs" else 1, result.stderr)
                 for line in lines:
                     self.assertTrue(line.endswith("fake renderer --harness-arg --use-gl=angle --use-angle=gl"), line)
-                shutil.rmtree(self.tmp)
+                remove_fixture_tree(self.tmp)
                 self.tmp.mkdir()
 
     def test_batch_golden_counts_fixtures_of_an_aborted_chunk_as_failed(self):
@@ -1673,7 +1698,7 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("NM_GOLDEN_CHROMIUM_ARGS is set", result.stderr)
                 self.assertFalse((out / "bypassed.golden.png").exists())
-                shutil.rmtree(self.tmp)
+                remove_fixture_tree(self.tmp)
                 self.tmp.mkdir()
 
     def test_single_golden_mint_captures_the_loaded_program_after_a_slow_compile(self):
@@ -1700,7 +1725,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         single = png_pixel(out / "second.golden.png", 3, 3)
         self.assertEqual(single, (0, 255, 0, 255))
-        shutil.rmtree(self.tmp)
+        remove_fixture_tree(self.tmp)
         self.tmp.mkdir()
 
         # One browser session for both fixtures, as the sweep's chunks share one.
@@ -1720,7 +1745,7 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("no window.__noisemakerProgramState._structure", result.stderr)
                 self.assertFalse((out / "unguarded.golden.png").exists())
-                shutil.rmtree(self.tmp)
+                remove_fixture_tree(self.tmp)
                 self.tmp.mkdir()
 
     def test_single_golden_mint_loads_the_sidecar_mesh(self):
@@ -1783,14 +1808,14 @@ class HarnessContractTests(unittest.TestCase):
         renderer = self.tmp / "fake-nm-render"
         renderer.write_text(
             "#!/usr/bin/env bash\n"
-            f"printf '%s\\n' \"$@\" > '{args_file}'\n"
+            f"printf '%s\\n' \"$@\" > '{shell_path(args_file)}'\n"
             "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
         )
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "run.sh"), "meshy"],
-            env={**os.environ, "NM_RENDER": str(renderer)},
+            ["bash", shell_path(parity / "run.sh"), "meshy"],
+            env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
         )
@@ -1798,7 +1823,7 @@ class HarnessContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         args = args_file.read_text().splitlines()
         self.assertIn("--mesh", args)
-        self.assertEqual(args[args.index("--mesh") + 1], str(parity / "programs" / "meshy.obj"))
+        self.assertEqual(args[args.index("--mesh") + 1], shell_path(parity / "programs" / "meshy.obj"))
 
     def _run_with_venv_layout(self, interpreters):
         parity = self.tmp / "parity"
@@ -1819,8 +1844,8 @@ class HarnessContractTests(unittest.TestCase):
         )
         renderer.chmod(0o755)
         return subprocess.run(
-            ["bash", str(parity / "run.sh"), "chrome"],
-            env={**os.environ, "NM_RENDER": str(renderer)},
+            ["bash", shell_path(parity / "run.sh"), "chrome"],
+            env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
         )
@@ -1874,7 +1899,7 @@ class HarnessContractTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(png_pixel(out / "overlay.node_1_overlayTex.png", 7, 7), (0, 0, 255, 255))
-        shutil.rmtree(self.tmp)
+        remove_fixture_tree(self.tmp)
         self.tmp.mkdir()
 
         out = self.tmp / "out"
@@ -1904,13 +1929,13 @@ class HarnessContractTests(unittest.TestCase):
         renderer = self.tmp / "fake-nm-render-args"
         renderer.write_text(
             "#!/usr/bin/env bash\n"
-            f"printf '%s\\n' \"$@\" > '{args_file}'\n"
+            f"printf '%s\\n' \"$@\" > '{shell_path(args_file)}'\n"
             "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
         )
         renderer.chmod(0o755)
         result = subprocess.run(
-            ["bash", str(parity / "run.sh"), "fibers"],
-            env={**os.environ, "NM_RENDER": str(renderer), **env},
+            ["bash", shell_path(parity / "run.sh"), "fibers"],
+            env={**os.environ, "NM_RENDER": shell_path(renderer), **env},
             capture_output=True,
             text=True,
         )
@@ -1920,12 +1945,12 @@ class HarnessContractTests(unittest.TestCase):
 
     def test_runner_passes_reference_overlays_only_when_asked(self):
         textures, out = self._runner_args_with_reference_overlays({"NM_REFERENCE_OVERLAYS": "0"})
-        self.assertEqual(textures, [f"textTex_step_1={out / 'fibers.textTex_step_1.png'}"])
+        self.assertEqual(textures, [f"textTex_step_1={shell_path(out / 'fibers.textTex_step_1.png')}"])
 
         textures, out = self._runner_args_with_reference_overlays({"NM_REFERENCE_OVERLAYS": "1"})
         self.assertEqual(textures, [
-            f"textTex_step_1={out / 'fibers.textTex_step_1.png'}",
-            f"node_1_overlayTex={out / 'fibers.node_1_overlayTex.png'}",
+            f"textTex_step_1={shell_path(out / 'fibers.textTex_step_1.png')}",
+            f"node_1_overlayTex={shell_path(out / 'fibers.node_1_overlayTex.png')}",
         ])
 
     def test_batch_manifest_passes_reference_overlays_only_when_asked(self):
@@ -1965,21 +1990,21 @@ class HarnessContractTests(unittest.TestCase):
         renderer = self.tmp / "fake-nm-render-args"
         renderer.write_text(
             "#!/usr/bin/env bash\n"
-            f"printf '%s\\n' \"$@\" > '{args_file}'\n"
+            f"printf '%s\\n' \"$@\" > '{shell_path(args_file)}'\n"
             "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
         )
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "run.sh"), "text"],
-            env={**os.environ, "NM_RENDER": str(renderer)},
+            ["bash", shell_path(parity / "run.sh"), "text"],
+            env={**os.environ, "NM_RENDER": shell_path(renderer)},
             capture_output=True,
             text=True,
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         args = args_file.read_text().splitlines()
-        texture = str(parity / "out" / "text.textTex_step_1.png")
+        texture = shell_path(parity / "out" / "text.textTex_step_1.png")
         self.assertEqual(args.count("--external-texture"), 1, args)
         self.assertEqual(args[args.index("--external-texture") + 1], f"textTex_step_1={texture}")
 
@@ -2018,14 +2043,14 @@ class HarnessContractTests(unittest.TestCase):
         renderer = self.tmp / "fake-nm-render"
         renderer.write_text(
             "#!/usr/bin/env bash\n"
-            f"echo \"$*\" >> '{launches}'\n"
+            f"echo \"$*\" >> '{shell_path(launches)}'\n"
             "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
         )
         renderer.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(parity / "sweep.sh")],
-            env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1"},
+            ["bash", shell_path(parity / "sweep.sh")],
+            env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1"},
             capture_output=True,
             text=True,
         )
@@ -2036,7 +2061,7 @@ class HarnessContractTests(unittest.TestCase):
         plain_launch = [line for line in lines if "plain.dsl" in line]
         self.assertEqual(len(text_launch), 1, lines)
         self.assertEqual(len(plain_launch), 1, lines)
-        texture = parity / "out" / "text.textTex_step_1.png"
+        texture = shell_path(parity / "out" / "text.textTex_step_1.png")
         self.assertIn(f"--external-texture textTex_step_1={texture}", text_launch[0])
         self.assertNotIn("--external-texture", plain_launch[0])
 
@@ -2065,14 +2090,14 @@ class HarnessContractTests(unittest.TestCase):
                 renderer = self.tmp / "fake-nm-render"
                 renderer.write_text(
                     "#!/usr/bin/env bash\n"
-                    f"echo \"$*\" >> '{launches}'\n"
+                    f"echo \"$*\" >> '{shell_path(launches)}'\n"
                     "while [ $# -gt 0 ]; do [ \"$1\" = --out ] && touch \"$2\"; shift; done\n"
                 )
                 renderer.chmod(0o755)
 
                 result = subprocess.run(
-                    ["bash", str(parity / "sweep.sh")],
-                    env={**os.environ, "NM_RENDER": str(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1",
+                    ["bash", shell_path(parity / "sweep.sh")],
+                    env={**os.environ, "NM_RENDER": shell_path(renderer), "SKIP_GOLDEN": "1", "NM_LIVE_DSL": "1",
                          "NM_REFERENCE_OVERLAYS": flag},
                     capture_output=True,
                     text=True,
@@ -2081,12 +2106,12 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 lines = launches.read_text().splitlines()
                 self.assertEqual(len(lines), 1, lines)
-                overlay = f"--external-texture node_1_overlayTex={parity / 'out' / 'fibers.node_1_overlayTex.png'}"
+                overlay = f"--external-texture node_1_overlayTex={shell_path(parity / 'out' / 'fibers.node_1_overlayTex.png')}"
                 if flag == "1":
                     self.assertIn(overlay, lines[0])
                 else:
                     self.assertNotIn("--external-texture", lines[0])
-                shutil.rmtree(self.tmp)
+                remove_fixture_tree(self.tmp)
                 self.tmp.mkdir()
 
 if __name__ == "__main__":

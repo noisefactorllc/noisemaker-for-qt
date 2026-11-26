@@ -55,6 +55,26 @@ nm::ObjMeshData parse(const char16_t* text) {
 
 int main() {
     const float inf = std::numeric_limits<float>::infinity();
+    {
+        nm::ObjMeshData mesh;
+        mesh.positions = {1, 2, 3, 4, 5, 6};
+        mesh.normals = {0, 0, 1, 0, 1, 0};
+        mesh.vertexCount = 2;
+        mesh.indices = {1, 0, 1};
+        const auto flat = mesh.deindex();
+        check(flat.vertexCount == 3 && mesh.triangleCount() == 1, "indexed geometry counts draw vertices and triangles");
+        check(equals(flat.positions, {4, 5, 6, 1, 2, 3, 4, 5, 6}), "deindex follows the index buffer");
+        check(equals(flat.normals, {0, 1, 0, 0, 0, 1, 0, 1, 0}), "deindex keeps attributes aligned");
+        check(equals(flat.uvs, {0, 0, 0, 0, 0, 0}), "omitted UVs are zeroed");
+        const auto packed = mesh.toPackedTextures(2, 2);
+        check(packed.vertexCount == 3 && packed.positionData[0] == 4 && packed.positionData[7] == 1
+            && packed.positionData[15] == 0, "indexed geometry packs in draw order with invalid padding");
+        mesh.indices.clear();
+        check(mesh.toPackedTextures(1, 1).vertexCount == 0, "an empty index buffer draws no vertices");
+        check(nm::meshTextureSize(0) == QSize(1, 1) && nm::meshTextureSize(7) == QSize(3, 3),
+            "mesh texture size handles empty and non-square geometry");
+    }
+
 
     // Quad with v/vt/vn: fan triangulation, reversed winding (v0, v2, v1).
     {

@@ -296,6 +296,8 @@ private:
     QJsonObject parseStatement();
     QJsonArray parseChain(const QString& context);
     QJsonObject parseWriteCall();
+    QJsonValue parseWriteId();
+    void skipComments() { while (peek().type == TokenType::COMMENT) advance(); }
     QJsonObject parseSubchainCall();
     QJsonObject parseCall();
     QJsonObject parseArg() { return parseAdditive(); }
@@ -692,11 +694,13 @@ QJsonObject Parser::parseWriteCall() {
                     "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none)"),
                 p);
         }
+        const QJsonValue id = parseWriteId();
         expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::Write);
         node.insert(QStringLiteral("surface"), surface);
         node.insert(QStringLiteral("loc"), ast::loc(tokenLine, tokenCol));
+        if (!id.isUndefined()) node.insert(QStringLiteral("_id"), id);
         return node;
     }
     if (tokenType == TokenType::WRITE3D) {
@@ -731,12 +735,14 @@ QJsonObject Parser::parseWriteCall() {
             const Token p = peek();
             throw parserErrorAt(QStringLiteral("P005"), QStringLiteral("Expected geo reference in write3d()"), p);
         }
+        const QJsonValue id = parseWriteId();
         expect(TokenType::RPAREN, QStringLiteral("Expect ')'"));
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::Write3D);
         node.insert(QStringLiteral("tex3d"), tex3d);
         node.insert(QStringLiteral("geo"), geo);
         node.insert(QStringLiteral("loc"), ast::loc(tokenLine, tokenCol));
+        if (!id.isUndefined()) node.insert(QStringLiteral("_id"), id);
         return node;
     }
     Token dummy;
@@ -747,6 +753,18 @@ QJsonObject Parser::parseWriteCall() {
     throw parserError(QStringLiteral("P005"),
                       QStringLiteral("Expected write or write3d at line %1 col %2").arg(tokenLine).arg(tokenCol),
                       dummy);
+}
+
+QJsonValue Parser::parseWriteId() {
+    const Token* key = tokenAt(current_ + 1);
+    if (peek().type != TokenType::COMMA || !key || key->type != TokenType::IDENT
+        || key->lexeme != QStringLiteral("_id") || typeAt(current_ + 2) != TokenType::COLON) {
+        return QJsonValue(QJsonValue::Undefined);
+    }
+    advance();
+    QJsonObject kwargs;
+    parseKwarg(kwargs);
+    return kwargs.value(QStringLiteral("_id"));
 }
 
 QJsonObject Parser::parseSubchainCall() {
@@ -919,8 +937,10 @@ QJsonObject Parser::parseCall() {
     bool positional = false;
     const bool allowMixed = nameToken.lexeme == QStringLiteral("midi")
         || nameToken.lexeme == QStringLiteral("audio");
+    skipComments();
     if (peek().type != TokenType::RPAREN) {
         while (true) {
+            skipComments();
             if (peek().type == TokenType::IDENT && typeAt(current_ + 1) == TokenType::COLON) {
                 if (positional && !allowMixed) {
                     const Token t = peek();
@@ -938,8 +958,10 @@ QJsonObject Parser::parseCall() {
                 positional = true;
                 args.append(parseArg());
             }
+            skipComments();
             if (peek().type != TokenType::COMMA) break;
             advance();
+            skipComments();
             if (peek().type == TokenType::RPAREN) break;
         }
     }
@@ -949,6 +971,7 @@ QJsonObject Parser::parseCall() {
     call.insert(QStringLiteral("type"), NodeKind::Call);
     call.insert(QStringLiteral("name"), nameToken.lexeme);
     call.insert(QStringLiteral("args"), args);
+    call.insert(QStringLiteral("loc"), ast::loc(nameToken.line, nameToken.col));
     if (keyword) call.insert(QStringLiteral("kwargs"), kwargs);
 
     const QString lexeme = nameToken.lexeme;
@@ -1009,6 +1032,7 @@ QJsonObject Parser::parseCall() {
             && skip.value(QStringLiteral("value")).toBool()) {
             node.insert(QStringLiteral("_skip"), true);
         }
+        if (kwargs.contains(QStringLiteral("_id"))) node.insert(QStringLiteral("_id"), kwargs.value(QStringLiteral("_id")));
         return node;
     }
     if (lexeme == QStringLiteral("read3d")) {
@@ -1032,6 +1056,7 @@ QJsonObject Parser::parseCall() {
             && skip.value(QStringLiteral("value")).toBool()) {
             node.insert(QStringLiteral("_skip"), true);
         }
+        if (kwargs.contains(QStringLiteral("_id"))) node.insert(QStringLiteral("_id"), kwargs.value(QStringLiteral("_id")));
         return node;
     }
     return call;
@@ -1339,6 +1364,7 @@ QJsonObject Parser::transformFromInvocation(const QJsonObject& call, const Token
     replacement.insert(QStringLiteral("type"), NodeKind::Call);
     replacement.insert(QStringLiteral("name"), targetCall.value(QStringLiteral("name")));
     replacement.insert(QStringLiteral("args"), targetCall.value(QStringLiteral("args")).toArray());
+    if (targetCall.contains(QStringLiteral("loc"))) replacement.insert(QStringLiteral("loc"), targetCall.value(QStringLiteral("loc")));
     if (targetCall.contains(QStringLiteral("kwargs"))) {
         replacement.insert(QStringLiteral("kwargs"), targetCall.value(QStringLiteral("kwargs")).toObject());
     }
@@ -1361,6 +1387,7 @@ QJsonObject Parser::transformFromInvocation(const QJsonObject& call, const Token
 void Parser::parseKwarg(QJsonObject& obj) {
     const QString key = expect(TokenType::IDENT, QStringLiteral("Expected identifier")).lexeme;
     expect(TokenType::COLON, QStringLiteral("Expect ':'"));
+    skipComments();
     if (!exprStartTokens().contains(peek().type)) {
         // NOTE: reference message says "after '='" even though a kwarg
         // uses ':' -- a copy-paste artifact in the source of truth, kept
@@ -1378,7 +1405,9 @@ QJsonObject Parser::parseAdditive() {
         const QJsonObject right = parseMultiplicative();
         const double l = toNumber(node);
         const double r = toNumber(right);
+        const QJsonValue loc = node.value(QStringLiteral("loc"));
         node = ast::number(op == TokenType::PLUS ? l + r : l - r);
+        if (!loc.isUndefined()) node.insert(QStringLiteral("loc"), loc);
     }
     return node;
 }
@@ -1390,7 +1419,9 @@ QJsonObject Parser::parseMultiplicative() {
         const QJsonObject right = parseUnary();
         const double l = toNumber(node);
         const double r = toNumber(right);
+        const QJsonValue loc = node.value(QStringLiteral("loc"));
         node = ast::number(op == TokenType::STAR ? l * r : l / r);
+        if (!loc.isUndefined()) node.insert(QStringLiteral("loc"), loc);
     }
     return node;
 }
@@ -1403,7 +1434,9 @@ QJsonObject Parser::parseUnary() {
     if (peek().type == TokenType::MINUS) {
         advance();
         const QJsonObject val = parseUnary();
-        return ast::number(-toNumber(val));
+        QJsonObject node = ast::number(-toNumber(val));
+        if (val.contains(QStringLiteral("loc"))) node.insert(QStringLiteral("loc"), val.value(QStringLiteral("loc")));
+        return node;
     }
     return parsePrimary();
 }
@@ -1441,13 +1474,16 @@ QJsonObject Parser::parsePrimary() {
 
     if (tt == TokenType::NUMBER) {
         advance();
-        return ast::number(token.lexeme.toDouble());
+        QJsonObject node = ast::number(token.lexeme.toDouble());
+        node.insert(QStringLiteral("loc"), ast::loc(token.line, token.col));
+        return node;
     }
     if (tt == TokenType::STRING) {
         advance();
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::String);
         node.insert(QStringLiteral("value"), token.lexeme);
+        node.insert(QStringLiteral("loc"), ast::loc(token.line, token.col));
         return node;
     }
     if (tt == TokenType::HEX) {
@@ -1476,6 +1512,7 @@ QJsonObject Parser::parsePrimary() {
         value.append(b / 255.0);
         value.append(a);
         node.insert(QStringLiteral("value"), value);
+        node.insert(QStringLiteral("loc"), ast::loc(token.line, token.col));
         return node;
     }
     if (tt == TokenType::LBRACKET) {
@@ -1485,11 +1522,16 @@ QJsonObject Parser::parsePrimary() {
         const int startCol = token.col;
         advance();
         QJsonArray elements;
+        skipComments();
         if (peek().type != TokenType::RBRACKET) {
             elements.append(parseArg());
+            skipComments();
             while (peek().type == TokenType::COMMA) {
                 advance();
+                skipComments();
+                if (peek().type == TokenType::RBRACKET) break;
                 elements.append(parseArg());
+                skipComments();
             }
         }
         if (peek().type != TokenType::RBRACKET) {
@@ -1523,6 +1565,7 @@ QJsonObject Parser::parsePrimary() {
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::Boolean);
         node.insert(QStringLiteral("value"), true);
+        node.insert(QStringLiteral("loc"), ast::loc(token.line, token.col));
         return node;
     }
     if (tt == TokenType::FALSE) {
@@ -1530,6 +1573,7 @@ QJsonObject Parser::parsePrimary() {
         QJsonObject node;
         node.insert(QStringLiteral("type"), NodeKind::Boolean);
         node.insert(QStringLiteral("value"), false);
+        node.insert(QStringLiteral("loc"), ast::loc(token.line, token.col));
         return node;
     }
     if (tt == TokenType::IDENT) {
@@ -1540,7 +1584,9 @@ QJsonObject Parser::parsePrimary() {
             advance();
             advance();
             advance();
-            return ast::number(3.141592653589793);
+            QJsonObject node = ast::number(3.141592653589793);
+            node.insert(QStringLiteral("loc"), ast::loc(token.line, token.col));
+            return node;
         }
         // member-then-call OR direct call -> parse as a chain (expression
         // context). See file header note: for 2+ dotted segments this

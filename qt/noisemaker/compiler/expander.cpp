@@ -994,6 +994,7 @@ private:
         const QJsonObject globals = effectDef.value(QStringLiteral("globals")).toObject();
         for (auto it = stepArgs.constBegin(); it != stepArgs.constEnd(); ++it) {
             const QString argName = it.key();
+            if (argName == QStringLiteral("_id")) continue;
             const QJsonValue arg = it.value();
             if (isTextureArg(arg)) continue;
 
@@ -1240,6 +1241,7 @@ private:
             // step 7: args -> uniforms
             for (auto it = stepArgs.constBegin(); it != stepArgs.constEnd(); ++it) {
                 const QString argName = it.key();
+                if (argName == QStringLiteral("_id")) continue;
                 const QJsonValue arg = it.value();
                 if (isTextureArg(arg)) continue;
 
