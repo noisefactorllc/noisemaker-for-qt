@@ -84,7 +84,8 @@ QJsonObject extractTextureSpecs(const QVector<ExpandedPass>& passes, const QJson
         const QJsonValue formatVal = effectSpec.value(QStringLiteral("format"));
         spec.insert(QStringLiteral("format"), jsTruthy(formatVal) ? formatVal : QJsonValue(QStringLiteral("rgba16f")));
         QJsonArray usage2d{QStringLiteral("render"), QStringLiteral("sample"), QStringLiteral("copySrc"), QStringLiteral("copyDst")};
-        spec.insert(QStringLiteral("usage"), usage2d);
+        const QJsonValue authoredUsage = effectSpec.value(QStringLiteral("usage"));
+        spec.insert(QStringLiteral("usage"), jsTruthy(authoredUsage) ? authoredUsage : QJsonValue(usage2d));
 
         if (jsTruthy(effectSpec.value(QStringLiteral("is3D")))) {
             const QJsonValue depthVal = effectSpec.value(QStringLiteral("depth"));
@@ -123,6 +124,27 @@ QJsonObject extractTextureSpecs(const QVector<ExpandedPass>& passes, const QJson
             spec.insert(QStringLiteral("usage"),
                         QJsonArray{QStringLiteral("render"), QStringLiteral("sample"), QStringLiteral("copySrc"), QStringLiteral("copyDst")});
             textures.insert(texId, spec);
+        }
+    }
+    for (const ExpandedPass& pass : passes) {
+        const QJsonObject storage = pass.storageTextures.toObject();
+        for (auto it = storage.constBegin(); it != storage.constEnd(); ++it) {
+            if (!it.value().isString()) continue;
+            const QString id = it.value().toString();
+            if (id.startsWith(QStringLiteral("global_"))) continue;
+            QJsonObject spec = textures.value(id).toObject();
+            if (textures.contains(id)) {
+                QJsonArray usage = spec.value(QStringLiteral("usage")).toArray();
+                if (!usage.contains(QStringLiteral("storage"))) usage.append(QStringLiteral("storage"));
+                spec.insert(QStringLiteral("usage"), usage);
+            } else {
+                spec = QJsonObject{{QStringLiteral("width"), QStringLiteral("screen")},
+                                   {QStringLiteral("height"), QStringLiteral("screen")},
+                                   {QStringLiteral("format"), QStringLiteral("rgba16f")},
+                                   {QStringLiteral("usage"), QJsonArray{QStringLiteral("render"), QStringLiteral("sample"),
+                                       QStringLiteral("storage"), QStringLiteral("copySrc"), QStringLiteral("copyDst")}}};
+            }
+            textures.insert(id, spec);
         }
     }
     return textures;

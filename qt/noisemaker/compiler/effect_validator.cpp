@@ -19,6 +19,7 @@
 
 #include "enums.h"
 #include "js_number.h"
+#include "js_unicode.h"
 
 #include <QJsonArray>
 #include <QSet>
@@ -215,7 +216,8 @@ const QStringList& topLevelKeys() {
         QStringLiteral("openCategories"),
         QStringLiteral("defaultProgram"), QStringLiteral("hidden"), QStringLiteral("deprecatedBy"),
         QStringLiteral("externalTexture"), QStringLiteral("externalMesh"),
-        QStringLiteral("builtinMeshes"), QStringLiteral("outputTex3d"), QStringLiteral("outputGeo"),
+        QStringLiteral("builtinMeshes"), QStringLiteral("outputTex"), QStringLiteral("outputTex3d"), QStringLiteral("outputGeo"),
+        QStringLiteral("outputXyz"), QStringLiteral("outputVel"), QStringLiteral("outputRgba"),
         QStringLiteral("state"), QStringLiteral("uniforms"),
         QStringLiteral("onInit"), QStringLiteral("onUpdate"), QStringLiteral("onDestroy"),
         QStringLiteral("asyncInit"),
@@ -1669,13 +1671,19 @@ std::vector<std::string> validateEffectDefinition(const QJsonValue& def) {
             }
         }
     }
-    const QJsonValue outputTex3d = source.value(QStringLiteral("outputTex3d"));
-    if (!outputTex3d.isUndefined() && !isNonEmptyString(outputTex3d)) {
-        errors.push_back("\"outputTex3d\" must be a non-empty string");
-    }
-    const QJsonValue outputGeo = source.value(QStringLiteral("outputGeo"));
-    if (!outputGeo.isUndefined() && !isNonEmptyString(outputGeo)) {
-        errors.push_back("\"outputGeo\" must be a non-empty string");
+    for (const char* field : {"outputTex", "outputTex3d", "outputGeo", "outputXyz", "outputVel", "outputRgba"}) {
+        const QJsonValue value = source.value(QLatin1String(field));
+        if (value.isUndefined()) continue;
+        bool hasName = false;
+        if (value.isString()) {
+            for (const QChar ch : value.toString()) {
+                if (!js::isWhiteSpace(ch.unicode()) && !js::isLineTerminator(ch.unicode())) {
+                    hasName = true;
+                    break;
+                }
+            }
+        }
+        if (!hasName) errors.push_back(std::string("\"") + field + "\" must be a non-empty string");
     }
 
     // --- lifecycle hooks must be functions ---

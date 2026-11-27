@@ -52,6 +52,16 @@ const setPassNested = (d, container, key, value) => { d.passes[0][container][key
 const setGlobal = (d, global, key, value) => { d.globals[global][key] = value }
 const setUi = (d, global, key, value) => { d.globals[global].ui[key] = value }
 
+// Forwarded texture names use JavaScript trim semantics.
+for (const field of ['outputTex', 'outputTex3d', 'outputGeo', 'outputXyz', 'outputVel', 'outputRgba']) {
+    for (const [label, value] of [
+        ['texture', 'scratch'], ['empty', ''], ['spaces', ' \t\r\n'],
+        ['BOM', '\uFEFF'], ['NEL', '\u0085'], ['number', 7], ['null', null]
+    ]) {
+        add(`${field}: ${label}`, (d) => { d[field] = value })
+    }
+}
+
 // --- unknown fields ---
 add('unknown top-level field', (d) => { d.globalz = d.globals })
 add('unknown global-spec field', (d) => { d.globals.amount.unkown = 1 })

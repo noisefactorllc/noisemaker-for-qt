@@ -49,11 +49,10 @@ namespace nm {
 
 class EffectRegistry;
 
-// Compute PassDef fields (entryPoint/workgroups/storageBuffers/
-// storageTextures) are copied onto each expanded pass verbatim, as
-// expander.js does. No catalog definition declares them at the pinned
-// reference. The normalized graph drops them (tools/export-graph.mjs
-// normalizePass), and nm::Backend has no compute path.
+// Compute metadata is retained in raw passes; storage texture references
+// resolve to scoped texture IDs. The normalized graph drops compute
+// fields (tools/export-graph.mjs normalizePass), and nm::Backend has no
+// compute path.
 
 // One expanded GPU pass in the RAW (pre-normalization) shape
 // shaders/src/runtime/expander.js itself produces (reference/03 §2.1
@@ -116,6 +115,7 @@ struct ExpandedPass {
     // correct phys_N assignment (reference/04 §1.3).
     QVector<QPair<QString, QString>> inputs;
     QVector<QPair<QString, QString>> outputs;
+    bool hasOutputs = true;
 
     QJsonObject uniforms;  // name -> literal value (bool/double/string/array/{type:'Oscillator',...})
 

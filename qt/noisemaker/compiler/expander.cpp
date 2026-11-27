@@ -59,6 +59,14 @@ QJsonValue resolveArgValue(const QJsonValue& arg) {
 
 bool isMissing(const QJsonValue& v) { return v.isUndefined() || v.isNull(); }
 
+bool jsTruthy(const QJsonValue& value) {
+    if (isMissing(value)) return false;
+    if (value.isBool()) return value.toBool();
+    if (value.isDouble()) return value.toDouble() != 0.0;
+    if (value.isString()) return !value.toString().isEmpty();
+    return true;
+}
+
 // The expander's OWN local `resolveEnum` closure (expander.js lines
 // 120-131) walks ONLY the fixed std-enum tree — `let node = stdEnums`,
 // never the dynamic per-effect project/choices tree. This is deliberately
@@ -1143,7 +1151,6 @@ private:
             pass.conditions = passDef.value(QStringLiteral("conditions"));
             pass.workgroups = passDef.value(QStringLiteral("workgroups"));
             pass.storageBuffers = passDef.value(QStringLiteral("storageBuffers"));
-            pass.storageTextures = passDef.value(QStringLiteral("storageTextures"));
             // Pass-field propagation (reference fa83eeabf): copied verbatim.
             pass.passName = passDef.value(QStringLiteral("name"));
             pass.passType = passDef.value(QStringLiteral("type"));
@@ -1305,6 +1312,7 @@ private:
 
             // steps 10/11: inputs / outputs
             mapInputs(effectDef, passDef, step, stepArgs, nodeId, plan, i, keyOrders, pass);
+            mapStorageTextures(passDef, nodeId, plan, i, effectPasses.size(), stepPos, pass);
             mapOutputs(passDef, nodeId, plan, i, effectPasses.size(), stepPos, keyOrders, pass);
 
             // step 12: scoped-param propagation
@@ -1482,6 +1490,67 @@ private:
         if (name.startsWith(QStringLiteral("global_"))) return name;
         if (isSurfaceRef(name)) return QStringLiteral("global_") + name;
         return name;
+    }
+
+    void mapStorageTextures(const QJsonObject& passDef, const QString& nodeId, const QJsonObject& plan,
+                            int passIndex, int passCount, int stepPos, ExpandedPass& pass) {
+        const QJsonValue storageValue = passDef.value(QStringLiteral("storageTextures"));
+        if (!jsTruthy(storageValue)) return;
+        const QJsonObject storage = storageValue.toObject();
+        QJsonObject mapped;
+        const QJsonArray chain = plan.value(QStringLiteral("chain")).toArray();
+        const bool isLastPass = passIndex == passCount - 1;
+        const QJsonObject next = stepPos + 1 < chain.size() ? chain.at(stepPos + 1).toObject() : QJsonObject();
+        const QJsonObject inlineWrite = isLastPass && next.value(QStringLiteral("builtin")).toBool()
+                && next.value(QStringLiteral("op")).toString() == QStringLiteral("_write")
+            ? next.value(QStringLiteral("args")).toObject().value(QStringLiteral("tex")).toObject() : QJsonObject();
+        const QJsonValue write = plan.value(QStringLiteral("write"));
+        for (auto it = storage.constBegin(); it != storage.constEnd(); ++it) {
+            if (!it.value().isString()) {
+                throw std::runtime_error(it.value().isNull()
+                    ? "Cannot read properties of null (reading 'startsWith')"
+                    : "texRef.startsWith is not a function");
+            }
+            const QString ref = it.value().toString();
+            QString target;
+            if (ref == QStringLiteral("outputTex")) {
+                QJsonValue destination(QJsonValue::Undefined);
+                if (!inlineWrite.isEmpty() && inlineWrite.value(QStringLiteral("name")).toString() != QStringLiteral("none")) {
+                    destination = inlineWrite;
+                } else if (stepPos == chain.size() - 1 && isLastPass && jsTruthy(write)) {
+                    destination = write;
+                }
+                if (!destination.isUndefined()) {
+                    const QJsonObject object = destination.toObject();
+                    const QString name = destination.isObject() ? object.value(QStringLiteral("name")).toString() : destination.toString();
+                    const QString prefix = object.value(QStringLiteral("kind")).toString() == QStringLiteral("feedback")
+                        ? QStringLiteral("feedback_") : QStringLiteral("global_");
+                    target = prefix + name;
+                    lastWrittenSurface_ = name;
+                } else {
+                    target = nodeId + QStringLiteral("_out");
+                }
+                textureMap_.insert(nodeId + QStringLiteral("_out"), target);
+            } else if (ref.startsWith(QStringLiteral("global_"))) {
+                target = scopeChainTex(ref);
+            } else {
+                target = nodeId + QLatin1Char('_') + ref;
+                if (textureSpecs_.contains(target)) {
+                    QJsonObject spec = textureSpecs_.value(target).toObject();
+                    const QJsonValue authoredUsage = spec.value(QStringLiteral("usage"));
+                    QJsonArray usage = jsTruthy(authoredUsage) ? authoredUsage.toArray()
+                        : QJsonArray{QStringLiteral("render"), QStringLiteral("sample"), QStringLiteral("copySrc"), QStringLiteral("copyDst")};
+                    usage.append(QStringLiteral("storage"));
+                    QJsonArray unique;
+                    for (const QJsonValue& value : usage) if (!unique.contains(value)) unique.append(value);
+                    spec.insert(QStringLiteral("usage"), unique);
+                    textureSpecs_.insert(target, spec);
+                }
+            }
+            mapped.insert(it.key(), target);
+        }
+        pass.storageTextures = mapped;
+        pass.hasOutputs = jsTruthy(passDef.value(QStringLiteral("outputs")));
     }
 
     // reference/03 §5.2 + §5.3 last-pass-to-surface optimization.
@@ -1691,7 +1760,7 @@ QJsonObject toRawPassJson(const ExpandedPass& pass) {
     out.insert(QStringLiteral("inputs"), inputs);
     QJsonObject outputs;
     for (const auto& kv : pass.outputs) outputs.insert(kv.first, kv.second);
-    out.insert(QStringLiteral("outputs"), outputs);
+    if (pass.hasOutputs) out.insert(QStringLiteral("outputs"), outputs);
     out.insert(QStringLiteral("uniforms"), pass.uniforms);
     if (!pass.uniformAliases.isEmpty()) out.insert(QStringLiteral("uniformAliases"), pass.uniformAliases);
 

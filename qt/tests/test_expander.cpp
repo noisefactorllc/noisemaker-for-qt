@@ -360,6 +360,66 @@ void testParticleInputs317() {
     }
 }
 
+void testStorageTextures() {
+    QFile corpusFile(QStringLiteral("parity/storage-texture-corpus.json"));
+    check(corpusFile.open(QIODevice::ReadOnly), "storage textures: oracle corpus opens");
+    const QJsonObject corpus = QJsonDocument::fromJson(corpusFile.readAll()).object();
+    const QJsonArray cases = corpus.value(QStringLiteral("cases")).toArray();
+    check(!cases.isEmpty(), "storage textures: oracle corpus contains cases");
+    for (const QJsonValue& caseValue : cases) {
+        const QJsonObject item = caseValue.toObject();
+        const QString label = item.value(QStringLiteral("id")).toString();
+        QTemporaryDir root;
+        check(root.isValid() && QDir(root.path()).mkpath(QStringLiteral("effects/synth")),
+              "storage textures: registry directory created");
+        for (const QJsonValue& definition : {item.value(QStringLiteral("definition")), corpus.value(QStringLiteral("follower"))}) {
+            const QJsonObject def = definition.toObject();
+            QFile file(root.path() + QStringLiteral("/effects/synth/") + def.value(QStringLiteral("func")).toString() + QStringLiteral(".json"));
+            const QByteArray bytes = QJsonDocument(def).toJson();
+            check(file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size(),
+                  "storage textures: synthetic definition written");
+        }
+        nm::EffectRegistry reg;
+        reg.loadAll(root.path());
+        const QString source = item.value(QStringLiteral("source")).toString();
+        QJsonObject validated = nm::validate(nm::parse(nm::lex(source)), reg);
+        if (item.contains(QStringLiteral("finalWrite"))) {
+            QJsonArray plans = validated.value(QStringLiteral("plans")).toArray();
+            QJsonObject plan = plans.at(0).toObject();
+            QJsonArray chain = plan.value(QStringLiteral("chain")).toArray();
+            chain.removeLast();
+            plan.insert(QStringLiteral("chain"), chain);
+            plan.insert(QStringLiteral("write"), item.value(QStringLiteral("finalWrite")));
+            plan.insert(QStringLiteral("final"), chain.last().toObject().value(QStringLiteral("temp")));
+            plans[0] = plan;
+            validated.insert(QStringLiteral("plans"), plans);
+            validated.insert(QStringLiteral("render"), QJsonValue(QJsonValue::Null));
+        }
+        nm::ExpandResult result;
+        try {
+            result = nm::expand(validated, reg);
+        } catch (const std::exception& error) {
+            check(item.value(QStringLiteral("error")).toString() == QString::fromUtf8(error.what()),
+                  qPrintable(label + QStringLiteral(": rejection matches reference")));
+            continue;
+        }
+        check(!item.contains(QStringLiteral("error")), qPrintable(label + QStringLiteral(": invalid targets are rejected")));
+        if (item.contains(QStringLiteral("error"))) continue;
+        QJsonArray passes;
+        for (const nm::ExpandedPass& pass : result.passes) passes.append(nm::toRawPassJson(pass));
+        const QJsonObject expected = item.value(QStringLiteral("expected")).toObject();
+        check(result.errors.isEmpty(), qPrintable(label + QStringLiteral(": no expansion errors")));
+        check(passes == expected.value(QStringLiteral("passes")).toArray(), qPrintable(label + QStringLiteral(": raw passes match reference")));
+        check(result.textureSpecs == expected.value(QStringLiteral("textureSpecs")).toObject(), qPrintable(label + QStringLiteral(": effect texture specs match reference")));
+        check(result.renderSurface == expected.value(QStringLiteral("renderSurface")).toString(), qPrintable(label + QStringLiteral(": render surface matches reference")));
+        if (item.contains(QStringLiteral("textures"))) {
+            const QJsonObject graph = nm::compileGraphJson(source, reg);
+            check(graph.value(QStringLiteral("textures")) == item.value(QStringLiteral("textures")),
+                  qPrintable(label + QStringLiteral(": allocated texture specs match reference")));
+        }
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -368,6 +428,7 @@ int main(int argc, char** argv) {
     testOptionalSurfaces();
     testParticleInputs317();
     testStatefulInstances();
+    testStorageTextures();
     // ======================================================================
     // Define collection + SORT ORDER (reference/03 §4.5; expander.h file
     // header "PARITY-CRITICAL DEVIATION FROM THE TASK BRIEF").
@@ -560,14 +621,9 @@ int main(int argc, char** argv) {
     }
 
     // ======================================================================
-    // Compute pass fields: the reference expander copies entryPoint,
-    // workgroups, storageBuffers and storageTextures onto each pass
-    // verbatim. No catalog definition declares them at the pinned
-    // reference, so this synthetic definition stands in. Expected passes
-    // were minted by the reference expander over the equivalent
-    // definition.js (expand(validate(parse(lex(src)))), node 26.5.1,
-    // reference fa83eeabf — re-minted when the reference added pass-name
-    // propagation, which now carries `name` onto the expanded passes).
+    // Compute metadata stays verbatim except for scoped storage targets.
+    // Expected passes use the reference expander over the same definition
+    // at 5596e69f, including pass-name propagation.
     // ======================================================================
     {
         static const char kDefinition[] = R"({
@@ -582,7 +638,7 @@ int main(int argc, char** argv) {
   "textures": {}
 })";
         static const char kReferencePasses[] = R"([
-{"id":"node_0_pass_0","program":"node_0_sim","entryPoint":"simulate","workgroups":[8,8,1],"storageBuffers":{"state":"stateBuf"},"storageTextures":{"outputTex":"outputTex"},"name":"simulate","inputs":{},"outputs":{"outputBuffer":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
+{"id":"node_0_pass_0","program":"node_0_sim","entryPoint":"simulate","workgroups":[8,8,1],"storageBuffers":{"state":"stateBuf"},"storageTextures":{"outputTex":"node_0_out"},"name":"simulate","inputs":{},"outputs":{"outputBuffer":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
 {"id":"node_0_pass_1","program":"node_0_sim","entryPoint":"main","name":"main","inputs":{},"outputs":{"color":"node_0_out"},"uniforms":{"speed":2},"effectKey":"synth.gpgpu","effectFunc":"gpgpu","effectNamespace":"synth","nodeId":"node_0","stepIndex":0,"uniformSpecs":{"speed":{"min":0,"max":4}}},
 {"id":"node_1_write_blit","program":"blit","type":"render","inputs":{"src":"node_0_out"},"outputs":{"color":"global_o0"},"uniforms":{},"nodeId":"node_1","stepIndex":1}
 ])";

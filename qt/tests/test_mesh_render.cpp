@@ -12,6 +12,7 @@
 #include <QFile>
 #include <QGuiApplication>
 #include <QImage>
+#include <QJsonArray>
 
 #include <cstdio>
 #include <cstdlib>
@@ -180,6 +181,49 @@ void testCountUniform(nm::EffectRegistry& registry) {
     backend.setUniform(graph, QStringLiteral("meshCount"), QJsonValue(3));
     check(qRed(renderCenter(backend, graph)) > 170,
           "countUniform: the lookup falls back to the global uniform");
+
+    backend.setUniform(graph, QStringLiteral("meshCount"), QJsonValue(0));
+    for (const QString& mode : {QStringLiteral("auto"), QStringLiteral("input"), QStringLiteral("screen")}) {
+        triangles->count = mode;
+        for (const QJsonValue& value : {QJsonValue(0), QJsonValue(-1), QJsonValue(QStringLiteral("invalid")),
+                                      QJsonValue(QJsonValue::Undefined)}) {
+            triangles->uniforms.insert(QStringLiteral("meshCount"), value);
+            const QRgb center = renderCenter(backend, graph);
+            check(!isBackground(center) && qRed(center) < 170,
+                  qPrintable(QStringLiteral("countUniform: %1 derives mesh extent after an unusable lookup").arg(mode)));
+        }
+        triangles->uniforms.insert(QStringLiteral("meshCount"), 3);
+        check(qRed(renderCenter(backend, graph)) > 170,
+              qPrintable(QStringLiteral("countUniform: positive override precedes %1 extent").arg(mode)));
+        backend.setUniform(graph, QStringLiteral("meshCount"), QJsonValue(3));
+        triangles->uniforms.insert(QStringLiteral("meshCount"), QJsonValue(QJsonValue::Null));
+        const QRgb center = renderCenter(backend, graph);
+        check(!isBackground(center) && qRed(center) < 170,
+              qPrintable(QStringLiteral("countUniform: null selects %1 extent despite a positive global").arg(mode)));
+        backend.setUniform(graph, QStringLiteral("meshCount"), QJsonValue(0));
+    }
+}
+
+void testZeroBlendFactor(nm::EffectRegistry& registry) {
+    nm::Backend backend;
+    backend.setup(nullptr, kDataRoot, QSize(64, 64));
+    nm::Graph graph = nm::compileGraph(
+        QStringLiteral("search synth, render\nnoise(seed: 1).meshRender().write(o0)\nrender(o0)"), registry);
+    backend.loadOBJFromString(triangle(0.0, 1, kLit, false));
+    for (nm::Pass& pass : graph.passes) {
+        if (pass.drawMode != QStringLiteral("triangles")) continue;
+        for (int slot = 0; slot < 2; ++slot) {
+            QJsonArray factors{QStringLiteral("ONE"), QStringLiteral("ONE")};
+            factors[slot] = QStringLiteral("ZERO");
+            pass.blend = factors;
+            const QRgb expected = renderCenter(backend, graph);
+            factors[slot] = QStringLiteral("zero");
+            pass.blend = factors;
+            check(renderCenter(backend, graph) == expected,
+                  slot == 0 ? "blend: lowercase zero suppresses the source"
+                            : "blend: lowercase zero suppresses the destination");
+        }
+    }
 }
 
 } // namespace
@@ -192,6 +236,7 @@ int main(int argc, char** argv) {
     testBeforeSetup();
     testExternalMeshes(registry);
     testTriangles(registry);
+    testZeroBlendFactor(registry);
     testCountUniform(registry);
 
     std::printf("%d failure(s)\n", g_failures);

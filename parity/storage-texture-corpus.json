@@ -1,0 +1,2229 @@
+{
+  "referenceCommit": "5596e69fd6e3b9014e9df0f8674e10e70c332e11",
+  "follower": {
+    "name": "Draw probe",
+    "namespace": "synth",
+    "func": "drawProbe",
+    "globals": {},
+    "passes": [
+      {
+        "program": "main",
+        "inputs": {
+          "src": "inputTex"
+        },
+        "outputs": {
+          "color": "outputTex"
+        }
+      }
+    ],
+    "textures": {}
+  },
+  "cases": [
+    {
+      "id": "storage-only output feeds the next node",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        },
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "invalid number target",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": 42
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "error": "texRef.startsWith is not a function"
+    },
+    {
+      "id": "invalid null target",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": null
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "error": "Cannot read properties of null (reading 'startsWith')"
+    },
+    {
+      "id": "invalid object target",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": {}
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "error": "texRef.startsWith is not a function"
+    },
+    {
+      "id": "invalid array target",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": []
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "error": "texRef.startsWith is not a function"
+    },
+    {
+      "id": "invalid boolean target",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": false
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "error": "texRef.startsWith is not a function"
+    },
+    {
+      "id": "inline output",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "global_o0"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {}
+    },
+    {
+      "id": "inline none",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(none)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "final_blit_none",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "global_none"
+            },
+            "uniforms": {}
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "final write \"o1\"",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(o0)\nrender(o0)\n",
+      "finalWrite": "o1",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "global_o1"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o1"
+      }
+    },
+    {
+      "id": "final write {\"name\":\"o1\",\"kind\":\"output\"}",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(o0)\nrender(o0)\n",
+      "finalWrite": {
+        "name": "o1",
+        "kind": "output"
+      },
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "global_o1"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o1"
+      }
+    },
+    {
+      "id": "final write {\"name\":\"f0\",\"kind\":\"feedback\"}",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(o0)\nrender(o0)\n",
+      "finalWrite": {
+        "name": "f0",
+        "kind": "feedback"
+      },
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "feedback_f0"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "final_blit_f0",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "feedback_f0"
+            },
+            "outputs": {
+              "color": "global_f0"
+            },
+            "uniforms": {}
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "f0"
+      }
+    },
+    {
+      "id": "storage absent",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main"
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "inputs": {},
+            "outputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage null",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": null
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "inputs": {},
+            "outputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage false",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": false
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "inputs": {},
+            "outputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage zero",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": 0
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "inputs": {},
+            "outputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage empty string",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": ""
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "inputs": {},
+            "outputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage empty object",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {}
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {},
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "outputs null",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            },
+            "outputs": null
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        },
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "outputs false",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            },
+            "outputs": false
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        },
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "outputs empty object",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            },
+            "outputs": {}
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "outputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        },
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "outputs render output",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            },
+            "outputs": {
+              "color": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "outputs": {
+              "color": "node_0_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst",
+            "storage"
+          ]
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "local and global targets",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "local": "scratch",
+              "shared": "global_custom",
+              "state": "global_xyz"
+            }
+          }
+        ],
+        "textures": {
+          "scratch": {
+            "width": 7,
+            "height": 9,
+            "format": "rgba32f",
+            "usage": [
+              "sample",
+              "sample",
+              "storage"
+            ]
+          }
+        }
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "local": "node_0_scratch",
+              "shared": "global_custom_chain_0",
+              "state": "global_xyz_chain_0"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {
+          "node_0_scratch": {
+            "width": 7,
+            "height": 9,
+            "format": "rgba32f",
+            "usage": [
+              "sample",
+              "storage"
+            ]
+          }
+        },
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_scratch": {
+          "width": 7,
+          "height": 9,
+          "format": "rgba32f",
+          "usage": [
+            "sample",
+            "storage"
+          ]
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "local default usage",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "local": "scratch",
+              "undeclared": "other"
+            }
+          }
+        ],
+        "textures": {
+          "scratch": {
+            "width": 7,
+            "height": 9
+          }
+        }
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "local": "node_0_scratch",
+              "undeclared": "node_0_other"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {
+          "node_0_scratch": {
+            "width": 7,
+            "height": 9,
+            "usage": [
+              "render",
+              "sample",
+              "copySrc",
+              "copyDst",
+              "storage"
+            ]
+          }
+        },
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_scratch": {
+          "width": 7,
+          "height": 9,
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst",
+            "storage"
+          ]
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        },
+        "node_0_other": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "authored usage without storage",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "scratch"
+            }
+          }
+        ],
+        "textures": {
+          "scratch": {
+            "usage": [
+              "sample",
+              "copyDst",
+              "sample"
+            ]
+          }
+        }
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_scratch"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {
+          "node_0_scratch": {
+            "usage": [
+              "sample",
+              "copyDst",
+              "storage"
+            ]
+          }
+        },
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_scratch": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "sample",
+            "copyDst",
+            "storage"
+          ]
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "empty authored usage",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "scratch"
+            }
+          }
+        ],
+        "textures": {
+          "scratch": {
+            "usage": []
+          }
+        }
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_scratch"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {
+          "node_0_scratch": {
+            "usage": [
+              "storage"
+            ]
+          }
+        },
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_scratch": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "storage"
+          ]
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "declared global and volume policies",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "shared": "global_custom",
+              "volume": "volume",
+              "feedback": "feedback_custom"
+            }
+          }
+        ],
+        "textures": {
+          "global_custom": {
+            "usage": [
+              "sample"
+            ]
+          }
+        },
+        "textures3d": {
+          "volume": {
+            "width": 8,
+            "height": 8,
+            "depth": 8,
+            "usage": [
+              "render"
+            ]
+          }
+        }
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "shared": "global_custom_chain_0",
+              "volume": "node_0_volume",
+              "feedback": "node_0_feedback_custom"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {
+          "global_custom_chain_0": {
+            "usage": [
+              "sample"
+            ]
+          },
+          "node_0_volume": {
+            "width": 8,
+            "height": 8,
+            "depth": 8,
+            "usage": [
+              "render",
+              "storage"
+            ],
+            "is3D": true
+          }
+        },
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "global_custom_chain_0": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "sample"
+          ]
+        },
+        "node_0_volume": {
+          "width": 8,
+          "height": 8,
+          "format": "rgba16f",
+          "usage": [
+            "storage",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ],
+          "depth": 8,
+          "is3D": true
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        },
+        "node_0_feedback_custom": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage target also rendered",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "scratch"
+            },
+            "outputs": {
+              "color": "scratch"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().drawProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_scratch"
+            },
+            "inputs": {},
+            "outputs": {
+              "color": "node_0_scratch"
+            },
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_pass_0",
+            "program": "node_1_main",
+            "inputs": {
+              "src": "inputTex"
+            },
+            "outputs": {
+              "color": "node_1_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.drawProbe",
+            "effectFunc": "drawProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_1",
+            "stepIndex": 1,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_2_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_1_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_2",
+            "stepIndex": 2
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_scratch": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst",
+            "storage"
+          ]
+        },
+        "node_1_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "multi-pass output writes only at the last pass",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          },
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "node_0_out"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_0_pass_1",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "global_o0"
+            },
+            "inputs": {},
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "storage",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    },
+    {
+      "id": "render output overrides the node cursor after inline storage routing",
+      "definition": {
+        "name": "Storage probe",
+        "namespace": "synth",
+        "func": "storageProbe",
+        "starter": true,
+        "globals": {},
+        "passes": [
+          {
+            "program": "main",
+            "storageTextures": {
+              "target": "outputTex"
+            },
+            "outputs": {
+              "color": "outputTex"
+            }
+          }
+        ],
+        "textures": {}
+      },
+      "source": "search synth\nstorageProbe().write(o0)\nrender(o0)\n",
+      "expected": {
+        "passes": [
+          {
+            "id": "node_0_pass_0",
+            "program": "node_0_main",
+            "storageTextures": {
+              "target": "global_o0"
+            },
+            "inputs": {},
+            "outputs": {
+              "color": "node_0_out"
+            },
+            "uniforms": {},
+            "effectKey": "synth.storageProbe",
+            "effectFunc": "storageProbe",
+            "effectNamespace": "synth",
+            "nodeId": "node_0",
+            "stepIndex": 0,
+            "uniformSpecs": {}
+          },
+          {
+            "id": "node_1_write_blit",
+            "program": "blit",
+            "type": "render",
+            "inputs": {
+              "src": "node_0_out"
+            },
+            "outputs": {
+              "color": "global_o0"
+            },
+            "uniforms": {},
+            "nodeId": "node_1",
+            "stepIndex": 1
+          }
+        ],
+        "textureSpecs": {},
+        "renderSurface": "o0"
+      },
+      "textures": {
+        "node_0_out": {
+          "width": "screen",
+          "height": "screen",
+          "format": "rgba16f",
+          "usage": [
+            "render",
+            "sample",
+            "copySrc",
+            "copyDst"
+          ]
+        }
+      }
+    }
+  ]
+}
