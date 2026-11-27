@@ -63,10 +63,11 @@ namespace {
 //     be an array (verified: synth.media's vec2 imageSize with no
 //     override keeps its [1024,1024] array default verbatim; with
 //     `imageSize: 5` becomes the scalar 5). The ONE exception is the
-//     vec2()/vec4() constructor Call (reference 0553e242):
-//     vec2(x, y) on a vec2 parameter and vec4(x, y, z, w) on a color
-//     parameter whose default is a 4-component array set the written
-//     components; every other form keeps the dispatch above.
+//     vec2()/vec3()/vec4() constructor Call (reference 688794ac):
+//     vec2(x, y) on a vec2 parameter and vec3(x, y, z) / vec4(x, y, z, w)
+//     on a color parameter (no kwargs) set the written components,
+//     independently of the color default's length; every other form keeps
+//     the dispatch above.
 //   - `clamp()` requires `typeof min/max === 'number'`; an array-valued
 //     min/max (vec3 params' per-component bounds, e.g.
 //     render.renderLit3d's cameraPosition min:[-1,-1,-1]) is never used
@@ -1726,21 +1727,23 @@ void Validator::resolveSurfaceArg(QJsonArray& chain, const ParamDef& def, const 
     args.insert(argKey, surf.isUndefined() ? QJsonValue(QJsonValue::Null) : surf);
 }
 
-// 6.2a vec2()/vec4() constructor argument (reference 0553e242):
-// vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a vec4 parameter
-// (the loader registers vec4 parameters as `color`; their default keeps its
-// four components). Any other form, including a wrong component count,
-// takes the branches below.
+// 6.2a vec2()/vec3()/vec4() constructor argument (reference 688794ac):
+// vec2(x, y) on a vec2 parameter, and vec3(x, y, z) / vec4(x, y, z, w) on a
+// color parameter, set the written components (the loader registers vec4
+// parameters as `color`; a color constructor preserves the supplied
+// components independently of the parameter's default length). Any other
+// form, including a wrong component count, takes the branches below.
 bool Validator::isVecColorConstructor(const ParamDef& def, const QJsonValue& node) {
     if (nodeType(node) != NodeKind::Call) return false;
     const QJsonObject callNode = node.toObject();
     const QString name = callNode.value(QStringLiteral("name")).toString();
     const QJsonArray callArgs = callNode.value(QStringLiteral("args")).toArray();
-    if (callArgs.size() != (name == QStringLiteral("vec2") ? 2 : 4)) return false;
+    if (callArgs.size()
+        != (name == QStringLiteral("vec2") ? 2 : name == QStringLiteral("vec3") ? 3 : 4)) return false;
     if (def.type == QStringLiteral("vec2")) return name == QStringLiteral("vec2");
     if (def.type == QStringLiteral("color")) {
-        return name == QStringLiteral("vec4") && def.defaultValue.isArray()
-                   && def.defaultValue.toArray().size() == 4;
+        return !callNode.contains(QStringLiteral("kwargs"))
+                   && (name == QStringLiteral("vec3") || name == QStringLiteral("vec4"));
     }
     return false;
 }

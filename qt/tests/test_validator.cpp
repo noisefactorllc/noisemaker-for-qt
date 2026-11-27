@@ -343,14 +343,21 @@ int main(int argc, char** argv) {
     }
 
     // ==================================================================
-    // vec2()/vec4() constructor arguments (reference 0553e242):
+    // vec2()/vec3()/vec4() constructor arguments (reference 688794ac):
     // vec2(x, y) on a vec2 parameter sets the written components; a wrong
     // component count takes the numeric catch-all instead (S002 + default).
-    // The vec4() leg needs a color-typed param whose default is a
-    // 4-component array: the loader registers vec4 globals as `color`
-    // (effect_registry.cpp's vec4->color rewrite), so synth.remap's
-    // zone*_bounds (vec4 default [0, 0, 1, 1]) qualify. Verified against
-    // the oracle; parity/corpus/vec_constructor_args.dsl gates all legs.
+    // vec3()/vec4() on a color-typed param preserve the supplied
+    // components independently of the default's length (the loader
+    // registers vec4 globals as `color` -- effect_registry.cpp's
+    // vec4->color rewrite -- so synth.remap's zone*_bounds (vec4 default
+    // [0, 0, 1, 1]) and synth.solid's color (default [0.5, 0.5, 0.5])
+    // both qualify). Wrong component counts, kwargs forms and wrong
+    // constructor names keep the earlier dispatch: the numeric catch-all
+    // for vec2 params, the color resolver for color params. A non-Number
+    // argument inside the constructor (the bare Ident `x` below) takes the
+    // constructor resolver's S002 branch: the diagnostic names the
+    // argument and that component resolves to 0. Verified against the
+    // oracle; parity/corpus/vec_constructor_args.dsl gates all legs.
     // ==================================================================
     {
         const QJsonObject out = validateSrc(QStringLiteral("search synth\nmedia(imageSize: vec2(64, 48)).write(o0)\nrender(o0)\n"));
@@ -419,6 +426,69 @@ int main(int argc, char** argv) {
         check(nnVal.size() == 4 && nnVal.at(0).toDouble() == 0.1 && nnVal.at(1).toDouble() == 0.0
                   && nnVal.at(2).toDouble() == 0.3 && nnVal.at(3).toDouble() == 0.4,
               "the non-Number component resolves to 0: vec4(0.1, x, 0.3, 0.4) -> [0.1, 0, 0.3, 0.4]");
+
+        // vec3()/vec4() color constructors (reference 688794ac): a color
+        // parameter accepts vec3(x, y, z) and vec4(x, y, z, w), preserving
+        // the supplied components independently of the default's length
+        // (solid's color default [0.5, 0.5, 0.5] is three components).
+        // Wrong component counts and wrong constructor names take the
+        // color resolver's branches below (S002 + the default). A kwargs
+        // form such as vec3(1, 2, 3, bogus: 1) is upstream's experimental
+        // lang.mixedArguments grammar and is not ported: the port's
+        // parser rejects mixed positional and keyword arguments (P007), so
+        // the validator's !kwargs guard stays untestable through the DSL.
+        const QJsonObject vec3ok = validateSrc(
+            QStringLiteral("search synth\nsolid(color: vec3(0.3, 0.2, 0.25)).write(o0)\nrender(o0)\n"));
+        const QJsonArray v3 = args(vec3ok, 0, 0).value(QStringLiteral("color")).toArray();
+        check(v3.size() == 3 && v3.at(0).toDouble() == 0.3 && v3.at(1).toDouble() == 0.2 && v3.at(2).toDouble() == 0.25,
+              "vec3(0.3, 0.2, 0.25) on a color-typed param resolves to [0.3, 0.2, 0.25]");
+        check(diags(vec3ok).isEmpty(), "no diagnostics for a correct vec3() color constructor");
+
+        const QJsonObject vec4nokdflt = validateSrc(
+            QStringLiteral("search synth\nsolid(color: vec4(0.3, 0.2, 0.25, 0.4)).write(o0)\nrender(o0)\n"));
+        const QJsonArray v4 = args(vec4nokdflt, 0, 0).value(QStringLiteral("color")).toArray();
+        check(v4.size() == 4 && v4.at(0).toDouble() == 0.3 && v4.at(1).toDouble() == 0.2
+                  && v4.at(2).toDouble() == 0.25 && v4.at(3).toDouble() == 0.4,
+              "vec4(0.3, 0.2, 0.25, 0.4) on a color-typed param whose default is NOT a 4-component array resolves to [0.3, 0.2, 0.25, 0.4]");
+        check(diags(vec4nokdflt).isEmpty(), "no diagnostics for vec4() on a color param with a 3-component default");
+
+        const QJsonObject vec3bad = validateSrc(
+            QStringLiteral("search synth\nsolid(color: vec3(0.3, 0.2, 0.25, 0.4)).write(o0)\nrender(o0)\n"));
+        const QJsonArray v3b = diags(vec3bad);
+        check(v3b.size() == 1 && v3b.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && v3b.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("vec3")
+                  && v3b.first().toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("Argument out of range for 'color' in solid()"),
+              "a wrong vec3() component count falls to the color resolver: S002, identifier 'vec3'");
+        const QJsonArray v3kept = args(vec3bad, 0, 0).value(QStringLiteral("color")).toArray();
+        check(v3kept.size() == 3 && v3kept.at(0).toDouble() == 0.5 && v3kept.at(1).toDouble() == 0.5
+                  && v3kept.at(2).toDouble() == 0.5,
+              "the wrong vec3() count keeps the [0.5, 0.5, 0.5] color default");
+
+        const QJsonObject vec4long = validateSrc(
+            QStringLiteral("search synth\nsolid(color: vec4(0.3, 0.2, 0.25, 0.4, 1)).write(o0)\nrender(o0)\n"));
+        const QJsonArray v4l = diags(vec4long);
+        check(v4l.size() == 1 && v4l.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && v4l.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("vec4"),
+              "a five-component vec4() falls to the color resolver: S002, identifier 'vec4'");
+        check(args(vec4long, 0, 0).value(QStringLiteral("color")).toArray().size() == 3,
+              "the five-component vec4() keeps the 3-component color default");
+
+        // A non-Number argument inside a vec3() color constructor takes the
+        // constructor resolver's S002 branch and that component resolves
+        // to 0 (verified against the oracle: vec3(0.3, x, 0.25) ->
+        // [0.3, 0, 0.25]).
+        const QJsonObject vec3nonNum = validateSrc(
+            QStringLiteral("search synth\nsolid(color: vec3(0.3, x, 0.25)).write(o0)\nrender(o0)\n"));
+        const QJsonArray v3nn = diags(vec3nonNum);
+        check(v3nn.size() == 1 && v3nn.first().toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S002")
+                  && v3nn.first().toObject().value(QStringLiteral("severity")).toString() == QStringLiteral("warning")
+                  && v3nn.first().toObject().value(QStringLiteral("identifier")).toString() == QStringLiteral("x"),
+              "a non-Number argument inside vec3() hits the constructor resolver's S002 branch (identifier 'x', warning)");
+        const QJsonArray v3nnVal = args(vec3nonNum, 0, 0).value(QStringLiteral("color")).toArray();
+        check(v3nnVal.size() == 3 && v3nnVal.at(0).toDouble() == 0.3 && v3nnVal.at(1).toDouble() == 0.0
+                  && v3nnVal.at(2).toDouble() == 0.25,
+              "the non-Number component resolves to 0: vec3(0.3, x, 0.25) -> [0.3, 0, 0.25]");
     }
 
     // ==================================================================

@@ -1,12 +1,14 @@
-// vec2()/vec4() constructor arguments (reference 0553e242):
-// vec2(x, y) on a vec2-typed param (media.imageSize) and vec4(x, y, z, w)
-// on a color-typed param whose default is a 4-component array (the loader
-// registers vec4 globals as `color`; synth.remap's zone*_bounds qualify).
-// Wrong component counts and wrong constructor names keep the earlier
-// dispatch: the numeric catch-all for vec2 params, the color resolver for
-// color params. A non-Number argument inside the constructor (the bare
-// Ident `x` below) takes the constructor resolver's S002 branch: the
-// diagnostic names the argument and that component resolves to 0.
+// vec2()/vec3()/vec4() constructor arguments (reference 688794ac):
+// vec2(x, y) on a vec2-typed param (media.imageSize) and vec3(x, y, z) /
+// vec4(x, y, z, w) on a color-typed param (the loader registers vec4 globals
+// as `color`; synth.remap's zone*_bounds and synth.solid's color qualify; a
+// color constructor preserves the supplied components independently of the
+// default's length). Wrong component counts, kwargs forms and wrong
+// constructor names keep the earlier dispatch: the numeric catch-all for
+// vec2 params, the color resolver for color params. A non-Number argument
+// inside the constructor (the bare Ident `x` below) takes the constructor
+// resolver's S002 branch: the diagnostic names the argument and that
+// component resolves to 0.
 search synth
 
 media(imageSize: vec2(64, 48)).write(o0)
