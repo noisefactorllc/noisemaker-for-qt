@@ -26,6 +26,11 @@
 namespace nm {
 struct BackendTestAccess {
     static QJsonObject engineUniforms(const Backend& backend) { return backend.engineUniforms(); }
+    static unsigned int ownedExternalTextureHandle(const Backend& backend, const QString& texId) {
+        const auto it = backend.m_externalTextures.constFind(texId);
+        if (it == backend.m_externalTextures.constEnd() || !it->owned) return 0;
+        return it->handle;
+    }
 };
 } // namespace nm
 
@@ -163,8 +168,14 @@ void testMediaUpload(nm::EffectRegistry& registry) {
     gl->glDeleteTextures(1, &hostTexture);
 
     backend.updateTextureFromSource(texId, topRedBottomBlue());
+    const GLuint ownedHandle = nm::BackendTestAccess::ownedExternalTextureHandle(backend, texId);
+    check(ownedHandle != 0 && gl->glIsTexture(ownedHandle) == GL_TRUE,
+          "updateTextureFromSource registers a live owned external texture handle");
+    while (gl->glGetError() != GL_NO_ERROR) {}
     backend.releaseGl();
-    check(true, "releaseGl frees owned external textures without error");
+    const GLenum releaseError = gl->glGetError();
+    check(gl->glIsTexture(ownedHandle) == GL_FALSE && releaseError == GL_NO_ERROR,
+          "releaseGl frees owned external textures without error");
 }
 
 // Port of the reference shaders/tests/test_external_texture_upload.mjs
