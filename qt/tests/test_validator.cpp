@@ -310,6 +310,44 @@ int main(int argc, char** argv) {
     }
 
     // ==================================================================
+    // Prototype-property names bind as plain identifiers (upstream
+    // e9b37133, shaders/tests/test_reserved_choice_names.mjs): the
+    // reference lexer gates the keyword table on Object.hasOwn, so
+    // toString/valueOf/constructor/hasOwnProperty/__proto__ lex as
+    // IDENT and let-bind normally. The C++ keyword lookup is a QHash
+    // (no prototype chain), so the same holds -- lock it in.
+    // ==================================================================
+    {
+        for (const QString& name :
+             {QStringLiteral("toString"), QStringLiteral("valueOf"), QStringLiteral("constructor"),
+              QStringLiteral("hasOwnProperty"), QStringLiteral("__proto__")}) {
+            const QJsonObject out = validateSrc(QStringLiteral(
+                "search synth\nlet %1 = 2\nnoise(scaleX: %1).write(o0)\nrender(o0)\n").arg(name));
+            check(diags(out).isEmpty(),
+                  QStringLiteral("no diagnostics when the prototype-property name %1 binds a param").arg(name).toUtf8().constData());
+            const QJsonObject scaleX = args(out, 0, 0).value(QStringLiteral("scaleX")).toObject();
+            check(scaleX.value(QStringLiteral("_varRef")).toString() == name
+                      && scaleX.value(QStringLiteral("value")).toDouble() == 2.0,
+                  QStringLiteral("scaleX binds the %1 state value as {_varRef, value: 2}").arg(name).toUtf8().constData());
+        }
+    }
+
+    // ==================================================================
+    // An unknown prototype-property member reaches condition validation
+    // (upstream e9b37133): `if (oscKind.toString)` pushes S001 with the
+    // oracle's exact message, never a lexer keyword match.
+    // ==================================================================
+    {
+        const QJsonObject out = validateSrc(QStringLiteral(
+            "search synth\nnoise().write(o0)\nif (oscKind.toString) { noise().write(o1) }\nrender(o0)\n"));
+        const QJsonArray d = diags(out);
+        check(d.size() == 1 && d.at(0).toObject().value(QStringLiteral("code")).toString() == QStringLiteral("S001")
+                  && d.at(0).toObject().value(QStringLiteral("message")).toString()
+                         == QStringLiteral("Unknown enum path: 'oscKind.toString'"),
+              "an unknown prototype-property member reaches condition validation (S001, matches the oracle)");
+    }
+
+    // ==================================================================
     // vec3 arg resolution (+ default passthrough)
     // ==================================================================
     {

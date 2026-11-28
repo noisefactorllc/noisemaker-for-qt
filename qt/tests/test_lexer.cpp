@@ -306,6 +306,28 @@ int main() {
         check(allMatch, "every RESERVED_KEYWORDS entry lexes to its keyword type; non-keyword stays IDENT");
     }
 
+    // --- prototype-property names are IDENT (upstream e9b37133) ------------
+    // The reference lexer gates the keyword table on Object.hasOwn, so a
+    // name inherited from Object.prototype never lexes as a keyword. The
+    // C++ keyword lookup is a QHash (no prototype chain), so these names
+    // already lex as IDENT; lock that in with the reference's cases.
+    {
+        for (const QString& name :
+             {QStringLiteral("toString"), QStringLiteral("valueOf"), QStringLiteral("constructor"),
+              QStringLiteral("hasOwnProperty"), QStringLiteral("__proto__")}) {
+            const QJsonArray toks = nm::lex(name);
+            check(toks.size() == 2 && at(toks, 0).type == nm::TokenType::IDENT && at(toks, 0).lexeme == name
+                      && at(toks, 1).type == nm::TokenType::EOF_,
+                  QStringLiteral("%1 lexes as a single IDENT").arg(name).toUtf8().constData());
+        }
+
+        const QJsonArray member = nm::lex(QStringLiteral("oscKind.toString"));
+        check(member.size() == 4 && at(member, 0).type == nm::TokenType::IDENT
+                  && at(member, 1).type == nm::TokenType::DOT && at(member, 2).type == nm::TokenType::IDENT
+                  && at(member, 3).type == nm::TokenType::EOF_,
+              "oscKind.toString lexes as IDENT DOT IDENT (member segment)");
+    }
+
     // --- EOF sentinel -------------------------------------------------------
     {
         const QJsonArray toks = nm::lex(QStringLiteral(""));
